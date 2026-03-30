@@ -1,0 +1,3339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangChain Practitioner's Handbook</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b27;
+    --bg3: #1e2536;
+    --bg4: #252d42;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0;
+    --muted: #8b93a7;
+    --accent: #6c8ef5;
+    --accent2: #4fd1a5;
+    --accent3: #f5c06c;
+    --accent4: #e27d76;
+    --accent5: #b47cf5;
+    --code-bg: #0d1117;
+    --tag-bg: rgba(108,142,245,0.12);
+    --tag-text: #8fadf7;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    flex-shrink: 0;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .logo-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .nav-section { margin-bottom: 4px; }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 10px 20px 4px;
+  }
+  .nav-link {
+    display: block;
+    padding: 6px 20px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.15s, background 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-link:hover { color: var(--text); background: var(--bg3); }
+  .nav-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(108,142,245,0.06); }
+
+  /* MAIN */
+  .main {
+    flex: 1;
+    max-width: 920px;
+    padding: 40px 48px 80px;
+    overflow-x: hidden;
+  }
+
+  /* SECTIONS */
+  section { margin-bottom: 60px; scroll-margin-top: 24px; }
+  h1 { font-size: 28px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .page-sub { font-size: 15px; color: var(--muted); margin-bottom: 32px; line-height: 1.5; }
+  h2 {
+    font-size: 20px; font-weight: 600; color: var(--text);
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 10px; }
+  h4 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 20px 0 8px; }
+  p { color: var(--muted); margin-bottom: 10px; line-height: 1.7; font-size: 14px; }
+  p strong { color: var(--text); font-weight: 500; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul, ol { color: var(--muted); margin: 8px 0 12px 20px; font-size: 14px; line-height: 1.8; }
+  li { margin-bottom: 4px; }
+  li strong { color: var(--text); font-weight: 500; }
+
+  /* HERO STRIP */
+  .hero {
+    background: linear-gradient(135deg, rgba(108,142,245,0.08) 0%, rgba(79,209,165,0.05) 100%);
+    border: 1px solid rgba(108,142,245,0.2);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(108,142,245,0.15), transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 { font-size: 22px; margin-bottom: 4px; }
+  .hero-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge-blue { background: rgba(108,142,245,0.15); color: #8fadf7; border: 1px solid rgba(108,142,245,0.25); }
+  .badge-green { background: rgba(79,209,165,0.12); color: #5dd1a0; border: 1px solid rgba(79,209,165,0.2); }
+  .badge-amber { background: rgba(245,192,108,0.12); color: #f5c06c; border: 1px solid rgba(245,192,108,0.2); }
+  .badge-purple { background: rgba(180,124,245,0.12); color: #b47cf5; border: 1px solid rgba(180,124,245,0.2); }
+
+  /* CODE */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  pre::-webkit-scrollbar { height: 4px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+  pre code { background: none; padding: 0; border-radius: 0; color: inherit; font-size: 13px; }
+  .comment { color: #5a6474; }
+  .kw { color: #c678dd; }
+  .str { color: #98c379; }
+  .num { color: #d19a66; }
+  .fn { color: #61afef; }
+  .key { color: #e06c75; }
+  .type { color: #56b6c2; }
+  .anno { color: var(--accent3); }
+
+  /* TABLES */
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 8px 12px;
+    background: var(--bg3);
+    color: var(--text);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border2);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* CARDS */
+  .card-grid { display: grid; gap: 14px; }
+  .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card-icon { font-size: 20px; margin-bottom: 10px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* MODE CARDS */
+  .mode-card {
+    border-radius: 10px;
+    padding: 18px 20px;
+    border-left: 3px solid;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .mode-card.blue { border-left-color: var(--accent); }
+  .mode-card.green { border-left-color: var(--accent2); }
+  .mode-card.amber { border-left-color: var(--accent3); }
+  .mode-card.red { border-left-color: var(--accent4); }
+  .mode-card.purple { border-left-color: var(--accent5); }
+  .mode-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .mode-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .mode-shortcut {
+    font-family: var(--mono); font-size: 11px;
+    background: var(--bg4); padding: 2px 8px;
+    border-radius: 4px; color: var(--muted);
+    border: 1px solid var(--border2);
+  }
+  .mode-when { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .mode-when strong { color: var(--text); }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag {
+    font-size: 11px; padding: 2px 8px;
+    background: var(--tag-bg); color: var(--tag-text);
+    border-radius: 12px;
+    border: 1px solid rgba(108,142,245,0.15);
+  }
+
+  /* CALLOUT */
+  .callout {
+    display: flex; gap: 12px;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 14px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { color: var(--muted); }
+  .callout-body strong { color: var(--text); }
+  .callout.tip { background: rgba(79,209,165,0.07); border: 1px solid rgba(79,209,165,0.18); }
+  .callout.warn { background: rgba(245,192,108,0.07); border: 1px solid rgba(245,192,108,0.18); }
+  .callout.info { background: rgba(108,142,245,0.07); border: 1px solid rgba(108,142,245,0.18); }
+  .callout.danger { background: rgba(226,125,118,0.07); border: 1px solid rgba(226,125,118,0.18); }
+
+  /* FLOW */
+  .flow {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    margin: 12px 0;
+  }
+  .flow-step {
+    font-size: 12px; font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+  }
+  .flow-arrow { color: var(--muted); font-size: 14px; }
+
+  /* DIVIDER */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  /* LINK LIST */
+  .link-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+  .link-list li {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 14px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 7px; font-size: 13px;
+    transition: border-color 0.15s;
+  }
+  .link-list li:hover { border-color: var(--border2); }
+  .link-list .ll-tag { font-size: 10px; color: var(--muted); background: var(--bg3); padding: 1px 6px; border-radius: 4px; flex-shrink: 0; }
+
+  /* SCROLLBAR global */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { padding: 24px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">LangChain</div>
+    <div class="logo-sub">Practitioner's Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Getting Started</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#toc">Table of Contents</a>
+    <a class="nav-link" href="#install">Installation</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 1 — Core Models</div>
+    <a class="nav-link" href="#m1-azure">Azure OpenAI Setup</a>
+    <a class="nav-link" href="#m1-vertex">Google Vertex AI Setup</a>
+    <a class="nav-link" href="#m1-grounding">Grounding Samples</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 2 — RAG</div>
+    <a class="nav-link" href="#m2-pipeline">Standard RAG Pipeline</a>
+    <a class="nav-link" href="#m2-advanced">Metadata Filtering</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 3 — Memory</div>
+    <a class="nav-link" href="#m3-short">Short-Term Memory</a>
+    <a class="nav-link" href="#m3-long">Long-Term Memory</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 4 — Tools & MCP</div>
+    <a class="nav-link" href="#m4-tools">Adding Tools</a>
+    <a class="nav-link" href="#m4-binding">Tool Binding</a>
+    <a class="nav-link" href="#m4-mcp">Model Context Protocol</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 5 — Middleware</div>
+    <a class="nav-link" href="#m5-callbacks">Standard Callbacks</a>
+    <a class="nav-link" href="#m5-custom">Custom Middleware</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 6 — Guardrails</div>
+    <a class="nav-link" href="#m6-output">Output Validation</a>
+    <a class="nav-link" href="#m6-fallbacks">Fallbacks & Safety</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 7 — Agents</div>
+    <a class="nav-link" href="#m7-single">Single Agent</a>
+    <a class="nav-link" href="#m7-multi">Multi-Agent (LangGraph)</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero" id="overview">
+    <h1>LangChain Practitioner's Handbook</h1>
+    <p style="color: var(--muted); font-size: 14px; margin-top: 6px; margin-bottom: 0;">A production-ready reference covering enterprise LLM integration, RAG pipelines, memory, tools, MCP, guardrails, and multi-agent architectures with LangGraph.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">LangChain 0.3+ &middot; LCEL</span>
+      <span class="badge badge-green">langchain-core &middot; langgraph</span>
+      <span class="badge badge-amber">Azure OpenAI &middot; Vertex AI</span>
+      <span class="badge badge-purple">March 2026</span>
+    </div>
+  </div>
+
+  <!-- ========== TABLE OF CONTENTS ========== -->
+  <section id="toc">
+    <h2>Table of Contents</h2>
+    <p>This handbook is organized into seven production-focused modules. Each module contains full, copy-pasteable code using the latest LangChain Expression Language (LCEL) and <code>langchain-core</code> imports.</p>
+
+    <div class="card-grid card-grid-2" style="margin-top: 16px;">
+      <a href="#m1-azure" style="text-decoration:none;">
+        <div class="card">
+          <div class="card-icon">🏢</div>
+          <div class="card-title">Module 1 — Core Models & Enterprise Integration</div>
+          <div class="card-body">Azure OpenAI setup, Google Vertex AI, secure credential management, and enterprise grounding with Azure AI Search and Google Search.</div>
+        </div>
+      </a>
+      <a href="#m2-pipeline" style="text-decoration:none;">
+        <div class="card">
+          <div class="card-icon">🔍</div>
+          <div class="card-title">Module 2 — Retrieval-Augmented Generation (RAG)</div>
+          <div class="card-body">Document loading, text splitting, embeddings, vector stores, retrieval chains via LCEL, and metadata filtering.</div>
+        </div>
+      </a>
+      <a href="#m3-short" style="text-decoration:none;">
+        <div class="card">
+          <div class="card-icon">🧠</div>
+          <div class="card-title">Module 3 — Memory Management</div>
+          <div class="card-body">Short-term conversation history with <code>RunnableWithMessageHistory</code>, long-term persistence via Redis/PostgreSQL stores.</div>
+        </div>
+      </a>
+      <a href="#m4-tools" style="text-decoration:none;">
+        <div class="card">
+          <div class="card-icon">🔧</div>
+          <div class="card-title">Module 4 — Tools & Model Context Protocol</div>
+          <div class="card-body">Custom tools with <code>@tool</code> and <code>StructuredTool</code>, tool binding to LLMs, and MCP integration.</div>
+        </div>
+      </a>
+      <a href="#m5-callbacks" style="text-decoration:none;">
+        <div class="card">
+          <div class="card-icon">📡</div>
+          <div class="card-title">Module 5 — Middleware & Callbacks</div>
+          <div class="card-body">Standard callbacks for logging/streaming, custom <code>BaseCallbackHandler</code> for telemetry, auditing, and metadata injection.</div>
+        </div>
+      </a>
+      <a href="#m6-output" style="text-decoration:none;">
+        <div class="card">
+          <div class="card-icon">🛡️</div>
+          <div class="card-title">Module 6 — Guardrails & Output Validation</div>
+          <div class="card-body"><code>PydanticOutputParser</code>, Guardrails AI integration, native fallbacks to prevent hallucinations and enforce schema compliance.</div>
+        </div>
+      </a>
+      <a href="#m7-single" style="text-decoration:none;">
+        <div class="card">
+          <div class="card-icon">🤖</div>
+          <div class="card-title">Module 7 — Agents & Multi-Agent Systems</div>
+          <div class="card-body">Single tool-calling agents with <code>AgentExecutor</code>, multi-agent workflows using LangGraph state graphs.</div>
+        </div>
+      </a>
+    </div>
+
+    <div class="callout info" style="margin-top: 20px;">
+      <span class="callout-icon">📋</span>
+      <div class="callout-body"><strong>Convention:</strong> All code uses LCEL pipe syntax (<code>prompt | model | parser</code>), modern <code>langchain-core</code> imports, and avoids deprecated <code>LLMChain</code>, <code>AgentType.ZERO_SHOT_REACT_DESCRIPTION</code>, or legacy chain constructors. Type hints are included for production readiness.</div>
+    </div>
+  </section>
+
+  <!-- ========== INSTALLATION ========== -->
+  <section id="install">
+    <h2>Installation & Package Map</h2>
+    <p>LangChain 0.3+ uses a modular package architecture. Install only what you need.</p>
+
+    <pre><span class="comment"># Core framework — always needed</span>
+pip install langchain-core langchain
+
+<span class="comment"># Enterprise model providers</span>
+pip install langchain-openai          <span class="comment"># Azure OpenAI + OpenAI</span>
+pip install langchain-google-vertexai <span class="comment"># Google Vertex AI</span>
+
+<span class="comment"># RAG essentials</span>
+pip install langchain-chroma          <span class="comment"># ChromaDB vector store</span>
+pip install langchain-community       <span class="comment"># Document loaders, misc integrations</span>
+
+<span class="comment"># Agents & multi-agent</span>
+pip install langgraph                 <span class="comment"># State-graph multi-agent orchestration</span>
+
+<span class="comment"># Memory persistence</span>
+pip install langchain-redis           <span class="comment"># Redis-backed chat history</span>
+pip install langchain-postgres        <span class="comment"># PostgreSQL-backed chat history</span>
+
+<span class="comment"># MCP integration</span>
+pip install langchain-mcp-adapters    <span class="comment"># Bridge MCP servers ↔ LangChain tools</span></pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Package</th><th>Purpose</th><th>Key Imports</th></tr>
+        <tr>
+          <td><code>langchain-core</code></td>
+          <td>Base abstractions: runnables, prompts, output parsers, callbacks</td>
+          <td><code>ChatPromptTemplate</code>, <code>StrOutputParser</code>, <code>RunnablePassthrough</code></td>
+        </tr>
+        <tr>
+          <td><code>langchain-openai</code></td>
+          <td>OpenAI + Azure OpenAI chat models and embeddings</td>
+          <td><code>AzureChatOpenAI</code>, <code>AzureOpenAIEmbeddings</code></td>
+        </tr>
+        <tr>
+          <td><code>langchain-google-vertexai</code></td>
+          <td>Google Vertex AI (Gemini) chat models</td>
+          <td><code>ChatVertexAI</code>, <code>VertexAIEmbeddings</code></td>
+        </tr>
+        <tr>
+          <td><code>langgraph</code></td>
+          <td>Multi-agent state-graph orchestration</td>
+          <td><code>StateGraph</code>, <code>END</code>, <code>MessagesState</code></td>
+        </tr>
+        <tr>
+          <td><code>langchain-mcp-adapters</code></td>
+          <td>Model Context Protocol bridge</td>
+          <td><code>MultiServerMCPClient</code></td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ========================================================================== -->
+  <!-- MODULE 1: CORE MODELS & ENTERPRISE INTEGRATION                             -->
+  <!-- ========================================================================== -->
+
+  <section id="m1-azure">
+    <h2>Module 1 — Core Models & Enterprise Integration</h2>
+    <p>Enterprise LLM deployments require secure credential handling, region-specific endpoints, and grounding against authoritative data sources. This module covers Azure OpenAI, Google Vertex AI, and enterprise grounding patterns.</p>
+
+    <div class="flow">
+      <span class="flow-step">🔑 Credentials</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🏗️ Model Init</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">💬 Chat Call</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🌍 Grounding</span>
+    </div>
+
+    <h3>1.1 — Azure OpenAI Setup</h3>
+    <p>Use <code>AzureChatOpenAI</code> from <code>langchain-openai</code>. Credentials are loaded from environment variables — <strong>never hardcode secrets</strong>. The <code>azure_endpoint</code>, <code>api_version</code>, and <code>azure_deployment</code> map to your Azure OpenAI resource.</p>
+
+    <h4>Environment Variables</h4>
+    <pre><span class="comment"># .env — load via python-dotenv or set in your shell / CI pipeline</span>
+AZURE_OPENAI_API_KEY=your-api-key-here
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+AZURE_OPENAI_DEPLOYMENT=gpt-4o
+AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT=text-embedding-3-large</pre>
+
+    <h4>Basic Chat Call</h4>
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage, SystemMessage
+
+<span class="comment"># Load credentials from .env — keeps secrets out of source code</span>
+load_dotenv()
+
+<span class="comment"># Initialize the Azure OpenAI chat model</span>
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    <span class="comment"># api_key is auto-read from AZURE_OPENAI_API_KEY env var</span>
+    temperature=<span class="num">0.0</span>,       <span class="comment"># Deterministic for enterprise use</span>
+    max_tokens=<span class="num">1024</span>,
+)
+
+<span class="comment"># Simple invocation with typed messages</span>
+messages: list = [
+    SystemMessage(content=<span class="str">"You are a helpful enterprise assistant."</span>),
+    HumanMessage(content=<span class="str">"Summarize our Q4 revenue in three bullet points."</span>),
+]
+
+response = llm.invoke(messages)
+print(response.content)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Managed Identity:</strong> For production Azure deployments, replace the API key with <code>DefaultAzureCredential</code> from <code>azure-identity</code>. Pass <code>azure_ad_token_provider</code> to <code>AzureChatOpenAI</code> to use workload identity, managed identity, or service principal auth without any stored secrets.</div>
+    </div>
+
+    <h4>Azure AD Token Provider (Managed Identity)</h4>
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> azure.identity <span class="kw">import</span> DefaultAzureCredential, get_bearer_token_provider
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+
+<span class="comment"># DefaultAzureCredential auto-detects managed identity, CLI login, etc.</span>
+credential = DefaultAzureCredential()
+token_provider = get_bearer_token_provider(
+    credential,
+    <span class="str">"https://cognitiveservices.azure.com/.default"</span>,
+)
+
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    azure_ad_token_provider=token_provider,  <span class="comment"># No API key needed</span>
+    temperature=<span class="num">0.0</span>,
+)
+
+response = llm.invoke(<span class="str">"What is our current Azure spend?"</span>)
+print(response.content)</pre>
+
+    <h4>LCEL Chain — Prompt → Model → Parser</h4>
+    <pre><span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+
+<span class="comment"># Define a reusable prompt template</span>
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"You are a concise enterprise analyst."</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+
+<span class="comment"># LCEL pipe: prompt → model → string output parser</span>
+chain = prompt | llm | StrOutputParser()
+
+<span class="comment"># Invoke with a dict of template variables</span>
+result: str = chain.invoke({<span class="str">"question"</span>: <span class="str">"Explain Azure OpenAI rate limits."</span>})
+print(result)</pre>
+  </section>
+
+  <!-- VERTEX AI -->
+  <section id="m1-vertex">
+    <h3>1.2 — Google Vertex AI Setup</h3>
+    <p>Vertex AI uses Google Cloud Application Default Credentials (ADC). Authenticate via <code>gcloud auth application-default login</code> locally, or use a service account in production. The <code>ChatVertexAI</code> wrapper connects to Gemini models.</p>
+
+    <h4>Authentication</h4>
+    <pre><span class="comment"># Terminal: authenticate locally (one-time)</span>
+gcloud auth application-default login
+
+<span class="comment"># Or set a service account key (CI/CD environments)</span>
+<span class="kw">export</span> GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+
+<span class="comment"># Ensure your project is set</span>
+gcloud config set project your-gcp-project-id</pre>
+
+    <h4>Vertex AI Chat Model</h4>
+    <pre><span class="kw">from</span> langchain_google_vertexai <span class="kw">import</span> ChatVertexAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+
+<span class="comment"># Initialize Gemini 2.0 Flash via Vertex AI</span>
+<span class="comment"># Credentials auto-loaded from ADC (gcloud login or service account)</span>
+llm = ChatVertexAI(
+    model_name=<span class="str">"gemini-2.0-flash"</span>,
+    project=<span class="str">"your-gcp-project-id"</span>,
+    location=<span class="str">"us-central1"</span>,
+    temperature=<span class="num">0.0</span>,
+    max_output_tokens=<span class="num">1024</span>,
+)
+
+<span class="comment"># Build an LCEL chain identical to the Azure example</span>
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"You are a GCP infrastructure expert."</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+
+chain = prompt | llm | StrOutputParser()
+
+result: str = chain.invoke({<span class="str">"question"</span>: <span class="str">"Explain Vertex AI quotas for Gemini 2.0."</span>})
+print(result)</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>Model names:</strong> Use <code>gemini-2.0-flash</code> for fast, cost-effective tasks or <code>gemini-2.5-pro</code> for complex reasoning. Both support tool calling natively via the LangChain wrapper.</div>
+    </div>
+  </section>
+
+  <!-- GROUNDING -->
+  <section id="m1-grounding">
+    <h3>1.3 — Enterprise Grounding Samples</h3>
+    <p>Grounding connects your LLM to authoritative data sources so responses are factual and traceable. Below are patterns for both Azure (via Azure AI Search) and Google (via Vertex AI grounding with Google Search).</p>
+
+    <div class="mode-card blue">
+      <div class="mode-header">
+        <span class="mode-name">Azure Grounding — Azure AI Search</span>
+        <span class="mode-shortcut">RAG retriever</span>
+      </div>
+      <p class="mode-when"><strong>Pattern:</strong> Use Azure AI Search as a retriever to ground Azure OpenAI responses against your indexed enterprise documents.</p>
+      <div class="tag-row">
+        <span class="tag">Hybrid search</span>
+        <span class="tag">Semantic ranking</span>
+        <span class="tag">Enterprise docs</span>
+      </div>
+    </div>
+
+    <h4>Azure AI Search Grounding</h4>
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI, AzureOpenAIEmbeddings
+<span class="kw">from</span> langchain_community.vectorstores.azuresearch <span class="kw">import</span> AzureSearch
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> RunnablePassthrough
+
+load_dotenv()
+
+<span class="comment"># 1. Embeddings model for vectorizing queries</span>
+embeddings = AzureOpenAIEmbeddings(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+)
+
+<span class="comment"># 2. Azure AI Search as a vector store / retriever</span>
+vector_store = AzureSearch(
+    azure_search_endpoint=os.environ[<span class="str">"AZURE_SEARCH_ENDPOINT"</span>],
+    azure_search_key=os.environ[<span class="str">"AZURE_SEARCH_KEY"</span>],
+    index_name=<span class="str">"enterprise-docs"</span>,
+    embedding_function=embeddings.embed_query,
+    search_type=<span class="str">"hybrid"</span>,  <span class="comment"># Combines keyword + vector for best recall</span>
+)
+retriever = vector_store.as_retriever(search_kwargs={<span class="str">"k"</span>: <span class="num">5</span>})
+
+<span class="comment"># 3. LLM for generating grounded answers</span>
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.0</span>,
+)
+
+<span class="comment"># 4. Grounded prompt — instructs the model to use ONLY retrieved context</span>
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"""Answer the question using ONLY the provided context.
+If the context does not contain the answer, say "I don't have enough information."
+Always cite the source document.
+
+Context:
+{context}"""</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+
+<span class="comment"># Helper: format retrieved documents into a single string</span>
+<span class="kw">def</span> <span class="fn">format_docs</span>(docs) -> str:
+    <span class="kw">return</span> <span class="str">"\n\n"</span>.join(
+        <span class="str">f"[{doc.metadata.get('source', 'unknown')}]: {doc.page_content}"</span>
+        <span class="kw">for</span> doc <span class="kw">in</span> docs
+    )
+
+<span class="comment"># 5. LCEL RAG chain: retrieve → format → prompt → LLM → parse</span>
+grounded_chain = (
+    {<span class="str">"context"</span>: retriever | format_docs, <span class="str">"question"</span>: RunnablePassthrough()}
+    | prompt
+    | llm
+    | StrOutputParser()
+)
+
+<span class="comment"># Invoke — the response is grounded against Azure AI Search documents</span>
+answer = grounded_chain.invoke(<span class="str">"What is our data retention policy?"</span>)
+print(answer)</pre>
+
+    <hr class="divider">
+
+    <div class="mode-card green">
+      <div class="mode-header">
+        <span class="mode-name">Vertex AI Grounding — Google Search</span>
+        <span class="mode-shortcut">Native grounding</span>
+      </div>
+      <p class="mode-when"><strong>Pattern:</strong> Use Vertex AI's built-in Google Search grounding to augment Gemini responses with real-time web data.</p>
+      <div class="tag-row">
+        <span class="tag">Real-time web</span>
+        <span class="tag">Dynamic grounding</span>
+        <span class="tag">Zero infra</span>
+      </div>
+    </div>
+
+    <h4>Vertex AI with Google Search Grounding</h4>
+    <pre><span class="kw">from</span> langchain_google_vertexai <span class="kw">import</span> ChatVertexAI
+<span class="kw">from</span> google.cloud.aiplatform_v1beta1.types <span class="kw">import</span> (
+    GoogleSearchRetrieval,
+    GroundingSpec,
+    Tool <span class="kw">as</span> VertexTool,
+)
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage
+
+<span class="comment"># Configure Google Search grounding as a Vertex AI tool</span>
+google_search_tool = VertexTool(
+    google_search_retrieval=GoogleSearchRetrieval(
+        disable_attribution=<span class="num">False</span>,  <span class="comment"># Include source citations</span>
+    )
+)
+
+grounding_spec = GroundingSpec(grounding_tools=[google_search_tool])
+
+<span class="comment"># Initialize ChatVertexAI with grounding enabled</span>
+llm = ChatVertexAI(
+    model_name=<span class="str">"gemini-2.0-flash"</span>,
+    project=<span class="str">"your-gcp-project-id"</span>,
+    location=<span class="str">"us-central1"</span>,
+    temperature=<span class="num">0.0</span>,
+    additional_headers={},
+)
+
+<span class="comment"># Pass grounding config via model_kwargs at invocation time</span>
+response = llm.invoke(
+    [HumanMessage(content=<span class="str">"What were Google's Q3 2025 earnings?"</span>)],
+    model_kwargs={<span class="str">"tools"</span>: [google_search_tool]},
+)
+
+print(response.content)
+
+<span class="comment"># Access grounding metadata (sources) from the response</span>
+<span class="kw">if</span> hasattr(response, <span class="str">"response_metadata"</span>):
+    grounding_meta = response.response_metadata.get(<span class="str">"grounding_metadata"</span>)
+    <span class="kw">if</span> grounding_meta:
+        <span class="kw">for</span> chunk <span class="kw">in</span> grounding_meta.get(<span class="str">"grounding_chunks"</span>, []):
+            print(<span class="str">f"  Source: {chunk.get('web', {}).get('uri', 'N/A')}"</span>)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Dynamic grounding threshold:</strong> Vertex AI supports a <code>dynamic_retrieval_config</code> with a threshold (0.0–1.0) to control when Google Search is triggered. A lower threshold means the model grounds more aggressively. This is configured at the API level via <code>DynamicRetrievalConfig</code>.</div>
+    </div>
+
+    <h4>Side-by-Side Comparison</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Aspect</th><th>Azure AI Search Grounding</th><th>Vertex AI Google Search</th></tr>
+        <tr>
+          <td>Data source</td>
+          <td>Your indexed enterprise documents</td>
+          <td>Live web via Google Search</td>
+        </tr>
+        <tr>
+          <td>Latency</td>
+          <td>Low (pre-indexed, hybrid retrieval)</td>
+          <td>Moderate (real-time web fetch)</td>
+        </tr>
+        <tr>
+          <td>Privacy</td>
+          <td>Data stays in your Azure tenant</td>
+          <td>Queries hit Google Search APIs</td>
+        </tr>
+        <tr>
+          <td>Best for</td>
+          <td>Internal knowledge bases, compliance docs, policy lookup</td>
+          <td>Real-time facts, public information, market data</td>
+        </tr>
+        <tr>
+          <td>Setup effort</td>
+          <td>Requires index creation + embedding pipeline</td>
+          <td>Zero setup — built into Vertex AI</td>
+        </tr>
+        <tr>
+          <td>LangChain pattern</td>
+          <td>LCEL retriever chain</td>
+          <td>Native tool via <code>model_kwargs</code></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Production tip:</strong> For most enterprise use cases, combine both approaches. Use Azure AI Search for internal/private data grounding, and Vertex AI Google Search for supplementary real-time public information. Route via a LangGraph decision node that picks the right grounding source based on query classification.</div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ========================================================================== -->
+  <!-- MODULE 2 – 7: PLACEHOLDER SECTIONS (to be generated on next prompt)        -->
+  <!-- ========================================================================== -->
+
+  <section id="m2-pipeline">
+    <h2>Module 2 — Retrieval-Augmented Generation (RAG)</h2>
+    <p>RAG is the dominant pattern for grounding LLMs against your own data without fine-tuning. This module walks through the full pipeline — from raw documents to a production retrieval chain — using LCEL and modern <code>langchain-core</code> abstractions.</p>
+
+    <div class="flow">
+      <span class="flow-step">📄 Load Docs</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">✂️ Split Text</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🔢 Embed</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🗄️ Vector Store</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🔍 Retrieve</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">💬 Generate</span>
+    </div>
+
+    <h3>2.1 — Document Loading</h3>
+    <p>LangChain provides loaders for PDFs, web pages, CSVs, Notion, and more. Each loader returns a list of <code>Document</code> objects with <code>page_content</code> and <code>metadata</code>.</p>
+
+    <pre><span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> (
+    PyPDFLoader,
+    TextLoader,
+    WebBaseLoader,
+    CSVLoader,
+)
+
+<span class="comment"># Load a PDF — each page becomes one Document</span>
+pdf_docs = PyPDFLoader(<span class="str">"docs/architecture-guide.pdf"</span>).load()
+print(<span class="str">f"Loaded {len(pdf_docs)} pages from PDF"</span>)
+
+<span class="comment"># Load a plain text file</span>
+txt_docs = TextLoader(<span class="str">"docs/changelog.md"</span>, encoding=<span class="str">"utf-8"</span>).load()
+
+<span class="comment"># Load a web page (requires beautifulsoup4)</span>
+web_docs = WebBaseLoader(<span class="str">"https://docs.langchain.com/overview"</span>).load()
+
+<span class="comment"># Load a CSV — each row becomes one Document</span>
+csv_docs = CSVLoader(<span class="str">"data/customers.csv"</span>).load()
+
+<span class="comment"># Combine all sources into a unified corpus</span>
+all_docs = pdf_docs + txt_docs + web_docs + csv_docs
+print(<span class="str">f"Total documents loaded: {len(all_docs)}"</span>)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Lazy loading:</strong> For large datasets, use <code>.lazy_load()</code> instead of <code>.load()</code> to get a generator that yields documents one at a time, avoiding memory spikes.</div>
+    </div>
+
+    <h3>2.2 — Text Splitting</h3>
+    <p>Documents are rarely the right size for embedding. Splitters break them into semantically coherent chunks with configurable overlap to preserve context across boundaries.</p>
+
+    <pre><span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> RecursiveCharacterTextSplitter
+
+<span class="comment"># RecursiveCharacterTextSplitter tries to split on paragraphs, then
+# sentences, then words — preserving semantic units as much as possible.</span>
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=<span class="num">1000</span>,        <span class="comment"># Max characters per chunk</span>
+    chunk_overlap=<span class="num">200</span>,       <span class="comment"># Overlap to retain context across chunks</span>
+    separators=[             <span class="comment"># Priority order of split boundaries</span>
+        <span class="str">"\n\n"</span>,               <span class="comment"># Paragraph breaks first</span>
+        <span class="str">"\n"</span>,                 <span class="comment"># Line breaks second</span>
+        <span class="str">". "</span>,                 <span class="comment"># Sentence boundaries third</span>
+        <span class="str">" "</span>,                  <span class="comment"># Word boundaries last resort</span>
+    ],
+    length_function=len,
+)
+
+<span class="comment"># Split all loaded documents — metadata is preserved on each chunk</span>
+chunks = text_splitter.split_documents(all_docs)
+print(<span class="str">f"Split into {len(chunks)} chunks"</span>)
+
+<span class="comment"># Inspect a chunk</span>
+print(<span class="str">f"Chunk 0 length: {len(chunks[0].page_content)} chars"</span>)
+print(<span class="str">f"Chunk 0 metadata: {chunks[0].metadata}"</span>)</pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Parameter</th><th>Guidance</th><th>Typical Range</th></tr>
+        <tr>
+          <td><code>chunk_size</code></td>
+          <td>Larger chunks retain more context but reduce retrieval precision</td>
+          <td>500 – 2000 chars</td>
+        </tr>
+        <tr>
+          <td><code>chunk_overlap</code></td>
+          <td>Overlap prevents information loss at chunk boundaries</td>
+          <td>10–20% of chunk_size</td>
+        </tr>
+        <tr>
+          <td><code>separators</code></td>
+          <td>Tune to your doc format (e.g., add <code>"## "</code> for Markdown headers)</td>
+          <td>Paragraphs → sentences → words</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>2.3 — Embeddings</h3>
+    <p>Embeddings convert text chunks into dense vectors for similarity search. Choose the embedding model that matches your vector store and retrieval needs.</p>
+
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+
+load_dotenv()
+
+<span class="comment"># ── Option A: Azure OpenAI Embeddings ─────────────────────────────</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureOpenAIEmbeddings
+
+azure_embeddings = AzureOpenAIEmbeddings(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+)
+
+<span class="comment"># ── Option B: Google Vertex AI Embeddings ─────────────────────────</span>
+<span class="kw">from</span> langchain_google_vertexai <span class="kw">import</span> VertexAIEmbeddings
+
+vertex_embeddings = VertexAIEmbeddings(
+    model_name=<span class="str">"text-embedding-005"</span>,
+    project=<span class="str">"your-gcp-project-id"</span>,
+    location=<span class="str">"us-central1"</span>,
+)
+
+<span class="comment"># ── Option C: Open-source / local (e.g., sentence-transformers) ───</span>
+<span class="kw">from</span> langchain_community.embeddings <span class="kw">import</span> HuggingFaceEmbeddings
+
+local_embeddings = HuggingFaceEmbeddings(
+    model_name=<span class="str">"sentence-transformers/all-MiniLM-L6-v2"</span>,
+    model_kwargs={<span class="str">"device"</span>: <span class="str">"cpu"</span>},  <span class="comment"># Use "cuda" for GPU</span>
+)
+
+<span class="comment"># Pick one for the rest of this module</span>
+embeddings = azure_embeddings</pre>
+
+    <h3>2.4 — Vector Store Initialization</h3>
+    <p>The vector store indexes your embedded chunks for fast similarity retrieval. Chroma is shown here for local development; swap in Pinecone, Weaviate, pgvector, or Azure AI Search for production.</p>
+
+    <pre><span class="kw">from</span> langchain_chroma <span class="kw">import</span> Chroma
+
+<span class="comment"># Create a persistent Chroma vector store from the chunks
+# This embeds all chunks and stores them on disk at ./chroma_db</span>
+vector_store = Chroma.from_documents(
+    documents=chunks,
+    embedding=embeddings,
+    persist_directory=<span class="str">"./chroma_db"</span>,       <span class="comment"># Persistent storage path</span>
+    collection_name=<span class="str">"enterprise_docs"</span>,    <span class="comment"># Logical namespace</span>
+)
+
+print(<span class="str">f"Indexed {vector_store._collection.count()} chunks in Chroma"</span>)
+
+<span class="comment"># To reload an existing store (no re-embedding needed)</span>
+vector_store = Chroma(
+    persist_directory=<span class="str">"./chroma_db"</span>,
+    embedding_function=embeddings,
+    collection_name=<span class="str">"enterprise_docs"</span>,
+)</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>Production vector stores:</strong> For production, use a managed service — <code>langchain-pinecone</code> for Pinecone, <code>langchain-postgres</code> with pgvector for PostgreSQL, or <code>langchain-community</code>'s <code>AzureSearch</code> for Azure AI Search (shown in Module 1). Chroma is ideal for local prototyping and tests.</div>
+    </div>
+
+    <h3>2.5 — Standard RAG Retrieval Chain (LCEL)</h3>
+    <p>This is the canonical RAG pattern: retrieve relevant chunks, inject them into a prompt, and generate a grounded answer. The entire pipeline is a single LCEL expression.</p>
+
+    <pre><span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> RunnablePassthrough
+
+<span class="comment"># 1. Create a retriever from the vector store</span>
+retriever = vector_store.as_retriever(
+    search_type=<span class="str">"similarity"</span>,    <span class="comment"># or "mmr" for max marginal relevance</span>
+    search_kwargs={<span class="str">"k"</span>: <span class="num">5</span>},       <span class="comment"># Return top-5 most relevant chunks</span>
+)
+
+<span class="comment"># 2. LLM — reuse the Azure OpenAI model from Module 1</span>
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.0</span>,
+)
+
+<span class="comment"># 3. RAG prompt — instructs the model to answer from retrieved context only</span>
+rag_prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"""You are a helpful assistant. Answer the user's question
+using ONLY the provided context. If the answer is not in the context,
+say "I don't have enough information to answer that."
+
+Context:
+{context}"""</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+
+<span class="comment"># 4. Helper to format retrieved Document objects into a single string</span>
+<span class="kw">def</span> <span class="fn">format_docs</span>(docs: list) -> str:
+    <span class="str">"""Join document contents with source metadata for traceability."""</span>
+    <span class="kw">return</span> <span class="str">"\n\n---\n\n"</span>.join(
+        <span class="str">f"[Source: {d.metadata.get('source', 'unknown')}]\n{d.page_content}"</span>
+        <span class="kw">for</span> d <span class="kw">in</span> docs
+    )
+
+<span class="comment"># 5. LCEL RAG chain
+#    - "context" branch: query → retriever → format_docs
+#    - "question" branch: query passes through unchanged
+#    Both feed into the prompt → LLM → string parser</span>
+rag_chain = (
+    {
+        <span class="str">"context"</span>: retriever | format_docs,
+        <span class="str">"question"</span>: RunnablePassthrough(),
+    }
+    | rag_prompt
+    | llm
+    | StrOutputParser()
+)
+
+<span class="comment"># 6. Invoke the chain</span>
+answer: str = rag_chain.invoke(<span class="str">"What are the key architectural decisions in our system?"</span>)
+print(answer)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Streaming:</strong> Replace <code>.invoke()</code> with <code>.stream()</code> to get token-by-token output: <code>for chunk in rag_chain.stream("question"): print(chunk, end="")</code>. Works out of the box with LCEL — no code changes needed to the chain itself.</div>
+    </div>
+
+    <h4>Full Pipeline — End-to-End Script</h4>
+    <p>Here's every step combined in a single, copy-pasteable script:</p>
+
+    <pre><span class="str">"""
+Complete RAG pipeline — load, split, embed, store, retrieve, generate.
+Run: pip install langchain langchain-openai langchain-chroma langchain-community
+"""</span>
+<span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> PyPDFLoader
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> RecursiveCharacterTextSplitter
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI, AzureOpenAIEmbeddings
+<span class="kw">from</span> langchain_chroma <span class="kw">import</span> Chroma
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> RunnablePassthrough
+
+load_dotenv()
+
+<span class="comment"># ── Load ───────────────────────────────────────────────────────────</span>
+docs = PyPDFLoader(<span class="str">"docs/architecture-guide.pdf"</span>).load()
+
+<span class="comment"># ── Split ──────────────────────────────────────────────────────────</span>
+splitter = RecursiveCharacterTextSplitter(chunk_size=<span class="num">1000</span>, chunk_overlap=<span class="num">200</span>)
+chunks = splitter.split_documents(docs)
+
+<span class="comment"># ── Embed + Store ─────────────────────────────────────────────────</span>
+embeddings = AzureOpenAIEmbeddings(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+)
+store = Chroma.from_documents(chunks, embeddings, persist_directory=<span class="str">"./chroma_db"</span>)
+
+<span class="comment"># ── Retrieve + Generate ───────────────────────────────────────────</span>
+retriever = store.as_retriever(search_kwargs={<span class="str">"k"</span>: <span class="num">5</span>})
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.0</span>,
+)
+
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"Answer using ONLY this context:\n{context}"</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+
+<span class="kw">def</span> <span class="fn">format_docs</span>(docs):
+    <span class="kw">return</span> <span class="str">"\n\n"</span>.join(d.page_content <span class="kw">for</span> d <span class="kw">in</span> docs)
+
+chain = (
+    {<span class="str">"context"</span>: retriever | format_docs, <span class="str">"question"</span>: RunnablePassthrough()}
+    | prompt | llm | StrOutputParser()
+)
+
+print(chain.invoke(<span class="str">"Summarize the key architectural decisions."</span>))</pre>
+
+    <hr class="divider">
+  </section>
+
+  <!-- ADVANCED RAG — METADATA FILTERING -->
+  <section id="m2-advanced">
+    <h3>2.6 — Advanced: Retrieval with Metadata Filtering</h3>
+    <p>In production, you rarely want to search the entire corpus. Metadata filters let you scope retrieval to specific departments, document types, date ranges, or access levels — critical for multi-tenant and compliance-sensitive systems.</p>
+
+    <div class="mode-card amber">
+      <div class="mode-header">
+        <span class="mode-name">Filtered Retrieval</span>
+        <span class="mode-shortcut">search_kwargs → filter</span>
+      </div>
+      <p class="mode-when"><strong>Use when:</strong> You need to restrict results to a specific department, document type, date range, or tenant ID — common in enterprise multi-tenant RAG systems.</p>
+      <div class="tag-row">
+        <span class="tag">Multi-tenant</span>
+        <span class="tag">Access control</span>
+        <span class="tag">Scoped search</span>
+        <span class="tag">Compliance</span>
+      </div>
+    </div>
+
+    <h4>Adding Rich Metadata During Ingestion</h4>
+    <pre><span class="kw">from</span> langchain_core.documents <span class="kw">import</span> Document
+
+<span class="comment"># Enrich chunks with structured metadata during ingestion.
+# This metadata enables precise filtered retrieval later.</span>
+enriched_chunks: list[Document] = []
+<span class="kw">for</span> chunk <span class="kw">in</span> chunks:
+    <span class="comment"># Preserve original metadata and add business context</span>
+    chunk.metadata.update({
+        <span class="str">"department"</span>: <span class="str">"engineering"</span>,       <span class="comment"># Business unit tag</span>
+        <span class="str">"doc_type"</span>: <span class="str">"architecture"</span>,        <span class="comment"># Document classification</span>
+        <span class="str">"year"</span>: <span class="num">2025</span>,                      <span class="comment"># Temporal filter</span>
+        <span class="str">"access_level"</span>: <span class="str">"internal"</span>,       <span class="comment"># Access control tier</span>
+    })
+    enriched_chunks.append(chunk)
+
+<span class="comment"># Re-index with enriched metadata</span>
+filtered_store = Chroma.from_documents(
+    documents=enriched_chunks,
+    embedding=embeddings,
+    persist_directory=<span class="str">"./chroma_filtered_db"</span>,
+    collection_name=<span class="str">"enterprise_docs_filtered"</span>,
+)</pre>
+
+    <h4>Retrieving with Metadata Filters</h4>
+    <pre><span class="comment"># ── Filter 1: Single field — only "engineering" department docs ────</span>
+eng_retriever = filtered_store.as_retriever(
+    search_type=<span class="str">"similarity"</span>,
+    search_kwargs={
+        <span class="str">"k"</span>: <span class="num">5</span>,
+        <span class="str">"filter"</span>: {<span class="str">"department"</span>: <span class="str">"engineering"</span>},
+    },
+)
+
+<span class="comment"># ── Filter 2: Multiple fields (AND logic) ─────────────────────────</span>
+scoped_retriever = filtered_store.as_retriever(
+    search_type=<span class="str">"similarity"</span>,
+    search_kwargs={
+        <span class="str">"k"</span>: <span class="num">5</span>,
+        <span class="str">"filter"</span>: {
+            <span class="str">"department"</span>: <span class="str">"engineering"</span>,
+            <span class="str">"year"</span>: <span class="num">2025</span>,
+            <span class="str">"access_level"</span>: <span class="str">"internal"</span>,
+        },
+    },
+)
+
+<span class="comment"># ── Filter 3: Chroma advanced operators ($gt, $in, $and, $or) ─────</span>
+advanced_retriever = filtered_store.as_retriever(
+    search_type=<span class="str">"similarity"</span>,
+    search_kwargs={
+        <span class="str">"k"</span>: <span class="num">5</span>,
+        <span class="str">"filter"</span>: {
+            <span class="str">"$and"</span>: [
+                {<span class="str">"department"</span>: {<span class="str">"$in"</span>: [<span class="str">"engineering"</span>, <span class="str">"product"</span>]}},
+                {<span class="str">"year"</span>: {<span class="str">"$gte"</span>: <span class="num">2024</span>}},
+            ]
+        },
+    },
+)</pre>
+
+    <h4>Filtered RAG Chain — Complete Example</h4>
+    <pre><span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> RunnablePassthrough
+
+<span class="comment"># Build a RAG chain that only retrieves from engineering docs since 2024</span>
+filtered_rag_chain = (
+    {
+        <span class="str">"context"</span>: advanced_retriever | format_docs,
+        <span class="str">"question"</span>: RunnablePassthrough(),
+    }
+    | rag_prompt
+    | llm
+    | StrOutputParser()
+)
+
+<span class="comment"># This query will only search engineering + product docs from 2024+</span>
+answer = filtered_rag_chain.invoke(
+    <span class="str">"What microservices patterns did we adopt in the latest architecture review?"</span>
+)
+print(answer)</pre>
+
+    <h4>Dynamic Filters — User-Driven Scoping</h4>
+    <p>In real apps, filters come from the user's session (role, department, tenant). Here's a pattern using <code>RunnableLambda</code> to inject dynamic filters at runtime:</p>
+
+    <pre><span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> RunnableLambda
+
+<span class="kw">def</span> <span class="fn">get_filtered_retriever</span>(input_dict: dict):
+    <span class="str">"""Create a retriever scoped to the user's department and access level."""</span>
+    user_filters = {
+        <span class="str">"department"</span>: input_dict[<span class="str">"user_department"</span>],
+        <span class="str">"access_level"</span>: input_dict[<span class="str">"user_access_level"</span>],
+    }
+    retriever = filtered_store.as_retriever(
+        search_kwargs={<span class="str">"k"</span>: <span class="num">5</span>, <span class="str">"filter"</span>: user_filters}
+    )
+    <span class="comment"># Run the retriever with the user's actual question</span>
+    docs = retriever.invoke(input_dict[<span class="str">"question"</span>])
+    <span class="kw">return</span> format_docs(docs)
+
+<span class="comment"># Dynamic RAG chain — filters are resolved at invocation time</span>
+dynamic_rag_chain = (
+    {
+        <span class="str">"context"</span>: RunnableLambda(get_filtered_retriever),
+        <span class="str">"question"</span>: <span class="kw">lambda</span> x: x[<span class="str">"question"</span>],
+    }
+    | rag_prompt
+    | llm
+    | StrOutputParser()
+)
+
+<span class="comment"># Invoke with user context — retrieval is automatically scoped</span>
+answer = dynamic_rag_chain.invoke({
+    <span class="str">"question"</span>: <span class="str">"What's the deployment process for our API gateway?"</span>,
+    <span class="str">"user_department"</span>: <span class="str">"engineering"</span>,
+    <span class="str">"user_access_level"</span>: <span class="str">"internal"</span>,
+})
+print(answer)</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Filter syntax varies by store:</strong> The <code>filter</code> dict syntax shown above is Chroma-specific. Pinecone uses a similar syntax but with its own operators. pgvector/PostgreSQL uses SQL-style filters. Azure AI Search uses OData filter expressions. Always consult your vector store's docs for the exact filter grammar.</div>
+    </div>
+
+    <h4>Retrieval Strategy Comparison</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Strategy</th><th>When to Use</th><th>LangChain Config</th></tr>
+        <tr>
+          <td><strong>Similarity</strong></td>
+          <td>Default — nearest neighbors by cosine distance</td>
+          <td><code>search_type="similarity"</code></td>
+        </tr>
+        <tr>
+          <td><strong>MMR</strong></td>
+          <td>When you need diverse results (avoid near-duplicates)</td>
+          <td><code>search_type="mmr"</code>, <code>fetch_k=20</code>, <code>lambda_mult=0.5</code></td>
+        </tr>
+        <tr>
+          <td><strong>Similarity + Score</strong></td>
+          <td>When you need a relevance threshold (discard low-quality matches)</td>
+          <td><code>search_type="similarity_score_threshold"</code>, <code>score_threshold=0.7</code></td>
+        </tr>
+        <tr>
+          <td><strong>Filtered</strong></td>
+          <td>Multi-tenant, access-controlled, or time-bounded retrieval</td>
+          <td><code>search_kwargs={"filter": {...}}</code></td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="m3-short">
+    <h2>Module 3 — Memory Management</h2>
+    <p>LLMs are stateless — every call starts from scratch. Memory gives your chains conversational continuity. LangChain provides two tiers: <strong>short-term</strong> (within a session) and <strong>long-term</strong> (across sessions, persisted to a database). Both integrate cleanly with LCEL via <code>RunnableWithMessageHistory</code>.</p>
+
+    <div class="flow">
+      <span class="flow-step">💬 User Message</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">📖 Load History</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🧠 LLM (with context)</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">💾 Save to Store</span>
+    </div>
+
+    <h3>3.1 — Short-Term Memory (In-Session Conversation History)</h3>
+    <p>Short-term memory tracks the current conversation using a <code>session_id</code>. The <code>RunnableWithMessageHistory</code> wrapper automatically loads past messages before each call and saves new ones after. For in-memory (non-persistent) use cases, <code>ChatMessageHistory</code> is the simplest store.</p>
+
+    <h4>Core Concept: RunnableWithMessageHistory</h4>
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate, MessagesPlaceholder
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_core.chat_history <span class="kw">import</span> BaseChatMessageHistory
+<span class="kw">from</span> langchain_core.runnables.history <span class="kw">import</span> RunnableWithMessageHistory
+<span class="kw">from</span> langchain_community.chat_message_histories <span class="kw">import</span> ChatMessageHistory
+
+load_dotenv()
+
+<span class="comment"># 1. LLM setup</span>
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.3</span>,
+)
+
+<span class="comment"># 2. Prompt with a placeholder for injected chat history</span>
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"You are a helpful assistant. Use the conversation history to maintain context."</span>),
+    MessagesPlaceholder(variable_name=<span class="str">"history"</span>),  <span class="comment"># ← history is injected here</span>
+    (<span class="str">"human"</span>, <span class="str">"{input}"</span>),
+])
+
+<span class="comment"># 3. LCEL chain — no memory awareness needed at the chain level</span>
+chain = prompt | llm | StrOutputParser()
+
+<span class="comment"># 4. In-memory session store — maps session_id → ChatMessageHistory
+#    In production, replace this dict with a database-backed store.</span>
+session_store: dict[str, ChatMessageHistory] = {}
+
+<span class="kw">def</span> <span class="fn">get_session_history</span>(session_id: str) -> BaseChatMessageHistory:
+    <span class="str">"""Return or create the message history for a given session."""</span>
+    <span class="kw">if</span> session_id <span class="kw">not in</span> session_store:
+        session_store[session_id] = ChatMessageHistory()
+    <span class="kw">return</span> session_store[session_id]
+
+<span class="comment"># 5. Wrap the chain with message history management</span>
+chain_with_history = RunnableWithMessageHistory(
+    chain,
+    get_session_history,
+    input_messages_key=<span class="str">"input"</span>,       <span class="comment"># Key in the input dict for user message</span>
+    history_messages_key=<span class="str">"history"</span>,   <span class="comment"># Matches the MessagesPlaceholder name</span>
+)
+
+<span class="comment"># 6. Invoke with a session_id — history is auto-managed</span>
+config = {<span class="str">"configurable"</span>: {<span class="str">"session_id"</span>: <span class="str">"user-123-session-abc"</span>}}
+
+<span class="comment"># Turn 1</span>
+r1 = chain_with_history.invoke({<span class="str">"input"</span>: <span class="str">"My name is Alice and I work in the data team."</span>}, config=config)
+print(<span class="str">f"Turn 1: {r1}"</span>)
+
+<span class="comment"># Turn 2 — the model remembers Alice's name and team</span>
+r2 = chain_with_history.invoke({<span class="str">"input"</span>: <span class="str">"What team did I say I work in?"</span>}, config=config)
+print(<span class="str">f"Turn 2: {r2}"</span>)  <span class="comment"># → "You said you work in the data team."</span>
+
+<span class="comment"># Turn 3 — different session = fresh history</span>
+config_new = {<span class="str">"configurable"</span>: {<span class="str">"session_id"</span>: <span class="str">"user-456-session-xyz"</span>}}
+r3 = chain_with_history.invoke({<span class="str">"input"</span>: <span class="str">"Do you know my name?"</span>}, config=config_new)
+print(<span class="str">f"Turn 3 (new session): {r3}"</span>)  <span class="comment"># → "I don't know your name yet."</span></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Streaming with history:</strong> <code>chain_with_history.stream({"input": "..."}, config=config)</code> works out of the box — history is loaded/saved while tokens stream to the client.</div>
+    </div>
+
+    <h4>How It Works Under the Hood</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Step</th><th>What Happens</th></tr>
+        <tr>
+          <td>1. Before invoke</td>
+          <td><code>get_session_history(session_id)</code> retrieves the history object</td>
+        </tr>
+        <tr>
+          <td>2. Inject</td>
+          <td>Past messages are injected into the <code>MessagesPlaceholder("history")</code> slot</td>
+        </tr>
+        <tr>
+          <td>3. LLM call</td>
+          <td>The chain runs with the full conversation context</td>
+        </tr>
+        <tr>
+          <td>4. After invoke</td>
+          <td>The user input and AI response are appended to the history for next turn</td>
+        </tr>
+      </table>
+    </div>
+
+    <h4>Trimming History (Token Budget Management)</h4>
+    <p>Unbounded history will eventually exceed the model's context window. Use <code>trim_messages</code> to keep the history within a token budget:</p>
+
+    <pre><span class="kw">from</span> langchain_core.messages <span class="kw">import</span> trim_messages
+
+<span class="comment"># Trim strategy: keep the system message + last N tokens worth of history</span>
+trimmer = trim_messages(
+    max_tokens=<span class="num">4000</span>,                    <span class="comment"># Max tokens to keep in history</span>
+    strategy=<span class="str">"last"</span>,                     <span class="comment"># Keep the most recent messages</span>
+    token_counter=llm,                   <span class="comment"># Use the LLM's tokenizer for accuracy</span>
+    include_system=<span class="num">True</span>,                <span class="comment"># Always preserve the system message</span>
+    allow_partial=<span class="num">False</span>,                <span class="comment"># Don't split messages mid-content</span>
+)
+
+<span class="comment"># Insert the trimmer into the chain — it runs BEFORE the prompt</span>
+chain_with_trimming = (
+    trimmer      <span class="comment"># ← trims the message list first</span>
+    | prompt
+    | llm
+    | StrOutputParser()
+)
+
+<span class="comment"># Wrap with history as before</span>
+trimmed_chain_with_history = RunnableWithMessageHistory(
+    chain_with_trimming,
+    get_session_history,
+    input_messages_key=<span class="str">"input"</span>,
+    history_messages_key=<span class="str">"history"</span>,
+)</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>Alternatives to trimming:</strong> For smarter compression, use a <strong>summary memory</strong> pattern — periodically summarize older messages into a single summary message, keeping recent turns verbatim. This preserves long-range context while staying within token limits.</div>
+    </div>
+
+    <hr class="divider">
+  </section>
+
+  <!-- LONG-TERM MEMORY -->
+  <section id="m3-long">
+    <h3>3.2 — Long-Term Memory (Persistent Across Sessions)</h3>
+    <p>Long-term memory persists conversation history to external databases so it survives server restarts, session timeouts, and re-deployments. LangChain provides drop-in history backends for Redis, PostgreSQL, and more. Simply swap the <code>get_session_history</code> function — the rest of the chain stays identical.</p>
+
+    <div class="mode-card green">
+      <div class="mode-header">
+        <span class="mode-name">Redis-Backed Memory</span>
+        <span class="mode-shortcut">langchain-redis</span>
+      </div>
+      <p class="mode-when"><strong>Best for:</strong> Fast read/write, session-oriented apps, microservices with shared state. Redis TTL auto-expires old sessions.</p>
+      <div class="tag-row">
+        <span class="tag">Sub-ms latency</span>
+        <span class="tag">TTL expiration</span>
+        <span class="tag">Horizontally scalable</span>
+      </div>
+    </div>
+
+    <h4>Option A: Redis</h4>
+    <pre><span class="comment"># pip install langchain-redis redis</span>
+<span class="kw">from</span> langchain_redis <span class="kw">import</span> RedisChatMessageHistory
+<span class="kw">from</span> langchain_core.chat_history <span class="kw">import</span> BaseChatMessageHistory
+<span class="kw">from</span> langchain_core.runnables.history <span class="kw">import</span> RunnableWithMessageHistory
+
+<span class="comment"># Redis connection URL — use rediss:// for TLS in production</span>
+REDIS_URL = <span class="str">"redis://localhost:6379/0"</span>
+
+<span class="kw">def</span> <span class="fn">get_redis_history</span>(session_id: str) -> BaseChatMessageHistory:
+    <span class="str">"""Persistent history backed by Redis. Messages survive restarts."""</span>
+    <span class="kw">return</span> RedisChatMessageHistory(
+        session_id=session_id,
+        redis_url=REDIS_URL,
+        ttl=<span class="num">86400</span>,  <span class="comment"># Auto-expire after 24 hours (optional)</span>
+    )
+
+<span class="comment"># Wrap your existing LCEL chain — zero changes to the chain itself</span>
+redis_chain = RunnableWithMessageHistory(
+    chain,                              <span class="comment"># Same chain from 3.1</span>
+    get_redis_history,
+    input_messages_key=<span class="str">"input"</span>,
+    history_messages_key=<span class="str">"history"</span>,
+)
+
+<span class="comment"># Session persists across app restarts — Redis stores the messages</span>
+config = {<span class="str">"configurable"</span>: {<span class="str">"session_id"</span>: <span class="str">"user-123-persistent"</span>}}
+response = redis_chain.invoke({<span class="str">"input"</span>: <span class="str">"Remember: our API rate limit is 1000 req/min."</span>}, config=config)
+print(response)
+
+<span class="comment"># Later (even after restart) the model still knows the rate limit</span>
+response = redis_chain.invoke({<span class="str">"input"</span>: <span class="str">"What's our API rate limit?"</span>}, config=config)
+print(response)  <span class="comment"># → "Your API rate limit is 1000 requests per minute."</span></pre>
+
+    <div class="mode-card blue">
+      <div class="mode-header">
+        <span class="mode-name">PostgreSQL-Backed Memory</span>
+        <span class="mode-shortcut">langchain-postgres</span>
+      </div>
+      <p class="mode-when"><strong>Best for:</strong> Apps already using PostgreSQL, compliance requirements for durable storage, complex queries on history.</p>
+      <div class="tag-row">
+        <span class="tag">ACID durable</span>
+        <span class="tag">SQL queryable</span>
+        <span class="tag">Existing infra</span>
+      </div>
+    </div>
+
+    <h4>Option B: PostgreSQL</h4>
+    <pre><span class="comment"># pip install langchain-postgres psycopg[binary]</span>
+<span class="kw">from</span> langchain_postgres <span class="kw">import</span> PostgresChatMessageHistory
+<span class="kw">from</span> langchain_core.chat_history <span class="kw">import</span> BaseChatMessageHistory
+<span class="kw">from</span> langchain_core.runnables.history <span class="kw">import</span> RunnableWithMessageHistory
+<span class="kw">import</span> psycopg
+
+<span class="comment"># Connection string — use a secrets manager in production, never hardcode</span>
+PG_CONN = <span class="str">"postgresql://user:password@localhost:5432/chatdb"</span>
+
+<span class="comment"># Create the messages table (run once at startup)</span>
+PostgresChatMessageHistory.create_tables(psycopg.connect(PG_CONN), table_name=<span class="str">"chat_history"</span>)
+
+<span class="kw">def</span> <span class="fn">get_pg_history</span>(session_id: str) -> BaseChatMessageHistory:
+    <span class="str">"""Persistent history stored in a PostgreSQL table."""</span>
+    <span class="kw">return</span> PostgresChatMessageHistory(
+        table_name=<span class="str">"chat_history"</span>,
+        session_id=session_id,
+        sync_connection=psycopg.connect(PG_CONN),
+    )
+
+<span class="comment"># Same pattern — swap the history factory, chain stays unchanged</span>
+pg_chain = RunnableWithMessageHistory(
+    chain,
+    get_pg_history,
+    input_messages_key=<span class="str">"input"</span>,
+    history_messages_key=<span class="str">"history"</span>,
+)
+
+config = {<span class="str">"configurable"</span>: {<span class="str">"session_id"</span>: <span class="str">"user-789-durable"</span>}}
+response = pg_chain.invoke({<span class="str">"input"</span>: <span class="str">"I prefer Python over JavaScript."</span>}, config=config)
+print(response)</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Connection management:</strong> In production, use a connection pool (e.g., <code>psycopg_pool.ConnectionPool</code>) instead of creating a new connection per request. The snippet above uses <code>psycopg.connect()</code> for clarity.</div>
+    </div>
+
+    <div class="mode-card purple">
+      <div class="mode-header">
+        <span class="mode-name">Vector Store-Based Long-Term Memory</span>
+        <span class="mode-shortcut">Semantic recall</span>
+      </div>
+      <p class="mode-when"><strong>Best for:</strong> Recalling relevant past conversations by meaning, not just replaying the last N turns. Ideal for personalization and user preference recall across many sessions.</p>
+      <div class="tag-row">
+        <span class="tag">Semantic retrieval</span>
+        <span class="tag">Cross-session</span>
+        <span class="tag">Personalization</span>
+      </div>
+    </div>
+
+    <h4>Option C: Vector Store Memory (Semantic Long-Term Recall)</h4>
+    <p>Instead of replaying raw message history, this pattern embeds past interactions and retrieves the most <em>relevant</em> ones via similarity search. This is powerful for agents that need to recall facts from hundreds of past sessions.</p>
+
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI, AzureOpenAIEmbeddings
+<span class="kw">from</span> langchain_chroma <span class="kw">import</span> Chroma
+<span class="kw">from</span> langchain_core.documents <span class="kw">import</span> Document
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> RunnablePassthrough, RunnableLambda
+
+embeddings = AzureOpenAIEmbeddings(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+)
+
+<span class="comment"># A dedicated vector store for long-term memory (separate from RAG docs)</span>
+memory_store = Chroma(
+    collection_name=<span class="str">"long_term_memory"</span>,
+    embedding_function=embeddings,
+    persist_directory=<span class="str">"./memory_db"</span>,
+)
+
+<span class="comment"># ── Save a memory ─────────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">save_memory</span>(user_id: str, user_msg: str, ai_msg: str) -> <span class="kw">None</span>:
+    <span class="str">"""Embed and store a conversation turn for long-term recall."""</span>
+    memory_doc = Document(
+        page_content=<span class="str">f"User: {user_msg}\nAssistant: {ai_msg}"</span>,
+        metadata={
+            <span class="str">"user_id"</span>: user_id,
+            <span class="str">"timestamp"</span>: datetime.now().isoformat(),
+        },
+    )
+    memory_store.add_documents([memory_doc])
+
+<span class="comment"># ── Recall relevant memories ──────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">recall_memories</span>(input_dict: dict) -> str:
+    <span class="str">"""Retrieve past interactions semantically relevant to the current query."""</span>
+    retriever = memory_store.as_retriever(
+        search_kwargs={
+            <span class="str">"k"</span>: <span class="num">3</span>,
+            <span class="str">"filter"</span>: {<span class="str">"user_id"</span>: input_dict[<span class="str">"user_id"</span>]},
+        }
+    )
+    docs = retriever.invoke(input_dict[<span class="str">"input"</span>])
+    <span class="kw">if not</span> docs:
+        <span class="kw">return</span> <span class="str">"No relevant past interactions found."</span>
+    <span class="kw">return</span> <span class="str">"\n---\n"</span>.join(d.page_content <span class="kw">for</span> d <span class="kw">in</span> docs)
+
+<span class="comment"># ── Chain with semantic memory ────────────────────────────────────</span>
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.3</span>,
+)
+
+memory_prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"""You are a personalized assistant with long-term memory.
+Use these relevant past interactions to personalize your response:
+
+{memories}"""</span>),
+    (<span class="str">"human"</span>, <span class="str">"{input}"</span>),
+])
+
+memory_chain = (
+    {
+        <span class="str">"memories"</span>: RunnableLambda(recall_memories),
+        <span class="str">"input"</span>: <span class="kw">lambda</span> x: x[<span class="str">"input"</span>],
+    }
+    | memory_prompt
+    | llm
+    | StrOutputParser()
+)
+
+<span class="comment"># ── Usage: Save some memories, then query ─────────────────────────</span>
+save_memory(<span class="str">"alice"</span>, <span class="str">"I prefer dark mode in all my tools."</span>, <span class="str">"Noted! I'll remember your preference for dark mode."</span>)
+save_memory(<span class="str">"alice"</span>, <span class="str">"Our tech stack is FastAPI + React + PostgreSQL."</span>, <span class="str">"Got it — FastAPI backend, React frontend, PostgreSQL database."</span>)
+
+<span class="comment"># Later — even in a new session — the model recalls relevant past context</span>
+result = memory_chain.invoke({
+    <span class="str">"user_id"</span>: <span class="str">"alice"</span>,
+    <span class="str">"input"</span>: <span class="str">"Can you suggest a deployment setup for our stack?"</span>,
+})
+print(result)  <span class="comment"># → References FastAPI + React + PostgreSQL from memory</span></pre>
+
+    <h4>Memory Strategy Comparison</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Strategy</th><th>Scope</th><th>Backend</th><th>Best For</th></tr>
+        <tr>
+          <td><strong>ChatMessageHistory</strong> (in-memory)</td>
+          <td>Single process, lost on restart</td>
+          <td>Python dict</td>
+          <td>Prototyping, tests</td>
+        </tr>
+        <tr>
+          <td><strong>Redis</strong></td>
+          <td>Cross-process, TTL expirable</td>
+          <td>Redis server</td>
+          <td>Session-oriented apps, microservices</td>
+        </tr>
+        <tr>
+          <td><strong>PostgreSQL</strong></td>
+          <td>Durable, queryable via SQL</td>
+          <td>PostgreSQL</td>
+          <td>Compliance, audit trails, existing PG infra</td>
+        </tr>
+        <tr>
+          <td><strong>Vector Store</strong></td>
+          <td>Semantic cross-session recall</td>
+          <td>Chroma, Pinecone, pgvector</td>
+          <td>Personalization, long-running agents, user preference recall</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Hybrid approach:</strong> Production systems often combine strategies — Redis for fast short-term session history (last N turns) <em>plus</em> a vector store for long-term semantic recall. The prompt receives both recent history and retrieved long-term memories, giving the model both recency and relevance.</div>
+    </div>
+  </section>
+
+  <section id="m4-tools">
+    <h2>Module 4 — Tools & Model Context Protocol</h2>
+    <p>Tools give LLMs the ability to take actions — call APIs, query databases, run calculations, or interact with external systems. LangChain provides a clean abstraction: define a tool, bind it to a model, and let the model decide when and how to invoke it. The <strong>Model Context Protocol (MCP)</strong> extends this by standardizing how tools and context are exposed across platforms.</p>
+
+    <div class="flow">
+      <span class="flow-step">🔧 Define Tool</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🔗 Bind to LLM</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🤖 Model Decides</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">⚡ Execute</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">💬 Return Result</span>
+    </div>
+
+    <h3>4.1 — Adding Tools</h3>
+    <p>LangChain offers two primary ways to create tools: the <code>@tool</code> decorator for simple functions and <code>StructuredTool</code> for more control over schema and validation.</p>
+
+    <h4>Method 1: @tool Decorator (Simple & Fast)</h4>
+    <pre><span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+
+<span class="anno">@tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: str) -> str:
+    <span class="str">"""Get the current weather for a given city.
+
+    Args:
+        city: The name of the city to look up weather for.
+    """</span>
+    <span class="comment"># In production, call a real weather API here</span>
+    weather_data = {
+        <span class="str">"London"</span>: <span class="str">"15°C, cloudy"</span>,
+        <span class="str">"New York"</span>: <span class="str">"22°C, sunny"</span>,
+        <span class="str">"Tokyo"</span>: <span class="str">"18°C, light rain"</span>,
+    }
+    <span class="kw">return</span> weather_data.get(city, <span class="str">f"Weather data not available for {city}"</span>)
+
+<span class="anno">@tool</span>
+<span class="kw">def</span> <span class="fn">calculate</span>(expression: str) -> str:
+    <span class="str">"""Evaluate a mathematical expression safely.
+
+    Args:
+        expression: A mathematical expression to evaluate, e.g. '2 + 2 * 3'.
+    """</span>
+    <span class="comment"># Use a safe evaluator — never use eval() with untrusted input</span>
+    allowed_chars = set(<span class="str">"0123456789+-*/.(). "</span>)
+    <span class="kw">if not</span> all(c <span class="kw">in</span> allowed_chars <span class="kw">for</span> c <span class="kw">in</span> expression):
+        <span class="kw">return</span> <span class="str">"Error: expression contains invalid characters."</span>
+    <span class="kw">try</span>:
+        result = <span class="num">round</span>(float(eval(expression, {<span class="str">"__builtins__"</span>: {}}, {})), <span class="num">6</span>)
+        <span class="kw">return</span> str(result)
+    <span class="kw">except</span> Exception <span class="kw">as</span> e:
+        <span class="kw">return</span> <span class="str">f"Error: {e}"</span>
+
+<span class="comment"># Inspect the tool schema — this is what the LLM sees</span>
+print(get_weather.name)         <span class="comment"># → "get_weather"</span>
+print(get_weather.description)  <span class="comment"># → "Get the current weather for a given city."</span>
+print(get_weather.args_schema.model_json_schema())  <span class="comment"># → JSON schema for args</span></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Docstrings matter:</strong> The <code>@tool</code> decorator uses the function's docstring as the tool description the LLM sees. Write clear, specific descriptions — they directly affect how reliably the model selects and invokes your tool.</div>
+    </div>
+
+    <h4>Method 2: StructuredTool (Full Control)</h4>
+    <p>Use <code>StructuredTool</code> when you need a Pydantic model for input validation, custom error handling, or when the tool wraps an existing function you don't want to decorate.</p>
+
+    <pre><span class="kw">from</span> langchain_core.tools <span class="kw">import</span> StructuredTool
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+<span class="comment"># Define a Pydantic schema for rich input validation</span>
+<span class="kw">class</span> <span class="type">SearchInput</span>(BaseModel):
+    <span class="str">"""Input schema for the enterprise search tool."""</span>
+    query: str = Field(description=<span class="str">"The search query string"</span>)
+    department: str = Field(
+        default=<span class="str">"all"</span>,
+        description=<span class="str">"Filter results to a specific department"</span>,
+    )
+    max_results: int = Field(
+        default=<span class="num">5</span>,
+        ge=<span class="num">1</span>,
+        le=<span class="num">20</span>,
+        description=<span class="str">"Maximum number of results to return (1-20)"</span>,
+    )
+
+<span class="comment"># The actual implementation function</span>
+<span class="kw">def</span> <span class="fn">search_enterprise_docs</span>(query: str, department: str = <span class="str">"all"</span>, max_results: int = <span class="num">5</span>) -> str:
+    <span class="str">"""Search internal documents. In production, call your search API here."""</span>
+    <span class="kw">return</span> <span class="str">f"Found {max_results} results for '{query}' in {department} department."</span>
+
+<span class="comment"># Create the tool with explicit schema, name, and description</span>
+search_tool = StructuredTool.from_function(
+    func=search_enterprise_docs,
+    name=<span class="str">"search_enterprise_docs"</span>,
+    description=<span class="str">"Search the company's internal document repository. Use this when the user asks about internal policies, procedures, or company information."</span>,
+    args_schema=SearchInput,
+    return_direct=<span class="num">False</span>,  <span class="comment"># False = LLM can process the result before responding</span>
+)
+
+<span class="comment"># Test it directly</span>
+print(search_tool.invoke({<span class="str">"query"</span>: <span class="str">"vacation policy"</span>, <span class="str">"department"</span>: <span class="str">"hr"</span>}))</pre>
+
+    <h4>Async Tools</h4>
+    <p>For I/O-bound operations (API calls, database queries), define async tools to avoid blocking:</p>
+
+    <pre><span class="kw">import</span> httpx
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+
+<span class="anno">@tool</span>
+<span class="kw">async def</span> <span class="fn">fetch_stock_price</span>(symbol: str) -> str:
+    <span class="str">"""Fetch the current stock price for a given ticker symbol.
+
+    Args:
+        symbol: Stock ticker symbol, e.g. 'AAPL', 'GOOGL'.
+    """</span>
+    <span class="kw">async with</span> httpx.AsyncClient() <span class="kw">as</span> client:
+        <span class="comment"># Example API call — replace with your actual data provider</span>
+        resp = <span class="kw">await</span> client.get(
+            <span class="str">f"https://api.example.com/stock/{symbol}"</span>,
+            timeout=<span class="num">10.0</span>,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        <span class="kw">return</span> <span class="str">f"{symbol}: ${data['price']:.2f}"</span></pre>
+
+    <hr class="divider">
+  </section>
+
+  <!-- TOOL BINDING -->
+  <section id="m4-binding">
+    <h3>4.2 — Tool Binding</h3>
+    <p>Defining tools is only half the story. You must <strong>bind</strong> them to a chat model so it knows they exist and can decide when to call them. LangChain's <code>.bind_tools()</code> method attaches tool schemas to the model. The model then returns <code>tool_calls</code> in its response when it decides a tool should be invoked.</p>
+
+    <h4>Binding Tools to a Model</h4>
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+
+load_dotenv()
+
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.0</span>,
+)
+
+<span class="comment"># Bind tools — the model now knows about get_weather, calculate, search_tool</span>
+tools = [get_weather, calculate, search_tool]
+llm_with_tools = llm.bind_tools(tools)
+
+<span class="comment"># Ask a question that should trigger a tool call</span>
+response = llm_with_tools.invoke(<span class="str">"What's the weather in London?"</span>)
+
+<span class="comment"># The model doesn't call the tool itself — it returns a tool_call request</span>
+print(response.content)       <span class="comment"># → "" (empty when tool call is made)</span>
+print(response.tool_calls)    <span class="comment"># → [{'name': 'get_weather', 'args': {'city': 'London'}, 'id': '...'}]</span></pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>Key concept:</strong> <code>bind_tools()</code> doesn't execute tools. The model returns a <code>tool_calls</code> list describing <em>which</em> tool to call and with <em>what arguments</em>. Your code (or an <code>AgentExecutor</code>) is responsible for actually executing the tool and feeding the result back. This is the standard "tool calling" protocol supported by OpenAI, Azure, Gemini, and Anthropic models.</div>
+    </div>
+
+    <h4>Complete Tool Calling Loop (Manual)</h4>
+    <p>Here's the full loop: invoke the model → detect tool calls → execute tools → feed results back → get final answer.</p>
+
+    <pre><span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage, ToolMessage
+
+<span class="comment"># Step 1: User asks a question</span>
+messages = [HumanMessage(content=<span class="str">"What's 15% of 340, and what's the weather in Tokyo?"</span>)]
+
+<span class="comment"># Step 2: Model decides which tools to call (may call multiple)</span>
+ai_response = llm_with_tools.invoke(messages)
+messages.append(ai_response)  <span class="comment"># Add AI response to conversation</span>
+
+<span class="comment"># Step 3: Execute each tool call and collect results</span>
+tool_map = {t.name: t <span class="kw">for</span> t <span class="kw">in</span> tools}
+<span class="kw">for</span> tool_call <span class="kw">in</span> ai_response.tool_calls:
+    tool_fn = tool_map[tool_call[<span class="str">"name"</span>]]
+    result = tool_fn.invoke(tool_call[<span class="str">"args"</span>])
+    <span class="comment"># ToolMessage carries the result back, linked by tool_call_id</span>
+    messages.append(ToolMessage(
+        content=str(result),
+        tool_call_id=tool_call[<span class="str">"id"</span>],
+    ))
+
+<span class="comment"># Step 4: Model synthesizes tool results into a natural language answer</span>
+final_response = llm_with_tools.invoke(messages)
+print(final_response.content)
+<span class="comment"># → "15% of 340 is 51. The weather in Tokyo is 18°C with light rain."</span></pre>
+
+    <h4>LCEL Chain with Auto Tool Execution</h4>
+    <p>For simpler cases, use <code>tool_choice</code> to force a specific tool and pipe the result directly:</p>
+
+    <pre><span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"You are a helpful assistant with access to tools."</span>),
+    (<span class="str">"human"</span>, <span class="str">"{input}"</span>),
+])
+
+<span class="comment"># Force the model to always call a specific tool</span>
+forced_weather = llm.bind_tools([get_weather], tool_choice=<span class="str">"get_weather"</span>)
+
+<span class="comment"># Or let it decide freely (tool_choice="auto" is the default)</span>
+auto_tools = llm.bind_tools(tools, tool_choice=<span class="str">"auto"</span>)</pre>
+
+    <hr class="divider">
+  </section>
+
+  <!-- MCP -->
+  <section id="m4-mcp">
+    <h3>4.3 — Model Context Protocol (MCP)</h3>
+    <p>The <strong>Model Context Protocol</strong> is an open standard (originally from Anthropic) that defines how LLMs discover and invoke tools, access resources, and receive context — regardless of the model provider or client. Think of it as a <strong>USB-C for AI tools</strong>: one standard interface that works everywhere.</p>
+
+    <div class="mode-card purple">
+      <div class="mode-header">
+        <span class="mode-name">MCP in the LangChain Ecosystem</span>
+        <span class="mode-shortcut">langchain-mcp-adapters</span>
+      </div>
+      <p class="mode-when"><strong>How it fits:</strong> The <code>langchain-mcp-adapters</code> package bridges MCP servers (which expose tools via the MCP protocol) with LangChain's tool abstraction. Any MCP server becomes a set of LangChain-compatible tools — usable with <code>bind_tools()</code>, agents, and LangGraph.</p>
+      <div class="tag-row">
+        <span class="tag">Open standard</span>
+        <span class="tag">Provider-agnostic</span>
+        <span class="tag">Tool interop</span>
+        <span class="tag">Stdio &amp; SSE transports</span>
+      </div>
+    </div>
+
+    <h4>MCP Architecture</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Component</th><th>Role</th><th>Example</th></tr>
+        <tr>
+          <td><strong>MCP Server</strong></td>
+          <td>Exposes tools, resources, and prompts via the MCP protocol</td>
+          <td>A file system server, a database server, a GitHub server</td>
+        </tr>
+        <tr>
+          <td><strong>MCP Client</strong></td>
+          <td>Connects to servers, discovers tools, and routes invocations</td>
+          <td><code>MultiServerMCPClient</code> from <code>langchain-mcp-adapters</code></td>
+        </tr>
+        <tr>
+          <td><strong>LangChain Bridge</strong></td>
+          <td>Converts MCP tools → LangChain <code>BaseTool</code> instances</td>
+          <td>Automatic via adapter — tools appear native to LangChain</td>
+        </tr>
+        <tr>
+          <td><strong>Transport</strong></td>
+          <td>Communication channel between client and server</td>
+          <td><code>stdio</code> (local process), <code>sse</code> (HTTP streaming)</td>
+        </tr>
+      </table>
+    </div>
+
+    <h4>Connecting an MCP Server to LangChain (Stdio Transport)</h4>
+    <pre><span class="comment"># pip install langchain-mcp-adapters</span>
+<span class="kw">import</span> asyncio
+<span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">from</span> langchain_mcp_adapters.client <span class="kw">import</span> MultiServerMCPClient
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+
+load_dotenv()
+
+<span class="kw">async def</span> <span class="fn">main</span>():
+    <span class="comment"># 1. Configure MCP server connections
+    #    Each server is a separate process communicating via stdio</span>
+    <span class="kw">async with</span> MultiServerMCPClient(
+        {
+            <span class="str">"filesystem"</span>: {
+                <span class="str">"command"</span>: <span class="str">"npx"</span>,
+                <span class="str">"args"</span>: [
+                    <span class="str">"-y"</span>,
+                    <span class="str">"@modelcontextprotocol/server-filesystem"</span>,
+                    <span class="str">"/path/to/allowed/directory"</span>,
+                ],
+                <span class="str">"transport"</span>: <span class="str">"stdio"</span>,
+            },
+            <span class="str">"github"</span>: {
+                <span class="str">"command"</span>: <span class="str">"npx"</span>,
+                <span class="str">"args"</span>: [<span class="str">"-y"</span>, <span class="str">"@modelcontextprotocol/server-github"</span>],
+                <span class="str">"transport"</span>: <span class="str">"stdio"</span>,
+                <span class="str">"env"</span>: {
+                    <span class="str">"GITHUB_TOKEN"</span>: os.environ[<span class="str">"GITHUB_TOKEN"</span>],
+                },
+            },
+        }
+    ) <span class="kw">as</span> mcp_client:
+        <span class="comment"># 2. Get LangChain-compatible tools from ALL connected MCP servers</span>
+        mcp_tools = mcp_client.get_tools()
+        print(<span class="str">f"Discovered {len(mcp_tools)} tools from MCP servers:"</span>)
+        <span class="kw">for</span> t <span class="kw">in</span> mcp_tools:
+            print(<span class="str">f"  - {t.name}: {t.description[:80]}"</span>)
+
+        <span class="comment"># 3. Create a LangGraph ReAct agent with MCP tools
+        #    The agent can now read files, list directories, create GitHub issues, etc.</span>
+        llm = AzureChatOpenAI(
+            azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+            azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+            api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+            temperature=<span class="num">0.0</span>,
+        )
+
+        agent = create_react_agent(llm, mcp_tools)
+
+        <span class="comment"># 4. Invoke — the agent uses MCP tools as if they were native</span>
+        result = <span class="kw">await</span> agent.ainvoke({
+            <span class="str">"messages"</span>: [(<span class="str">"human"</span>, <span class="str">"List all Python files in the project and summarize README.md"</span>)],
+        })
+        print(result[<span class="str">"messages"</span>][-<span class="num">1</span>].content)
+
+asyncio.run(main())</pre>
+
+    <h4>Connecting via SSE (Remote MCP Server)</h4>
+    <p>For remote MCP servers exposed over HTTP (e.g., deployed as a microservice), use the <code>sse</code> transport:</p>
+
+    <pre><span class="kw">async with</span> MultiServerMCPClient(
+    {
+        <span class="str">"remote_tools"</span>: {
+            <span class="str">"url"</span>: <span class="str">"http://mcp-server.internal:8080/sse"</span>,
+            <span class="str">"transport"</span>: <span class="str">"sse"</span>,
+        },
+    }
+) <span class="kw">as</span> mcp_client:
+    tools = mcp_client.get_tools()
+    <span class="comment"># Use tools with any LangChain agent or chain...</span></pre>
+
+    <h4>Bridging a Custom MCP Server with LangChain</h4>
+    <p>If you've built your own MCP server (e.g., exposing a proprietary database), here's the conceptual pattern for bridging it into a LangChain agent:</p>
+
+    <pre><span class="str">"""
+Conceptual architecture: Custom MCP Server → LangChain Agent
+
+1. Your MCP server exposes tools via the MCP protocol:
+   - list_customers(region: str) → customer records
+   - get_order_status(order_id: str) → status
+   - create_support_ticket(subject: str, body: str) → ticket ID
+
+2. langchain-mcp-adapters discovers these tools at runtime
+3. Tools are automatically converted to LangChain BaseTool instances
+4. Any LangChain agent can invoke them — AgentExecutor, LangGraph, etc.
+"""</span>
+<span class="kw">import</span> asyncio
+<span class="kw">from</span> langchain_mcp_adapters.client <span class="kw">import</span> MultiServerMCPClient
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+
+<span class="kw">async def</span> <span class="fn">run_custom_mcp_agent</span>():
+    <span class="comment"># Connect to your custom MCP server</span>
+    <span class="kw">async with</span> MultiServerMCPClient(
+        {
+            <span class="str">"crm"</span>: {
+                <span class="str">"command"</span>: <span class="str">"python"</span>,
+                <span class="str">"args"</span>: [<span class="str">"my_mcp_server.py"</span>],    <span class="comment"># Your custom MCP server</span>
+                <span class="str">"transport"</span>: <span class="str">"stdio"</span>,
+            },
+        }
+    ) <span class="kw">as</span> client:
+        crm_tools = client.get_tools()
+        <span class="comment"># crm_tools now contains:
+        #   - list_customers (LangChain BaseTool)
+        #   - get_order_status (LangChain BaseTool)
+        #   - create_support_ticket (LangChain BaseTool)</span>
+
+        <span class="comment"># Combine MCP tools with native LangChain tools</span>
+        all_tools = crm_tools + [get_weather, calculate]  <span class="comment"># Mix and match</span>
+
+        llm = AzureChatOpenAI(
+            azure_endpoint=<span class="str">"..."</span>,
+            azure_deployment=<span class="str">"gpt-4o"</span>,
+            api_version=<span class="str">"2024-12-01-preview"</span>,
+        )
+
+        <span class="comment"># Agent has access to both MCP and native tools seamlessly</span>
+        agent = create_react_agent(llm, all_tools)
+        result = <span class="kw">await</span> agent.ainvoke({
+            <span class="str">"messages"</span>: [(<span class="str">"human"</span>, <span class="str">"List all customers in EMEA and check order #12345 status"</span>)],
+        })
+        print(result[<span class="str">"messages"</span>][-<span class="num">1</span>].content)
+
+asyncio.run(run_custom_mcp_agent())</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Security:</strong> MCP servers have access to real systems. Always run them with least-privilege credentials, validate tool inputs, and audit tool invocations. Use the <code>env</code> dict in the client config to scope secrets per server — never expose credentials globally.</div>
+    </div>
+
+    <h4>MCP vs. Native LangChain Tools — When to Use What</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Aspect</th><th>Native LangChain Tools</th><th>MCP Tools</th></tr>
+        <tr>
+          <td>Definition</td>
+          <td><code>@tool</code> decorator or <code>StructuredTool</code> in Python</td>
+          <td>MCP server (any language) exposes tools via protocol</td>
+        </tr>
+        <tr>
+          <td>Discovery</td>
+          <td>Manually registered in code</td>
+          <td>Auto-discovered at runtime from connected servers</td>
+        </tr>
+        <tr>
+          <td>Language</td>
+          <td>Python only</td>
+          <td>Any (TypeScript, Python, Go, Rust…)</td>
+        </tr>
+        <tr>
+          <td>Reusability</td>
+          <td>Within your LangChain codebase</td>
+          <td>Across any MCP-compatible client (Claude, Copilot, LangChain, etc.)</td>
+        </tr>
+        <tr>
+          <td>Best for</td>
+          <td>App-specific logic tightly coupled to your chain</td>
+          <td>Shared platform tools, org-wide services, polyglot environments</td>
+        </tr>
+        <tr>
+          <td>Setup overhead</td>
+          <td>Minimal — just Python functions</td>
+          <td>Requires an MCP server process</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Best practice:</strong> Use native <code>@tool</code> for chain-specific logic (formatters, calculators, custom RAG helpers). Use MCP for organization-wide shared tools (database access, ticketing systems, file systems) that multiple AI clients need to use. The two approaches compose seamlessly — <code>all_tools = mcp_tools + native_tools</code>.</div>
+    </div>
+  </section>
+
+  <section id="m5-callbacks">
+    <h2>Module 5 — Middleware & Callbacks</h2>
+    <p>Callbacks are LangChain's observability layer — hooks that fire at key lifecycle events (LLM start, tool invocation, chain error, token streamed, etc.). They power logging, tracing, streaming, cost tracking, and custom monitoring without modifying your chain logic. Think of them as middleware for your AI pipeline.</p>
+
+    <div class="flow">
+      <span class="flow-step">📥 Chain Start</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🧠 LLM Start</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🔤 Token Stream</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">✅ LLM End</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">📤 Chain End</span>
+    </div>
+
+    <h3>5.1 — Built-In Callbacks & Streaming</h3>
+
+    <h4>Token-Level Streaming</h4>
+    <p>The most common use of callbacks — streaming tokens to the user as they're generated, giving instant feedback instead of waiting for the full response:</p>
+
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+
+load_dotenv()
+
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.7</span>,
+    streaming=<span class="num">True</span>,
+)
+
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"You are a concise technical writer."</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+
+chain = prompt | llm
+
+<span class="comment"># Method 1: .stream() — yields chunks as they arrive</span>
+<span class="kw">for</span> chunk <span class="kw">in</span> chain.stream({<span class="str">"question"</span>: <span class="str">"Explain LCEL in 3 sentences"</span>}):
+    print(chunk.content, end=<span class="str">""</span>, flush=<span class="num">True</span>)
+
+<span class="comment"># Method 2: .astream() — async streaming (FastAPI, async apps)</span>
+<span class="kw">import</span> asyncio
+
+<span class="kw">async def</span> <span class="fn">stream_response</span>():
+    <span class="kw">async for</span> chunk <span class="kw">in</span> chain.astream({<span class="str">"question"</span>: <span class="str">"What is RAG?"</span>}):
+        print(chunk.content, end=<span class="str">""</span>, flush=<span class="num">True</span>)
+
+asyncio.run(stream_response())</pre>
+
+    <h4>Streaming Events (Full Lifecycle Visibility)</h4>
+    <p><code>.astream_events()</code> gives you fine-grained access to every event in the chain — useful for building progress indicators, debugging, or advanced UIs:</p>
+
+    <pre><span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+
+chain = prompt | llm | StrOutputParser()
+
+<span class="kw">async def</span> <span class="fn">observe_events</span>():
+    <span class="kw">async for</span> event <span class="kw">in</span> chain.astream_events(
+        {<span class="str">"question"</span>: <span class="str">"What are LangChain callbacks?"</span>},
+        version=<span class="str">"v2"</span>,
+    ):
+        kind = event[<span class="str">"event"</span>]
+        <span class="kw">if</span> kind == <span class="str">"on_chat_model_stream"</span>:
+            <span class="comment"># Token-level streaming from the LLM</span>
+            token = event[<span class="str">"data"</span>][<span class="str">"chunk"</span>].content
+            print(token, end=<span class="str">""</span>, flush=<span class="num">True</span>)
+        <span class="kw">elif</span> kind == <span class="str">"on_chain_start"</span>:
+            print(<span class="str">f"\n⏳ Chain started: {event['name']}"</span>)
+        <span class="kw">elif</span> kind == <span class="str">"on_chain_end"</span>:
+            print(<span class="str">f"\n✅ Chain finished: {event['name']}"</span>)
+        <span class="kw">elif</span> kind == <span class="str">"on_tool_start"</span>:
+            print(<span class="str">f"\n🔧 Tool invoked: {event['name']}"</span>)
+
+asyncio.run(observe_events())</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>Event types:</strong> <code>on_chain_start/end</code>, <code>on_chat_model_start/end/stream</code>, <code>on_llm_start/end/stream</code>, <code>on_tool_start/end</code>, <code>on_retriever_start/end</code>, <code>on_parser_start/end</code>. Each event includes <code>name</code>, <code>data</code>, <code>run_id</code>, and <code>parent_ids</code> for correlation.</div>
+    </div>
+
+    <h4>Inline Callbacks with Handler List</h4>
+    <p>You can pass callback handlers directly to any <code>.invoke()</code> or <code>.stream()</code> call via the <code>config</code> parameter:</p>
+
+    <pre><span class="kw">from</span> langchain_core.callbacks <span class="kw">import</span> StdOutCallbackHandler
+
+<span class="comment"># StdOutCallbackHandler prints every lifecycle event to stdout</span>
+result = chain.invoke(
+    {<span class="str">"question"</span>: <span class="str">"What is LCEL?"</span>},
+    config={<span class="str">"callbacks"</span>: [StdOutCallbackHandler()]},
+)
+
+<span class="comment"># Multiple handlers compose — each receives all events</span>
+result = chain.invoke(
+    {<span class="str">"question"</span>: <span class="str">"What is LCEL?"</span>},
+    config={<span class="str">"callbacks"</span>: [StdOutCallbackHandler(), my_custom_handler]},
+)</pre>
+
+    <hr class="divider">
+  </section>
+
+  <!-- CUSTOM CALLBACKS -->
+  <section id="m5-custom">
+    <h3>5.2 — Custom Callback Handlers</h3>
+    <p>For production systems, you'll want custom handlers that log to your observability stack, track costs, enforce guardrails, or measure latency. Extend <code>BaseCallbackHandler</code> (sync) or <code>AsyncCallbackHandler</code> (async) and override only the hooks you need.</p>
+
+    <h4>Production Logging Handler</h4>
+    <pre><span class="kw">import</span> time
+<span class="kw">import</span> logging
+<span class="kw">from</span> typing <span class="kw">import</span> Any
+<span class="kw">from</span> uuid <span class="kw">import</span> UUID
+<span class="kw">from</span> langchain_core.callbacks <span class="kw">import</span> BaseCallbackHandler
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> BaseMessage
+<span class="kw">from</span> langchain_core.outputs <span class="kw">import</span> LLMResult
+
+logger = logging.getLogger(<span class="str">"langchain.telemetry"</span>)
+
+<span class="kw">class</span> <span class="type">ProductionLoggingHandler</span>(BaseCallbackHandler):
+    <span class="str">"""Logs LLM calls, latency, token usage, and errors to structured logging."""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self._start_times: dict[UUID, float] = {}
+
+    <span class="kw">def</span> <span class="fn">on_chat_model_start</span>(
+        self,
+        serialized: dict[str, Any],
+        messages: list[list[BaseMessage]],
+        *,
+        run_id: UUID,
+        **kwargs: Any,
+    ) -> <span class="num">None</span>:
+        self._start_times[run_id] = time.perf_counter()
+        model = serialized.get(<span class="str">"kwargs"</span>, {}).get(<span class="str">"model_name"</span>, <span class="str">"unknown"</span>)
+        logger.info(
+            <span class="str">"LLM call started"</span>,
+            extra={<span class="str">"run_id"</span>: str(run_id), <span class="str">"model"</span>: model},
+        )
+
+    <span class="kw">def</span> <span class="fn">on_llm_end</span>(
+        self,
+        response: LLMResult,
+        *,
+        run_id: UUID,
+        **kwargs: Any,
+    ) -> <span class="num">None</span>:
+        elapsed = time.perf_counter() - self._start_times.pop(run_id, <span class="num">0</span>)
+        usage = response.llm_output.get(<span class="str">"token_usage"</span>, {}) <span class="kw">if</span> response.llm_output <span class="kw">else</span> {}
+        logger.info(
+            <span class="str">"LLM call completed"</span>,
+            extra={
+                <span class="str">"run_id"</span>: str(run_id),
+                <span class="str">"latency_ms"</span>: round(elapsed * <span class="num">1000</span>, <span class="num">2</span>),
+                <span class="str">"prompt_tokens"</span>: usage.get(<span class="str">"prompt_tokens"</span>),
+                <span class="str">"completion_tokens"</span>: usage.get(<span class="str">"completion_tokens"</span>),
+                <span class="str">"total_tokens"</span>: usage.get(<span class="str">"total_tokens"</span>),
+            },
+        )
+
+    <span class="kw">def</span> <span class="fn">on_llm_error</span>(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        **kwargs: Any,
+    ) -> <span class="num">None</span>:
+        elapsed = time.perf_counter() - self._start_times.pop(run_id, <span class="num">0</span>)
+        logger.error(
+            <span class="str">"LLM call failed"</span>,
+            extra={
+                <span class="str">"run_id"</span>: str(run_id),
+                <span class="str">"latency_ms"</span>: round(elapsed * <span class="num">1000</span>, <span class="num">2</span>),
+                <span class="str">"error"</span>: str(error),
+            },
+        )</pre>
+
+    <h4>Cost Tracking Handler</h4>
+    <pre><span class="kw">from</span> langchain_core.callbacks <span class="kw">import</span> BaseCallbackHandler
+<span class="kw">from</span> langchain_core.outputs <span class="kw">import</span> LLMResult
+<span class="kw">from</span> uuid <span class="kw">import</span> UUID
+<span class="kw">from</span> typing <span class="kw">import</span> Any
+
+<span class="comment"># Pricing per 1K tokens (update with your Azure/OpenAI pricing)</span>
+PRICING = {
+    <span class="str">"gpt-4o"</span>:      {<span class="str">"input"</span>: <span class="num">0.0025</span>, <span class="str">"output"</span>: <span class="num">0.01</span>},
+    <span class="str">"gpt-4o-mini"</span>: {<span class="str">"input"</span>: <span class="num">0.00015</span>, <span class="str">"output"</span>: <span class="num">0.0006</span>},
+    <span class="str">"gpt-4.1"</span>:     {<span class="str">"input"</span>: <span class="num">0.002</span>, <span class="str">"output"</span>: <span class="num">0.008</span>},
+}
+
+<span class="kw">class</span> <span class="type">CostTracker</span>(BaseCallbackHandler):
+    <span class="str">"""Track cumulative token usage and estimated cost across a session."""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, model_name: str = <span class="str">"gpt-4o"</span>):
+        self.model_name = model_name
+        self.total_prompt_tokens = <span class="num">0</span>
+        self.total_completion_tokens = <span class="num">0</span>
+        self.total_cost = <span class="num">0.0</span>
+        self.call_count = <span class="num">0</span>
+
+    <span class="kw">def</span> <span class="fn">on_llm_end</span>(self, response: LLMResult, *, run_id: UUID, **kwargs: Any) -> <span class="num">None</span>:
+        usage = response.llm_output.get(<span class="str">"token_usage"</span>, {}) <span class="kw">if</span> response.llm_output <span class="kw">else</span> {}
+        prompt_tokens = usage.get(<span class="str">"prompt_tokens"</span>, <span class="num">0</span>)
+        completion_tokens = usage.get(<span class="str">"completion_tokens"</span>, <span class="num">0</span>)
+
+        self.total_prompt_tokens += prompt_tokens
+        self.total_completion_tokens += completion_tokens
+        self.call_count += <span class="num">1</span>
+
+        prices = PRICING.get(self.model_name, PRICING[<span class="str">"gpt-4o"</span>])
+        cost = (prompt_tokens / <span class="num">1000</span>) * prices[<span class="str">"input"</span>] + \
+               (completion_tokens / <span class="num">1000</span>) * prices[<span class="str">"output"</span>]
+        self.total_cost += cost
+
+    <span class="kw">def</span> <span class="fn">report</span>(self) -> str:
+        <span class="kw">return</span> (
+            <span class="str">f"📊 Session Report:\n"</span>
+            <span class="str">f"   Calls: {self.call_count}\n"</span>
+            <span class="str">f"   Prompt tokens: {self.total_prompt_tokens:,}\n"</span>
+            <span class="str">f"   Completion tokens: {self.total_completion_tokens:,}\n"</span>
+            <span class="str">f"   Estimated cost: ${self.total_cost:.4f}"</span>
+        )
+
+<span class="comment"># Usage</span>
+cost_tracker = CostTracker(model_name=<span class="str">"gpt-4o"</span>)
+log_handler = ProductionLoggingHandler()
+
+result = chain.invoke(
+    {<span class="str">"question"</span>: <span class="str">"Explain microservices"</span>},
+    config={<span class="str">"callbacks"</span>: [cost_tracker, log_handler]},
+)
+
+print(cost_tracker.report())
+<span class="comment"># 📊 Session Report:
+#    Calls: 1
+#    Prompt tokens: 28
+#    Completion tokens: 142
+#    Estimated cost: $0.0015</span></pre>
+
+    <h4>Async Callback Handler (for I/O-bound telemetry)</h4>
+    <p>When your callback needs to make network calls (send metrics to Datadog, post to a webhook), use <code>AsyncCallbackHandler</code> to avoid blocking the chain:</p>
+
+    <pre><span class="kw">import</span> httpx
+<span class="kw">from</span> langchain_core.callbacks <span class="kw">import</span> AsyncCallbackHandler
+<span class="kw">from</span> langchain_core.outputs <span class="kw">import</span> LLMResult
+<span class="kw">from</span> uuid <span class="kw">import</span> UUID
+<span class="kw">from</span> typing <span class="kw">import</span> Any
+
+<span class="kw">class</span> <span class="type">WebhookNotifier</span>(AsyncCallbackHandler):
+    <span class="str">"""Send LLM completion events to a webhook endpoint asynchronously."""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, webhook_url: str):
+        self.webhook_url = webhook_url
+
+    <span class="kw">async def</span> <span class="fn">on_llm_end</span>(
+        self,
+        response: LLMResult,
+        *,
+        run_id: UUID,
+        **kwargs: Any,
+    ) -> <span class="num">None</span>:
+        usage = response.llm_output.get(<span class="str">"token_usage"</span>, {}) <span class="kw">if</span> response.llm_output <span class="kw">else</span> {}
+        <span class="kw">async with</span> httpx.AsyncClient() <span class="kw">as</span> client:
+            <span class="kw">await</span> client.post(
+                self.webhook_url,
+                json={
+                    <span class="str">"event"</span>: <span class="str">"llm_completion"</span>,
+                    <span class="str">"run_id"</span>: str(run_id),
+                    <span class="str">"tokens"</span>: usage,
+                },
+                timeout=<span class="num">5.0</span>,
+            )
+
+    <span class="kw">async def</span> <span class="fn">on_llm_error</span>(
+        self,
+        error: BaseException,
+        *,
+        run_id: UUID,
+        **kwargs: Any,
+    ) -> <span class="num">None</span>:
+        <span class="kw">async with</span> httpx.AsyncClient() <span class="kw">as</span> client:
+            <span class="kw">await</span> client.post(
+                self.webhook_url,
+                json={
+                    <span class="str">"event"</span>: <span class="str">"llm_error"</span>,
+                    <span class="str">"run_id"</span>: str(run_id),
+                    <span class="str">"error"</span>: str(error),
+                },
+                timeout=<span class="num">5.0</span>,
+            )</pre>
+
+    <h4>Streaming to FastAPI with Callbacks</h4>
+    <p>A common production pattern — streaming LLM output to a web client via Server-Sent Events:</p>
+
+    <pre><span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="kw">from</span> fastapi.responses <span class="kw">import</span> StreamingResponse
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+
+app = FastAPI()
+
+llm = AzureChatOpenAI(
+    azure_endpoint=<span class="str">"..."</span>,
+    azure_deployment=<span class="str">"gpt-4o"</span>,
+    api_version=<span class="str">"2024-12-01-preview"</span>,
+    streaming=<span class="num">True</span>,
+)
+
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"You are a helpful assistant."</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+
+chain = prompt | llm | StrOutputParser()
+
+<span class="anno">@app.get</span>(<span class="str">"/stream"</span>)
+<span class="kw">async def</span> <span class="fn">stream_answer</span>(question: str):
+    <span class="kw">async def</span> <span class="fn">event_generator</span>():
+        <span class="kw">async for</span> chunk <span class="kw">in</span> chain.astream({<span class="str">"question"</span>: question}):
+            <span class="kw">yield</span> <span class="str">f"data: {chunk}\n\n"</span>
+        <span class="kw">yield</span> <span class="str">"data: [DONE]\n\n"</span>
+
+    <span class="kw">return</span> StreamingResponse(
+        event_generator(),
+        media_type=<span class="str">"text/event-stream"</span>,
+    )</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Performance:</strong> Sync callbacks (<code>BaseCallbackHandler</code>) run on the main thread and block execution. For network calls (logging to external services, sending webhooks), always use <code>AsyncCallbackHandler</code> to avoid adding latency to your chain.</div>
+    </div>
+
+    <h4>All Available Callback Hooks</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Hook</th><th>Fires When</th><th>Key Data</th></tr>
+        <tr>
+          <td><code>on_chat_model_start</code></td>
+          <td>Chat model receives messages</td>
+          <td>Serialized model, input messages, run_id</td>
+        </tr>
+        <tr>
+          <td><code>on_llm_start</code></td>
+          <td>Any LLM receives prompts</td>
+          <td>Serialized LLM, prompt strings</td>
+        </tr>
+        <tr>
+          <td><code>on_llm_new_token</code></td>
+          <td>Each streamed token arrives</td>
+          <td>Token string, chunk index</td>
+        </tr>
+        <tr>
+          <td><code>on_llm_end</code></td>
+          <td>LLM returns full response</td>
+          <td>LLMResult with generations + token_usage</td>
+        </tr>
+        <tr>
+          <td><code>on_llm_error</code></td>
+          <td>LLM call raises an exception</td>
+          <td>Exception object, run_id</td>
+        </tr>
+        <tr>
+          <td><code>on_chain_start / end / error</code></td>
+          <td>Any Runnable chain starts/finishes/fails</td>
+          <td>Serialized chain, inputs/outputs</td>
+        </tr>
+        <tr>
+          <td><code>on_tool_start / end / error</code></td>
+          <td>Tool invocation lifecycle</td>
+          <td>Tool name, input, output</td>
+        </tr>
+        <tr>
+          <td><code>on_retriever_start / end / error</code></td>
+          <td>Retriever fetches documents</td>
+          <td>Query, retrieved documents</td>
+        </tr>
+        <tr>
+          <td><code>on_retry</code></td>
+          <td>A retry attempt is made</td>
+          <td>Retry state, error that triggered it</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>LangSmith integration:</strong> For production tracing without building custom handlers, use <a href="https://smith.langchain.com" style="color: var(--accent);">LangSmith</a>. Set <code>LANGCHAIN_TRACING_V2=true</code> and <code>LANGCHAIN_API_KEY=...</code> in your environment, and all chain executions are automatically traced with latency, token usage, inputs/outputs, and error details — zero code changes needed.</div>
+    </div>
+  </section>
+
+  <section id="m6-output">
+    <h2>Module 6 — Guardrails & Output Validation</h2>
+    <p>Production LLM applications need deterministic, validated outputs. LangChain provides first-class support for structured output parsing, Pydantic validation, and fallback chains — ensuring your pipelines degrade gracefully and always return data your downstream code can trust.</p>
+
+    <div class="flow">
+      <span class="flow-step">🧠 LLM Output</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">📋 Parse</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">✅ Validate</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🔄 Retry / Fallback</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">📦 Typed Data</span>
+    </div>
+
+    <h3>6.1 — Structured Output with Pydantic</h3>
+    <p>The most reliable approach: use <code>.with_structured_output()</code> to force the model to return data matching a Pydantic schema. This uses the model's native tool-calling / JSON mode under the hood — no fragile prompt engineering required.</p>
+
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+load_dotenv()
+
+<span class="comment"># Define the expected output schema</span>
+<span class="kw">class</span> <span class="type">SentimentAnalysis</span>(BaseModel):
+    <span class="str">"""Structured sentiment analysis result."""</span>
+    sentiment: str = Field(description=<span class="str">"One of: positive, negative, neutral"</span>)
+    confidence: float = Field(ge=<span class="num">0.0</span>, le=<span class="num">1.0</span>, description=<span class="str">"Confidence score 0-1"</span>)
+    reasoning: str = Field(description=<span class="str">"Brief explanation of the classification"</span>)
+    key_phrases: list[str] = Field(description=<span class="str">"Key phrases that drove the classification"</span>)
+
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.0</span>,
+)
+
+<span class="comment"># .with_structured_output() returns a Pydantic instance directly</span>
+structured_llm = llm.with_structured_output(SentimentAnalysis)
+
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"You are a sentiment analysis engine. Analyze the given text."</span>),
+    (<span class="str">"human"</span>, <span class="str">"{text}"</span>),
+])
+
+chain = prompt | structured_llm
+
+<span class="comment"># Result is a validated Pydantic object — not a string!</span>
+result: SentimentAnalysis = chain.invoke({
+    <span class="str">"text"</span>: <span class="str">"The new API is blazing fast but the docs are terrible."</span>
+})
+
+print(result.sentiment)      <span class="comment"># → "negative" or "neutral"</span>
+print(result.confidence)     <span class="comment"># → 0.72</span>
+print(result.key_phrases)    <span class="comment"># → ["blazing fast", "docs are terrible"]</span>
+print(result.model_dump())   <span class="comment"># → Full dict for serialization</span></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Why <code>.with_structured_output()</code> over manual parsing?</strong> It uses the model's native function-calling / JSON schema mode, which is significantly more reliable than asking the LLM to produce JSON in free text and then parsing it. Pydantic validation is applied automatically — if the model returns a <code>confidence</code> of 1.5, the validation will catch it.</div>
+    </div>
+
+    <h4>Complex Nested Schemas</h4>
+    <pre><span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+<span class="kw">from</span> enum <span class="kw">import</span> Enum
+
+<span class="kw">class</span> <span class="type">Priority</span>(str, Enum):
+    HIGH = <span class="str">"high"</span>
+    MEDIUM = <span class="str">"medium"</span>
+    LOW = <span class="str">"low"</span>
+
+<span class="kw">class</span> <span class="type">ActionItem</span>(BaseModel):
+    task: str = Field(description=<span class="str">"Specific action to take"</span>)
+    assignee: str = Field(description=<span class="str">"Suggested owner for this task"</span>)
+    priority: Priority = Field(description=<span class="str">"Priority level"</span>)
+
+<span class="kw">class</span> <span class="type">MeetingNotes</span>(BaseModel):
+    <span class="str">"""Structured meeting summary with decisions and action items."""</span>
+    title: str = Field(description=<span class="str">"Meeting title"</span>)
+    summary: str = Field(description=<span class="str">"2-3 sentence summary of the meeting"</span>)
+    decisions: list[str] = Field(description=<span class="str">"Key decisions made"</span>)
+    action_items: list[ActionItem] = Field(description=<span class="str">"Concrete action items"</span>)
+    follow_up_date: str | <span class="num">None</span> = Field(
+        default=<span class="num">None</span>,
+        description=<span class="str">"Next follow-up date if mentioned, ISO format"</span>,
+    )
+
+<span class="comment"># The model will produce valid nested objects</span>
+structured_llm = llm.with_structured_output(MeetingNotes)
+notes = structured_llm.invoke(<span class="str">"Summarize: We met on Monday to discuss Q3 launch..."</span>)
+
+<span class="kw">for</span> item <span class="kw">in</span> notes.action_items:
+    print(<span class="str">f"[{item.priority.value}] {item.task} → {item.assignee}"</span>)</pre>
+
+    <h4>PydanticOutputParser (Manual Approach)</h4>
+    <p>For models that don't support native structured output, or when you need more control over the prompt, use <code>PydanticOutputParser</code>:</p>
+
+    <pre><span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> PydanticOutputParser
+
+parser = PydanticOutputParser(pydantic_object=SentimentAnalysis)
+
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"Analyze the sentiment of the text.\n{format_instructions}"</span>),
+    (<span class="str">"human"</span>, <span class="str">"{text}"</span>),
+])
+
+<span class="comment"># Inject format_instructions into the prompt (tells model the JSON schema)</span>
+chain = prompt.partial(format_instructions=parser.get_format_instructions()) | llm | parser
+
+result = chain.invoke({<span class="str">"text"</span>: <span class="str">"Best product I've ever used!"</span>})
+<span class="comment"># result is a validated SentimentAnalysis instance</span></pre>
+
+    <h4>Output Fixing Parser (Auto-Correct Malformed Output)</h4>
+    <pre><span class="kw">from</span> langchain.output_parsers <span class="kw">import</span> OutputFixingParser
+
+<span class="comment"># Wraps another parser — if parsing fails, asks the LLM to fix the output</span>
+fixing_parser = OutputFixingParser.from_llm(parser=parser, llm=llm)
+
+<span class="comment"># If the model returns malformed JSON, fixing_parser will:
+# 1. Catch the parse error
+# 2. Send the error + original output back to the LLM
+# 3. Ask the LLM to fix it
+# 4. Parse again</span>
+chain_with_fix = prompt.partial(
+    format_instructions=parser.get_format_instructions()
+) | llm | fixing_parser</pre>
+
+    <hr class="divider">
+  </section>
+
+  <!-- FALLBACKS -->
+  <section id="m6-fallbacks">
+    <h3>6.2 — Fallbacks & Retry Logic</h3>
+    <p>LLMs are non-deterministic and external APIs fail. LangChain's <code>.with_fallbacks()</code> and <code>.with_retry()</code> let you build resilient chains that gracefully degrade without complex try/except trees.</p>
+
+    <h4>Model Fallback Chain</h4>
+    <p>If the primary model fails (rate limit, outage, timeout), automatically fall back to an alternative:</p>
+
+    <pre><span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+
+<span class="comment"># Primary: GPT-4o (best quality)</span>
+primary_llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=<span class="str">"gpt-4o"</span>,
+    api_version=<span class="str">"2024-12-01-preview"</span>,
+    temperature=<span class="num">0.0</span>,
+    request_timeout=<span class="num">30</span>,
+)
+
+<span class="comment"># Fallback: GPT-4o-mini (faster, cheaper, still good)</span>
+fallback_llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=<span class="str">"gpt-4o-mini"</span>,
+    api_version=<span class="str">"2024-12-01-preview"</span>,
+    temperature=<span class="num">0.0</span>,
+    request_timeout=<span class="num">30</span>,
+)
+
+<span class="comment"># If primary raises ANY exception, fallback is tried</span>
+resilient_llm = primary_llm.with_fallbacks([fallback_llm])
+
+<span class="comment"># Use it exactly like a normal LLM — fallback is transparent</span>
+result = resilient_llm.invoke(<span class="str">"Explain quantum computing in one paragraph."</span>)</pre>
+
+    <h4>Retry with Exponential Backoff</h4>
+    <pre><span class="comment"># Retry on transient errors (rate limits, network blips)</span>
+retrying_llm = primary_llm.with_retry(
+    stop_after_attempt=<span class="num">3</span>,           <span class="comment"># Max 3 attempts</span>
+    wait_exponential_jitter=<span class="num">True</span>,    <span class="comment"># Exponential backoff with jitter</span>
+)
+
+<span class="comment"># Combine retry + fallback for maximum resilience</span>
+robust_llm = primary_llm.with_retry(
+    stop_after_attempt=<span class="num">2</span>,
+    wait_exponential_jitter=<span class="num">True</span>,
+).with_fallbacks([
+    fallback_llm.with_retry(stop_after_attempt=<span class="num">2</span>, wait_exponential_jitter=<span class="num">True</span>)
+])
+
+<span class="comment"># Execution order: primary (try 1) → primary (try 2) → fallback (try 1) → fallback (try 2)</span></pre>
+
+    <h4>Chain-Level Fallbacks</h4>
+    <p>Fallbacks work at the chain level too — not just on individual models:</p>
+
+    <pre><span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+
+<span class="comment"># Detailed chain with structured output</span>
+detailed_prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"Provide a detailed, structured analysis with sections and bullet points."</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+detailed_chain = detailed_prompt | primary_llm | StrOutputParser()
+
+<span class="comment"># Simple chain as fallback — less fancy, but always works</span>
+simple_prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"Give a brief, concise answer."</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+simple_chain = simple_prompt | fallback_llm | StrOutputParser()
+
+<span class="comment"># If the detailed chain fails for any reason, fall back to the simple one</span>
+resilient_chain = detailed_chain.with_fallbacks([simple_chain])</pre>
+
+    <h4>Conditional Validation with RunnableLambda</h4>
+    <p>Add custom validation logic anywhere in the chain using <code>RunnableLambda</code>:</p>
+
+    <pre><span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> RunnableLambda
+
+<span class="kw">def</span> <span class="fn">validate_sentiment</span>(result: SentimentAnalysis) -> SentimentAnalysis:
+    <span class="str">"""Post-processing validation — raise if output is suspicious."""</span>
+    valid_sentiments = {<span class="str">"positive"</span>, <span class="str">"negative"</span>, <span class="str">"neutral"</span>}
+    <span class="kw">if</span> result.sentiment.lower() <span class="kw">not in</span> valid_sentiments:
+        <span class="kw">raise</span> ValueError(<span class="str">f"Invalid sentiment: {result.sentiment}"</span>)
+    <span class="kw">if</span> <span class="kw">not</span> result.key_phrases:
+        <span class="kw">raise</span> ValueError(<span class="str">"key_phrases cannot be empty"</span>)
+    <span class="kw">return</span> result
+
+<span class="comment"># Chain: prompt → structured LLM → validate → output</span>
+validated_chain = (
+    prompt
+    | llm.with_structured_output(SentimentAnalysis)
+    | RunnableLambda(validate_sentiment)
+)
+
+<span class="comment"># Add a fallback for validation failures</span>
+fallback_chain = (
+    prompt
+    | fallback_llm.with_structured_output(SentimentAnalysis)
+    | RunnableLambda(validate_sentiment)
+)
+
+safe_chain = validated_chain.with_fallbacks([fallback_chain])</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>Fallback strategies in practice:</strong>
+        <br>• <strong>Model degradation:</strong> GPT-4o → GPT-4o-mini (quality trade-off for reliability)
+        <br>• <strong>Provider failover:</strong> Azure OpenAI → OpenAI direct → Anthropic Claude
+        <br>• <strong>Approach change:</strong> Structured output → free text with manual parsing
+        <br>• <strong>Graceful default:</strong> Return cached/default response if all else fails
+      </div>
+    </div>
+
+    <h4>Putting It All Together — Production Guardrails Pattern</h4>
+    <pre><span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> RunnableLambda
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+<span class="kw">class</span> <span class="type">ExtractedEntity</span>(BaseModel):
+    name: str = Field(description=<span class="str">"Entity name"</span>)
+    entity_type: str = Field(description=<span class="str">"Type: person, org, location, date"</span>)
+    context: str = Field(description=<span class="str">"Sentence where entity appears"</span>)
+
+<span class="kw">class</span> <span class="type">EntityExtractionResult</span>(BaseModel):
+    entities: list[ExtractedEntity] = Field(description=<span class="str">"All extracted entities"</span>)
+    source_language: str = Field(description=<span class="str">"Detected language of input"</span>)
+
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"Extract all named entities from the text."</span>),
+    (<span class="str">"human"</span>, <span class="str">"{text}"</span>),
+])
+
+<span class="comment"># Build the full production chain:</span>
+<span class="comment"># 1. Structured output with Pydantic validation</span>
+<span class="comment"># 2. Retry on transient failures</span>
+<span class="comment"># 3. Fallback to cheaper model if primary fails</span>
+<span class="comment"># 4. Custom post-validation</span>
+
+<span class="kw">def</span> <span class="fn">post_validate</span>(result: EntityExtractionResult) -> EntityExtractionResult:
+    <span class="comment"># Remove any entities with empty names (hallucination guard)</span>
+    result.entities = [e <span class="kw">for</span> e <span class="kw">in</span> result.entities <span class="kw">if</span> e.name.strip()]
+    <span class="kw">return</span> result
+
+primary_chain = (
+    prompt
+    | primary_llm.with_structured_output(EntityExtractionResult).with_retry(
+        stop_after_attempt=<span class="num">2</span>, wait_exponential_jitter=<span class="num">True</span>
+    )
+    | RunnableLambda(post_validate)
+)
+
+fallback_chain = (
+    prompt
+    | fallback_llm.with_structured_output(EntityExtractionResult).with_retry(
+        stop_after_attempt=<span class="num">2</span>, wait_exponential_jitter=<span class="num">True</span>
+    )
+    | RunnableLambda(post_validate)
+)
+
+production_chain = primary_chain.with_fallbacks([fallback_chain])
+
+<span class="comment"># Use it — resilient, validated, type-safe</span>
+result = production_chain.invoke({
+    <span class="str">"text"</span>: <span class="str">"Tim Cook announced that Apple will open a new office in Berlin by March 2026."</span>
+})
+<span class="kw">for</span> e <span class="kw">in</span> result.entities:
+    print(<span class="str">f"  {e.entity_type}: {e.name}"</span>)
+<span class="comment">#   person: Tim Cook
+#   org: Apple
+#   location: Berlin
+#   date: March 2026</span></pre>
+  </section>
+
+  <section id="m7-single">
+    <h2>Module 7 — Agents & Multi-Agent Systems</h2>
+    <p>Agents are LLM-powered programs that can reason, plan, and take actions in a loop. Unlike chains (which follow a fixed path), agents dynamically decide which tools to call, in what order, and when to stop. LangChain supports two approaches: <strong>legacy AgentExecutor</strong> (simple, good for prototyping) and <strong>LangGraph</strong> (production-grade, full control over state and flow).</p>
+
+    <div class="mode-card blue">
+      <div class="mode-header">
+        <span class="mode-name">Agent Architecture</span>
+        <span class="mode-shortcut">The ReAct Loop</span>
+      </div>
+      <p class="mode-when"><strong>How agents work:</strong> The model receives a task + tool descriptions → reasons about what to do → emits a tool call → your code executes the tool → result goes back to the model → repeats until the model decides it has a final answer. This is the <em>Reasoning + Acting</em> (ReAct) pattern.</p>
+    </div>
+
+    <div class="flow">
+      <span class="flow-step">💬 User Task</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🧠 Reason</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🔧 Tool Call</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">📊 Observe</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">🔁 Loop or 📤 Answer</span>
+    </div>
+
+    <h3>7.1 — Single Agent with Tool Calling</h3>
+
+    <h4>LangGraph ReAct Agent (Recommended)</h4>
+    <p><code>create_react_agent</code> from LangGraph is the modern, production-recommended way to build agents. It gives you a stateful graph with built-in tool execution, message history, and streaming — all composable with LangGraph's state machine primitives.</p>
+
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+
+load_dotenv()
+
+<span class="comment"># Define tools</span>
+<span class="anno">@tool</span>
+<span class="kw">def</span> <span class="fn">search_docs</span>(query: str) -> str:
+    <span class="str">"""Search the knowledge base for relevant documents.
+
+    Args:
+        query: The search query to find relevant information.
+    """</span>
+    <span class="comment"># In production, call your retriever / search API here</span>
+    <span class="kw">return</span> <span class="str">f"Found 3 documents matching '{query}': [Doc about API design, Doc about testing, Doc about deployment]"</span>
+
+<span class="anno">@tool</span>
+<span class="kw">def</span> <span class="fn">create_ticket</span>(title: str, description: str, priority: str = <span class="str">"medium"</span>) -> str:
+    <span class="str">"""Create a support ticket in the ticketing system.
+
+    Args:
+        title: Short title for the ticket.
+        description: Detailed description of the issue.
+        priority: Priority level - low, medium, or high.
+    """</span>
+    <span class="comment"># In production, call your ticketing API here</span>
+    <span class="kw">return</span> <span class="str">f"✅ Ticket created: '{title}' (priority: {priority}) — ID: TICKET-4521"</span>
+
+<span class="anno">@tool</span>
+<span class="kw">def</span> <span class="fn">get_user_info</span>(user_id: str) -> str:
+    <span class="str">"""Look up information about a user by their ID.
+
+    Args:
+        user_id: The unique user identifier.
+    """</span>
+    <span class="kw">return</span> <span class="str">f"User {user_id}: Jane Smith, Engineering, joined 2023-06"</span>
+
+<span class="comment"># Create the model</span>
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.0</span>,
+)
+
+<span class="comment"># Create the agent — this is a full LangGraph StateGraph under the hood</span>
+agent = create_react_agent(
+    model=llm,
+    tools=[search_docs, create_ticket, get_user_info],
+    prompt=<span class="str">"You are an IT support agent. Help users with their technical issues. Use your tools to look up information and create tickets when needed."</span>,
+)
+
+<span class="comment"># Invoke — the agent loops: reason → tool → observe → repeat</span>
+result = agent.invoke({
+    <span class="str">"messages"</span>: [(<span class="str">"human"</span>, <span class="str">"User u-1234 is having API timeout issues. Search the docs for solutions and if there's no quick fix, create a high priority ticket."</span>)],
+})
+
+<span class="comment"># Print the full conversation (shows reasoning + tool calls + final answer)</span>
+<span class="kw">for</span> msg <span class="kw">in</span> result[<span class="str">"messages"</span>]:
+    print(<span class="str">f"{msg.__class__.__name__}: {msg.content[:120]}"</span>)</pre>
+
+    <h4>Streaming Agent Output</h4>
+    <pre><span class="comment"># Stream the agent's execution step-by-step</span>
+<span class="kw">import</span> asyncio
+
+<span class="kw">async def</span> <span class="fn">stream_agent</span>():
+    <span class="kw">async for</span> event <span class="kw">in</span> agent.astream_events(
+        {<span class="str">"messages"</span>: [(<span class="str">"human"</span>, <span class="str">"Look up user u-5678 and create a ticket for their login issue"</span>)]},
+        version=<span class="str">"v2"</span>,
+    ):
+        kind = event[<span class="str">"event"</span>]
+        <span class="kw">if</span> kind == <span class="str">"on_chat_model_stream"</span>:
+            token = event[<span class="str">"data"</span>][<span class="str">"chunk"</span>].content
+            <span class="kw">if</span> token:
+                print(token, end=<span class="str">""</span>, flush=<span class="num">True</span>)
+        <span class="kw">elif</span> kind == <span class="str">"on_tool_start"</span>:
+            print(<span class="str">f"\n🔧 Calling tool: {event['name']}"</span>)
+        <span class="kw">elif</span> kind == <span class="str">"on_tool_end"</span>:
+            print(<span class="str">f"\n✅ Tool result: {event['data'].get('output', '')[:100]}"</span>)
+
+asyncio.run(stream_agent())</pre>
+
+    <h4>Agent with Memory (Stateful Conversations)</h4>
+    <p>LangGraph agents support persistent memory via <strong>checkpointers</strong> — each thread maintains its full conversation history across invocations:</p>
+
+    <pre><span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver
+
+<span class="comment"># In-memory checkpointer (use PostgresSaver or RedisSaver in production)</span>
+memory = MemorySaver()
+
+agent_with_memory = create_react_agent(
+    model=llm,
+    tools=[search_docs, create_ticket, get_user_info],
+    prompt=<span class="str">"You are an IT support agent. Remember our conversation history."</span>,
+    checkpointer=memory,
+)
+
+<span class="comment"># Thread ID groups messages into a conversation</span>
+config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"session-001"</span>}}
+
+<span class="comment"># First message</span>
+result1 = agent_with_memory.invoke(
+    {<span class="str">"messages"</span>: [(<span class="str">"human"</span>, <span class="str">"Look up user u-1234"</span>)]},
+    config=config,
+)
+print(result1[<span class="str">"messages"</span>][-<span class="num">1</span>].content)
+
+<span class="comment"># Follow-up — agent remembers the previous context</span>
+result2 = agent_with_memory.invoke(
+    {<span class="str">"messages"</span>: [(<span class="str">"human"</span>, <span class="str">"Create a ticket for them about slow builds"</span>)]},
+    config=config,
+)
+print(result2[<span class="str">"messages"</span>][-<span class="num">1</span>].content)
+<span class="comment"># → Agent knows "them" = user u-1234 (Jane Smith) from previous turn</span></pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Legacy AgentExecutor:</strong> You may see <code>create_tool_calling_agent()</code> + <code>AgentExecutor</code> in older tutorials. While still functional, LangGraph's <code>create_react_agent</code> is the recommended approach for new projects — it offers better streaming, state management, error recovery, and composability. The <code>AgentExecutor</code> will eventually be deprecated.</div>
+    </div>
+
+    <hr class="divider">
+  </section>
+
+  <!-- MULTI-AGENT -->
+  <section id="m7-multi">
+    <h3>7.2 — Multi-Agent Architectures with LangGraph</h3>
+    <p>For complex tasks that exceed a single agent's scope, LangGraph lets you compose multiple specialized agents into a coordinated workflow. Each agent has its own tools and expertise, and a <strong>supervisor</strong> (or a graph topology) routes tasks between them.</p>
+
+    <h4>Architecture Patterns</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Pattern</th><th>Description</th><th>Best For</th></tr>
+        <tr>
+          <td><strong>Supervisor</strong></td>
+          <td>One coordinator agent routes tasks to worker agents</td>
+          <td>Heterogeneous tasks (research + code + review)</td>
+        </tr>
+        <tr>
+          <td><strong>Sequential</strong></td>
+          <td>Agents form a pipeline — output of one feeds the next</td>
+          <td>Multi-step workflows (draft → review → publish)</td>
+        </tr>
+        <tr>
+          <td><strong>Hierarchical</strong></td>
+          <td>Supervisors delegate to sub-supervisors → workers</td>
+          <td>Large organizations with specialized teams</td>
+        </tr>
+        <tr>
+          <td><strong>Collaborative</strong></td>
+          <td>Agents communicate peer-to-peer on a shared state</td>
+          <td>Debate, negotiation, multi-perspective analysis</td>
+        </tr>
+      </table>
+    </div>
+
+    <h4>Supervisor Multi-Agent Pattern</h4>
+    <p>The most common pattern: a supervisor LLM decides which specialist agent to invoke based on the task. Each worker agent has its own tools and system prompt.</p>
+
+    <pre><span class="kw">from</span> typing <span class="kw">import</span> Annotated, Literal
+<span class="kw">from</span> typing_extensions <span class="kw">import</span> TypedDict
+<span class="kw">import</span> operator
+
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage, BaseMessage
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, END
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+
+<span class="comment"># ─── Shared State ───</span>
+<span class="kw">class</span> <span class="type">AgentState</span>(TypedDict):
+    messages: Annotated[list[BaseMessage], operator.add]
+    next_agent: str
+
+<span class="comment"># ─── Define Specialist Tools ───</span>
+<span class="anno">@tool</span>
+<span class="kw">def</span> <span class="fn">search_web</span>(query: str) -> str:
+    <span class="str">"""Search the web for current information.
+
+    Args:
+        query: Search query string.
+    """</span>
+    <span class="kw">return</span> <span class="str">f"Web results for '{query}': [Article about latest trends, Research paper, Blog post]"</span>
+
+<span class="anno">@tool</span>
+<span class="kw">def</span> <span class="fn">run_python</span>(code: str) -> str:
+    <span class="str">"""Execute Python code for data analysis.
+
+    Args:
+        code: Python code to execute safely.
+    """</span>
+    <span class="kw">return</span> <span class="str">f"Code executed successfully. Output: [Analysis results with 3 charts]"</span>
+
+<span class="anno">@tool</span>
+<span class="kw">def</span> <span class="fn">write_document</span>(title: str, content: str) -> str:
+    <span class="str">"""Write and save a document.
+
+    Args:
+        title: Document title.
+        content: Full document content in markdown.
+    """</span>
+    <span class="kw">return</span> <span class="str">f"Document '{title}' saved successfully ({len(content)} chars)"</span>
+
+<span class="comment"># ─── Create Specialist Agents ───</span>
+llm = AzureChatOpenAI(
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    azure_deployment=os.environ[<span class="str">"AZURE_OPENAI_DEPLOYMENT"</span>],
+    api_version=os.environ[<span class="str">"AZURE_OPENAI_API_VERSION"</span>],
+    temperature=<span class="num">0.0</span>,
+)
+
+researcher = create_react_agent(
+    model=llm,
+    tools=[search_web],
+    prompt=<span class="str">"You are a research specialist. Search the web thoroughly and provide detailed findings with sources."</span>,
+)
+
+analyst = create_react_agent(
+    model=llm,
+    tools=[run_python],
+    prompt=<span class="str">"You are a data analyst. Analyze data using Python and produce clear summaries with key metrics."</span>,
+)
+
+writer = create_react_agent(
+    model=llm,
+    tools=[write_document],
+    prompt=<span class="str">"You are a technical writer. Take research and analysis and produce a well-structured report."</span>,
+)</pre>
+
+    <h4>Building the Supervisor Graph</h4>
+    <pre><span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+<span class="comment"># ─── Supervisor decides which agent to call next ───</span>
+<span class="kw">class</span> <span class="type">RouterDecision</span>(BaseModel):
+    <span class="str">"""The supervisor's routing decision."""</span>
+    next: Literal[<span class="str">"researcher"</span>, <span class="str">"analyst"</span>, <span class="str">"writer"</span>, <span class="str">"FINISH"</span>] = Field(
+        description=<span class="str">"Which agent should handle the next step, or FINISH if done."</span>
+    )
+    reasoning: str = Field(description=<span class="str">"Why this agent was chosen."</span>)
+
+supervisor_llm = llm.with_structured_output(RouterDecision)
+
+SUPERVISOR_PROMPT = <span class="str">"""You are a project supervisor managing a team of specialists:
+- **researcher**: Searches the web for information and current data
+- **analyst**: Runs Python code for data analysis and computations
+- **writer**: Produces well-structured documents and reports
+
+Given the conversation so far, decide which agent should act next.
+If the task is fully complete, respond with FINISH.
+Always route research tasks before analysis, and analysis before writing."""</span>
+
+<span class="kw">def</span> <span class="fn">supervisor_node</span>(state: AgentState) -> AgentState:
+    <span class="comment"># Ask the supervisor LLM to decide</span>
+    decision = supervisor_llm.invoke([
+        (<span class="str">"system"</span>, SUPERVISOR_PROMPT),
+        *state[<span class="str">"messages"</span>],
+        (<span class="str">"human"</span>, <span class="str">"Based on the progress so far, which agent should act next?"</span>),
+    ])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [], <span class="str">"next_agent"</span>: decision.next}
+
+<span class="comment"># ─── Worker node wrappers ───</span>
+<span class="kw">def</span> <span class="fn">researcher_node</span>(state: AgentState) -> AgentState:
+    result = researcher.invoke({<span class="str">"messages"</span>: state[<span class="str">"messages"</span>]})
+    <span class="kw">return</span> {<span class="str">"messages"</span>: result[<span class="str">"messages"</span>][-<span class="num">1</span>:], <span class="str">"next_agent"</span>: <span class="str">""</span>}
+
+<span class="kw">def</span> <span class="fn">analyst_node</span>(state: AgentState) -> AgentState:
+    result = analyst.invoke({<span class="str">"messages"</span>: state[<span class="str">"messages"</span>]})
+    <span class="kw">return</span> {<span class="str">"messages"</span>: result[<span class="str">"messages"</span>][-<span class="num">1</span>:], <span class="str">"next_agent"</span>: <span class="str">""</span>}
+
+<span class="kw">def</span> <span class="fn">writer_node</span>(state: AgentState) -> AgentState:
+    result = writer.invoke({<span class="str">"messages"</span>: state[<span class="str">"messages"</span>]})
+    <span class="kw">return</span> {<span class="str">"messages"</span>: result[<span class="str">"messages"</span>][-<span class="num">1</span>:], <span class="str">"next_agent"</span>: <span class="str">""</span>}
+
+<span class="comment"># ─── Build the Graph ───</span>
+graph = StateGraph(AgentState)
+
+<span class="comment"># Add nodes</span>
+graph.add_node(<span class="str">"supervisor"</span>, supervisor_node)
+graph.add_node(<span class="str">"researcher"</span>, researcher_node)
+graph.add_node(<span class="str">"analyst"</span>, analyst_node)
+graph.add_node(<span class="str">"writer"</span>, writer_node)
+
+<span class="comment"># Entry point → supervisor</span>
+graph.set_entry_point(<span class="str">"supervisor"</span>)
+
+<span class="comment"># Supervisor routes to workers or END</span>
+graph.add_conditional_edges(
+    <span class="str">"supervisor"</span>,
+    <span class="kw">lambda</span> state: state[<span class="str">"next_agent"</span>],
+    {
+        <span class="str">"researcher"</span>: <span class="str">"researcher"</span>,
+        <span class="str">"analyst"</span>: <span class="str">"analyst"</span>,
+        <span class="str">"writer"</span>: <span class="str">"writer"</span>,
+        <span class="str">"FINISH"</span>: END,
+    },
+)
+
+<span class="comment"># Workers always report back to supervisor</span>
+graph.add_edge(<span class="str">"researcher"</span>, <span class="str">"supervisor"</span>)
+graph.add_edge(<span class="str">"analyst"</span>, <span class="str">"supervisor"</span>)
+graph.add_edge(<span class="str">"writer"</span>, <span class="str">"supervisor"</span>)
+
+<span class="comment"># Compile the graph</span>
+multi_agent = graph.compile()
+
+<span class="comment"># Run the multi-agent system</span>
+result = multi_agent.invoke({
+    <span class="str">"messages"</span>: [
+        HumanMessage(content=<span class="str">"Research the latest trends in LLM efficiency, analyze the key metrics, and write a summary report."</span>)
+    ],
+    <span class="str">"next_agent"</span>: <span class="str">""</span>,
+})
+
+<span class="comment"># The supervisor orchestrated: researcher → analyst → writer → FINISH</span>
+print(result[<span class="str">"messages"</span>][-<span class="num">1</span>].content)</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>LangGraph advantages over AgentExecutor:</strong>
+        <br>• <strong>Explicit state:</strong> You define exactly what's in your agent state (messages, intermediate results, metadata)
+        <br>• <strong>Conditional routing:</strong> Supervisor patterns, branching, loops, and early termination via graph edges
+        <br>• <strong>Persistence:</strong> Built-in checkpointers (Memory, Redis, PostgreSQL) for long-running workflows
+        <br>• <strong>Human-in-the-loop:</strong> Add <code>interrupt_before</code> / <code>interrupt_after</code> on any node for human review
+        <br>• <strong>Streaming:</strong> Stream events from any node in the graph in real-time
+      </div>
+    </div>
+
+    <h4>Human-in-the-Loop Approval Pattern</h4>
+    <p>For high-stakes actions (creating tickets, sending emails, deploying code), add human approval checkpoints:</p>
+
+    <pre><span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver
+
+<span class="comment"># Create agent with human approval before specific tools</span>
+agent_with_approval = create_react_agent(
+    model=llm,
+    tools=[search_docs, create_ticket, get_user_info],
+    prompt=<span class="str">"You are an IT support agent. Ask to create tickets when appropriate."</span>,
+    checkpointer=MemorySaver(),
+    interrupt_before=[<span class="str">"tools"</span>],  <span class="comment"># Pause BEFORE any tool execution</span>
+)
+
+config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"approval-session"</span>}}
+
+<span class="comment"># Start the agent — it will plan a tool call, then pause</span>
+result = agent_with_approval.invoke(
+    {<span class="str">"messages"</span>: [(<span class="str">"human"</span>, <span class="str">"Create a high-priority ticket for the API outage"</span>)]},
+    config=config,
+)
+
+<span class="comment"># At this point, the agent has PLANNED the tool call but NOT executed it
+# You can inspect what it wants to do:</span>
+pending_tool_calls = result[<span class="str">"messages"</span>][-<span class="num">1</span>].tool_calls
+print(<span class="str">f"Agent wants to call: {pending_tool_calls[0]['name']}"</span>)
+print(<span class="str">f"With args: {pending_tool_calls[0]['args']}"</span>)
+
+<span class="comment"># If approved, resume execution (the agent will execute the tool and continue)</span>
+final_result = agent_with_approval.invoke(<span class="num">None</span>, config=config)
+print(final_result[<span class="str">"messages"</span>][-<span class="num">1</span>].content)</pre>
+
+    <h4>Custom LangGraph Agent (Full Control)</h4>
+    <p>For maximum flexibility, build your agent graph from scratch instead of using <code>create_react_agent</code>:</p>
+
+    <pre><span class="kw">from</span> typing <span class="kw">import</span> Annotated
+<span class="kw">from</span> typing_extensions <span class="kw">import</span> TypedDict
+<span class="kw">import</span> operator
+
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> BaseMessage, ToolMessage
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, END
+
+<span class="comment"># ─── Define State ───</span>
+<span class="kw">class</span> <span class="type">CustomAgentState</span>(TypedDict):
+    messages: Annotated[list[BaseMessage], operator.add]
+    iteration_count: int
+
+<span class="comment"># ─── Agent Node: reason and possibly call tools ───</span>
+<span class="kw">def</span> <span class="fn">agent_node</span>(state: CustomAgentState) -> CustomAgentState:
+    llm_with_tools = llm.bind_tools([search_docs, create_ticket])
+    response = llm_with_tools.invoke(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {
+        <span class="str">"messages"</span>: [response],
+        <span class="str">"iteration_count"</span>: state[<span class="str">"iteration_count"</span>] + <span class="num">1</span>,
+    }
+
+<span class="comment"># ─── Tool Node: execute any pending tool calls ───</span>
+tool_map = {<span class="str">"search_docs"</span>: search_docs, <span class="str">"create_ticket"</span>: create_ticket}
+
+<span class="kw">def</span> <span class="fn">tool_node</span>(state: CustomAgentState) -> CustomAgentState:
+    last_msg = state[<span class="str">"messages"</span>][-<span class="num">1</span>]
+    tool_messages = []
+    <span class="kw">for</span> tc <span class="kw">in</span> last_msg.tool_calls:
+        result = tool_map[tc[<span class="str">"name"</span>]].invoke(tc[<span class="str">"args"</span>])
+        tool_messages.append(ToolMessage(content=str(result), tool_call_id=tc[<span class="str">"id"</span>]))
+    <span class="kw">return</span> {<span class="str">"messages"</span>: tool_messages, <span class="str">"iteration_count"</span>: state[<span class="str">"iteration_count"</span>]}
+
+<span class="comment"># ─── Router: decide if we should call tools, continue, or stop ───</span>
+<span class="kw">def</span> <span class="fn">should_continue</span>(state: CustomAgentState) -> str:
+    last_msg = state[<span class="str">"messages"</span>][-<span class="num">1</span>]
+    <span class="comment"># Safety: stop after 10 iterations to prevent infinite loops</span>
+    <span class="kw">if</span> state[<span class="str">"iteration_count"</span>] >= <span class="num">10</span>:
+        <span class="kw">return</span> <span class="str">"end"</span>
+    <span class="comment"># If the model made tool calls, execute them</span>
+    <span class="kw">if</span> hasattr(last_msg, <span class="str">"tool_calls"</span>) <span class="kw">and</span> last_msg.tool_calls:
+        <span class="kw">return</span> <span class="str">"tools"</span>
+    <span class="comment"># Otherwise, the agent is done</span>
+    <span class="kw">return</span> <span class="str">"end"</span>
+
+<span class="comment"># ─── Build Graph ───</span>
+graph = StateGraph(CustomAgentState)
+graph.add_node(<span class="str">"agent"</span>, agent_node)
+graph.add_node(<span class="str">"tools"</span>, tool_node)
+
+graph.set_entry_point(<span class="str">"agent"</span>)
+
+graph.add_conditional_edges(
+    <span class="str">"agent"</span>,
+    should_continue,
+    {<span class="str">"tools"</span>: <span class="str">"tools"</span>, <span class="str">"end"</span>: END},
+)
+graph.add_edge(<span class="str">"tools"</span>, <span class="str">"agent"</span>)  <span class="comment"># After tools → back to agent</span>
+
+custom_agent = graph.compile()
+
+<span class="comment"># Run</span>
+result = custom_agent.invoke({
+    <span class="str">"messages"</span>: [(<span class="str">"human"</span>, <span class="str">"Search for deployment best practices and create a ticket to update our runbook"</span>)],
+    <span class="str">"iteration_count"</span>: <span class="num">0</span>,
+})
+print(result[<span class="str">"messages"</span>][-<span class="num">1</span>].content)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Production checklist for agents:</strong>
+        <br>• <strong>Max iterations:</strong> Always set a loop limit to prevent runaway agents (and runaway costs)
+        <br>• <strong>Timeout:</strong> Set a <code>request_timeout</code> on the LLM to prevent hung calls
+        <br>• <strong>Observability:</strong> Use callbacks or LangSmith to trace every step of the agent's reasoning
+        <br>• <strong>Tool safety:</strong> Validate tool inputs, use least-privilege credentials, audit tool invocations
+        <br>• <strong>Fallbacks:</strong> Use <code>.with_fallbacks()</code> on the LLM so agent survives model outages
+        <br>• <strong>Human-in-the-loop:</strong> For destructive actions, add <code>interrupt_before</code> checkpoints
+      </div>
+    </div>
+
+    <h4>When to Use What</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Approach</th><th>Complexity</th><th>Use When</th></tr>
+        <tr>
+          <td><code>prompt | llm.bind_tools()</code></td>
+          <td>Low</td>
+          <td>Single-turn tool call, no looping needed</td>
+        </tr>
+        <tr>
+          <td><code>create_react_agent()</code></td>
+          <td>Medium</td>
+          <td>Standard agent with tools that needs to loop (most use cases)</td>
+        </tr>
+        <tr>
+          <td>Custom <code>StateGraph</code></td>
+          <td>High</td>
+          <td>Custom state, branching logic, multi-agent, human-in-the-loop</td>
+        </tr>
+        <tr>
+          <td>Supervisor + Workers</td>
+          <td>High</td>
+          <td>Multiple specialist agents coordinating on complex tasks</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

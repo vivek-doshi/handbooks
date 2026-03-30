@@ -1,0 +1,3309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Microsoft AutoGen Handbook</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b27;
+    --bg3: #1e2536;
+    --bg4: #252d42;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0;
+    --muted: #8b93a7;
+    --accent: #6c8ef5;
+    --accent2: #4fd1a5;
+    --accent3: #f5c06c;
+    --accent4: #e27d76;
+    --accent5: #b47cf5;
+    --code-bg: #0d1117;
+    --tag-bg: rgba(108,142,245,0.12);
+    --tag-text: #8fadf7;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    flex-shrink: 0;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .logo-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .nav-section { margin-bottom: 4px; }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 10px 20px 4px;
+  }
+  .nav-link {
+    display: block;
+    padding: 6px 20px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.15s, background 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-link:hover { color: var(--text); background: var(--bg3); }
+  .nav-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(108,142,245,0.06); }
+
+  /* MAIN */
+  .main {
+    flex: 1;
+    max-width: 920px;
+    padding: 40px 48px 80px;
+    overflow-x: hidden;
+  }
+
+  /* SECTIONS */
+  section { margin-bottom: 60px; scroll-margin-top: 24px; }
+  h1 { font-size: 28px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .page-sub { font-size: 15px; color: var(--muted); margin-bottom: 32px; line-height: 1.5; }
+  h2 {
+    font-size: 20px; font-weight: 600; color: var(--text);
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 10px; }
+  h4 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 20px 0 8px; }
+  p { color: var(--muted); margin-bottom: 10px; line-height: 1.7; font-size: 14px; }
+  p strong { color: var(--text); font-weight: 500; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  ul, ol { color: var(--muted); margin: 8px 0 12px 20px; font-size: 14px; line-height: 1.8; }
+  li { margin-bottom: 4px; }
+  li strong { color: var(--text); font-weight: 500; }
+  li code { color: var(--accent2); }
+
+  /* HERO STRIP */
+  .hero {
+    background: linear-gradient(135deg, rgba(108,142,245,0.08) 0%, rgba(79,209,165,0.05) 100%);
+    border: 1px solid rgba(108,142,245,0.2);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(108,142,245,0.15), transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 { font-size: 22px; margin-bottom: 4px; }
+  .hero-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge-blue { background: rgba(108,142,245,0.15); color: #8fadf7; border: 1px solid rgba(108,142,245,0.25); }
+  .badge-green { background: rgba(79,209,165,0.12); color: #5dd1a0; border: 1px solid rgba(79,209,165,0.2); }
+  .badge-amber { background: rgba(245,192,108,0.12); color: #f5c06c; border: 1px solid rgba(245,192,108,0.2); }
+  .badge-purple { background: rgba(180,124,245,0.12); color: #b47cf5; border: 1px solid rgba(180,124,245,0.2); }
+
+  /* CODE */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  pre::-webkit-scrollbar { height: 4px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+  pre code { background: none; padding: 0; border-radius: 0; color: inherit; font-size: 13px; }
+  .comment { color: #5a6474; }
+  .kw { color: #c678dd; }
+  .str { color: #98c379; }
+  .num { color: #d19a66; }
+  .fn { color: #61afef; }
+  .key { color: #e06c75; }
+  .type { color: #56b6c2; }
+  .anno { color: var(--accent3); }
+
+  /* TABLES */
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 8px 12px;
+    background: var(--bg3);
+    color: var(--text);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border2);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* CARDS */
+  .card-grid { display: grid; gap: 14px; }
+  .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card-icon { font-size: 20px; margin-bottom: 10px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* MODE CARDS */
+  .mode-card {
+    border-radius: 10px;
+    padding: 18px 20px;
+    border-left: 3px solid;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .mode-card.blue { border-left-color: var(--accent); }
+  .mode-card.green { border-left-color: var(--accent2); }
+  .mode-card.amber { border-left-color: var(--accent3); }
+  .mode-card.red { border-left-color: var(--accent4); }
+  .mode-card.purple { border-left-color: var(--accent5); }
+  .mode-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .mode-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .mode-shortcut {
+    font-family: var(--mono); font-size: 11px;
+    background: var(--bg4); padding: 2px 8px;
+    border-radius: 4px; color: var(--muted);
+    border: 1px solid var(--border2);
+  }
+  .mode-when { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .mode-when strong { color: var(--text); }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag {
+    font-size: 11px; padding: 2px 8px;
+    background: var(--tag-bg); color: var(--tag-text);
+    border-radius: 12px;
+    border: 1px solid rgba(108,142,245,0.15);
+  }
+
+  /* CALLOUT */
+  .callout {
+    display: flex; gap: 12px;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 14px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { color: var(--muted); }
+  .callout-body strong { color: var(--text); }
+  .callout.tip { background: rgba(79,209,165,0.07); border: 1px solid rgba(79,209,165,0.18); }
+  .callout.warn { background: rgba(245,192,108,0.07); border: 1px solid rgba(245,192,108,0.18); }
+  .callout.info { background: rgba(108,142,245,0.07); border: 1px solid rgba(108,142,245,0.18); }
+  .callout.danger { background: rgba(226,125,118,0.07); border: 1px solid rgba(226,125,118,0.18); }
+
+  /* FLOW */
+  .flow {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    margin: 12px 0;
+  }
+  .flow-step {
+    font-size: 12px; font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+  }
+  .flow-arrow { color: var(--muted); font-size: 14px; }
+
+  /* DIVIDER */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  /* LINK LIST */
+  .link-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+  .link-list li {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 14px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 7px; font-size: 13px;
+    transition: border-color 0.15s;
+  }
+  .link-list li:hover { border-color: var(--border2); }
+  .link-list .ll-tag { font-size: 10px; color: var(--muted); background: var(--bg3); padding: 1px 6px; border-radius: 4px; flex-shrink: 0; }
+
+  /* SCROLLBAR global */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { padding: 24px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">AutoGen</div>
+    <div class="logo-sub">Enterprise Multi-Agent Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Overview</div>
+    <a class="nav-link" href="#overview">Introduction</a>
+    <a class="nav-link" href="#install">Installation</a>
+    <a class="nav-link" href="#architecture">Architecture Overview</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 1: Models</div>
+    <a class="nav-link" href="#m1-openai">OpenAI Setup</a>
+    <a class="nav-link" href="#m1-azure">Azure OpenAI Setup</a>
+    <a class="nav-link" href="#m1-anthropic">Anthropic &amp; Others</a>
+    <a class="nav-link" href="#m1-logging">Logging &amp; Telemetry</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 2: Agents &amp; Tools</div>
+    <a class="nav-link" href="#m2-assistant">AssistantAgent</a>
+    <a class="nav-link" href="#m2-tools">Custom Tools</a>
+    <a class="nav-link" href="#m2-code-exec">Code Execution</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 3: Teams</div>
+    <a class="nav-link" href="#m3-roundrobin">RoundRobin Chat</a>
+    <a class="nav-link" href="#m3-selector">Selector / Swarm</a>
+    <a class="nav-link" href="#m3-termination">Termination Conditions</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 4: Memory</div>
+    <a class="nav-link" href="#m4-memory">Memory &amp; RAG</a>
+    <a class="nav-link" href="#m4-state">State Management</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 5: HITL</div>
+    <a class="nav-link" href="#m5-hitl">Human-in-the-Loop</a>
+    <a class="nav-link" href="#m5-handoffs">Agent Handoffs</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 6: Advanced</div>
+    <a class="nav-link" href="#m6-agenttool">AgentTool / TeamTool</a>
+    <a class="nav-link" href="#m6-mcp">Model Context Protocol</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 7: Studio</div>
+    <a class="nav-link" href="#m7-studio">Declarative Configs</a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- ====================== HERO ====================== -->
+  <div class="hero" id="overview">
+    <h1>Microsoft AutoGen Handbook</h1>
+    <p style="color: var(--muted); font-size: 14px; margin-top: 6px; margin-bottom: 0;">A production-ready reference for building enterprise multi-agent systems with AutoGen 0.7 &mdash; covering models, agents, teams, memory, handoffs, MCP, and Studio integration.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">autogen-agentchat 0.7.x</span>
+      <span class="badge badge-green">autogen-ext 0.7.x</span>
+      <span class="badge badge-amber">autogen-core 0.7.x</span>
+      <span class="badge badge-purple">Python 3.10+</span>
+    </div>
+  </div>
+
+  <!-- ====================== INSTALLATION ====================== -->
+  <section id="install">
+    <h2>Installation</h2>
+    <p>AutoGen is distributed as three complementary packages. Install them together for the full experience.</p>
+
+    <pre><span class="comment"># Core + AgentChat + Extensions (with OpenAI and Azure support)</span>
+pip install -U <span class="str">"autogen-agentchat"</span> <span class="str">"autogen-ext[openai,azure]"</span>
+
+<span class="comment"># Add Anthropic model support</span>
+pip install -U <span class="str">"autogen-ext[anthropic]"</span>
+
+<span class="comment"># Add Ollama (local models) support</span>
+pip install -U <span class="str">"autogen-ext[ollama]"</span>
+
+<span class="comment"># Add Docker-based code execution</span>
+pip install -U <span class="str">"autogen-ext[docker]"</span>
+
+<span class="comment"># All-in-one (kitchen sink)</span>
+pip install -U <span class="str">"autogen-agentchat"</span> <span class="str">"autogen-ext[openai,azure,anthropic,docker]"</span></pre>
+
+    <div class="callout info">
+      <span class="callout-icon">&#x2139;&#xFE0F;</span>
+      <div class="callout-body"><strong>Python 3.10+ required.</strong> All code in this handbook uses <code>async/await</code>. In scripts, wrap your entry point with <code>asyncio.run(main())</code>. In Jupyter, <code>await main()</code> works directly.</div>
+    </div>
+
+    <h3>Package Architecture</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Package</th><th>Purpose</th><th>Key Imports</th></tr>
+        <tr>
+          <td><strong>autogen-agentchat</strong></td>
+          <td>High-level agents, teams, termination conditions, and UI utilities</td>
+          <td><code>AssistantAgent</code>, <code>RoundRobinGroupChat</code>, <code>Console</code></td>
+        </tr>
+        <tr>
+          <td><strong>autogen-ext</strong></td>
+          <td>Extensions: model clients, code executors, auth providers, MCP bridges</td>
+          <td><code>OpenAIChatCompletionClient</code>, <code>DockerCommandLineCodeExecutor</code></td>
+        </tr>
+        <tr>
+          <td><strong>autogen-core</strong></td>
+          <td>Low-level runtime, event system, message types, logging constants</td>
+          <td><code>EVENT_LOGGER_NAME</code>, <code>CancellationToken</code>, <code>UserMessage</code></td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ====================== ARCHITECTURE OVERVIEW ====================== -->
+  <section id="architecture">
+    <h2>Architecture Overview</h2>
+    <p>AutoGen&rsquo;s modern architecture (v0.4+) cleanly separates concerns into three layers. This handbook targets the stable <strong>0.7.x</strong> release line.</p>
+
+    <div class="flow">
+      <span class="flow-step">autogen-core</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">autogen-ext</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">autogen-agentchat</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Your Application</span>
+    </div>
+
+    <div class="card-grid card-grid-3" style="margin-top: 16px;">
+      <div class="card">
+        <div class="card-icon">&#x1F9E9;</div>
+        <div class="card-title">Core Runtime</div>
+        <div class="card-body">Message types, model protocol (<code>ChatCompletionClient</code>), event logger, cancellation tokens. The foundation everything builds on.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#x1F50C;</div>
+        <div class="card-title">Extensions</div>
+        <div class="card-body">Concrete model clients (OpenAI, Azure, Anthropic, Ollama), code executors, auth providers, and MCP server bridges.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#x1F916;</div>
+        <div class="card-title">AgentChat</div>
+        <div class="card-body">High-level primitives: <code>AssistantAgent</code>, team orchestrators (<code>RoundRobinGroupChat</code>, <code>SelectorGroupChat</code>, <code>Swarm</code>), termination conditions, and streaming UI.</div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">&#x26A0;&#xFE0F;</span>
+      <div class="callout-body"><strong>Legacy v0.2 &ldquo;autogen&rdquo; imports are deprecated.</strong> This handbook strictly uses the modern split-package imports: <code>autogen_agentchat</code>, <code>autogen_ext</code>, and <code>autogen_core</code>. Do not mix with old <code>import autogen</code> patterns.</div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ====================================================================== -->
+  <!--  MODULE 1: CORE MODELS & ENTERPRISE INTEGRATION                        -->
+  <!-- ====================================================================== -->
+
+  <section id="module1">
+    <h2>Module 1: Core Models &amp; Enterprise Integration</h2>
+    <p>AutoGen decouples model access from agent logic through the <code>ChatCompletionClient</code> protocol. Extensions provide concrete implementations for every major provider. This module shows how to initialize each client and wire up production-grade logging.</p>
+  </section>
+
+  <!-- ========== 1.1 OpenAI ========== -->
+  <section id="m1-openai">
+    <h3>1.1 &mdash; OpenAI Chat Completion Client</h3>
+    <p>The <code>OpenAIChatCompletionClient</code> from <code>autogen_ext.models.openai</code> connects to OpenAI&rsquo;s API. It supports GPT-4o, GPT-4 Turbo, o1, and any model available on the OpenAI platform.</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_core.models <span class="kw">import</span> UserMessage
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    <span class="comment"># Initialize the OpenAI client.</span>
+    <span class="comment"># If OPENAI_API_KEY is set as an env var, api_key can be omitted.</span>
+    model_client = OpenAIChatCompletionClient(
+        model=<span class="str">"gpt-4o"</span>,
+        <span class="comment"># api_key="sk-...",  # Or set OPENAI_API_KEY env var</span>
+    )
+
+    <span class="comment"># Send a single message and inspect the result.</span>
+    result = <span class="kw">await</span> model_client.create(
+        [UserMessage(content=<span class="str">"Explain multi-agent systems in one sentence."</span>, source=<span class="str">"user"</span>)]
+    )
+
+    <span class="comment"># Result contains content, finish_reason, and token usage.</span>
+    print(result.content)
+    print(<span class="str">f"Prompt tokens: <span class="key">{</span>result.usage.prompt_tokens<span class="key">}</span>"</span>)
+    print(<span class="str">f"Completion tokens: <span class="key">{</span>result.usage.completion_tokens<span class="key">}</span>"</span>)
+
+    <span class="comment"># Always close the client when done to release connections.</span>
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#x1F4A1;</span>
+      <div class="callout-body"><strong>OpenAI-compatible endpoints:</strong> You can point <code>OpenAIChatCompletionClient</code> at any OpenAI-compatible API (vLLM, LiteLLM, Gemini) by passing <code>base_url</code> and a <code>model_info</code> dict describing capabilities.</div>
+    </div>
+
+    <h4>Gemini via OpenAI-Compatible Endpoint</h4>
+    <pre><span class="kw">from</span> autogen_core.models <span class="kw">import</span> ModelInfo, UserMessage
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    <span class="comment"># Use Gemini through its OpenAI-compatible API.</span>
+    gemini_client = OpenAIChatCompletionClient(
+        model=<span class="str">"gemini-2.0-flash-lite"</span>,
+        <span class="comment"># api_key="GEMINI_API_KEY",</span>
+        model_info=ModelInfo(
+            vision=<span class="kw">True</span>,
+            function_calling=<span class="kw">True</span>,
+            json_output=<span class="kw">True</span>,
+            family=<span class="str">"unknown"</span>,
+            structured_output=<span class="kw">True</span>,
+        ),
+    )
+
+    result = <span class="kw">await</span> gemini_client.create(
+        [UserMessage(content=<span class="str">"What is AutoGen?"</span>, source=<span class="str">"user"</span>)]
+    )
+    print(result.content)
+    <span class="kw">await</span> gemini_client.close()</pre>
+  </section>
+
+  <!-- ========== 1.2 Azure OpenAI ========== -->
+  <section id="m1-azure">
+    <h3>1.2 &mdash; Azure OpenAI Chat Completion Client</h3>
+    <p>For enterprise workloads, <code>AzureOpenAIChatCompletionClient</code> offers Azure-native authentication via AAD tokens or API keys, plus compliance with Azure&rsquo;s data-residency guarantees.</p>
+
+    <h4>Option A: Azure AD (Entra ID) Authentication</h4>
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_core.models <span class="kw">import</span> UserMessage
+<span class="kw">from</span> autogen_ext.auth.azure <span class="kw">import</span> AzureTokenProvider
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> AzureOpenAIChatCompletionClient
+<span class="kw">from</span> azure.identity <span class="kw">import</span> DefaultAzureCredential
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    <span class="comment"># Create an AAD token provider scoped to Cognitive Services.</span>
+    <span class="comment"># The identity must have "Cognitive Services OpenAI User" role.</span>
+    token_provider = AzureTokenProvider(
+        DefaultAzureCredential(),
+        <span class="str">"https://cognitiveservices.azure.com/.default"</span>,
+    )
+
+    <span class="comment"># Initialize the Azure OpenAI client with your deployment details.</span>
+    az_client = AzureOpenAIChatCompletionClient(
+        azure_deployment=<span class="str">"my-gpt4o-deployment"</span>,
+        model=<span class="str">"gpt-4o"</span>,
+        api_version=<span class="str">"2024-06-01"</span>,
+        azure_endpoint=<span class="str">"https://my-resource.openai.azure.com/"</span>,
+        azure_ad_token_provider=token_provider,
+    )
+
+    result = <span class="kw">await</span> az_client.create(
+        [UserMessage(content=<span class="str">"Summarize Azure OpenAI compliance features."</span>, source=<span class="str">"user"</span>)]
+    )
+    print(result.content)
+    <span class="kw">await</span> az_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Option B: API Key Authentication</h4>
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_core.models <span class="kw">import</span> UserMessage
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> AzureOpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    <span class="comment"># API-key auth — simpler, but less secure than AAD for production.</span>
+    az_client = AzureOpenAIChatCompletionClient(
+        azure_deployment=<span class="str">"my-gpt4o-deployment"</span>,
+        model=<span class="str">"gpt-4o"</span>,
+        api_version=<span class="str">"2024-06-01"</span>,
+        azure_endpoint=<span class="str">"https://my-resource.openai.azure.com/"</span>,
+        api_key=<span class="str">"your-azure-api-key"</span>,
+    )
+
+    result = <span class="kw">await</span> az_client.create(
+        [UserMessage(content=<span class="str">"What are the benefits of Azure OpenAI?"</span>, source=<span class="str">"user"</span>)]
+    )
+    print(result.content)
+    <span class="kw">await</span> az_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">&#x26A0;&#xFE0F;</span>
+      <div class="callout-body"><strong>Security:</strong> For production deployments, always prefer AAD/Entra ID authentication over API keys. Use <code>DefaultAzureCredential</code> which supports managed identities, workload federation, and interactive browser auth as fallback.</div>
+    </div>
+  </section>
+
+  <!-- ========== 1.3 Anthropic / Other Providers ========== -->
+  <section id="m1-anthropic">
+    <h3>1.3 &mdash; Anthropic, Ollama &amp; Other Providers</h3>
+    <p>AutoGen supports alternative model providers through dedicated extension clients. Each follows the same <code>ChatCompletionClient</code> protocol, making them interchangeable with any agent.</p>
+
+    <h4>Anthropic (Claude)</h4>
+    <pre><span class="comment"># pip install "autogen-ext[anthropic]"</span>
+
+<span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_core.models <span class="kw">import</span> UserMessage
+<span class="kw">from</span> autogen_ext.models.anthropic <span class="kw">import</span> AnthropicChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    <span class="comment"># Initialize the Anthropic client.</span>
+    <span class="comment"># Requires ANTHROPIC_API_KEY env var or explicit api_key param.</span>
+    anthropic_client = AnthropicChatCompletionClient(
+        model=<span class="str">"claude-3-7-sonnet-20250219"</span>,
+    )
+
+    result = <span class="kw">await</span> anthropic_client.create(
+        [UserMessage(content=<span class="str">"What is the capital of France?"</span>, source=<span class="str">"user"</span>)]
+    )
+    print(result.content)
+    print(<span class="str">f"Usage: <span class="key">{</span>result.usage<span class="key">}</span>"</span>)
+
+    <span class="kw">await</span> anthropic_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Ollama (Local Models)</h4>
+    <pre><span class="comment"># pip install "autogen-ext[ollama]"</span>
+<span class="comment"># Ensure ollama is running: ollama serve</span>
+
+<span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_core.models <span class="kw">import</span> UserMessage
+<span class="kw">from</span> autogen_ext.models.ollama <span class="kw">import</span> OllamaChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    <span class="comment"># Connect to a locally running Ollama server on default port 11434.</span>
+    ollama_client = OllamaChatCompletionClient(
+        model=<span class="str">"llama3.2"</span>,
+    )
+
+    result = <span class="kw">await</span> ollama_client.create(
+        [UserMessage(content=<span class="str">"Explain transformers briefly."</span>, source=<span class="str">"user"</span>)]
+    )
+    print(result.content)
+
+    <span class="kw">await</span> ollama_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Azure AI Foundry (GitHub Models, Phi-4, etc.)</h4>
+    <pre><span class="comment"># pip install "autogen-ext[azure]"</span>
+
+<span class="kw">import</span> asyncio
+<span class="kw">import</span> os
+
+<span class="kw">from</span> autogen_core.models <span class="kw">import</span> UserMessage
+<span class="kw">from</span> autogen_ext.models.azure <span class="kw">import</span> AzureAIChatCompletionClient
+<span class="kw">from</span> azure.core.credentials <span class="kw">import</span> AzureKeyCredential
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    <span class="comment"># Access models hosted on Azure AI Foundry or GitHub Models.</span>
+    client = AzureAIChatCompletionClient(
+        model=<span class="str">"Phi-4"</span>,
+        endpoint=<span class="str">"https://models.github.ai/inference"</span>,
+        credential=AzureKeyCredential(os.environ[<span class="str">"GITHUB_TOKEN"</span>]),
+        model_info={
+            <span class="str">"json_output"</span>: <span class="kw">False</span>,
+            <span class="str">"function_calling"</span>: <span class="kw">False</span>,
+            <span class="str">"vision"</span>: <span class="kw">False</span>,
+            <span class="str">"family"</span>: <span class="str">"unknown"</span>,
+            <span class="str">"structured_output"</span>: <span class="kw">False</span>,
+        },
+    )
+
+    result = <span class="kw">await</span> client.create(
+        [UserMessage(content=<span class="str">"What is the capital of France?"</span>, source=<span class="str">"user"</span>)]
+    )
+    print(result.content)
+    <span class="kw">await</span> client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#x1F4A1;</span>
+      <div class="callout-body"><strong>Swap freely:</strong> Every model client implements the same <code>ChatCompletionClient</code> protocol. You can inject any client into any agent &mdash; switch from OpenAI to Anthropic to Ollama by changing one line.</div>
+    </div>
+
+    <h4>Provider Quick-Reference</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Provider</th><th>Install Extra</th><th>Client Class</th><th>Module</th></tr>
+        <tr>
+          <td>OpenAI</td>
+          <td><code>openai</code></td>
+          <td><code>OpenAIChatCompletionClient</code></td>
+          <td><code>autogen_ext.models.openai</code></td>
+        </tr>
+        <tr>
+          <td>Azure OpenAI</td>
+          <td><code>openai,azure</code></td>
+          <td><code>AzureOpenAIChatCompletionClient</code></td>
+          <td><code>autogen_ext.models.openai</code></td>
+        </tr>
+        <tr>
+          <td>Azure AI Foundry</td>
+          <td><code>azure</code></td>
+          <td><code>AzureAIChatCompletionClient</code></td>
+          <td><code>autogen_ext.models.azure</code></td>
+        </tr>
+        <tr>
+          <td>Anthropic</td>
+          <td><code>anthropic</code></td>
+          <td><code>AnthropicChatCompletionClient</code></td>
+          <td><code>autogen_ext.models.anthropic</code></td>
+        </tr>
+        <tr>
+          <td>Ollama</td>
+          <td><code>ollama</code></td>
+          <td><code>OllamaChatCompletionClient</code></td>
+          <td><code>autogen_ext.models.ollama</code></td>
+        </tr>
+        <tr>
+          <td>Gemini / vLLM / LiteLLM</td>
+          <td><code>openai</code></td>
+          <td><code>OpenAIChatCompletionClient</code> + <code>model_info</code></td>
+          <td><code>autogen_ext.models.openai</code></td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 1.4 Logging & Telemetry ========== -->
+  <section id="m1-logging">
+    <h3>1.4 &mdash; Logging &amp; Telemetry</h3>
+    <p>AutoGen uses Python&rsquo;s standard <code>logging</code> module with a dedicated event logger. Subscribing to <code>EVENT_LOGGER_NAME</code> from <code>autogen_core</code> gives you visibility into every model call, token count, and agent action &mdash; no third-party APM required.</p>
+
+    <pre><span class="kw">import</span> asyncio
+<span class="kw">import</span> logging
+
+<span class="kw">from</span> autogen_core <span class="kw">import</span> EVENT_LOGGER_NAME
+<span class="kw">from</span> autogen_core.models <span class="kw">import</span> UserMessage
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    <span class="comment"># --- Configure the AutoGen event logger ---</span>
+    <span class="comment"># Set WARNING on root logger to suppress noise, then</span>
+    <span class="comment"># enable INFO specifically on AutoGen's event logger.</span>
+    logging.basicConfig(level=logging.WARNING)
+    logger = logging.getLogger(EVENT_LOGGER_NAME)
+    logger.setLevel(logging.INFO)
+
+    <span class="comment"># Add a console handler to see LLMCall events in real time.</span>
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter(<span class="str">"%(asctime)s [%(name)s] %(levelname)s: %(message)s"</span>)
+    )
+    logger.addHandler(handler)
+
+    <span class="comment"># --- Use a model client (logging is automatic) ---</span>
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    result = <span class="kw">await</span> model_client.create(
+        [UserMessage(content=<span class="str">"What is 2 + 2?"</span>, source=<span class="str">"user"</span>)]
+    )
+    print(<span class="str">f"\nAnswer: <span class="key">{</span>result.content<span class="key">}</span>"</span>)
+    print(<span class="str">f"Prompt tokens: <span class="key">{</span>result.usage.prompt_tokens<span class="key">}</span>"</span>)
+    print(<span class="str">f"Completion tokens: <span class="key">{</span>result.usage.completion_tokens<span class="key">}</span>"</span>)
+
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">&#x2139;&#xFE0F;</span>
+      <div class="callout-body"><strong>Event types:</strong> The event logger emits <code>LLMCall</code> events containing the model name, messages sent, response content, and <code>RequestUsage</code> (prompt + completion token counts). You can route these to files, cloud telemetry, or structured JSON sinks.</div>
+    </div>
+
+    <h4>Structured File Logging for Production</h4>
+    <pre><span class="kw">import</span> asyncio
+<span class="kw">import</span> json
+<span class="kw">import</span> logging
+
+<span class="kw">from</span> autogen_core <span class="kw">import</span> EVENT_LOGGER_NAME
+<span class="kw">from</span> autogen_core.models <span class="kw">import</span> UserMessage
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">class</span> <span class="type">JsonEventHandler</span>(logging.Handler):
+    <span class="str">"""Custom handler that writes AutoGen events as structured JSON lines."""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, filepath: <span class="type">str</span>) -> <span class="type">None</span>:
+        <span class="kw">super</span>().__init__()
+        self._file = open(filepath, <span class="str">"a"</span>, encoding=<span class="str">"utf-8"</span>)
+
+    <span class="kw">def</span> <span class="fn">emit</span>(self, record: logging.LogRecord) -> <span class="type">None</span>:
+        <span class="comment"># Each record.msg is a structured event object.</span>
+        entry = {
+            <span class="str">"timestamp"</span>: record.created,
+            <span class="str">"level"</span>: record.levelname,
+            <span class="str">"event"</span>: <span class="kw">str</span>(record.msg),
+        }
+        self._file.write(json.dumps(entry) + <span class="str">"\n"</span>)
+        self._file.flush()
+
+    <span class="kw">def</span> <span class="fn">close</span>(self) -> <span class="type">None</span>:
+        self._file.close()
+        <span class="kw">super</span>().close()
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    <span class="comment"># Attach the JSON handler to the AutoGen event logger.</span>
+    logging.basicConfig(level=logging.WARNING)
+    logger = logging.getLogger(EVENT_LOGGER_NAME)
+    logger.setLevel(logging.INFO)
+    logger.addHandler(JsonEventHandler(<span class="str">"autogen_events.jsonl"</span>))
+
+    <span class="comment"># Any model call now is automatically captured to the JSONL file.</span>
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+    result = <span class="kw">await</span> model_client.create(
+        [UserMessage(content=<span class="str">"Explain event-driven architectures."</span>, source=<span class="str">"user"</span>)]
+    )
+    print(result.content)
+    <span class="kw">await</span> model_client.close()
+
+    print(<span class="str">"\n✓ Events written to autogen_events.jsonl"</span>)
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#x1F4A1;</span>
+      <div class="callout-body"><strong>Enterprise tip:</strong> Pipe the JSONL file into Azure Monitor, Datadog, or any OpenTelemetry collector for centralized agent observability. Each <code>LLMCall</code> event includes token counts, letting you build real-time cost dashboards.</div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ====================================================================== -->
+  <!--  PLACEHOLDER SECTIONS FOR MODULES 2-7 (to be generated on request)     -->
+  <!-- ====================================================================== -->
+
+  <!-- ====================================================================== -->
+  <!--  MODULE 2: AGENTS & CUSTOM TOOLS                                       -->
+  <!-- ====================================================================== -->
+
+  <section id="module2">
+    <h2>Module 2: Agents &amp; Custom Tools</h2>
+    <p>Agents are the building blocks of every AutoGen application. This module covers the built-in <code>AssistantAgent</code>, creating custom tools (Python functions, <code>FunctionTool</code>, MCP), executing generated code safely, and building fully custom agents by subclassing <code>BaseChatAgent</code>.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-icon">&#x1F916;</div>
+        <div class="card-title">AssistantAgent</div>
+        <div class="card-body">The &ldquo;kitchen sink&rdquo; agent: model calls, tool use, structured output, streaming, reflection &mdash; all in one class.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#x1F527;</div>
+        <div class="card-title">Custom Tools</div>
+        <div class="card-body">Python functions auto-wrapped as <code>FunctionTool</code>, <code>BaseTool</code> subclasses, MCP server integration, and agent-as-tool patterns.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#x1F4BB;</div>
+        <div class="card-title">Code Execution</div>
+        <div class="card-body"><code>CodeExecutorAgent</code> with Docker or local sandboxes for safe LLM-generated code execution.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 2.1 AssistantAgent ========== -->
+  <section id="m2-assistant">
+    <h3>2.1 &mdash; AssistantAgent: The All-Purpose Agent</h3>
+    <p><code>AssistantAgent</code> is the primary built-in agent for prototyping and production. It wraps a model client and supports tools, handoffs, structured output, streaming, and reflection &mdash; all through constructor arguments.</p>
+
+    <h4>Basic Agent with System Message</h4>
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.messages <span class="kw">import</span> TextMessage
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    agent = AssistantAgent(
+        name=<span class="str">"travel_assistant"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a helpful travel assistant. Provide concise answers."</span>,
+    )
+
+    <span class="comment"># on_messages() accepts a list of ChatMessage objects.</span>
+    response = <span class="kw">await</span> agent.on_messages(
+        [TextMessage(content=<span class="str">"What is the capital of France?"</span>, source=<span class="str">"user"</span>)],
+        cancellation_token=<span class="type">None</span>,
+    )
+
+    print(response.chat_message.content)  <span class="comment"># "The capital of France is Paris."</span>
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Single-Agent run() / run_stream() Shorthand</h4>
+    <p>For simple single-agent tasks, use the <code>run()</code> or <code>run_stream()</code> methods instead of calling <code>on_messages()</code> directly.</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    agent = AssistantAgent(
+        name=<span class="str">"assistant"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a helpful AI assistant."</span>,
+    )
+
+    <span class="comment"># run_stream() yields events; Console renders them nicely.</span>
+    <span class="kw">await</span> Console(agent.run_stream(task=<span class="str">"Explain async/await in Python."</span>))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Structured Output with Pydantic</h4>
+    <p>Set <code>output_content_type</code> to a Pydantic model to force the agent to output validated structured data.</p>
+
+    <pre><span class="kw">import</span> asyncio
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.messages <span class="kw">import</span> TextMessage, StructuredMessage
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">class</span> <span class="type">AgentResponse</span>(BaseModel):
+    thoughts: <span class="type">str</span>
+    answer: <span class="type">str</span>
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    agent = AssistantAgent(
+        name=<span class="str">"structured_agent"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"Think step by step then provide a final answer."</span>,
+        output_content_type=AgentResponse,
+    )
+
+    response = <span class="kw">await</span> agent.on_messages(
+        [TextMessage(content=<span class="str">"What is 37 * 42?"</span>, source=<span class="str">"user"</span>)],
+        cancellation_token=<span class="type">None</span>,
+    )
+
+    <span class="comment"># response.chat_message is a StructuredMessage[AgentResponse]</span>
+    structured: StructuredMessage[AgentResponse] = response.chat_message
+    print(structured.content.thoughts)  <span class="comment"># "37 * 42 = 1554"</span>
+    print(structured.content.answer)    <span class="comment"># "1554"</span>
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Token Streaming</h4>
+    <p>Enable token-by-token streaming to display partial responses in real time.</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.messages <span class="kw">import</span> TextMessage, ModelClientStreamingChunkEvent
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    agent = AssistantAgent(
+        name=<span class="str">"streaming_agent"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a helpful assistant."</span>,
+        model_client_stream=<span class="kw">True</span>,  <span class="comment"># Enable token streaming</span>
+    )
+
+    <span class="comment"># on_messages_stream() yields events including streaming chunks.</span>
+    <span class="kw">async for</span> message <span class="kw">in</span> agent.on_messages_stream(
+        [TextMessage(content=<span class="str">"Write a haiku about programming."</span>, source=<span class="str">"user"</span>)],
+        cancellation_token=<span class="type">None</span>,
+    ):
+        <span class="kw">if</span> isinstance(message, ModelClientStreamingChunkEvent):
+            print(message.content, end=<span class="str">""</span>, flush=<span class="kw">True</span>)
+
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Model Context (Limiting History)</h4>
+    <p>For long conversations, limit the context window sent to the model using <code>BufferedChatCompletionContext</code> or <code>TokenLimitedChatCompletionContext</code>.</p>
+
+    <pre><span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_core.model_context <span class="kw">import</span> BufferedChatCompletionContext
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+<span class="comment"># Only send the last 5 messages to the model.</span>
+agent = AssistantAgent(
+    name=<span class="str">"short_memory_agent"</span>,
+    model_client=model_client,
+    system_message=<span class="str">"You are a concise assistant."</span>,
+    model_context=BufferedChatCompletionContext(buffer_size=<span class="num">5</span>),
+)</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">&#x2139;&#xFE0F;</span>
+      <div class="callout-body"><strong>Model Context options:</strong> <code>BufferedChatCompletionContext(buffer_size=N)</code> keeps the last N messages. <code>TokenLimitedChatCompletionContext(max_tokens=N)</code> trims to a token budget. Both are imported from <code>autogen_core.model_context</code>.</div>
+    </div>
+
+    <h4>AssistantAgent Key Parameters Reference</h4>
+    <div class="table-wrapper">
+      <table>
+        <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+        <tr><td><code>name</code></td><td><code>str</code></td><td>Unique identifier used for speaker selection in teams</td></tr>
+        <tr><td><code>model_client</code></td><td><code>ChatCompletionClient</code></td><td>The LLM client (OpenAI, Azure, Anthropic, etc.)</td></tr>
+        <tr><td><code>system_message</code></td><td><code>str</code></td><td>System prompt prepended to every model call</td></tr>
+        <tr><td><code>description</code></td><td><code>str</code></td><td>Used by teams (<code>SelectorGroupChat</code>) for speaker selection</td></tr>
+        <tr><td><code>tools</code></td><td><code>list</code></td><td>Python callables or <code>Tool</code> objects the agent can invoke</td></tr>
+        <tr><td><code>handoffs</code></td><td><code>list</code></td><td>Agents this agent can hand off to (for Swarm teams)</td></tr>
+        <tr><td><code>reflect_on_tool_use</code></td><td><code>bool</code></td><td>If True, agent summarizes tool output in natural language</td></tr>
+        <tr><td><code>parallel_tool_calls</code></td><td><code>bool</code></td><td>If False, disables parallel tool calling (required for <code>AgentTool</code>)</td></tr>
+        <tr><td><code>max_tool_iterations</code></td><td><code>int</code></td><td>Max loops of tool call &rarr; result &rarr; next call (default: unlimited)</td></tr>
+        <tr><td><code>output_content_type</code></td><td><code>type[BaseModel]</code></td><td>Pydantic model for structured output</td></tr>
+        <tr><td><code>model_client_stream</code></td><td><code>bool</code></td><td>Enable token-by-token streaming</td></tr>
+        <tr><td><code>model_context</code></td><td><code>ChatCompletionContext</code></td><td>Buffered or token-limited context window</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========== 2.2 Custom Tools ========== -->
+  <section id="m2-tools">
+    <h3>2.2 &mdash; Custom Tools</h3>
+    <p>AutoGen agents use tools to interact with the external world. Any Python function can become a tool &mdash; AutoGen automatically wraps it as a <code>FunctionTool</code> using the function&rsquo;s name, docstring, and type hints.</p>
+
+    <h4>Python Function as Tool (Auto-Wrapped)</h4>
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="comment"># Any Python function with type hints and a docstring becomes a tool.</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: <span class="type">str</span>) -> <span class="type">str</span>:
+    <span class="str">"""Get the current weather for a given city."""</span>
+    <span class="kw">return</span> <span class="str">f"The weather in <span class="key">{</span>city<span class="key">}</span> is 72&deg;F and sunny."</span>
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    agent = AssistantAgent(
+        name=<span class="str">"weather_agent"</span>,
+        model_client=model_client,
+        tools=[get_weather],  <span class="comment"># Auto-wrapped as FunctionTool</span>
+        system_message=<span class="str">"Use the get_weather tool to answer weather questions."</span>,
+    )
+
+    <span class="kw">await</span> Console(agent.run_stream(task=<span class="str">"What's the weather in New York?"</span>))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#x1F4A1;</span>
+      <div class="callout-body"><strong>Tool naming:</strong> The function name becomes the tool name, and the docstring becomes the description. Use clear, descriptive names and docstrings &mdash; the LLM reads them to decide when to call the tool.</div>
+    </div>
+
+    <h4>Explicit FunctionTool with Custom Name</h4>
+    <pre><span class="kw">from</span> autogen_core.tools <span class="kw">import</span> FunctionTool
+
+
+<span class="kw">def</span> <span class="fn">calculate_percentage</span>(start: <span class="type">float</span>, end: <span class="type">float</span>) -> <span class="type">float</span>:
+    <span class="str">"""Calculate percentage change between two values."""</span>
+    <span class="kw">return</span> ((end - start) / start) * <span class="num">100</span>
+
+
+<span class="comment"># Explicit wrapping gives you control over name and description.</span>
+pct_tool = FunctionTool(
+    func=calculate_percentage,
+    name=<span class="str">"percentage_change"</span>,
+    description=<span class="str">"Compute the percentage change from a start value to an end value."</span>,
+)</pre>
+
+    <h4>Reflect on Tool Use</h4>
+    <p>By default, <code>AssistantAgent</code> returns the raw tool output as its response. Set <code>reflect_on_tool_use=True</code> to have the agent summarize tool results in natural language.</p>
+
+    <pre>agent = AssistantAgent(
+    name=<span class="str">"reflective_agent"</span>,
+    model_client=model_client,
+    tools=[get_weather],
+    reflect_on_tool_use=<span class="kw">True</span>,  <span class="comment"># Agent summarizes tool output</span>
+    system_message=<span class="str">"Use tools to find answers, then explain the result."</span>,
+)</pre>
+
+    <h4>Controlling Tool Call Behavior</h4>
+    <pre><span class="comment"># Disable parallel tool calls (call tools one at a time).</span>
+agent = AssistantAgent(
+    name=<span class="str">"sequential_tools"</span>,
+    model_client=model_client,
+    tools=[tool_a, tool_b],
+    parallel_tool_calls=<span class="kw">False</span>,  <span class="comment"># Required when using AgentTool</span>
+)
+
+<span class="comment"># Limit the number of tool call iterations.</span>
+agent = AssistantAgent(
+    name=<span class="str">"bounded_agent"</span>,
+    model_client=model_client,
+    tools=[search_tool],
+    max_tool_iterations=<span class="num">10</span>,  <span class="comment"># Stop after 10 rounds of tool calls</span>
+)</pre>
+
+    <h4>MCP Server Tools via McpWorkbench</h4>
+    <p>The Model Context Protocol (MCP) lets agents use tools hosted on external MCP servers. Use <code>McpWorkbench</code> with <code>StdioServerParams</code> to connect.</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+<span class="kw">from</span> autogen_ext.tools.mcp <span class="kw">import</span> McpWorkbench, StdioServerParams
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="comment"># Connect to an MCP server running as a subprocess.</span>
+    params = StdioServerParams(
+        command=<span class="str">"npx"</span>,
+        args=[<span class="str">"-y"</span>, <span class="str">"@modelcontextprotocol/server-filesystem"</span>, <span class="str">"."</span>],
+    )
+
+    <span class="kw">async with</span> McpWorkbench(server_params=params) <span class="kw">as</span> workbench:
+        agent = AssistantAgent(
+            name=<span class="str">"file_agent"</span>,
+            model_client=model_client,
+            workbench=workbench,  <span class="comment"># Provides MCP tools to the agent</span>
+            system_message=<span class="str">"Use MCP tools to interact with the filesystem."</span>,
+        )
+
+        <span class="kw">await</span> Console(agent.run_stream(task=<span class="str">"List all Python files in the current directory."</span>))
+
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">&#x26A0;&#xFE0F;</span>
+      <div class="callout-body"><strong>MCP lifecycle:</strong> Always use <code>McpWorkbench</code> as an async context manager (<code>async with</code>) to properly start and stop the MCP server subprocess.</div>
+    </div>
+
+    <h4>AgentTool: Wrapping an Agent as a Tool</h4>
+    <p>Use <code>AgentTool</code> to let one agent call another as if it were a tool. The inner agent runs a full conversation and returns its result.</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.tools <span class="kw">import</span> AgentTool
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="comment"># Inner agent: a specialist at writing poetry.</span>
+    poet_agent = AssistantAgent(
+        name=<span class="str">"poet"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a poet. Write poems on the given topic."</span>,
+    )
+
+    <span class="comment"># Wrap the poet as a tool.</span>
+    poet_tool = AgentTool(agent=poet_agent)
+
+    <span class="comment"># Outer agent: uses the poet tool when it needs a poem.</span>
+    orchestrator = AssistantAgent(
+        name=<span class="str">"orchestrator"</span>,
+        model_client=model_client,
+        tools=[poet_tool],
+        parallel_tool_calls=<span class="kw">False</span>,  <span class="comment"># Required for AgentTool</span>
+        system_message=<span class="str">"Help the user. When they want a poem, use the poet tool."</span>,
+    )
+
+    <span class="kw">await</span> Console(orchestrator.run_stream(task=<span class="str">"Write me a haiku about the ocean."</span>))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">&#x2139;&#xFE0F;</span>
+      <div class="callout-body"><strong>parallel_tool_calls=False</strong> is required when using <code>AgentTool</code> or <code>TeamTool</code>. These tools run full agent/team conversations and must not be called in parallel.</div>
+    </div>
+  </section>
+
+  <!-- ========== 2.3 Code Execution ========== -->
+  <section id="m2-code-exec">
+    <h3>2.3 &mdash; Code Execution with CodeExecutorAgent</h3>
+    <p><code>CodeExecutorAgent</code> extracts code blocks from incoming messages and executes them using a configured executor. This enables LLM-generated code to run in a sandboxed environment.</p>
+
+    <h4>Preset Agents Overview</h4>
+    <p>AutoGen provides several preset agent types beyond <code>AssistantAgent</code>:</p>
+
+    <div class="table-wrapper">
+      <table>
+        <tr><th>Agent</th><th>Import</th><th>Purpose</th></tr>
+        <tr><td><code>AssistantAgent</code></td><td><code>autogen_agentchat.agents</code></td><td>General-purpose LLM agent with tools, handoffs, streaming</td></tr>
+        <tr><td><code>CodeExecutorAgent</code></td><td><code>autogen_agentchat.agents</code></td><td>Extracts &amp; executes code from messages</td></tr>
+        <tr><td><code>UserProxyAgent</code></td><td><code>autogen_agentchat.agents</code></td><td>Prompts the user for input (human-in-the-loop)</td></tr>
+        <tr><td><code>OpenAIAssistantAgent</code></td><td><code>autogen_ext.agents.openai</code></td><td>Wraps the OpenAI Assistants API</td></tr>
+        <tr><td><code>MultimodalWebSurfer</code></td><td><code>autogen_ext.agents.web_surfer</code></td><td>Uses Playwright to browse the web</td></tr>
+        <tr><td><code>FileSurfer</code></td><td><code>autogen_ext.agents.file_surfer</code></td><td>Reads and navigates local files</td></tr>
+      </table>
+    </div>
+
+    <h4>Docker-Based Code Execution (Recommended)</h4>
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent, CodeExecutorAgent
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> TextMentionTermination
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.code_executors.docker <span class="kw">import</span> DockerCommandLineCodeExecutor
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="kw">async with</span> DockerCommandLineCodeExecutor(work_dir=<span class="str">"coding_output"</span>) <span class="kw">as</span> executor:
+        <span class="comment"># The coding agent writes code.</span>
+        coder = AssistantAgent(
+            name=<span class="str">"coder"</span>,
+            model_client=model_client,
+            system_message=<span class="str">"""Write Python code to solve tasks.
+Put all code in a single markdown code block (```python ... ```).
+When finished, reply with TERMINATE."""</span>,
+        )
+
+        <span class="comment"># The executor agent runs the code in Docker.</span>
+        executor_agent = CodeExecutorAgent(
+            name=<span class="str">"executor"</span>,
+            code_executor=executor,
+        )
+
+        termination = TextMentionTermination(<span class="str">"TERMINATE"</span>)
+        team = RoundRobinGroupChat(
+            [coder, executor_agent],
+            termination_condition=termination,
+        )
+
+        <span class="kw">await</span> Console(team.run_stream(
+            task=<span class="str">"Calculate the first 20 Fibonacci numbers and print them."</span>
+        ))
+
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout danger">
+      <span class="callout-icon">&#x1F6A8;</span>
+      <div class="callout-body"><strong>Security:</strong> Always prefer <code>DockerCommandLineCodeExecutor</code> in production. It runs code in an isolated container, preventing LLM-generated code from accessing your host filesystem or network. <code>LocalCommandLineCodeExecutor</code> runs code directly on the host &mdash; use it only in trusted development environments.</div>
+    </div>
+
+    <h4>Local Code Execution (Development Only)</h4>
+    <pre><span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> CodeExecutorAgent
+<span class="kw">from</span> autogen_ext.code_executors.local <span class="kw">import</span> LocalCommandLineCodeExecutor
+
+<span class="comment"># WARNING: Runs code directly on your machine. Use Docker in production.</span>
+local_executor = LocalCommandLineCodeExecutor(work_dir=<span class="str">"./output"</span>)
+executor_agent = CodeExecutorAgent(
+    name=<span class="str">"local_executor"</span>,
+    code_executor=local_executor,
+)</pre>
+
+    <h4>Building a Custom Agent with BaseChatAgent</h4>
+    <p>Need full control? Subclass <code>BaseChatAgent</code> to implement custom message handling, external API calls, or non-LLM logic.</p>
+
+    <pre><span class="kw">import</span> asyncio
+<span class="kw">from</span> typing <span class="kw">import</span> Sequence
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> BaseChatAgent
+<span class="kw">from</span> autogen_agentchat.base <span class="kw">import</span> Response
+<span class="kw">from</span> autogen_agentchat.messages <span class="kw">import</span> (
+    BaseAgentEvent,
+    BaseChatMessage,
+    TextMessage,
+)
+<span class="kw">from</span> autogen_core <span class="kw">import</span> CancellationToken
+
+
+<span class="kw">class</span> <span class="type">CountdownAgent</span>(BaseChatAgent):
+    <span class="str">"""A custom agent that counts down from a given number."""</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, name: <span class="type">str</span>, count: <span class="type">int</span> = <span class="num">3</span>):
+        <span class="kw">super</span>().__init__(name=name, description=<span class="str">"Counts down from N to 0."</span>)
+        self._count = count
+
+    <span class="anno">@property</span>
+    <span class="kw">def</span> <span class="fn">produced_message_types</span>(self) -> <span class="type">list</span>[<span class="type">type</span>]:
+        <span class="kw">return</span> [TextMessage]
+
+    <span class="kw">async def</span> <span class="fn">on_messages</span>(
+        self,
+        messages: Sequence[BaseChatMessage],
+        cancellation_token: CancellationToken | <span class="type">None</span> = <span class="type">None</span>,
+    ) -> Response:
+        lines = [<span class="type">str</span>(i) <span class="kw">for</span> i <span class="kw">in</span> range(self._count, <span class="num">0</span>, -<span class="num">1</span>)]
+        lines.append(<span class="str">"Liftoff! &#x1F680;"</span>)
+        <span class="kw">return</span> Response(
+            chat_message=TextMessage(
+                content=<span class="str">"\\n"</span>.join(lines),
+                source=self.name,
+            )
+        )
+
+    <span class="kw">async def</span> <span class="fn">on_reset</span>(self, cancellation_token: CancellationToken | <span class="type">None</span> = <span class="type">None</span>) -> <span class="type">None</span>:
+        <span class="kw">pass</span>  <span class="comment"># No state to reset</span>
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    agent = CountdownAgent(name=<span class="str">"countdown"</span>, count=<span class="num">5</span>)
+    response = <span class="kw">await</span> agent.on_messages(
+        [TextMessage(content=<span class="str">"Start countdown!"</span>, source=<span class="str">"user"</span>)],
+        cancellation_token=<span class="type">None</span>,
+    )
+    print(response.chat_message.content)
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">&#x2139;&#xFE0F;</span>
+      <div class="callout-body"><strong>Custom agent contract:</strong> Subclass <code>BaseChatAgent</code> and implement three things: the <code>produced_message_types</code> property (list of message types this agent can produce), <code>on_messages()</code> (handle incoming messages and return a <code>Response</code>), and <code>on_reset()</code> (clear any internal state).</div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ====================================================================== -->
+  <!--  MODULE 3: MULTI-AGENT TEAMS & ORCHESTRATION                           -->
+  <!-- ====================================================================== -->
+
+  <section id="m3-roundrobin">
+    <h2>Module 3: Multi-Agent Teams &amp; Orchestration</h2>
+    <p>Teams are the orchestration layer that coordinates multiple agents. AutoGen provides three built-in team types &mdash; <code>RoundRobinGroupChat</code>, <code>SelectorGroupChat</code>, and <code>Swarm</code> &mdash; plus composable termination conditions to control when teams stop.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-icon">&#x1F501;</div>
+        <div class="card-title">RoundRobinGroupChat</div>
+        <div class="card-body">Agents take turns in fixed sequential order. Simplest orchestration &mdash; great for coder/reviewer or write/execute loops.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#x1F3AF;</div>
+        <div class="card-title">SelectorGroupChat</div>
+        <div class="card-body">An LLM dynamically selects the next speaker based on conversation context. Best for ad-hoc multi-expert collaboration.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#x1F41D;</div>
+        <div class="card-title">Swarm</div>
+        <div class="card-body">Agents explicitly hand off to one another via <code>HandoffMessage</code>. Ideal for pipeline-style workflows and customer support bots.</div>
+      </div>
+    </div>
+
+    <h3>3.1 &mdash; RoundRobinGroupChat</h3>
+    <p>Agents take turns in the order they are listed. After the last agent speaks, the cycle repeats from the first.</p>
+
+    <h4>Basic Round-Robin: Coder + Reviewer</h4>
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> TextMentionTermination
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    coder = AssistantAgent(
+        name=<span class="str">"coder"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"""You are a Python developer. Write clean, efficient code.
+When the reviewer approves, respond with APPROVE."""</span>,
+    )
+
+    reviewer = AssistantAgent(
+        name=<span class="str">"reviewer"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"""You are a code reviewer. Review the code for correctness,
+style, and edge cases. If it looks good, say APPROVE."""</span>,
+    )
+
+    termination = TextMentionTermination(<span class="str">"APPROVE"</span>)
+
+    team = RoundRobinGroupChat(
+        [coder, reviewer],
+        termination_condition=termination,
+    )
+
+    <span class="comment"># run_stream() drives the team's conversation and yields events.</span>
+    <span class="kw">await</span> Console(team.run_stream(
+        task=<span class="str">"Write a Python function to find the longest palindromic substring."</span>
+    ))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="flow">
+      <span class="flow-step">coder</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">reviewer</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">coder</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">reviewer</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">... until APPROVE</span>
+    </div>
+
+    <h4>Resuming a Team Conversation</h4>
+    <p>After a team run completes, you can resume the same conversation by calling <code>run()</code> or <code>run_stream()</code> again with a new task. To start fresh, call <code>reset()</code> first.</p>
+
+    <pre><span class="comment"># Resume the same conversation with follow-up.</span>
+<span class="kw">await</span> Console(team.run_stream(
+    task=<span class="str">"Now add type hints to the function."</span>
+))
+
+<span class="comment"># OR: Reset and start a completely new conversation.</span>
+<span class="kw">await</span> team.reset()
+<span class="kw">await</span> Console(team.run_stream(
+    task=<span class="str">"Write a function to merge two sorted arrays."</span>
+))</pre>
+  </section>
+
+  <!-- ========== 3.2 SelectorGroupChat & Swarm ========== -->
+  <section id="m3-selector">
+    <h3>3.2 &mdash; SelectorGroupChat</h3>
+    <p><code>SelectorGroupChat</code> uses a model to dynamically select the next speaker based on the conversation history. This is ideal for multi-expert teams where different agents have different specializations.</p>
+
+    <h4>How Speaker Selection Works</h4>
+    <div class="flow">
+      <span class="flow-step">Team receives message</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Selector model reads history</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Selects best next speaker</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Selected agent responds</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Repeat</span>
+    </div>
+
+    <h4>Multi-Expert Research Team</h4>
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> TextMentionTermination, MaxMessageTermination
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> SelectorGroupChat
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    planner = AssistantAgent(
+        name=<span class="str">"planner"</span>,
+        model_client=model_client,
+        description=<span class="str">"A planning agent that breaks tasks into steps and delegates."</span>,
+        system_message=<span class="str">"""You are a planning agent.
+Break down complex tasks into steps. Delegate research to the web_searcher
+and data analysis to the analyst. Summarize final results.
+When the task is complete, respond with TERMINATE."""</span>,
+    )
+
+    web_searcher = AssistantAgent(
+        name=<span class="str">"web_searcher"</span>,
+        model_client=model_client,
+        description=<span class="str">"A web search agent that finds information online."</span>,
+        system_message=<span class="str">"You search the web and return factual information."</span>,
+    )
+
+    analyst = AssistantAgent(
+        name=<span class="str">"analyst"</span>,
+        model_client=model_client,
+        description=<span class="str">"A data analyst that processes data and creates insights."</span>,
+        system_message=<span class="str">"You analyze data, compute metrics, and provide insights."</span>,
+    )
+
+    termination = TextMentionTermination(<span class="str">"TERMINATE"</span>) | MaxMessageTermination(<span class="num">15</span>)
+
+    team = SelectorGroupChat(
+        [planner, web_searcher, analyst],
+        model_client=model_client,  <span class="comment"># Model used for speaker selection</span>
+        termination_condition=termination,
+    )
+
+    <span class="kw">await</span> Console(team.run_stream(
+        task=<span class="str">"Compare the market caps of Apple and Microsoft over the last 5 years."</span>
+    ))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#x1F4A1;</span>
+      <div class="callout-body"><strong>Agent descriptions matter!</strong> The selector model uses each agent's <code>description</code> parameter to decide who speaks next. Write clear, specific descriptions that explain what each agent is best at.</div>
+    </div>
+
+    <h4>Custom selector_prompt</h4>
+    <p>Override the default selection prompt to give the selector model specific instructions. Use the template variables <code>{participants}</code>, <code>{roles}</code>, and <code>{history}</code>.</p>
+
+    <pre>team = SelectorGroupChat(
+    [planner, web_searcher, analyst],
+    model_client=model_client,
+    termination_condition=termination,
+    selector_prompt=<span class="str">"""You are the team coordinator. Below are the available agents:
+
+{roles}
+
+Based on the conversation so far:
+{history}
+
+Which agent should speak next? Rules:
+- The planner should always go first and last.
+- The web_searcher should handle any factual lookups.
+- The analyst should handle computations.
+
+Reply with ONLY the agent name."""</span>,
+)</pre>
+
+    <h4>Custom selector_func (Override Model Selection)</h4>
+    <p>Provide a <code>selector_func</code> to apply hard-coded routing rules. Return an agent name to force that speaker, or <code>None</code> to fall back to model-based selection.</p>
+
+    <pre><span class="kw">def</span> <span class="fn">my_selector</span>(messages) -> <span class="type">str</span> | <span class="type">None</span>:
+    <span class="str">"""Always start with the planner. Otherwise, let the model decide."""</span>
+    <span class="kw">if</span> <span class="kw">not</span> messages:
+        <span class="kw">return</span> <span class="str">"planner"</span>
+    <span class="comment"># If the last speaker was the planner, route to web_searcher.</span>
+    <span class="kw">if</span> messages[-<span class="num">1</span>].source == <span class="str">"planner"</span>:
+        <span class="kw">return</span> <span class="str">"web_searcher"</span>
+    <span class="kw">return</span> <span class="type">None</span>  <span class="comment"># Fall back to model-based selection</span>
+
+
+team = SelectorGroupChat(
+    [planner, web_searcher, analyst],
+    model_client=model_client,
+    termination_condition=termination,
+    selector_func=my_selector,
+)</pre>
+
+    <h4>Filtering Candidates with candidate_func</h4>
+    <p>Use <code>candidate_func</code> to narrow the pool of agents the selector model can choose from, based on conversation state.</p>
+
+    <pre><span class="kw">def</span> <span class="fn">filter_candidates</span>(messages) -> <span class="type">list</span>[<span class="type">str</span>]:
+    <span class="str">"""Only allow the planner to wrap up after 10+ messages."""</span>
+    <span class="kw">if</span> len(messages) > <span class="num">10</span>:
+        <span class="kw">return</span> [<span class="str">"planner"</span>]
+    <span class="kw">return</span> [<span class="str">"planner"</span>, <span class="str">"web_searcher"</span>, <span class="str">"analyst"</span>]
+
+
+team = SelectorGroupChat(
+    [planner, web_searcher, analyst],
+    model_client=model_client,
+    termination_condition=termination,
+    candidate_func=filter_candidates,
+)</pre>
+
+    <h4>allow_repeated_speaker</h4>
+    <p>By default the same agent can speak multiple times in a row. Set <code>allow_repeated_speaker=False</code> to force turn-taking.</p>
+
+    <pre>team = SelectorGroupChat(
+    [planner, web_searcher, analyst],
+    model_client=model_client,
+    termination_condition=termination,
+    allow_repeated_speaker=<span class="kw">False</span>,  <span class="comment"># Different agent must speak each turn</span>
+)</pre>
+
+    <h4>SelectorGroupChat Key Parameters</h4>
+    <div class="table-wrapper">
+      <table>
+        <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+        <tr><td><code>participants</code></td><td><code>list[ChatAgent]</code></td><td>List of agents in the team</td></tr>
+        <tr><td><code>model_client</code></td><td><code>ChatCompletionClient</code></td><td>Model used for speaker selection (separate from agent models)</td></tr>
+        <tr><td><code>termination_condition</code></td><td><code>TerminationCondition</code></td><td>When to stop the team conversation</td></tr>
+        <tr><td><code>selector_prompt</code></td><td><code>str</code></td><td>Custom prompt with <code>{participants}</code>, <code>{roles}</code>, <code>{history}</code></td></tr>
+        <tr><td><code>selector_func</code></td><td><code>Callable</code></td><td>Hard-coded routing; return agent name or <code>None</code> for model fallback</td></tr>
+        <tr><td><code>candidate_func</code></td><td><code>Callable</code></td><td>Filter candidate agents per turn</td></tr>
+        <tr><td><code>allow_repeated_speaker</code></td><td><code>bool</code></td><td>Allow same agent to speak consecutively (default: <code>True</code>)</td></tr>
+      </table>
+    </div>
+
+    <hr class="divider">
+
+    <h3>3.3 &mdash; Swarm Orchestration</h3>
+    <p>In a <code>Swarm</code>, agents explicitly hand off to one another using <code>HandoffMessage</code>. Each agent declares who it can hand off to via the <code>handoffs</code> parameter. AutoGen automatically generates <code>transfer_to_&lt;agent&gt;</code> tool calls behind the scenes.</p>
+
+    <h4>How Swarm Routing Works</h4>
+    <div class="flow">
+      <span class="flow-step">First agent starts</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Agent calls transfer_to_X</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Agent X takes over</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">X calls transfer_to_Y</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">... until termination</span>
+    </div>
+
+    <h4>Customer Support Bot</h4>
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> HandoffTermination, TextMentionTermination
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> Swarm
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">refund_flight</span>(flight_id: <span class="type">str</span>) -> <span class="type">str</span>:
+    <span class="str">"""Process a flight refund for the given flight ID."""</span>
+    <span class="kw">return</span> <span class="str">f"Refund processed for flight <span class="key">{</span>flight_id<span class="key">}</span>."</span>
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="comment"># Triage agent: routes to the right specialist.</span>
+    triage_agent = AssistantAgent(
+        name=<span class="str">"triage_agent"</span>,
+        model_client=model_client,
+        handoffs=[<span class="str">"flights_refunder"</span>, <span class="str">"general_support"</span>],
+        system_message=<span class="str">"""You are a customer support triage agent.
+Route flight refund requests to 'flights_refunder'.
+Route all other questions to 'general_support'.
+Transfer immediately &mdash; do not answer questions yourself."""</span>,
+    )
+
+    <span class="comment"># Specialist: handles flight refunds.</span>
+    flights_refunder = AssistantAgent(
+        name=<span class="str">"flights_refunder"</span>,
+        model_client=model_client,
+        tools=[refund_flight],
+        handoffs=[<span class="str">"triage_agent"</span>, <span class="str">"user"</span>],
+        system_message=<span class="str">"""You handle flight refunds.
+Use the refund_flight tool to process refunds.
+If you need more information, ask the user by handing off to 'user'.
+When done, hand off back to 'triage_agent'."""</span>,
+    )
+
+    <span class="comment"># Specialist: handles general questions.</span>
+    general_support = AssistantAgent(
+        name=<span class="str">"general_support"</span>,
+        model_client=model_client,
+        handoffs=[<span class="str">"triage_agent"</span>, <span class="str">"user"</span>],
+        system_message=<span class="str">"""You handle general customer support questions.
+Answer questions directly or hand off to 'user' if you need input.
+When done, hand off back to 'triage_agent'."""</span>,
+    )
+
+    <span class="comment"># HandoffTermination stops when an agent hands off to "user".</span>
+    termination = HandoffTermination(target=<span class="str">"user"</span>) | TextMentionTermination(<span class="str">"TERMINATE"</span>)
+
+    team = Swarm(
+        [triage_agent, flights_refunder, general_support],
+        termination_condition=termination,
+    )
+
+    <span class="kw">await</span> Console(team.run_stream(
+        task=<span class="str">"I want a refund for flight FL-1234."</span>
+    ))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">&#x2139;&#xFE0F;</span>
+      <div class="callout-body"><strong>HandoffTermination(target=&quot;user&quot;)</strong> stops the team whenever an agent hands off to <code>"user"</code>. This is the standard pattern for human-in-the-loop workflows in Swarm teams. The application can then collect user input and resume with <code>run_stream(task=user_input)</code>.</div>
+    </div>
+
+    <h4>Multi-Step Swarm with Chained Handoffs</h4>
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> TextMentionTermination
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> Swarm
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="comment"># Pipeline: planner -> researcher -> writer -> planner (summarizes)</span>
+    planner = AssistantAgent(
+        name=<span class="str">"planner"</span>,
+        model_client=model_client,
+        handoffs=[<span class="str">"researcher"</span>],
+        system_message=<span class="str">"""You create research plans. Break the topic into
+key questions, then hand off to 'researcher'. When the writer delivers the
+final report, summarize it and say TERMINATE."""</span>,
+    )
+
+    researcher = AssistantAgent(
+        name=<span class="str">"researcher"</span>,
+        model_client=model_client,
+        handoffs=[<span class="str">"writer"</span>],
+        system_message=<span class="str">"""You research the questions from the planner.
+Provide detailed findings, then hand off to 'writer'."""</span>,
+    )
+
+    writer = AssistantAgent(
+        name=<span class="str">"writer"</span>,
+        model_client=model_client,
+        handoffs=[<span class="str">"planner"</span>],
+        system_message=<span class="str">"""You write polished reports from research findings.
+Write the report and hand off to 'planner' for final review."""</span>,
+    )
+
+    termination = TextMentionTermination(<span class="str">"TERMINATE"</span>)
+    team = Swarm([planner, researcher, writer], termination_condition=termination)
+
+    <span class="kw">await</span> Console(team.run_stream(
+        task=<span class="str">"Write a report on the current state of quantum computing."</span>
+    ))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="flow">
+      <span class="flow-step">planner</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">researcher</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">writer</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">planner (TERMINATE)</span>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">&#x26A0;&#xFE0F;</span>
+      <div class="callout-body"><strong>Swarm vs. SelectorGroupChat:</strong> Use <strong>Swarm</strong> when the workflow has a clear routing structure (pipelines, triage, customer support). Use <strong>SelectorGroupChat</strong> when agents need to collaborate dynamically and the best next speaker depends on context. You can always combine both patterns using nested teams.</div>
+    </div>
+  </section>
+
+  <!-- ========== 3.4 Termination Conditions ========== -->
+  <section id="m3-termination">
+    <h3>3.4 &mdash; Termination Conditions</h3>
+    <p>Termination conditions control when a team stops. AutoGen provides several built-in conditions that can be composed with <code>|</code> (OR) and <code>&amp;</code> (AND) operators.</p>
+
+    <h4>Built-in Termination Conditions</h4>
+    <div class="table-wrapper">
+      <table>
+        <tr><th>Condition</th><th>Import</th><th>Stops when&hellip;</th></tr>
+        <tr><td><code>MaxMessageTermination</code></td><td><code>autogen_agentchat.conditions</code></td><td>Total message count reaches the limit</td></tr>
+        <tr><td><code>TextMentionTermination</code></td><td><code>autogen_agentchat.conditions</code></td><td>A message contains the specified text (e.g., &ldquo;TERMINATE&rdquo;)</td></tr>
+        <tr><td><code>TokenUsageTermination</code></td><td><code>autogen_agentchat.conditions</code></td><td>Cumulative token usage exceeds the budget</td></tr>
+        <tr><td><code>TimeoutTermination</code></td><td><code>autogen_agentchat.conditions</code></td><td>Wall-clock time exceeds the limit (in seconds)</td></tr>
+        <tr><td><code>HandoffTermination</code></td><td><code>autogen_agentchat.conditions</code></td><td>An agent hands off to the specified target</td></tr>
+        <tr><td><code>ExternalTermination</code></td><td><code>autogen_agentchat.conditions</code></td><td>Externally triggered by calling <code>.set()</code> from another task</td></tr>
+      </table>
+    </div>
+
+    <h4>Composing Conditions with | (OR) and &amp; (AND)</h4>
+    <pre><span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> (
+    MaxMessageTermination,
+    TextMentionTermination,
+    TokenUsageTermination,
+    TimeoutTermination,
+)
+
+<span class="comment"># OR: Stop when ANY condition is met.</span>
+termination = (
+    TextMentionTermination(<span class="str">"TERMINATE"</span>)
+    | MaxMessageTermination(<span class="num">20</span>)
+    | TimeoutTermination(<span class="num">120</span>)  <span class="comment"># 2-minute timeout</span>
+)
+
+<span class="comment"># AND: Stop only when ALL conditions are met simultaneously.</span>
+termination = (
+    TextMentionTermination(<span class="str">"DONE"</span>)
+    &amp; TokenUsageTermination(max_total_token=<span class="num">5000</span>)
+)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#x1F4A1;</span>
+      <div class="callout-body"><strong>Best practice:</strong> Always combine a content-based condition (like <code>TextMentionTermination</code>) with a safety limit (<code>MaxMessageTermination</code> or <code>TimeoutTermination</code>) using <code>|</code>. This prevents runaway conversations if the agent never says the stop word.</div>
+    </div>
+
+    <h4>ExternalTermination for Async Control</h4>
+    <p><code>ExternalTermination</code> lets external code (e.g., a web server or UI) stop a running team.</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> ExternalTermination, MaxMessageTermination
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    agent = AssistantAgent(
+        name=<span class="str">"chatbot"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a helpful assistant."</span>,
+    )
+
+    external = ExternalTermination()
+    termination = external | MaxMessageTermination(<span class="num">50</span>)
+
+    team = RoundRobinGroupChat([agent], termination_condition=termination)
+
+    <span class="comment"># In a separate task, stop the team after 5 seconds.</span>
+    <span class="kw">async def</span> <span class="fn">stop_after_delay</span>():
+        <span class="kw">await</span> asyncio.sleep(<span class="num">5</span>)
+        external.set()  <span class="comment"># Triggers termination</span>
+
+    asyncio.create_task(stop_after_delay())
+    <span class="kw">await</span> Console(team.run_stream(task=<span class="str">"Count to infinity."</span>))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Accessing the TaskResult</h4>
+    <p>Every <code>run()</code> call returns a <code>TaskResult</code> object with the full message history and stop reason.</p>
+
+    <pre><span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> MaxMessageTermination
+
+result = <span class="kw">await</span> team.run(task=<span class="str">"Solve the traveling salesman problem."</span>)
+
+print(result.stop_reason)   <span class="comment"># e.g., "Maximal number of messages 20 reached"</span>
+
+<span class="kw">for</span> msg <span class="kw">in</span> result.messages:
+    print(<span class="str">f"[<span class="key">{</span>msg.source<span class="key">}</span>]"</span>, msg.content[:100])</pre>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ========== MODULE 4: Memory & State Management ========== -->
+  <section id="m4-memory">
+    <h2>Module 4: Memory &amp; State Management</h2>
+    <p>AutoGen agents are <strong>stateless by default</strong> &mdash; each <code>run()</code> starts with a blank context window. The <strong>Memory</strong> protocol injects persistent knowledge before the LLM is called, while <strong>save_state / load_state</strong> lets you serialize and restore full conversation history across sessions.</p>
+
+    <h3>4.1 &mdash; Memory Protocol &amp; Memory Stores</h3>
+    <p>The <code>Memory</code> protocol (from <code>autogen_core.memory</code>) defines a unified interface for all memory back-ends. Memory is queried <strong>automatically</strong> at the start of each agent <code>run()</code>, and matching entries are injected as a <code>SystemMessage</code> into the model context.</p>
+
+    <div class="flow">
+      <span class="flow-step">Agent.run() called</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">memory.update_context()</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Matching entries &rarr; SystemMessage</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">LLM sees enriched context</span>
+    </div>
+
+    <h4>Memory Protocol Methods</h4>
+    <div class="table-wrapper">
+      <table>
+        <tr><th>Method</th><th>Signature</th><th>Description</th></tr>
+        <tr><td><code>add</code></td><td><code>async add(content: MemoryContent, cancellation_token)</code></td><td>Store a new memory entry</td></tr>
+        <tr><td><code>query</code></td><td><code>async query(query: str | MemoryContent, cancellation_token) &rarr; list[MemoryContent]</code></td><td>Retrieve matching memories</td></tr>
+        <tr><td><code>update_context</code></td><td><code>async update_context(model_context: ChatCompletionContext)</code></td><td>Inject retrieved memories into LLM context (called internally)</td></tr>
+        <tr><td><code>clear</code></td><td><code>async clear()</code></td><td>Remove all entries from the store</td></tr>
+        <tr><td><code>close</code></td><td><code>async close()</code></td><td>Release resources (DB connections, etc.)</td></tr>
+      </table>
+    </div>
+
+    <h4>ListMemory &mdash; Simple Chronological Memory</h4>
+    <p><code>ListMemory</code> is the simplest built-in memory: it stores entries in a list and appends the most recent <code>k</code> memories to the model context. No vector DB or embeddings required.</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> MaxMessageTermination
+<span class="kw">from</span> autogen_core.memory <span class="kw">import</span> ListMemory, MemoryContent, MemoryMimeType
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="comment"># Create a ListMemory and seed it with user preferences.</span>
+    user_memory = ListMemory()
+    <span class="kw">await</span> user_memory.add(MemoryContent(
+        content=<span class="str">"User prefers dark-roast coffee and avoids dairy."</span>,
+        mime_type=MemoryMimeType.TEXT,
+        metadata={<span class="str">"category"</span>: <span class="str">"preferences"</span>},
+    ))
+    <span class="kw">await</span> user_memory.add(MemoryContent(
+        content=<span class="str">"User's birthday is March 15."</span>,
+        mime_type=MemoryMimeType.TEXT,
+        metadata={<span class="str">"category"</span>: <span class="str">"personal"</span>},
+    ))
+
+    <span class="comment"># Pass the memory to the agent.</span>
+    agent = AssistantAgent(
+        name=<span class="str">"barista_bot"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a helpful barista assistant."</span>,
+        memory=[user_memory],  <span class="comment"># List of Memory objects</span>
+    )
+
+    team = RoundRobinGroupChat(
+        [agent],
+        termination_condition=MaxMessageTermination(<span class="num">2</span>),
+    )
+
+    <span class="comment"># The agent sees the stored memories as a SystemMessage.</span>
+    <span class="kw">await</span> Console(team.run_stream(
+        task=<span class="str">"Recommend me a drink for this morning."</span>
+    ))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">&#x2139;&#xFE0F;</span>
+      <div class="callout-body"><strong>How memory injection works:</strong> Before the LLM call, AutoGen calls <code>memory.update_context()</code> which formats all matching entries into a <code>SystemMessage</code>: <em>&ldquo;Relevant memory content (in chronological order): 1. User prefers dark-roast coffee&hellip;&rdquo;</em>. A <code>MemoryQueryEvent</code> is emitted so you can observe what was retrieved.</div>
+    </div>
+
+    <h4>ChromaDB Vector Memory</h4>
+    <p><code>ChromaDBVectorMemory</code> uses vector embeddings for semantic retrieval &mdash; ideal when you have many memories and need the most <em>relevant</em> ones, not just the most recent.</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> MaxMessageTermination
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.memory.chromadb <span class="kw">import</span> ChromaDBVectorMemory, PersistentChromaDBVectorMemoryConfig
+<span class="kw">from</span> autogen_ext.memory.chromadb <span class="kw">import</span> SentenceTransformerEmbeddingFunctionConfig
+<span class="kw">from</span> autogen_core.memory <span class="kw">import</span> MemoryContent, MemoryMimeType
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="comment"># Configure persistent ChromaDB with sentence-transformer embeddings.</span>
+    chroma_memory = ChromaDBVectorMemory(
+        config=PersistentChromaDBVectorMemoryConfig(
+            collection_name=<span class="str">"project_memory"</span>,
+            persistence_path=<span class="str">"./chroma_store"</span>,
+            k=<span class="num">3</span>,                  <span class="comment"># Return top 3 matches</span>
+            score_threshold=<span class="num">0.4</span>,   <span class="comment"># Minimum similarity score</span>
+            embedding_function_config=SentenceTransformerEmbeddingFunctionConfig(
+                model_name=<span class="str">"all-MiniLM-L6-v2"</span>,
+            ),
+        )
+    )
+
+    <span class="comment"># Add a library of knowledge entries.</span>
+    <span class="kw">await</span> chroma_memory.add(MemoryContent(
+        content=<span class="str">"AutoGen agents support tool calling via Python functions."</span>,
+        mime_type=MemoryMimeType.TEXT,
+        metadata={<span class="str">"topic"</span>: <span class="str">"tools"</span>},
+    ))
+    <span class="kw">await</span> chroma_memory.add(MemoryContent(
+        content=<span class="str">"SelectorGroupChat uses an LLM to pick the next speaker."</span>,
+        mime_type=MemoryMimeType.TEXT,
+        metadata={<span class="str">"topic"</span>: <span class="str">"teams"</span>},
+    ))
+
+    agent = AssistantAgent(
+        name=<span class="str">"docs_assistant"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You answer AutoGen questions using your memory."</span>,
+        memory=[chroma_memory],
+    )
+
+    team = RoundRobinGroupChat(
+        [agent],
+        termination_condition=MaxMessageTermination(<span class="num">2</span>),
+    )
+
+    <span class="comment"># Query will semantically match the most relevant memories.</span>
+    <span class="kw">await</span> Console(team.run_stream(
+        task=<span class="str">"How do agents use tools in AutoGen?"</span>
+    ))
+    <span class="kw">await</span> chroma_memory.close()
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#x1F4A1;</span>
+      <div class="callout-body"><strong>Install ChromaDB support:</strong> <code>pip install &quot;autogen-ext[chromadb]&quot;</code>. For Redis: <code>pip install &quot;autogen-ext[redis]&quot;</code>. For Mem0: <code>pip install &quot;autogen-ext[mem0]&quot;</code>.</div>
+    </div>
+
+    <h4>Redis Vector Memory</h4>
+    <p><code>RedisMemory</code> provides a production-ready vector store backed by Redis. Requires a running Redis instance with the <code>RediSearch</code> module.</p>
+
+    <pre><span class="kw">from</span> autogen_ext.memory.redis <span class="kw">import</span> RedisMemory, RedisMemoryConfig
+
+redis_memory = RedisMemory(
+    config=RedisMemoryConfig(
+        redis_url=<span class="str">"redis://localhost:6379"</span>,
+        index_name=<span class="str">"agent_memory"</span>,
+        prefix=<span class="str">"autogen:"</span>,
+    )
+)
+
+<span class="comment"># Use exactly like ChromaDBVectorMemory:</span>
+agent = AssistantAgent(
+    name=<span class="str">"redis_agent"</span>,
+    model_client=model_client,
+    memory=[redis_memory],
+)</pre>
+
+    <h4>Mem0 Cloud Memory</h4>
+    <p><code>Mem0Memory</code> integrates with <a href="https://mem0.ai" target="_blank">Mem0.ai</a> for managed memory with automatic extraction and retrieval.</p>
+
+    <pre><span class="kw">from</span> autogen_ext.memory.mem0 <span class="kw">import</span> Mem0Memory
+
+<span class="comment"># Cloud-hosted Mem0 (requires MEM0_API_KEY env variable).</span>
+mem0_memory = Mem0Memory(
+    is_cloud=<span class="kw">True</span>,
+    limit=<span class="num">5</span>,  <span class="comment"># Max entries to retrieve per query</span>
+)
+
+agent = AssistantAgent(
+    name=<span class="str">"mem0_agent"</span>,
+    model_client=model_client,
+    memory=[mem0_memory],
+)</pre>
+
+    <h4>Memory Back-end Comparison</h4>
+    <div class="table-wrapper">
+      <table>
+        <tr><th>Back-end</th><th>Import</th><th>Retrieval</th><th>Persistence</th><th>Best For</th></tr>
+        <tr>
+          <td><code>ListMemory</code></td>
+          <td><code>autogen_core.memory</code></td>
+          <td>Most recent <em>k</em></td>
+          <td>In-process only</td>
+          <td>Prototyping, small context</td>
+        </tr>
+        <tr>
+          <td><code>ChromaDBVectorMemory</code></td>
+          <td><code>autogen_ext.memory.chromadb</code></td>
+          <td>Semantic similarity</td>
+          <td>Local file or server</td>
+          <td>RAG, large knowledge bases</td>
+        </tr>
+        <tr>
+          <td><code>RedisMemory</code></td>
+          <td><code>autogen_ext.memory.redis</code></td>
+          <td>Semantic similarity</td>
+          <td>Redis server</td>
+          <td>Production, shared state</td>
+        </tr>
+        <tr>
+          <td><code>Mem0Memory</code></td>
+          <td><code>autogen_ext.memory.mem0</code></td>
+          <td>AI-managed</td>
+          <td>Mem0 cloud / local</td>
+          <td>Managed, auto-extraction</td>
+        </tr>
+      </table>
+    </div>
+
+    <h4>RAG Pattern with ChromaDB Memory</h4>
+    <p>For full Retrieval-Augmented Generation, chunk documents and store them in a vector memory. The agent automatically retrieves the most relevant chunks at query time.</p>
+
+    <div class="flow">
+      <span class="flow-step">Documents</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Chunk text</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Store in ChromaDB</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Agent run()</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Retrieve top-k chunks</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">LLM answers</span>
+    </div>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> MaxMessageTermination
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.memory.chromadb <span class="kw">import</span> ChromaDBVectorMemory, PersistentChromaDBVectorMemoryConfig
+<span class="kw">from</span> autogen_ext.memory.chromadb <span class="kw">import</span> SentenceTransformerEmbeddingFunctionConfig
+<span class="kw">from</span> autogen_core.memory <span class="kw">import</span> MemoryContent, MemoryMimeType
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">def</span> <span class="fn">chunk_text</span>(text: <span class="type">str</span>, chunk_size: <span class="type">int</span> = <span class="num">500</span>, overlap: <span class="type">int</span> = <span class="num">50</span>) -> <span class="type">list</span>[<span class="type">str</span>]:
+    <span class="str">"""Split text into overlapping chunks."""</span>
+    chunks = []
+    start = <span class="num">0</span>
+    <span class="kw">while</span> start < len(text):
+        end = start + chunk_size
+        chunks.append(text[start:end])
+        start = end - overlap
+    <span class="kw">return</span> chunks
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    chroma_memory = ChromaDBVectorMemory(
+        config=PersistentChromaDBVectorMemoryConfig(
+            collection_name=<span class="str">"docs_rag"</span>,
+            persistence_path=<span class="str">"./rag_store"</span>,
+            k=<span class="num">5</span>,
+            score_threshold=<span class="num">0.3</span>,
+            embedding_function_config=SentenceTransformerEmbeddingFunctionConfig(
+                model_name=<span class="str">"all-MiniLM-L6-v2"</span>,
+            ),
+        )
+    )
+
+    <span class="comment"># Ingest a document as chunked memory entries.</span>
+    document = <span class="str">"Your long document text goes here..."</span>
+    <span class="kw">for</span> i, chunk <span class="kw">in</span> enumerate(chunk_text(document)):
+        <span class="kw">await</span> chroma_memory.add(MemoryContent(
+            content=chunk,
+            mime_type=MemoryMimeType.TEXT,
+            metadata={<span class="str">"source"</span>: <span class="str">"docs"</span>, <span class="str">"chunk_index"</span>: i},
+        ))
+
+    <span class="comment"># Agent retrieves relevant chunks at query time.</span>
+    rag_agent = AssistantAgent(
+        name=<span class="str">"rag_agent"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"Answer questions using the provided memory context."</span>,
+        memory=[chroma_memory],
+    )
+
+    team = RoundRobinGroupChat(
+        [rag_agent],
+        termination_condition=MaxMessageTermination(<span class="num">2</span>),
+    )
+
+    <span class="kw">await</span> Console(team.run_stream(
+        task=<span class="str">"Summarize the key points from the document."</span>
+    ))
+    <span class="kw">await</span> chroma_memory.close()
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Serializing Memory Configuration</h4>
+    <p>All memory back-ends support component serialization for persistence and portability:</p>
+
+    <pre><span class="comment"># Serialize memory configuration to JSON.</span>
+config_json = chroma_memory.dump_component().model_dump_json()
+print(config_json)
+
+<span class="comment"># Reconstruct from JSON later.</span>
+<span class="kw">from</span> autogen_core <span class="kw">import</span> ComponentLoader
+restored_memory = ComponentLoader.load_component(json.loads(config_json))</pre>
+  </section>
+
+  <!-- ========== 4.2 State Management ========== -->
+  <section id="m4-state">
+    <h3>4.2 &mdash; State Management</h3>
+    <p>While <em>memory</em> provides persistent knowledge, <strong>state management</strong> preserves the full conversation history and internal data of agents and teams. Use <code>save_state()</code> and <code>load_state()</code> to serialize an entire session and resume it later.</p>
+
+    <h4>Agent State: Save &amp; Restore</h4>
+    <p><code>save_state()</code> returns a dictionary containing the agent&rsquo;s LLM message history. Load it into a new agent to continue the conversation.</p>
+
+    <pre><span class="kw">import</span> asyncio
+<span class="kw">import</span> json
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> MaxMessageTermination
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    agent = AssistantAgent(
+        name=<span class="str">"assistant"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a helpful assistant."</span>,
+    )
+
+    team = RoundRobinGroupChat(
+        [agent],
+        termination_condition=MaxMessageTermination(<span class="num">2</span>),
+    )
+
+    <span class="comment"># Run a conversation.</span>
+    <span class="kw">await</span> team.run(task=<span class="str">"What is the capital of France?"</span>)
+
+    <span class="comment"># Save the agent's state (contains LLM message history).</span>
+    agent_state = <span class="kw">await</span> agent.save_state()
+    print(agent_state)
+    <span class="comment"># {'type': 'AssistantAgentState', 'version': '1.0.0', 'llm_messages': [...]}</span>
+
+    <span class="comment"># Later: create a new agent and restore the state.</span>
+    new_agent = AssistantAgent(
+        name=<span class="str">"assistant"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a helpful assistant."</span>,
+    )
+    <span class="kw">await</span> new_agent.load_state(agent_state)
+    <span class="comment"># new_agent now has the full conversation history.</span>
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Team State: Save &amp; Restore All Agents</h4>
+    <p><code>team.save_state()</code> captures the state of <strong>every agent</strong> in the team, plus the team&rsquo;s own orchestration state.</p>
+
+    <pre><span class="kw">import</span> asyncio
+<span class="kw">import</span> json
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> MaxMessageTermination
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    coder = AssistantAgent(
+        name=<span class="str">"coder"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You write Python code."</span>,
+    )
+    reviewer = AssistantAgent(
+        name=<span class="str">"reviewer"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You review code for bugs and improvements."</span>,
+    )
+
+    team = RoundRobinGroupChat(
+        [coder, reviewer],
+        termination_condition=MaxMessageTermination(<span class="num">4</span>),
+    )
+
+    <span class="kw">await</span> team.run(task=<span class="str">"Write a Fibonacci function and review it."</span>)
+
+    <span class="comment"># Save the full team state (all agents + team orchestration).</span>
+    team_state = <span class="kw">await</span> team.save_state()
+    <span class="comment"># {'type': 'TeamState', 'version': '1.0.0', 'agent_states': {...}}</span>
+
+    <span class="comment"># Persist to disk as JSON.</span>
+    <span class="kw">with</span> open(<span class="str">"team_state.json"</span>, <span class="str">"w"</span>) <span class="kw">as</span> f:
+        json.dump(team_state, f, indent=<span class="num">2</span>)
+
+    <span class="comment"># --- Later: restore the team from JSON ---</span>
+    <span class="kw">with</span> open(<span class="str">"team_state.json"</span>, <span class="str">"r"</span>) <span class="kw">as</span> f:
+        loaded_state = json.load(f)
+
+    <span class="comment"># Rebuild the team with the same agents.</span>
+    new_coder = AssistantAgent(
+        name=<span class="str">"coder"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You write Python code."</span>,
+    )
+    new_reviewer = AssistantAgent(
+        name=<span class="str">"reviewer"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You review code for bugs and improvements."</span>,
+    )
+    new_team = RoundRobinGroupChat(
+        [new_coder, new_reviewer],
+        termination_condition=MaxMessageTermination(<span class="num">4</span>),
+    )
+
+    <span class="comment"># Restore all agent states and team state.</span>
+    <span class="kw">await</span> new_team.load_state(loaded_state)
+
+    <span class="comment"># Continue the conversation from where it left off.</span>
+    <span class="kw">await</span> new_team.run(task=<span class="str">"Now optimize the Fibonacci function."</span>)
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>State Management Quick Reference</h4>
+    <div class="table-wrapper">
+      <table>
+        <tr><th>Operation</th><th>Code</th><th>Returns / Effect</th></tr>
+        <tr>
+          <td>Save agent</td>
+          <td><code>await agent.save_state()</code></td>
+          <td><code>{'type': 'AssistantAgentState', 'llm_messages': [...]}</code></td>
+        </tr>
+        <tr>
+          <td>Load agent</td>
+          <td><code>await agent.load_state(state)</code></td>
+          <td>Restores conversation history into agent</td>
+        </tr>
+        <tr>
+          <td>Save team</td>
+          <td><code>await team.save_state()</code></td>
+          <td><code>{'type': 'TeamState', 'agent_states': {&hellip;}}</code></td>
+        </tr>
+        <tr>
+          <td>Load team</td>
+          <td><code>await team.load_state(state)</code></td>
+          <td>Restores all agent states + team orchestration</td>
+        </tr>
+        <tr>
+          <td>Reset team</td>
+          <td><code>await team.reset()</code></td>
+          <td>Clears all state (conversation history lost)</td>
+        </tr>
+        <tr>
+          <td>Persist to disk</td>
+          <td><code>json.dump(state, f)</code></td>
+          <td>State dicts are JSON-serializable</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">&#x26A0;&#xFE0F;</span>
+      <div class="callout-body"><strong>State vs. Memory:</strong> <em>State</em> preserves the raw LLM message history (what the model &ldquo;said&rdquo; and &ldquo;saw&rdquo;). <em>Memory</em> provides curated knowledge that augments the context. In most production apps, you&rsquo;ll use <strong>both</strong> &mdash; state for session continuity, memory for long-term knowledge. Custom agents should override <code>save_state()</code> and <code>load_state()</code> to persist their own internal data.</div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ========== MODULE 5: Human-in-the-Loop & Handoffs ========== -->
+  <section id="m5-hitl">
+    <h2>Module 5: Human-in-the-Loop &amp; Handoffs</h2>
+    <p>Fully autonomous agents aren&rsquo;t always desirable. AutoGen provides two patterns for human involvement: <strong>inline feedback</strong> during a run (via <code>UserProxyAgent</code>) and <strong>feedback between runs</strong> (via <code>max_turns</code> or <code>HandoffTermination</code>). Choose the approach that matches your application&rsquo;s needs.</p>
+
+    <h3>5.1 &mdash; Human-in-the-Loop Patterns</h3>
+
+    <div class="card-grid card-grid-2" style="margin-bottom: 18px;">
+      <div class="card">
+        <div class="card-icon">&#x1F464;</div>
+        <div class="card-title">During a Run</div>
+        <div class="card-body"><code>UserProxyAgent</code> blocks execution and collects input inline. Simple for scripts but puts the team in an unstable state that cannot be saved.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#x1F501;</div>
+        <div class="card-title">Between Runs</div>
+        <div class="card-body"><code>max_turns</code> or <code>HandoffTermination</code> stops the team cleanly. The app collects input, then starts a new <code>run()</code>. Supports state save/restore.</div>
+      </div>
+    </div>
+
+    <h4>UserProxyAgent &mdash; Inline Feedback</h4>
+    <p><code>UserProxyAgent</code> participates in the team like any other agent but blocks to collect human input. Pass an <code>input_func</code> to customize how input is gathered (console, WebSocket, etc.).</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent, UserProxyAgent
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> TextMentionTermination
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    assistant = AssistantAgent(
+        name=<span class="str">"assistant"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a helpful assistant. Say APPROVE when the user approves."</span>,
+    )
+
+    <span class="comment"># UserProxyAgent blocks to get user input via the console.</span>
+    user_proxy = UserProxyAgent(
+        name=<span class="str">"user_proxy"</span>,
+        input_func=input,  <span class="comment"># Built-in console input</span>
+    )
+
+    team = RoundRobinGroupChat(
+        [assistant, user_proxy],
+        termination_condition=TextMentionTermination(<span class="str">"APPROVE"</span>),
+    )
+
+    <span class="kw">await</span> Console(team.run_stream(
+        task=<span class="str">"Draft a project proposal for a REST API."</span>
+    ))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout danger">
+      <span class="callout-icon">&#x1F6D1;</span>
+      <div class="callout-body"><strong>UserProxyAgent blocks execution.</strong> While waiting for input, the entire team is paused. The team is put into an unstable state that <strong>cannot be saved</strong> with <code>save_state()</code>. Use this pattern only for short, interactive console sessions. For web apps and production systems, prefer the <code>max_turns</code> or <code>HandoffTermination</code> patterns below.</div>
+    </div>
+
+    <h4>Custom input_func for Web Applications</h4>
+    <p>Replace the default <code>input</code> with an async function that awaits user input from a WebSocket, message queue, or other async source:</p>
+
+    <pre><span class="kw">from</span> autogen_core <span class="kw">import</span> CancellationToken
+
+
+<span class="kw">async def</span> <span class="fn">web_input_func</span>(prompt: <span class="type">str</span>, cancellation_token: CancellationToken | <span class="type">None</span> = <span class="kw">None</span>) -> <span class="type">str</span>:
+    <span class="str">"""Await user input from a WebSocket connection."""</span>
+    <span class="kw">await</span> websocket.send_json({<span class="str">"type"</span>: <span class="str">"input_request"</span>, <span class="str">"prompt"</span>: prompt})
+    response = <span class="kw">await</span> websocket.receive_text()
+    <span class="kw">return</span> response
+
+
+user_proxy = UserProxyAgent(
+    name=<span class="str">"user_proxy"</span>,
+    input_func=web_input_func,
+)</pre>
+
+    <hr class="divider">
+
+    <h4>max_turns Pattern &mdash; Turn-Based Feedback Loop</h4>
+    <p>Set <code>max_turns</code> on any team to stop after a fixed number of agent turns. The application collects feedback and starts a new <code>run()</code>. Agent state is preserved across runs, but the turn count resets.</p>
+
+    <div class="flow">
+      <span class="flow-step">run(task) &mdash; N turns</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Team stops</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">App gets user input</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">run(task=input) &mdash; N turns</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">&hellip;</span>
+    </div>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    agent = AssistantAgent(
+        name=<span class="str">"assistant"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"You are a helpful assistant."</span>,
+    )
+
+    <span class="comment"># max_turns=1 means the team stops after ONE agent response.</span>
+    team = RoundRobinGroupChat(
+        [agent],
+        max_turns=<span class="num">1</span>,
+    )
+
+    <span class="comment"># Interactive loop: agent responds, user gives feedback.</span>
+    task = <span class="str">"Write a haiku about coding."</span>
+    <span class="kw">while</span> <span class="kw">True</span>:
+        <span class="kw">await</span> Console(team.run_stream(task=task))
+        task = input(<span class="str">"Your feedback (type 'exit' to quit): "</span>)
+        <span class="kw">if</span> task.strip().lower() == <span class="str">"exit"</span>:
+            <span class="kw">break</span>
+
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#x1F4A1;</span>
+      <div class="callout-body"><strong>max_turns works with all team types:</strong> <code>RoundRobinGroupChat</code>, <code>SelectorGroupChat</code>, and <code>Swarm</code> all support the <code>max_turns</code> parameter. The turn count resets after each <code>run()</code> call, but agent state (conversation history) is preserved.</div>
+    </div>
+  </section>
+
+  <!-- ========== 5.2 Agent Handoffs ========== -->
+  <section id="m5-handoffs">
+    <h3>5.2 &mdash; Agent Handoffs</h3>
+    <p>The <code>HandoffTermination</code> pattern gives agents the ability to <strong>explicitly transfer control</strong> to a human (or to another external entity). This is more flexible than <code>max_turns</code> &mdash; the agent decides <em>when</em> to involve the human.</p>
+
+    <h4>Handoff to User Pattern</h4>
+    <p>Add a <code>Handoff</code> object targeting <code>&quot;user&quot;</code> to the agent&rsquo;s <code>handoffs</code> list. When the agent determines it needs human input, it generates a <code>HandoffMessage</code>. The <code>HandoffTermination</code> condition detects this and stops the team.</p>
+
+    <div class="flow">
+      <span class="flow-step">Agent runs</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Agent calls Handoff(target=&quot;user&quot;)</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">HandoffTermination fires</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">App collects input</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">run_stream(task=input)</span>
+    </div>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.base <span class="kw">import</span> Handoff
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> HandoffTermination, TextMentionTermination
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    agent = AssistantAgent(
+        name=<span class="str">"travel_agent"</span>,
+        model_client=model_client,
+        handoffs=[Handoff(target=<span class="str">"user"</span>, message=<span class="str">"Transfer to user for clarification."</span>)],
+        system_message=<span class="str">"""You are a travel planning assistant.
+If you need more information from the user, use the handoff to transfer to 'user'.
+When the trip plan is complete, say TERMINATE."""</span>,
+    )
+
+    termination = HandoffTermination(target=<span class="str">"user"</span>) | TextMentionTermination(<span class="str">"TERMINATE"</span>)
+
+    team = RoundRobinGroupChat(
+        [agent],
+        termination_condition=termination,
+    )
+
+    <span class="comment"># Interactive loop driven by agent handoffs.</span>
+    task = <span class="str">"Plan a 5-day trip to Japan."</span>
+    <span class="kw">while</span> <span class="kw">True</span>:
+        result = <span class="kw">await</span> Console(team.run_stream(task=task))
+
+        <span class="comment"># Check if the team stopped due to a handoff to "user".</span>
+        <span class="kw">if</span> result.stop_reason <span class="kw">and</span> <span class="str">"handoff"</span> <span class="kw">in</span> result.stop_reason.lower():
+            task = input(<span class="str">"Your response: "</span>)
+            <span class="kw">if</span> task.strip().lower() == <span class="str">"exit"</span>:
+                <span class="kw">break</span>
+        <span class="kw">else</span>:
+            <span class="comment"># Agent said TERMINATE or other stop reason.</span>
+            <span class="kw">break</span>
+
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <h4>Handoff in Swarm Teams</h4>
+    <p>In a <code>Swarm</code>, agents hand off to each other by name. When an agent hands off to <code>&quot;user&quot;</code>, the team stops. To resume, you must send a <code>HandoffMessage</code> targeting the agent that should continue:</p>
+
+    <pre><span class="kw">import</span> asyncio
+
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> HandoffTermination, TextMentionTermination
+<span class="kw">from</span> autogen_agentchat.messages <span class="kw">import</span> HandoffMessage
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> Swarm
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -> <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    booking_agent = AssistantAgent(
+        name=<span class="str">"booking_agent"</span>,
+        model_client=model_client,
+        handoffs=[<span class="str">"user"</span>],  <span class="comment"># Shorthand for Handoff(target="user")</span>
+        system_message=<span class="str">"""You handle hotel bookings.
+Ask the user for dates and preferences by handing off to 'user'.
+When booking is confirmed, say TERMINATE."""</span>,
+    )
+
+    termination = HandoffTermination(target=<span class="str">"user"</span>) | TextMentionTermination(<span class="str">"TERMINATE"</span>)
+    team = Swarm([booking_agent], termination_condition=termination)
+
+    <span class="comment"># First run.</span>
+    result = <span class="kw">await</span> Console(team.run_stream(
+        task=<span class="str">"I need a hotel in Tokyo."</span>
+    ))
+
+    <span class="comment"># Resume after handoff in a Swarm: use HandoffMessage.</span>
+    <span class="kw">while</span> <span class="str">"handoff"</span> <span class="kw">in</span> (result.stop_reason <span class="kw">or</span> <span class="str">""</span>).lower():
+        user_input = input(<span class="str">"Your response: "</span>)
+        <span class="kw">if</span> user_input.strip().lower() == <span class="str">"exit"</span>:
+            <span class="kw">break</span>
+        <span class="comment"># Target the agent that should receive the user's response.</span>
+        result = <span class="kw">await</span> Console(team.run_stream(
+            task=HandoffMessage(
+                source=<span class="str">"user"</span>,
+                target=<span class="str">"booking_agent"</span>,
+                content=user_input,
+            )
+        ))
+
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">&#x2139;&#xFE0F;</span>
+      <div class="callout-body"><strong>Swarm resume difference:</strong> When resuming a Swarm after <code>HandoffTermination</code>, wrap the user&rsquo;s response in a <code>HandoffMessage(source=&quot;user&quot;, target=&quot;agent_name&quot;, content=...)</code>. For <code>RoundRobinGroupChat</code> and <code>SelectorGroupChat</code>, a plain string <code>task=user_input</code> is sufficient.</div>
+    </div>
+
+    <h4>HITL Pattern Comparison</h4>
+    <div class="table-wrapper">
+      <table>
+        <tr><th>Pattern</th><th>Feedback Timing</th><th>State Saveable?</th><th>Best For</th></tr>
+        <tr>
+          <td><code>UserProxyAgent</code></td>
+          <td>During run (blocking)</td>
+          <td>&#x274C; No</td>
+          <td>Quick console scripts</td>
+        </tr>
+        <tr>
+          <td><code>max_turns</code></td>
+          <td>Between runs (automatic)</td>
+          <td>&#x2705; Yes</td>
+          <td>Iterative refinement loops</td>
+        </tr>
+        <tr>
+          <td><code>HandoffTermination</code></td>
+          <td>Between runs (agent-initiated)</td>
+          <td>&#x2705; Yes</td>
+          <td>Agent decides when to ask human</td>
+        </tr>
+      </table>
+    </div>
+
+    <h4>Web Framework Integration</h4>
+    <p>AutoGen provides sample integrations for building production HITL applications with popular Python web frameworks:</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-icon">&#x26A1;</div>
+        <div class="card-title">FastAPI</div>
+        <div class="card-body">Async API endpoints with WebSocket streaming. Use <code>HandoffTermination</code> + custom <code>input_func</code> for real-time feedback.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#x1F517;</div>
+        <div class="card-title">Chainlit</div>
+        <div class="card-body">Chat UI with built-in message streaming. Integrate via <code>cl.on_message</code> handler calling <code>team.run_stream()</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">&#x1F4CA;</div>
+        <div class="card-title">Streamlit</div>
+        <div class="card-body">Rapid prototyping with <code>st.chat_input()</code>. Use <code>max_turns=1</code> pattern for natural turn-taking.</div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#x1F4A1;</span>
+      <div class="callout-body"><strong>Production recommendation:</strong> For web applications, always use the <code>HandoffTermination</code> or <code>max_turns</code> pattern instead of <code>UserProxyAgent</code>. These patterns allow clean state serialization between runs, support async I/O natively, and don&rsquo;t block the event loop. Combine with <code>save_state()</code> / <code>load_state()</code> from Module 4 for fully resumable sessions.</div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section id="m6-agenttool">
+    <h2>Module 6: Advanced Tooling &amp; MCP</h2>
+    <p class="subtitle">Compose agents as callable tools and integrate external MCP servers</p>
+
+    <h3>6.1 &mdash; AgentTool: Wrap an Agent as a Tool</h3>
+    <p><code>AgentTool</code> lets you wrap any <code>BaseChatAgent</code> so it can be <em>called as a tool</em> by another agent. The outer agent&rsquo;s model decides <strong>when</strong> to invoke the inner agent, passing a task string and receiving the result &mdash; enabling dynamic, model-driven multi-agent workflows without a fixed team structure.</p>
+
+    <div class="callout warn">
+      <div class="callout-title">Disable Parallel Tool Calls</div>
+      <div class="callout-body">When using <code>AgentTool</code> (or <code>TeamTool</code>), you <strong>must</strong> set <code>parallel_tool_calls=False</code> on the model client. Agents maintain internal state that conflicts with parallel execution.</div>
+    </div>
+
+    <pre><code><span class="kw">import</span> asyncio
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.tools <span class="kw">import</span> AgentTool
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -&gt; <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="comment"># Inner agent &mdash; a specialist writer</span>
+    writer = AssistantAgent(
+        name=<span class="str">"writer"</span>,
+        description=<span class="str">"A writer agent for generating polished text."</span>,
+        model_client=model_client,
+        system_message=<span class="str">"Write concise, well-structured content."</span>,
+    )
+
+    <span class="comment"># Wrap the writer as a callable tool</span>
+    writer_tool = AgentTool(agent=writer)
+
+    <span class="comment"># Outer agent &mdash; must disable parallel tool calls</span>
+    main_model = OpenAIChatCompletionClient(
+        model=<span class="str">"gpt-4o"</span>,
+        parallel_tool_calls=<span class="kw">False</span>,  <span class="comment"># Required for AgentTool</span>
+    )
+    orchestrator = AssistantAgent(
+        name=<span class="str">"orchestrator"</span>,
+        model_client=main_model,
+        tools=[writer_tool],
+        system_message=<span class="str">"Delegate writing tasks to the writer tool."</span>,
+    )
+
+    <span class="kw">await</span> Console(orchestrator.run_stream(task=<span class="str">"Write a haiku about distributed systems."</span>))
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</code></pre>
+
+    <div class="callout tip">
+      <div class="callout-title">return_value_as_last_message</div>
+      <div class="callout-body">By default, <code>AgentTool</code> returns <strong>all</strong> messages from the inner agent&rsquo;s run, prefixed by source. Set <code>return_value_as_last_message=True</code> to return only the final message &mdash; ideal when you want a clean, single-string result.</div>
+    </div>
+
+    <h3>6.2 &mdash; TeamTool: Wrap an Entire Team as a Tool</h3>
+    <p><code>TeamTool</code> takes the concept further &mdash; wrapping a full <code>BaseGroupChat</code> team (with its own agents, termination conditions, and workflow) as a single callable tool. The outer agent triggers the entire team run and receives the aggregated result.</p>
+
+    <pre><code><span class="kw">import</span> asyncio
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> SourceMatchTermination
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.tools <span class="kw">import</span> TeamTool
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -&gt; <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="comment"># Build a review team: writer &rarr; reviewer &rarr; summarizer</span>
+    writer = AssistantAgent(
+        name=<span class="str">"writer"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"Draft clear, engaging content."</span>,
+    )
+    reviewer = AssistantAgent(
+        name=<span class="str">"reviewer"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"Critically review the draft and suggest improvements."</span>,
+    )
+    summarizer = AssistantAgent(
+        name=<span class="str">"summarizer"</span>,
+        model_client=model_client,
+        system_message=<span class="str">"Combine feedback and produce a final revised version."</span>,
+    )
+
+    team = RoundRobinGroupChat(
+        [writer, reviewer, summarizer],
+        termination_condition=SourceMatchTermination(sources=[<span class="str">"summarizer"</span>]),
+    )
+
+    <span class="comment"># Wrap the entire team as a single tool</span>
+    writing_team_tool = TeamTool(
+        team=team,
+        name=<span class="str">"writing_team"</span>,
+        description=<span class="str">"A collaborative writing team for high-quality content."</span>,
+        return_value_as_last_message=<span class="kw">True</span>,
+    )
+
+    <span class="comment"># Outer orchestrator agent</span>
+    main_model = OpenAIChatCompletionClient(
+        model=<span class="str">"gpt-4o"</span>,
+        parallel_tool_calls=<span class="kw">False</span>,  <span class="comment"># Required for TeamTool</span>
+    )
+    orchestrator = AssistantAgent(
+        name=<span class="str">"orchestrator"</span>,
+        model_client=main_model,
+        tools=[writing_team_tool],
+        system_message=<span class="str">"Use the writing team tool to produce polished content."</span>,
+    )
+
+    <span class="kw">await</span> Console(
+        orchestrator.run_stream(task=<span class="str">"Write a blog post about AI agents in 2025."</span>)
+    )
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</code></pre>
+
+    <h4>AgentTool vs TeamTool &mdash; Comparison</h4>
+    <table>
+      <thead><tr><th>Feature</th><th>AgentTool</th><th>TeamTool</th></tr></thead>
+      <tbody>
+        <tr><td>Wraps</td><td>Single <code>BaseChatAgent</code></td><td>Full <code>BaseGroupChat</code> team</td></tr>
+        <tr><td>Name/Description</td><td>Auto-derived from agent</td><td>Explicitly provided</td></tr>
+        <tr><td>Requires <code>parallel_tool_calls=False</code></td><td>Yes</td><td>Yes</td></tr>
+        <tr><td>Inner termination</td><td>Single agent run completes</td><td>Team termination condition</td></tr>
+        <tr><td>Use case</td><td>Specialist delegation</td><td>Complex multi-step workflows</td></tr>
+        <tr><td>Serializable</td><td>Yes (<code>dump_component()</code>)</td><td>Yes (<code>dump_component()</code>)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout info">
+      <div class="callout-title">Nested Composition</div>
+      <div class="callout-body">You can compose these freely: a <code>TeamTool</code> team can contain agents that themselves use <code>AgentTool</code>, creating deep hierarchies. The outer model dynamically decides which sub-agent or sub-team to invoke based on the task.</div>
+    </div>
+  </section>
+
+  <section id="m6-mcp">
+    <h3>6.3 &mdash; Model Context Protocol (MCP) Integration</h3>
+    <p>The <strong>Model Context Protocol</strong> is an open standard that lets LLM applications connect to external tool servers. AutoGen provides first-class MCP support through <code>autogen_ext.tools.mcp</code>, allowing agents to use any MCP-compatible server&rsquo;s tools.</p>
+
+    <pre><code>pip install -U <span class="str">"autogen-ext[mcp]"</span></code></pre>
+
+    <h4>Transport Types</h4>
+    <div class="card-grid-3">
+      <div class="card">
+        <h4>StdioServerParams</h4>
+        <p>Launch a local process (e.g., <code>npx</code>, <code>uvx</code>) communicating over stdin/stdout. Best for local CLI tools.</p>
+      </div>
+      <div class="card">
+        <h4>SseServerParams</h4>
+        <p>Connect to a remote MCP server via HTTP Server-Sent Events. Ideal for cloud-hosted tool services.</p>
+      </div>
+      <div class="card">
+        <h4>StreamableHttpServerParams</h4>
+        <p>Connect via Streamable HTTP with bidirectional streaming. Modern alternative to SSE for remote servers.</p>
+      </div>
+    </div>
+
+    <h4>Approach 1: McpWorkbench (Recommended)</h4>
+    <p><code>McpWorkbench</code> is the preferred way to connect agents to MCP servers. It manages the session lifecycle, supports tool listing, tool calling, resources, prompts, and more &mdash; all as an async context manager.</p>
+
+    <pre><code><span class="kw">import</span> asyncio
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+<span class="kw">from</span> autogen_ext.tools.mcp <span class="kw">import</span> McpWorkbench, StdioServerParams
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -&gt; <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+    <span class="comment"># Connect to the mcp-server-fetch via stdio</span>
+    server_params = StdioServerParams(
+        command=<span class="str">"uvx"</span>,
+        args=[<span class="str">"mcp-server-fetch"</span>],
+        read_timeout_seconds=<span class="num">60</span>,
+    )
+
+    <span class="kw">async with</span> McpWorkbench(server_params) <span class="kw">as</span> workbench:
+        agent = AssistantAgent(
+            name=<span class="str">"fetcher"</span>,
+            model_client=model_client,
+            workbench=workbench,
+            reflect_on_tool_use=<span class="kw">True</span>,
+        )
+        result = <span class="kw">await</span> agent.run(
+            task=<span class="str">"Summarize the content of https://en.wikipedia.org/wiki/Seattle"</span>
+        )
+        <span class="fn">print</span>(result.messages[-<span class="num">1</span>].content)
+
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</code></pre>
+
+    <div class="callout tip">
+      <div class="callout-title">McpWorkbench Capabilities</div>
+      <div class="callout-body"><code>McpWorkbench</code> exposes more than just tools: <code>list_resources()</code>, <code>read_resource()</code>, <code>list_prompts()</code>, <code>get_prompt()</code>, and <code>list_resource_templates()</code> are all available on the workbench session.</div>
+    </div>
+
+    <h4>Approach 2: mcp_server_tools() Factory</h4>
+    <p>For simpler use cases, the <code>mcp_server_tools()</code> factory creates a list of tool adapters that can be passed directly to an agent&rsquo;s <code>tools=</code> parameter.</p>
+
+    <pre><code><span class="kw">import</span> asyncio
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+<span class="kw">from</span> autogen_ext.tools.mcp <span class="kw">import</span> StdioServerParams, mcp_server_tools
+<span class="kw">from</span> autogen_core <span class="kw">import</span> CancellationToken
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -&gt; <span class="type">None</span>:
+    <span class="comment"># Local filesystem MCP server</span>
+    desktop = <span class="fn">str</span>(Path.home() / <span class="str">"Desktop"</span>)
+    server_params = StdioServerParams(
+        command=<span class="str">"npx.cmd"</span>,
+        args=[<span class="str">"-y"</span>, <span class="str">"@modelcontextprotocol/server-filesystem"</span>, desktop],
+    )
+
+    <span class="comment"># Get all tools from the server</span>
+    tools = <span class="kw">await</span> mcp_server_tools(server_params)
+
+    agent = AssistantAgent(
+        name=<span class="str">"file_manager"</span>,
+        model_client=OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>),
+        tools=tools,
+    )
+
+    <span class="kw">await</span> agent.run(
+        task=<span class="str">"Create a file called test.txt with some content"</span>,
+        cancellation_token=CancellationToken(),
+    )
+
+
+asyncio.run(main())</code></pre>
+
+    <h4>Shared MCP Sessions</h4>
+    <p>When the MCP server maintains session state (e.g., a browser via Playwright), you can share a single session across multiple tool calls using <code>create_mcp_server_session()</code>:</p>
+
+    <pre><code><span class="kw">import</span> asyncio
+<span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> TextMentionTermination
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_agentchat.ui <span class="kw">import</span> Console
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+<span class="kw">from</span> autogen_ext.tools.mcp <span class="kw">import</span> (
+    StdioServerParams,
+    create_mcp_server_session,
+    mcp_server_tools,
+)
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -&gt; <span class="type">None</span>:
+    model_client = OpenAIChatCompletionClient(
+        model=<span class="str">"gpt-4o"</span>,
+        parallel_tool_calls=<span class="kw">False</span>,
+    )
+    params = StdioServerParams(
+        command=<span class="str">"npx"</span>,
+        args=[<span class="str">"@playwright/mcp@latest"</span>],
+        read_timeout_seconds=<span class="num">60</span>,
+    )
+
+    <span class="comment"># Shared session &mdash; browser state preserved across calls</span>
+    <span class="kw">async with</span> create_mcp_server_session(params) <span class="kw">as</span> session:
+        <span class="kw">await</span> session.initialize()
+        tools = <span class="kw">await</span> mcp_server_tools(server_params=params, session=session)
+
+        agent = AssistantAgent(
+            name=<span class="str">"browser_agent"</span>,
+            model_client=model_client,
+            tools=tools,
+        )
+
+        termination = TextMentionTermination(<span class="str">"TERMINATE"</span>)
+        team = RoundRobinGroupChat([agent], termination_condition=termination)
+        <span class="kw">await</span> Console(
+            team.run_stream(task=<span class="str">"Go to https://github.com and describe the page."</span>)
+        )
+
+    <span class="kw">await</span> model_client.close()
+
+
+asyncio.run(main())</code></pre>
+
+    <h4>Remote SSE &amp; Streamable HTTP</h4>
+    <p>For remote MCP servers, use <code>SseServerParams</code> or <code>StreamableHttpServerParams</code>:</p>
+
+    <pre><code><span class="kw">from</span> autogen_ext.tools.mcp <span class="kw">import</span> SseServerParams, McpWorkbench
+
+<span class="comment"># SSE-based remote server</span>
+sse_params = SseServerParams(
+    url=<span class="str">"https://api.example.com/mcp"</span>,
+    headers={<span class="str">"Authorization"</span>: <span class="str">"Bearer your-api-key"</span>},
+    timeout=<span class="num">30</span>,
+)</code></pre>
+
+    <pre><code><span class="kw">from</span> autogen_ext.tools.mcp <span class="kw">import</span> StreamableHttpServerParams, McpWorkbench
+
+<span class="comment"># Streamable HTTP-based remote server</span>
+http_params = StreamableHttpServerParams(
+    url=<span class="str">"https://api.example.com/mcp"</span>,
+    headers={<span class="str">"Authorization"</span>: <span class="str">"Bearer your-api-key"</span>},
+    timeout=<span class="num">30.0</span>,
+    sse_read_timeout=<span class="num">300.0</span>,
+    terminate_on_close=<span class="kw">True</span>,
+)</code></pre>
+
+    <h4>MCP Approach Comparison</h4>
+    <table>
+      <thead><tr><th>Feature</th><th>McpWorkbench</th><th>mcp_server_tools()</th></tr></thead>
+      <tbody>
+        <tr><td>Session management</td><td>Built-in (context manager)</td><td>Manual / auto per-call</td></tr>
+        <tr><td>Passed via</td><td><code>workbench=</code> parameter</td><td><code>tools=</code> parameter</td></tr>
+        <tr><td>Resources &amp; Prompts</td><td>Yes</td><td>No (tools only)</td></tr>
+        <tr><td>Tool overrides</td><td>Yes (<code>tool_overrides=</code>)</td><td>No</td></tr>
+        <tr><td>Shared sessions</td><td>Built-in</td><td>Via <code>create_mcp_server_session()</code></td></tr>
+        <tr><td>Serializable</td><td>Yes (<code>dump_component()</code>)</td><td>Yes (per adapter)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout danger">
+      <div class="callout-title">Security Warning</div>
+      <div class="callout-body"><strong>Only connect to trusted MCP servers.</strong> <code>StdioServerParams</code> executes commands in your local environment. Always validate server origins and never pass untrusted input directly to MCP tool arguments.</div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <section id="m7-studio">
+    <h2>Module 7: Serializing Components &amp; AutoGen Studio</h2>
+    <p class="subtitle">Export agents, teams, and tools to declarative JSON configs for sharing and no-code Studio import</p>
+
+    <h3>7.1 &mdash; The Component Protocol</h3>
+    <p>Every major AutoGen building block &mdash; agents, teams, model clients, termination conditions, tools, workbenches &mdash; implements the <code>Component</code> protocol. This gives each object two key methods:</p>
+
+    <table>
+      <thead><tr><th>Method</th><th>Direction</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>dump_component()</code></td><td>Object &rarr; Config</td><td>Serialize to a <code>ComponentModel</code> (dict/JSON)</td></tr>
+        <tr><td><code>load_component(config)</code></td><td>Config &rarr; Object</td><td>Reconstruct a live object from config</td></tr>
+        <tr><td><code>_to_config()</code></td><td>Object &rarr; Config</td><td>Internal: produces the typed config dataclass</td></tr>
+        <tr><td><code>_from_config(config)</code></td><td>Config &rarr; Object</td><td>Internal: class method to rebuild from config</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout danger">
+      <div class="callout-title">Security: Only Load Trusted Configs</div>
+      <div class="callout-body">Deserialization may execute code (e.g., reconstructing serialized functions). <strong>Only load component configs from trusted sources.</strong></div>
+    </div>
+
+    <h3>7.2 &mdash; Serializing Termination Conditions</h3>
+    <p>Termination conditions are fully serializable, including composed conditions built with <code>|</code> (OR) and <code>&amp;</code> (AND).</p>
+
+    <pre><code><span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> (
+    MaxMessageTermination,
+    StopMessageTermination,
+)
+
+max_term = MaxMessageTermination(<span class="num">5</span>)
+stop_term = StopMessageTermination()
+
+<span class="comment"># Compose with OR</span>
+combined = max_term | stop_term
+
+<span class="comment"># Serialize to JSON</span>
+config = combined.dump_component()
+<span class="fn">print</span>(config.model_dump_json(indent=<span class="num">2</span>))
+
+<span class="comment"># Deserialize back to a live object</span>
+restored = combined.load_component(config)
+<span class="fn">print</span>(<span class="fn">type</span>(restored))
+<span class="comment"># &lt;class 'autogen_agentchat.base.OrTerminationCondition'&gt;</span></code></pre>
+
+    <p>The JSON output captures the full tree:</p>
+    <pre><code>{
+  <span class="key">"provider"</span>: <span class="str">"autogen_agentchat.base.OrTerminationCondition"</span>,
+  <span class="key">"component_type"</span>: <span class="str">"termination"</span>,
+  <span class="key">"version"</span>: <span class="num">1</span>,
+  <span class="key">"config"</span>: {
+    <span class="key">"conditions"</span>: [
+      {
+        <span class="key">"provider"</span>: <span class="str">"autogen_agentchat.conditions.MaxMessageTermination"</span>,
+        <span class="key">"component_type"</span>: <span class="str">"termination"</span>,
+        <span class="key">"config"</span>: { <span class="key">"max_messages"</span>: <span class="num">5</span> }
+      },
+      {
+        <span class="key">"provider"</span>: <span class="str">"autogen_agentchat.conditions.StopMessageTermination"</span>,
+        <span class="key">"component_type"</span>: <span class="str">"termination"</span>,
+        <span class="key">"config"</span>: {}
+      }
+    ]
+  }
+}</code></pre>
+
+    <h3>7.3 &mdash; Serializing Agents</h3>
+    <p>Agents serialize their full configuration &mdash; model client, system message, handoffs, model context, and more.</p>
+
+    <pre><code><span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent, UserProxyAgent
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+agent = AssistantAgent(
+    name=<span class="str">"assistant"</span>,
+    model_client=model_client,
+    handoffs=[<span class="str">"flights_refunder"</span>, <span class="str">"user"</span>],
+    system_message=<span class="str">"Use tools to solve tasks."</span>,
+)
+
+<span class="comment"># Serialize</span>
+agent_config = agent.dump_component()
+<span class="fn">print</span>(agent_config.model_dump_json(indent=<span class="num">2</span>))
+
+<span class="comment"># Deserialize</span>
+restored_agent = AssistantAgent.load_component(agent_config)
+<span class="fn">print</span>(restored_agent.name)  <span class="comment"># "assistant"</span></code></pre>
+
+    <div class="callout info">
+      <div class="callout-title">What Gets Serialized?</div>
+      <div class="callout-body">
+        <ul style="margin: 0.5rem 0 0 1.2rem;">
+          <li><strong>Model client</strong> &mdash; provider, model name, config (API keys are included if set directly)</li>
+          <li><strong>System message</strong> &mdash; full text</li>
+          <li><strong>Handoffs</strong> &mdash; target names, descriptions, transfer messages</li>
+          <li><strong>Model context</strong> &mdash; context type and settings (e.g., buffer size)</li>
+          <li><strong>Tools</strong> &mdash; serializable tools only; plain Python function tools are not yet supported</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>7.4 &mdash; Serializing Teams</h3>
+    <p>Teams serialize their entire participant graph, termination conditions, and configuration &mdash; producing a single JSON that can recreate the full multi-agent system.</p>
+
+    <pre><code><span class="kw">from</span> autogen_agentchat.agents <span class="kw">import</span> AssistantAgent
+<span class="kw">from</span> autogen_agentchat.conditions <span class="kw">import</span> MaxMessageTermination
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+<span class="kw">from</span> autogen_ext.models.openai <span class="kw">import</span> OpenAIChatCompletionClient
+
+model_client = OpenAIChatCompletionClient(model=<span class="str">"gpt-4o"</span>)
+
+agent = AssistantAgent(
+    name=<span class="str">"assistant"</span>,
+    model_client=model_client,
+    system_message=<span class="str">"You are a helpful assistant."</span>,
+)
+
+team = RoundRobinGroupChat(
+    participants=[agent],
+    termination_condition=MaxMessageTermination(<span class="num">2</span>),
+)
+
+<span class="comment"># Serialize the entire team to JSON</span>
+team_config = team.dump_component()
+<span class="fn">print</span>(team_config.model_dump_json(indent=<span class="num">2</span>))
+
+<span class="comment"># Rebuild the team from JSON</span>
+restored_team = RoundRobinGroupChat.load_component(team_config)</code></pre>
+
+    <h4>Team Config Structure</h4>
+    <div class="flow">
+      <div class="flow-step">team.dump_component()</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">ComponentModel (JSON)</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">Save / Share / Import</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">Team.load_component(config)</div>
+    </div>
+
+    <p>The resulting JSON nests every component recursively:</p>
+    <pre><code>{
+  <span class="key">"provider"</span>: <span class="str">"autogen_agentchat.teams.RoundRobinGroupChat"</span>,
+  <span class="key">"component_type"</span>: <span class="str">"team"</span>,
+  <span class="key">"version"</span>: <span class="num">1</span>,
+  <span class="key">"config"</span>: {
+    <span class="key">"participants"</span>: [
+      {
+        <span class="key">"provider"</span>: <span class="str">"autogen_agentchat.agents.AssistantAgent"</span>,
+        <span class="key">"component_type"</span>: <span class="str">"agent"</span>,
+        <span class="key">"config"</span>: {
+          <span class="key">"name"</span>: <span class="str">"assistant"</span>,
+          <span class="key">"model_client"</span>: {
+            <span class="key">"provider"</span>: <span class="str">"autogen_ext.models.openai.OpenAIChatCompletionClient"</span>,
+            <span class="key">"component_type"</span>: <span class="str">"model"</span>,
+            <span class="key">"config"</span>: { <span class="key">"model"</span>: <span class="str">"gpt-4o"</span> }
+          },
+          <span class="key">"system_message"</span>: <span class="str">"You are a helpful assistant."</span>
+        }
+      }
+    ],
+    <span class="key">"termination_condition"</span>: {
+      <span class="key">"provider"</span>: <span class="str">"autogen_agentchat.conditions.MaxMessageTermination"</span>,
+      <span class="key">"component_type"</span>: <span class="str">"termination"</span>,
+      <span class="key">"config"</span>: { <span class="key">"max_messages"</span>: <span class="num">2</span> }
+    }
+  }
+}</code></pre>
+
+    <h3>7.5 &mdash; Save to File &amp; Load from File</h3>
+    <p>A practical pattern for persisting configs to disk:</p>
+
+    <pre><code><span class="kw">import</span> json
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="kw">from</span> autogen_agentchat.teams <span class="kw">import</span> RoundRobinGroupChat
+
+<span class="comment"># Save to file</span>
+<span class="kw">def</span> <span class="fn">save_team_config</span>(team, filepath: <span class="type">str</span>) -&gt; <span class="type">None</span>:
+    config = team.dump_component()
+    Path(filepath).write_text(
+        config.model_dump_json(indent=<span class="num">2</span>), encoding=<span class="str">"utf-8"</span>
+    )
+
+<span class="comment"># Load from file</span>
+<span class="kw">def</span> <span class="fn">load_team_config</span>(filepath: <span class="type">str</span>) -&gt; RoundRobinGroupChat:
+    <span class="kw">from</span> autogen_core <span class="kw">import</span> ComponentModel
+    raw = json.loads(Path(filepath).read_text(encoding=<span class="str">"utf-8"</span>))
+    config = ComponentModel(**raw)
+    <span class="kw">return</span> RoundRobinGroupChat.load_component(config)
+
+<span class="comment"># Usage</span>
+save_team_config(team, <span class="str">"my_team.json"</span>)
+loaded_team = load_team_config(<span class="str">"my_team.json"</span>)</code></pre>
+
+    <h3>7.6 &mdash; AutoGen Studio Integration</h3>
+    <p><strong>AutoGen Studio</strong> is the no-code/low-code UI for building and running AutoGen workflows. The JSON configs produced by <code>dump_component()</code> are the native format that Studio understands &mdash; meaning you can build in code, export to JSON, and import directly into Studio (and vice versa).</p>
+
+    <div class="flow">
+      <div class="flow-step">Build in Python</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">dump_component()</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">JSON config file</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">Import into AutoGen Studio</div>
+    </div>
+
+    <div class="card-grid-2">
+      <div class="card">
+        <h4>Code &rarr; Studio</h4>
+        <ol style="margin: 0.5rem 0 0 1.2rem;">
+          <li>Build your team in Python</li>
+          <li>Call <code>team.dump_component()</code></li>
+          <li>Save the JSON to a file</li>
+          <li>Open AutoGen Studio &rarr; Import config</li>
+          <li>Run, test, and iterate visually</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h4>Studio &rarr; Code</h4>
+        <ol style="margin: 0.5rem 0 0 1.2rem;">
+          <li>Design your team in Studio UI</li>
+          <li>Export the JSON config</li>
+          <li>Call <code>Team.load_component(config)</code></li>
+          <li>Extend with custom tools/logic in Python</li>
+          <li>Deploy to production</li>
+        </ol>
+      </div>
+    </div>
+
+    <h4>Serializable Component Types</h4>
+    <table>
+      <thead><tr><th>Component</th><th>component_type</th><th>Example Provider</th></tr></thead>
+      <tbody>
+        <tr><td>Model Client</td><td><code>"model"</code></td><td><code>autogen_ext.models.openai.OpenAIChatCompletionClient</code></td></tr>
+        <tr><td>Agent</td><td><code>"agent"</code></td><td><code>autogen_agentchat.agents.AssistantAgent</code></td></tr>
+        <tr><td>Team</td><td><code>"team"</code></td><td><code>autogen_agentchat.teams.RoundRobinGroupChat</code></td></tr>
+        <tr><td>Termination</td><td><code>"termination"</code></td><td><code>autogen_agentchat.conditions.MaxMessageTermination</code></td></tr>
+        <tr><td>Tool (AgentTool)</td><td><code>"tool"</code></td><td><code>autogen_agentchat.tools.AgentTool</code></td></tr>
+        <tr><td>Tool (TeamTool)</td><td><code>"tool"</code></td><td><code>autogen_agentchat.tools.TeamTool</code></td></tr>
+        <tr><td>MCP Workbench</td><td><code>"workbench"</code></td><td><code>autogen_ext.tools.mcp.McpWorkbench</code></td></tr>
+        <tr><td>Model Context</td><td><code>"chat_completion_context"</code></td><td><code>autogen_core.model_context.BufferedChatCompletionContext</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout tip">
+      <div class="callout-title">Limitations</div>
+      <div class="callout-body">
+        <ul style="margin: 0.5rem 0 0 1.2rem;">
+          <li>Plain Python function tools are <strong>not yet serializable</strong> &mdash; use <code>AgentTool</code>/<code>TeamTool</code> or MCP tools for serializable workflows</li>
+          <li><code>selector_func</code> in <code>SelectorGroupChat</code> is ignored during serialization</li>
+          <li>API keys embedded in configs are stored in plain text &mdash; use environment variables in production</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

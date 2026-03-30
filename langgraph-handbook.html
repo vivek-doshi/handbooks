@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangGraph Handbook</title>
+<style>
+  :root {
+    --bg:    #0b1120;
+    --bg2:   #111827;
+    --bg3:   #1a2235;
+    --bg4:   #1f2d44;
+    --border:  rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.14);
+    --text:  #dde3f0;
+    --muted: #6e7d99;
+    --accent:  #38bdf8;
+    --accent2: #4ade80;
+    --amber:   #fbbf24;
+    --red:     #f87171;
+    --purple:  #a78bfa;
+    --teal:    #2dd4bf;
+    --orange:  #fb923c;
+    --mono: 'Cascadia Code','Fira Code','JetBrains Mono',monospace;
+    --sans: 'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.7;display:flex;min-height:100vh}
+
+  /* ── SIDEBAR ── */
+  .sidebar{width:252px;min-width:252px;background:var(--bg2);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;padding:0 0 48px;flex-shrink:0}
+  .sidebar::-webkit-scrollbar{width:3px}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+  .sb-head{padding:20px 20px 16px;border-bottom:1px solid var(--border);margin-bottom:10px;background:linear-gradient(130deg,rgba(56,189,248,.1),rgba(74,222,128,.05))}
+  .sb-title{font-size:13px;font-weight:700;color:var(--accent);letter-spacing:.06em}
+  .sb-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .nav-grp{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;padding:11px 20px 4px}
+  .nav-link{display:flex;align-items:center;gap:8px;padding:5px 20px;color:var(--muted);text-decoration:none;font-size:12.5px;transition:color .15s,background .15s;border-left:2px solid transparent}
+  .nav-link:hover{color:var(--text);background:var(--bg3)}
+  .nav-link.active{color:var(--accent);border-left-color:var(--accent);background:rgba(56,189,248,.07)}
+  .nd{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.45}
+
+  /* ── MAIN ── */
+  .main{flex:1;max-width:980px;padding:40px 52px 100px;overflow-x:hidden}
+
+  /* ── HERO ── */
+  .hero{border-radius:12px;padding:28px 32px;margin-bottom:40px;position:relative;overflow:hidden;background:linear-gradient(130deg,rgba(56,189,248,.09),rgba(74,222,128,.05) 60%,rgba(167,139,250,.06));border:1px solid rgba(56,189,248,.2)}
+  .hero::after{content:'LG';position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:110px;font-weight:900;color:rgba(56,189,248,.05);letter-spacing:-6px;pointer-events:none;user-select:none}
+  .hero h1{font-size:24px;font-weight:700;margin-bottom:6px}
+  .hero p{font-size:14px;color:var(--muted);max-width:580px;margin-bottom:16px}
+  .badges{display:flex;flex-wrap:wrap;gap:8px}
+  .badge{font-size:11px;font-weight:600;padding:3px 11px;border-radius:20px;white-space:nowrap;letter-spacing:.02em}
+  .ba{background:rgba(56,189,248,.15);color:#7dd3f8;border:1px solid rgba(56,189,248,.28)}
+  .bg{background:rgba(74,222,128,.13);color:#6ee7a0;border:1px solid rgba(74,222,128,.25)}
+  .bam{background:rgba(251,191,36,.13);color:#fcd34d;border:1px solid rgba(251,191,36,.25)}
+  .bp{background:rgba(167,139,250,.13);color:#c4b5fd;border:1px solid rgba(167,139,250,.25)}
+
+  /* ── TYPOGRAPHY ── */
+  h2{font-size:19px;font-weight:700;color:var(--text);margin:42px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  h2 .ico{font-size:17px;opacity:.85}
+  h3{font-size:14.5px;font-weight:600;color:var(--text);margin:24px 0 9px}
+  h4{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:18px 0 7px}
+  p{color:var(--muted);margin-bottom:10px;line-height:1.75;font-size:13.5px}
+  p strong{color:var(--text);font-weight:600}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  ul,ol{margin:8px 0 12px 20px}
+  li{color:var(--muted);font-size:13.5px;margin-bottom:4px;line-height:1.65}
+  li strong{color:var(--text);font-weight:600}
+  section{margin-bottom:56px;scroll-margin-top:24px}
+
+  /* ── CODE ── */
+  pre{background:#070d1a;border:1px solid var(--border);border-radius:9px;padding:17px 20px;overflow-x:auto;margin:12px 0;font-family:var(--mono);font-size:12.5px;line-height:1.7;position:relative}
+  pre[data-label]::before{content:attr(data-label);position:absolute;top:9px;right:12px;font-size:10px;font-family:var(--sans);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  pre::-webkit-scrollbar{height:3px}
+  pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+  code{font-family:var(--mono);font-size:12px;background:rgba(56,189,248,.11);padding:1px 6px;border-radius:4px;color:var(--accent)}
+  pre code{background:none;padding:0;border-radius:0;font-size:12.5px;color:inherit}
+  /* tokens */
+  .kw{color:#c792ea}  .str{color:#c3e88d}  .cm{color:#3d4f6b;font-style:italic}
+  .fn{color:#82aaff}  .tp{color:#ffcb6b}   .nu{color:#f78c6c}
+  .at{color:var(--teal)}  .op{color:#89ddff} .de{color:var(--orange)}
+  .hl{background:rgba(56,189,248,.08);display:block;margin:0 -20px;padding:0 20px;border-left:2px solid var(--accent)}
+
+  /* ── DO/DON'T ── */
+  .diff{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  @media(max-width:720px){.diff{grid-template-columns:1fr}}
+  .diff-blk{border-radius:8px;overflow:hidden}
+  .diff-hdr{font-size:11px;font-weight:700;letter-spacing:.08em;padding:6px 14px;display:flex;align-items:center;gap:6px}
+  .do .diff-hdr{background:rgba(74,222,128,.14);color:#4ade80;border:1px solid rgba(74,222,128,.24);border-bottom:none}
+  .dn .diff-hdr{background:rgba(248,113,113,.11);color:#f87171;border:1px solid rgba(248,113,113,.2);border-bottom:none}
+  .do pre{border-top-left-radius:0;border-top-right-radius:0;border-color:rgba(74,222,128,.18);margin:0}
+  .dn pre{border-top-left-radius:0;border-top-right-radius:0;border-color:rgba(248,113,113,.15);margin:0}
+
+  /* ── TABLE ── */
+  .tw{overflow-x:auto;margin:12px 0;border-radius:9px;border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:9px 14px;background:var(--bg3);color:var(--text);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border2)}
+  td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--muted);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,.016)}
+
+  /* ── CALLOUT ── */
+  .call{display:flex;gap:12px;border-radius:8px;padding:13px 16px;margin:13px 0;font-size:13.5px;line-height:1.65}
+  .call-icon{flex-shrink:0;font-size:15px;margin-top:1px}
+  .call-body{color:var(--muted)}
+  .call-body strong{color:var(--text)}
+  .tip{background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.2)}
+  .warn{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.22)}
+  .info{background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.2)}
+  .danger{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.2)}
+
+  /* ── CARDS ── */
+  .cards{display:grid;gap:12px}
+  .cards2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cards3{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+  .card{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:16px 18px;transition:border-color .18s}
+  .card:hover{border-color:var(--border2)}
+  .ctag{font-size:10px;font-weight:700;color:var(--accent);background:rgba(56,189,248,.12);padding:1px 7px;border-radius:10px;display:inline-block;margin-bottom:7px;letter-spacing:.04em}
+  .ctitle{font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:5px}
+  .cbody{font-size:12.5px;color:var(--muted);line-height:1.6}
+
+  /* ── FLOW ── */
+  .flow{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:12px 0}
+  .fstep{font-size:12px;font-weight:500;padding:5px 12px;border-radius:6px;background:var(--bg3);border:1px solid var(--border2);color:var(--text)}
+  .farr{color:var(--muted);font-size:14px}
+
+  /* ── SEVERITY ── */
+  .sev{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:.04em;white-space:nowrap}
+  .must{background:rgba(248,113,113,.18);color:#f8a0a0;border:1px solid rgba(248,113,113,.3)}
+  .should{background:rgba(251,191,36,.14);color:#fcd34d;border:1px solid rgba(251,191,36,.3)}
+  .avoid{background:rgba(74,222,128,.12);color:#6ee7a0;border:1px solid rgba(74,222,128,.25)}
+
+  /* ── LINK LIST ── */
+  .llist{list-style:none;display:flex;flex-direction:column;gap:6px;margin:10px 0}
+  .llist li{display:flex;align-items:baseline;gap:8px;padding:8px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:7px;font-size:13px;transition:border-color .15s}
+  .llist li:hover{border-color:var(--border2)}
+  .ltag{font-size:10px;color:var(--muted);background:var(--bg3);padding:1px 6px;border-radius:4px;flex-shrink:0}
+
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.09);border-radius:3px}
+  @media(max-width:768px){.sidebar{display:none}.main{padding:24px 18px 60px}}
+</style>
+</head>
+<body>
+
+<!-- ══════ SIDEBAR ══════ -->
+<nav class="sidebar">
+  <div class="sb-head">
+    <div class="sb-title">◈ LangGraph</div>
+    <div class="sb-sub">Practitioner's Handbook · v1.x</div>
+  </div>
+
+  <div class="nav-grp">Getting Started</div>
+  <a class="nav-link" href="#install"><span class="nd"></span>Install & Setup</a>
+  <a class="nav-link" href="#core"><span class="nd"></span>Core Concepts</a>
+  <a class="nav-link" href="#first-agent"><span class="nd"></span>First Agent</a>
+
+  <div class="nav-grp">Model Connections</div>
+  <a class="nav-link" href="#gemini"><span class="nd"></span>Gemini (Vertex AI)</a>
+  <a class="nav-link" href="#azure"><span class="nd"></span>GPT (Azure OpenAI)</a>
+  <a class="nav-link" href="#multi-model"><span class="nd"></span>Multi-Model Patterns</a>
+
+  <div class="nav-grp">Tools & Grounding</div>
+  <a class="nav-link" href="#tools"><span class="nd"></span>Tool Binding</a>
+  <a class="nav-link" href="#web-search"><span class="nd"></span>Web Search</a>
+  <a class="nav-link" href="#grounding"><span class="nd"></span>Grounding & Citations</a>
+  <a class="nav-link" href="#toolnode"><span class="nd"></span>ToolNode Prebuilt</a>
+
+  <div class="nav-grp">Workflows</div>
+  <a class="nav-link" href="#workflows"><span class="nd"></span>Workflow Patterns</a>
+  <a class="nav-link" href="#react"><span class="nd"></span>ReAct Agent</a>
+  <a class="nav-link" href="#plan-execute"><span class="nd"></span>Plan & Execute</a>
+  <a class="nav-link" href="#multiagent"><span class="nd"></span>Multi-Agent</a>
+
+  <div class="nav-grp">RAG</div>
+  <a class="nav-link" href="#rag"><span class="nd"></span>RAG Patterns</a>
+  <a class="nav-link" href="#adaptive-rag"><span class="nd"></span>Adaptive / Self-RAG</a>
+
+  <div class="nav-grp">Memory & State</div>
+  <a class="nav-link" href="#state"><span class="nd"></span>State Design</a>
+  <a class="nav-link" href="#memory"><span class="nd"></span>Memory & Checkpointers</a>
+  <a class="nav-link" href="#subgraphs"><span class="nd"></span>Subgraphs</a>
+
+  <div class="nav-grp">Runtime</div>
+  <a class="nav-link" href="#streaming"><span class="nd"></span>Streaming</a>
+  <a class="nav-link" href="#hitl"><span class="nd"></span>Human-in-the-Loop</a>
+  <a class="nav-link" href="#error"><span class="nd"></span>Error Handling</a>
+
+  <div class="nav-grp">Debugging & Ops</div>
+  <a class="nav-link" href="#debug"><span class="nd"></span>Debugging (LangSmith)</a>
+  <a class="nav-link" href="#standards"><span class="nd"></span>Standards & Best Practices</a>
+  <a class="nav-link" href="#refs"><span class="nd"></span>Reference Links</a>
+</nav>
+
+<!-- ══════ MAIN ══════ -->
+<main class="main">
+
+<div class="hero">
+  <h1>LangGraph Practitioner's Handbook</h1>
+  <p>Production-grade reference for building stateful, long-running agents with LangGraph 1.x — covering agents, tools, RAG, memory, streaming, and debugging.</p>
+  <div class="badges">
+    <span class="badge ba">LangGraph 1.1+</span>
+    <span class="badge bg">Python 3.11+</span>
+    <span class="badge bam">Gemini · GPT · Claude</span>
+    <span class="badge bp">LangSmith Tracing</span>
+  </div>
+</div>
+
+<!-- ══════ INSTALL ══════ -->
+<section id="install">
+<h2><span class="ico">📦</span>Install & Setup</h2>
+
+<pre data-label="shell"><span class="cm"># Core install</span>
+pip install langgraph langchain-core langchain-community
+
+<span class="cm"># Model provider packages</span>
+pip install langchain-google-vertexai          <span class="cm"># Gemini / Vertex AI</span>
+pip install langchain-openai                   <span class="cm"># OpenAI / Azure OpenAI</span>
+pip install langchain-anthropic                <span class="cm"># Claude</span>
+
+<span class="cm"># Persistence backends</span>
+pip install langgraph-checkpoint-postgres      <span class="cm"># Postgres (production)</span>
+pip install langgraph-checkpoint-sqlite        <span class="cm"># SQLite (dev/test)</span>
+
+<span class="cm"># Tools</span>
+pip install langchain-tavily                   <span class="cm"># Tavily web search</span>
+pip install langchain-community                <span class="cm"># DuckDuckGo, Wikipedia, etc.</span>
+
+<span class="cm"># Observability</span>
+pip install langsmith</pre>
+
+<pre data-label=".env"><span class="cm"># LangSmith tracing (highly recommended from day one)</span>
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=ls__...
+LANGCHAIN_PROJECT=my-langgraph-app
+
+<span class="cm"># Model keys</span>
+OPENAI_API_KEY=sk-...
+TAVILY_API_KEY=tvly-...
+
+<span class="cm"># Google / Vertex — use Application Default Credentials (ADC) or service account</span>
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa.json
+GOOGLE_CLOUD_PROJECT=my-gcp-project</pre>
+
+<div class="call info">
+  <span class="call-icon">ℹ</span>
+  <div class="call-body"><strong>LangGraph 1.x API stability:</strong> The 1.0 release (Oct 2025) guarantees no breaking changes until 2.0. The core primitives — <code>StateGraph</code>, <code>MessagesState</code>, <code>START</code>/<code>END</code>, <code>add_messages</code>, <code>MemorySaver</code> — are stable. <code>langgraph-prebuilt</code> is now bundled into the main package.</div>
+</div>
+</section>
+
+<!-- ══════ CORE CONCEPTS ══════ -->
+<section id="core">
+<h2><span class="ico">🧠</span>Core Concepts</h2>
+
+<div class="cards cards3">
+  <div class="card">
+    <div class="ctag">PRIMITIVE</div>
+    <div class="ctitle">State</div>
+    <div class="cbody">A TypedDict (or Pydantic model) that flows through the graph. Every node reads it and returns partial updates. Reducers merge updates (e.g., <code>add_messages</code> appends instead of replacing).</div>
+  </div>
+  <div class="card">
+    <div class="ctag">PRIMITIVE</div>
+    <div class="ctitle">Node</div>
+    <div class="cbody">A Python function (sync or async) that takes state and returns a dict of updates. Nodes are the units of work. Can call LLMs, tools, databases, or any code.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">PRIMITIVE</div>
+    <div class="ctitle">Edge</div>
+    <div class="cbody">Connects nodes. Regular edges are unconditional. Conditional edges route to different nodes based on state — the core of branching logic.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">RUNTIME</div>
+    <div class="ctitle">Checkpointer</div>
+    <div class="cbody">Saves state snapshot at every superstep. Enables fault tolerance, resume-after-crash, human-in-the-loop, and time-travel debugging.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">RUNTIME</div>
+    <div class="ctitle">Thread</div>
+    <div class="cbody">A unique <code>thread_id</code> in config. Groups checkpoints for a single conversation/workflow instance. Multi-tenant apps need one thread per session.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">RUNTIME</div>
+    <div class="ctitle">Superstep</div>
+    <div class="cbody">One round of node executions. All nodes that can run in parallel do so in one superstep. The graph stops when no more nodes are ready — reaching END.</div>
+  </div>
+</div>
+
+<div class="flow">
+  <div class="fstep">START</div><span class="farr">→</span>
+  <div class="fstep">node_a</div><span class="farr">→</span>
+  <div class="fstep">conditional_edge</div><span class="farr">→</span>
+  <div class="fstep">node_b <em>or</em> node_c</div><span class="farr">→</span>
+  <div class="fstep">END</div>
+</div>
+</section>
+
+<!-- ══════ FIRST AGENT ══════ -->
+<section id="first-agent">
+<h2><span class="ico">🚀</span>First Agent — Minimal ReAct</h2>
+
+<pre data-label="Python"><span class="kw">from</span> typing <span class="kw">import</span> Annotated
+<span class="kw">from</span> typing_extensions <span class="kw">import</span> TypedDict
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, MessagesState, START, END
+<span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> ToolNode, tools_condition
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> InMemorySaver
+
+<span class="cm"># ── 1. Define tools ────────────────────────────────────────</span>
+<span class="at">@tool</span>
+<span class="kw">def</span> <span class="fn">multiply</span>(a: <span class="tp">int</span>, b: <span class="tp">int</span>) -> <span class="tp">int</span>:
+    <span class="str">"""Multiply two integers."""</span>
+    <span class="kw">return</span> a * b
+
+tools = [multiply]
+
+<span class="cm"># ── 2. Bind model ───────────────────────────────────────────</span>
+llm = ChatOpenAI(model=<span class="str">"gpt-4o"</span>, temperature=<span class="nu">0</span>)
+llm_with_tools = llm.bind_tools(tools)
+
+<span class="cm"># ── 3. Define nodes ─────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">call_model</span>(state: MessagesState):
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [llm_with_tools.invoke(state[<span class="str">"messages"</span>])]}
+
+<span class="cm"># ── 4. Build graph ──────────────────────────────────────────</span>
+builder = StateGraph(MessagesState)
+builder.add_node(<span class="str">"agent"</span>, call_model)
+builder.add_node(<span class="str">"tools"</span>, ToolNode(tools))
+
+builder.add_edge(START, <span class="str">"agent"</span>)
+builder.add_conditional_edges(<span class="str">"agent"</span>, tools_condition)  <span class="cm"># routes to "tools" or END</span>
+builder.add_edge(<span class="str">"tools"</span>, <span class="str">"agent"</span>)                       <span class="cm"># loop back after tool call</span>
+
+<span class="cm"># ── 5. Compile with memory ──────────────────────────────────</span>
+graph = builder.compile(checkpointer=InMemorySaver())
+
+<span class="cm"># ── 6. Invoke ───────────────────────────────────────────────</span>
+config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"session-1"</span>}}
+result = graph.invoke(
+    {<span class="str">"messages"</span>: [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"What is 6 × 7?"</span>}]},
+    config=config
+)
+<span class="kw">print</span>(result[<span class="str">"messages"</span>][-<span class="nu">1</span>].content)</pre>
+
+<div class="call tip">
+  <span class="call-icon">💡</span>
+  <div class="call-body"><strong>MessagesState</strong> is a built-in state that uses <code>add_messages</code> as its reducer. Messages are appended — never replaced. It's the standard choice for chat/agent applications. For custom state, extend it or define your own TypedDict.</div>
+</div>
+</section>
+
+<!-- ══════ GEMINI ══════ -->
+<section id="gemini">
+<h2><span class="ico">🌐</span>Gemini — Vertex AI</h2>
+
+<pre data-label="Python"><span class="kw">from</span> langchain_google_vertexai <span class="kw">import</span> ChatVertexAI
+<span class="kw">from</span> google.auth <span class="kw">import</span> default <span class="kw">as</span> gauth
+
+<span class="cm"># ── Auth: Application Default Credentials (recommended) ─────</span>
+<span class="cm"># Run once locally: gcloud auth application-default login</span>
+<span class="cm"># In GCP (Cloud Run / GKE): uses attached service account automatically</span>
+
+credentials, project = gauth()
+
+<span class="cm"># ── Model init ──────────────────────────────────────────────</span>
+llm = ChatVertexAI(
+    model=<span class="str">"gemini-2.0-flash"</span>,      <span class="cm"># or "gemini-2.0-pro", "gemini-1.5-pro"</span>
+    project=<span class="str">"my-gcp-project"</span>,
+    location=<span class="str">"us-central1"</span>,
+    temperature=<span class="nu">0.1</span>,
+    max_output_tokens=<span class="nu">4096</span>,
+    streaming=<span class="kw">True</span>,                  <span class="cm"># enable token streaming</span>
+)
+
+<span class="cm"># ── With tools ──────────────────────────────────────────────</span>
+llm_with_tools = llm.bind_tools(tools)
+
+<span class="cm"># ── Gemini native grounding (Google Search) ─────────────────</span>
+<span class="kw">from</span> langchain_google_vertexai.model_garden <span class="kw">import</span> ChatAnthropicVertex
+<span class="kw">from</span> vertexai.generative_models <span class="kw">import</span> Tool, grounding
+
+<span class="cm"># Enable Vertex AI Search grounding on the model</span>
+grounding_tool = Tool.from_google_search_retrieval(
+    google_search_retrieval=grounding.GoogleSearchRetrieval()
+)
+
+llm_grounded = ChatVertexAI(
+    model=<span class="str">"gemini-2.0-flash"</span>,
+    project=<span class="str">"my-gcp-project"</span>,
+    location=<span class="str">"us-central1"</span>,
+    tools=[grounding_tool],           <span class="cm"># native Vertex AI grounding</span>
+)</pre>
+
+<h3>Vertex AI Agent Engine (managed deployment)</h3>
+<pre data-label="Python"><span class="kw">import</span> vertexai
+<span class="kw">from</span> vertexai.preview <span class="kw">import</span> reasoning_engines
+
+vertexai.init(project=<span class="str">"my-project"</span>, location=<span class="str">"us-central1"</span>)
+
+<span class="cm"># Wrap compiled graph in AgentEngine</span>
+app = reasoning_engines.AdkApp(
+    agent=graph,
+    enable_tracing=<span class="kw">True</span>,
+)
+
+<span class="cm"># Deploy to Vertex AI Agent Engine</span>
+remote_app = reasoning_engines.ReasoningEngine.create(
+    app,
+    requirements=[<span class="str">"langgraph>=1.0"</span>, <span class="str">"langchain-google-vertexai"</span>],
+    display_name=<span class="str">"my-agent"</span>,
+)
+
+<span class="cm"># Invoke remotely</span>
+response = remote_app.query(input=<span class="str">"What is the exchange rate for USD/INR?"</span>)</pre>
+</section>
+
+<!-- ══════ AZURE ══════ -->
+<section id="azure">
+<h2><span class="ico">☁️</span>GPT — Azure OpenAI</h2>
+
+<pre data-label="Python"><span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+<span class="kw">import</span> os
+
+<span class="cm"># ── Azure OpenAI init ────────────────────────────────────────</span>
+llm = AzureChatOpenAI(
+    azure_deployment=<span class="str">"gpt-4o"</span>,           <span class="cm"># your deployment name in Azure</span>
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    api_key=os.environ[<span class="str">"AZURE_OPENAI_API_KEY"</span>],
+    api_version=<span class="str">"2025-01-01-preview"</span>,     <span class="cm"># use latest stable API version</span>
+    temperature=<span class="nu">0</span>,
+    streaming=<span class="kw">True</span>,
+    max_retries=<span class="nu">3</span>,
+)
+
+<span class="cm"># ── With tools ──────────────────────────────────────────────</span>
+llm_with_tools = llm.bind_tools(tools)
+
+<span class="cm"># ── Azure env var pattern (recommended) ─────────────────────</span>
+<span class="cm"># Set in .env / Key Vault / CI secret, never in code:</span>
+<span class="cm"># AZURE_OPENAI_ENDPOINT = https://my-resource.openai.azure.com/</span>
+<span class="cm"># AZURE_OPENAI_API_KEY  = &lt;key&gt;</span>
+<span class="cm"># OPENAI_API_VERSION    = 2025-01-01-preview</span>
+<span class="cm"># When these are set, AzureChatOpenAI() picks them up automatically.</span>
+
+<span class="cm"># ── Azure with Managed Identity (prod, no key in env) ───────</span>
+<span class="kw">from</span> azure.identity <span class="kw">import</span> DefaultAzureCredential, get_bearer_token_provider
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+
+token_provider = get_bearer_token_provider(
+    DefaultAzureCredential(),
+    <span class="str">"https://cognitiveservices.azure.com/.default"</span>
+)
+
+llm_managed = AzureChatOpenAI(
+    azure_deployment=<span class="str">"gpt-4o"</span>,
+    azure_endpoint=os.environ[<span class="str">"AZURE_OPENAI_ENDPOINT"</span>],
+    api_version=<span class="str">"2025-01-01-preview"</span>,
+    azure_ad_token_provider=token_provider,  <span class="cm"># no API key needed</span>
+    temperature=<span class="nu">0</span>,
+)</pre>
+</section>
+
+<!-- ══════ MULTI-MODEL ══════ -->
+<section id="multi-model">
+<h2><span class="ico">⚡</span>Multi-Model Patterns</h2>
+<p>Route different nodes to different models. Use a fast/cheap model for routing decisions, a powerful model for generation, a local model for sensitive data.</p>
+
+<pre data-label="Python"><span class="kw">from</span> langchain_google_vertexai <span class="kw">import</span> ChatVertexAI
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> AzureChatOpenAI
+
+<span class="cm"># Router: fast Gemini Flash for routing decisions</span>
+router_llm = ChatVertexAI(model=<span class="str">"gemini-2.0-flash"</span>, temperature=<span class="nu">0</span>)
+
+<span class="cm"># Generator: GPT-4o via Azure for content generation</span>
+gen_llm = AzureChatOpenAI(azure_deployment=<span class="str">"gpt-4o"</span>, temperature=<span class="nu">0.7</span>)
+
+<span class="cm"># Analyst: Gemini Pro for long context analysis (2M tokens)</span>
+analyst_llm = ChatVertexAI(model=<span class="str">"gemini-2.0-pro"</span>, temperature=<span class="nu">0</span>)
+
+<span class="kw">def</span> <span class="fn">router_node</span>(state: State) -> State:
+    decision = router_llm.invoke(
+        [(<span class="str">"system"</span>, <span class="str">"Route this query. Reply with exactly: GENERATE or ANALYSE"</span>),
+         (<span class="str">"user"</span>, state[<span class="str">"query"</span>])]
+    )
+    <span class="kw">return</span> {<span class="str">"route"</span>: decision.content.strip()}
+
+<span class="kw">def</span> <span class="fn">generate_node</span>(state: State) -> State:
+    response = gen_llm.invoke(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [response]}
+
+<span class="kw">def</span> <span class="fn">analyse_node</span>(state: State) -> State:
+    response = analyst_llm.invoke(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [response]}
+
+<span class="kw">def</span> <span class="fn">route_decision</span>(state: State) -> <span class="tp">str</span>:
+    <span class="kw">return</span> <span class="str">"generate"</span> <span class="kw">if</span> state[<span class="str">"route"</span>] == <span class="str">"GENERATE"</span> <span class="kw">else</span> <span class="str">"analyse"</span>
+
+builder.add_conditional_edges(<span class="str">"router"</span>, route_decision)</pre>
+</section>
+
+<!-- ══════ TOOLS ══════ -->
+<section id="tools">
+<h2><span class="ico">🔧</span>Tool Binding</h2>
+
+<pre data-label="Python"><span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool, StructuredTool
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+<span class="cm"># ── Simple tool with @tool decorator ────────────────────────</span>
+<span class="at">@tool</span>
+<span class="kw">def</span> <span class="fn">get_stock_price</span>(ticker: <span class="tp">str</span>) -> <span class="tp">str</span>:
+    <span class="str">"""Get current stock price for a ticker symbol like RELIANCE.NS or TCS.NS."""</span>
+    <span class="cm"># real impl: call yfinance / Alpha Vantage / NSE API</span>
+    <span class="kw">return</span> <span class="str">f"₹2,450.00 (mock)"</span>
+
+<span class="cm"># ── Pydantic schema for complex input ───────────────────────</span>
+<span class="kw">class</span> <span class="tp">SearchInput</span>(BaseModel):
+    query: <span class="tp">str</span> = Field(description=<span class="str">"Search query string"</span>)
+    max_results: <span class="tp">int</span> = Field(default=<span class="nu">5</span>, description=<span class="str">"Number of results"</span>)
+
+<span class="at">@tool</span>(args_schema=SearchInput)
+<span class="kw">def</span> <span class="fn">web_search</span>(query: <span class="tp">str</span>, max_results: <span class="tp">int</span> = <span class="nu">5</span>) -> <span class="tp">str</span>:
+    <span class="str">"""Search the web for current information."""</span>
+    <span class="cm"># impl: call Tavily / DuckDuckGo</span>
+    ...
+
+<span class="cm"># ── StructuredTool from function ────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">_run_python</span>(code: <span class="tp">str</span>) -> <span class="tp">str</span>:
+    <span class="str">"""Execute Python code in sandbox and return output."""</span>
+    ...
+
+python_tool = StructuredTool.from_function(
+    func=_run_python,
+    name=<span class="str">"execute_python"</span>,
+    description=<span class="str">"Run Python code and return stdout. Use for calculations."</span>,
+)
+
+<span class="cm"># ── Async tool ──────────────────────────────────────────────</span>
+<span class="at">@tool</span>
+<span class="kw">async def</span> <span class="fn">fetch_url</span>(url: <span class="tp">str</span>) -> <span class="tp">str</span>:
+    <span class="str">"""Fetch content from a URL."""</span>
+    <span class="kw">async with</span> aiohttp.ClientSession() <span class="kw">as</span> s:
+        <span class="kw">async with</span> s.get(url) <span class="kw">as</span> r:
+            <span class="kw">return await</span> r.text()
+
+<span class="cm"># ── Bind all tools to model ──────────────────────────────────</span>
+all_tools = [get_stock_price, web_search, python_tool, fetch_url]
+llm_with_tools = llm.bind_tools(all_tools)</pre>
+</section>
+
+<!-- ══════ WEB SEARCH ══════ -->
+<section id="web-search">
+<h2><span class="ico">🔍</span>Web Search Tools</h2>
+
+<pre data-label="Python — Tavily (recommended)"><span class="kw">from</span> langchain_tavily <span class="kw">import</span> TavilySearch
+
+<span class="cm"># Tavily is purpose-built for LLM-agent web search</span>
+tavily = TavilySearch(
+    max_results=<span class="nu">5</span>,
+    topic=<span class="str">"general"</span>,          <span class="cm"># "general" | "news" | "finance"</span>
+    include_answer=<span class="kw">True</span>,      <span class="cm"># get a direct answer summary</span>
+    include_raw_content=<span class="kw">False</span>,
+    days=<span class="nu">7</span>,                    <span class="cm"># restrict to last N days (news mode)</span>
+)
+
+<span class="cm"># Use directly in graph as tool</span>
+tools = [tavily]
+llm_with_tools = llm.bind_tools(tools)</pre>
+
+<pre data-label="Python — DuckDuckGo (no API key)"><span class="kw">from</span> langchain_community.tools <span class="kw">import</span> DuckDuckGoSearchRun, DuckDuckGoSearchResults
+
+<span class="cm"># Simple text result</span>
+ddg = DuckDuckGoSearchRun()
+
+<span class="cm"># Structured results with URL + snippet</span>
+ddg_full = DuckDuckGoSearchResults(
+    output_format=<span class="str">"list"</span>,
+    num_results=<span class="nu">5</span>,
+)
+tools = [ddg_full]</pre>
+
+<pre data-label="Python — Google Custom Search"><span class="kw">from</span> langchain_google_community <span class="kw">import</span> GoogleSearchAPIWrapper, GoogleSearchRun
+
+search = GoogleSearchAPIWrapper(
+    google_api_key=os.environ[<span class="str">"GOOGLE_API_KEY"</span>],
+    google_cse_id=os.environ[<span class="str">"GOOGLE_CSE_ID"</span>],
+    k=<span class="nu">5</span>,
+)
+google_tool = GoogleSearchRun(api_wrapper=search)
+tools = [google_tool]</pre>
+</section>
+
+<!-- ══════ GROUNDING ══════ -->
+<section id="grounding">
+<h2><span class="ico">📌</span>Grounding & Citations</h2>
+<p>Grounding anchors model responses to verifiable sources. There are two patterns: <strong>tool-based grounding</strong> (the agent actively searches and cites) and <strong>native grounding</strong> (built into Vertex AI for Gemini).</p>
+
+<pre data-label="Python — Grounded RAG node with citations"><span class="kw">from</span> langchain_core.messages <span class="kw">import</span> SystemMessage, HumanMessage
+
+<span class="at">@tool</span>
+<span class="kw">def</span> <span class="fn">search_and_cite</span>(query: <span class="tp">str</span>) -> <span class="tp">str</span>:
+    <span class="str">"""Search the web and return results with source URLs for citation."""</span>
+    results = tavily.invoke(query)
+    <span class="cm"># Format with sources for the model to cite</span>
+    formatted = []
+    <span class="kw">for</span> r <span class="kw">in</span> results:
+        formatted.append(<span class="str">f"[Source: {r['url']}]\n{r['content']}"</span>)
+    <span class="kw">return</span> <span class="str">"\n\n---\n\n"</span>.join(formatted)
+
+<span class="kw">def</span> <span class="fn">grounded_agent_node</span>(state: MessagesState):
+    sys = SystemMessage(content=<span class="str">"""You answer questions using provided sources.
+Always cite sources inline as [Source: URL]. Never make up facts."""</span>)
+    response = llm_with_tools.invoke([sys] + state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [response]}</pre>
+
+<pre data-label="Python — Vertex AI native Search grounding"><span class="kw">from</span> vertexai.generative_models <span class="kw">import</span> GenerativeModel, Tool, grounding
+<span class="kw">import</span> vertexai
+
+vertexai.init(project=<span class="str">"my-project"</span>, location=<span class="str">"us-central1"</span>)
+
+<span class="cm"># Google Search grounding built into Gemini on Vertex AI</span>
+model = GenerativeModel(
+    model_name=<span class="str">"gemini-2.0-flash"</span>,
+    tools=[Tool.from_google_search_retrieval(
+        google_search_retrieval=grounding.GoogleSearchRetrieval(
+            dynamic_retrieval_config=grounding.DynamicRetrievalConfig(
+                dynamic_threshold=<span class="nu">0.7</span>  <span class="cm"># only search when confidence low</span>
+            )
+        )
+    )]
+)
+
+<span class="cm"># Response includes grounding_metadata with citations</span>
+response = model.generate_content(<span class="str">"What is the current Nifty 50 level?"</span>)
+<span class="kw">for</span> chunk <span class="kw">in</span> response.candidates[<span class="nu">0</span>].grounding_metadata.grounding_chunks:
+    <span class="kw">print</span>(chunk.web.uri, chunk.web.title)</pre>
+</section>
+
+<!-- ══════ TOOLNODE ══════ -->
+<section id="toolnode">
+<h2><span class="ico">🔩</span>ToolNode — Prebuilt Tool Executor</h2>
+
+<pre data-label="Python"><span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> ToolNode, tools_condition
+
+<span class="cm"># ToolNode automatically:
+#  1. Extracts tool_calls from the last AIMessage
+#  2. Executes each tool (parallel by default in v1.x)
+#  3. Returns ToolMessages with results</span>
+
+tool_node = ToolNode(
+    tools=all_tools,
+    handle_tool_errors=<span class="kw">True</span>,   <span class="cm"># catches exceptions, returns error as ToolMessage</span>
+    name=<span class="str">"tools"</span>,
+)
+
+<span class="cm"># tools_condition: routes to "tools" if last msg has tool_calls, else END</span>
+builder.add_conditional_edges(<span class="str">"agent"</span>, tools_condition)
+builder.add_edge(<span class="str">"tools"</span>, <span class="str">"agent"</span>)
+
+<span class="cm"># Custom tool error handling</span>
+<span class="kw">def</span> <span class="fn">handle_tool_error</span>(state: MessagesState) -> MessagesState:
+    error = state.get(<span class="str">"error"</span>)
+    tool_calls = state[<span class="str">"messages"</span>][-<span class="nu">1</span>].tool_calls
+    <span class="kw">return</span> {<span class="str">"messages"</span>: [
+        ToolMessage(
+            content=<span class="str">f"Error: {repr(error)}\nRetry with corrected input."</span>,
+            tool_call_id=tc[<span class="str">"id"</span>],
+        )
+        <span class="kw">for</span> tc <span class="kw">in</span> tool_calls
+    ]}
+
+tool_node_safe = ToolNode(tools, handle_tool_errors=handle_tool_error)</pre>
+</section>
+
+<!-- ══════ WORKFLOWS ══════ -->
+<section id="workflows">
+<h2><span class="ico">🗺</span>Workflow Patterns</h2>
+
+<div class="cards cards2" style="margin-bottom:20px">
+  <div class="card">
+    <div class="ctag">PATTERN</div>
+    <div class="ctitle">Sequential</div>
+    <div class="cbody">Fixed pipeline: A → B → C → END. No branching. Ideal for ETL-style workflows, document processing, data enrichment chains.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">PATTERN</div>
+    <div class="ctitle">Conditional Branching</div>
+    <div class="cbody">Router node decides next step at runtime. Core of most agent architectures. Use <code>add_conditional_edges</code> with a router function.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">PATTERN</div>
+    <div class="ctitle">Cycles / Loops</div>
+    <div class="cbody">Nodes can loop back: agent → tools → agent. Required for ReAct. Always add a max_steps guard to prevent infinite loops.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">PATTERN</div>
+    <div class="ctitle">Fan-out / Fan-in (Map-Reduce)</div>
+    <div class="cbody">Use <code>Send()</code> to spawn parallel branches with different inputs. Results merge back in an aggregator node. Ideal for parallel research.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">PATTERN</div>
+    <div class="ctitle">Supervisor / Multi-Agent</div>
+    <div class="cbody">A supervisor node routes tasks to specialist agents. Each specialist is itself a compiled subgraph. Hierarchical control with clear separation.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">PATTERN</div>
+    <div class="ctitle">Human-in-the-Loop</div>
+    <div class="cbody">interrupt() pauses the graph, saves state, waits for human input. Resume with Command(resume=value). Works across hours or days.</div>
+  </div>
+</div>
+
+<h3>Fan-out with Send (parallel map-reduce)</h3>
+<pre data-label="Python"><span class="kw">from</span> langgraph.types <span class="kw">import</span> Send
+<span class="kw">from</span> operator <span class="kw">import</span> add
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated
+
+<span class="kw">class</span> <span class="tp">ResearchState</span>(TypedDict):
+    topics: <span class="tp">list</span>[<span class="tp">str</span>]
+    results: Annotated[<span class="tp">list</span>[<span class="tp">str</span>], add]  <span class="cm"># reducer: append results from all branches</span>
+
+<span class="kw">def</span> <span class="fn">generate_topics</span>(state: ResearchState) -> ResearchState:
+    <span class="kw">return</span> {<span class="str">"topics"</span>: [<span class="str">"market analysis"</span>, <span class="str">"risk factors"</span>, <span class="str">"valuation"</span>]}
+
+<span class="kw">def</span> <span class="fn">fan_out</span>(state: ResearchState) -> <span class="tp">list</span>[Send]:
+    <span class="cm"># Spawn one branch per topic — they run in parallel</span>
+    <span class="kw">return</span> [Send(<span class="str">"research_topic"</span>, {<span class="str">"topic"</span>: t}) <span class="kw">for</span> t <span class="kw">in</span> state[<span class="str">"topics"</span>]]
+
+<span class="kw">def</span> <span class="fn">research_topic</span>(state: <span class="tp">dict</span>) -> ResearchState:
+    result = llm.invoke(<span class="str">f"Research: {state['topic']}"</span>)
+    <span class="kw">return</span> {<span class="str">"results"</span>: [result.content]}
+
+<span class="kw">def</span> <span class="fn">aggregate</span>(state: ResearchState) -> ResearchState:
+    combined = <span class="str">"\n\n"</span>.join(state[<span class="str">"results"</span>])
+    synthesis = llm.invoke(<span class="str">f"Synthesise: {combined}"</span>)
+    <span class="kw">return</span> {<span class="str">"final_report"</span>: synthesis.content}
+
+builder = StateGraph(ResearchState)
+builder.add_node(<span class="str">"topics"</span>, generate_topics)
+builder.add_node(<span class="str">"research_topic"</span>, research_topic)
+builder.add_node(<span class="str">"aggregate"</span>, aggregate)
+builder.add_conditional_edges(<span class="str">"topics"</span>, fan_out, [<span class="str">"research_topic"</span>])
+builder.add_edge(<span class="str">"research_topic"</span>, <span class="str">"aggregate"</span>)</pre>
+</section>
+
+<!-- ══════ REACT ══════ -->
+<section id="react">
+<h2><span class="ico">🔄</span>ReAct Agent (Prebuilt)</h2>
+
+<pre data-label="Python — create_react_agent"><span class="kw">from</span> langgraph.prebuilt <span class="kw">import</span> create_react_agent
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> InMemorySaver
+
+<span class="cm"># Fastest way to a production ReAct agent</span>
+graph = create_react_agent(
+    model=llm,
+    tools=all_tools,
+    checkpointer=InMemorySaver(),
+    state_modifier=<span class="str">"""You are a financial research assistant for Indian markets.
+Always cite your sources. Use INR currency formatting.
+If you don't know, say so — never hallucinate data."""</span>,
+    max_steps=<span class="nu">15</span>,             <span class="cm"># guard against infinite loops</span>
+)
+
+<span class="cm"># Stream results</span>
+config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"research-session-1"</span>}}
+<span class="kw">async for</span> chunk <span class="kw">in</span> graph.astream(
+    {<span class="str">"messages"</span>: [(<span class="str">"user"</span>, <span class="str">"Analyse the latest Reliance Industries earnings"</span>)]},
+    config=config,
+    stream_mode=<span class="str">"messages"</span>,
+):
+    msg, meta = chunk
+    <span class="kw">if</span> hasattr(msg, <span class="str">"content"</span>) <span class="kw">and</span> msg.content:
+        <span class="kw">print</span>(msg.content, end=<span class="str">""</span>, flush=<span class="kw">True</span>)</pre>
+</section>
+
+<!-- ══════ PLAN & EXECUTE ══════ -->
+<section id="plan-execute">
+<h2><span class="ico">📋</span>Plan & Execute</h2>
+<p>For complex, multi-step tasks. A planner LLM creates a task list; an executor works through each step, potentially updating the plan.</p>
+
+<pre data-label="Python"><span class="kw">from</span> typing <span class="kw">import</span> Annotated
+<span class="kw">from</span> operator <span class="kw">import</span> add
+
+<span class="kw">class</span> <span class="tp">PlanState</span>(TypedDict):
+    task: <span class="tp">str</span>
+    plan: <span class="tp">list</span>[<span class="tp">str</span>]          <span class="cm"># steps to execute</span>
+    results: Annotated[<span class="tp">list</span>, add]  <span class="cm"># accumulated step results</span>
+    final: <span class="tp">str</span>
+
+<span class="kw">def</span> <span class="fn">planner</span>(state: PlanState) -> PlanState:
+    plan_prompt = <span class="str">f"""Break this task into 3-5 actionable steps:
+Task: {state['task']}
+Return as a numbered list, one step per line."""</span>
+    response = llm.invoke(plan_prompt)
+    steps = [s.strip() <span class="kw">for</span> s <span class="kw">in</span> response.content.split(<span class="str">"\n"</span>) <span class="kw">if</span> s.strip()]
+    <span class="kw">return</span> {<span class="str">"plan"</span>: steps}
+
+<span class="kw">def</span> <span class="fn">executor</span>(state: PlanState) -> PlanState:
+    step = state[<span class="str">"plan"</span>][<span class="nu">0</span>]              <span class="cm"># take next step</span>
+    remaining = state[<span class="str">"plan"</span>][<span class="nu">1</span>:]         <span class="cm"># pop it</span>
+    result = executor_agent.invoke({<span class="str">"messages"</span>: [(<span class="str">"user"</span>, step)]})
+    <span class="kw">return</span> {
+        <span class="str">"plan"</span>: remaining,
+        <span class="str">"results"</span>: [result[<span class="str">"messages"</span>][-<span class="nu">1</span>].content]
+    }
+
+<span class="kw">def</span> <span class="fn">synthesiser</span>(state: PlanState) -> PlanState:
+    all_results = <span class="str">"\n"</span>.join(state[<span class="str">"results"</span>])
+    final = llm.invoke(<span class="str">f"Synthesise these findings:\n{all_results}"</span>)
+    <span class="kw">return</span> {<span class="str">"final"</span>: final.content}
+
+<span class="kw">def</span> <span class="fn">should_continue</span>(state: PlanState) -> <span class="tp">str</span>:
+    <span class="kw">return</span> <span class="str">"execute"</span> <span class="kw">if</span> state[<span class="str">"plan"</span>] <span class="kw">else</span> <span class="str">"synthesise"</span>
+
+builder = StateGraph(PlanState)
+builder.add_node(<span class="str">"plan"</span>,       planner)
+builder.add_node(<span class="str">"execute"</span>,    executor)
+builder.add_node(<span class="str">"synthesise"</span>, synthesiser)
+builder.add_edge(START, <span class="str">"plan"</span>)
+builder.add_edge(<span class="str">"plan"</span>, <span class="str">"execute"</span>)
+builder.add_conditional_edges(<span class="str">"execute"</span>, should_continue)
+builder.add_edge(<span class="str">"synthesise"</span>, END)</pre>
+</section>
+
+<!-- ══════ MULTI-AGENT ══════ -->
+<section id="multiagent">
+<h2><span class="ico">🤝</span>Multi-Agent Systems</h2>
+
+<pre data-label="Python — Supervisor pattern"><span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, MessagesState, START, END
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage
+
+<span class="cm"># ── Specialist sub-agents ────────────────────────────────────</span>
+research_agent = create_react_agent(llm, tools=[tavily], name=<span class="str">"Researcher"</span>)
+analyst_agent  = create_react_agent(llm, tools=[python_tool], name=<span class="str">"Analyst"</span>)
+writer_agent   = create_react_agent(llm, tools=[], name=<span class="str">"Writer"</span>)
+
+<span class="kw">class</span> <span class="tp">SupervisorState</span>(TypedDict):
+    messages: Annotated[<span class="tp">list</span>, add_messages]
+    next_agent: <span class="tp">str</span>
+
+AGENTS = [<span class="str">"researcher"</span>, <span class="str">"analyst"</span>, <span class="str">"writer"</span>, <span class="str">"FINISH"</span>]
+
+<span class="kw">def</span> <span class="fn">supervisor_node</span>(state: SupervisorState) -> SupervisorState:
+    prompt = <span class="str">f"""You are a supervisor. Based on the conversation, choose the next worker.
+Workers: {AGENTS}. Reply with exactly one worker name or FINISH."""</span>
+    response = llm.invoke([(<span class="str">"system"</span>, prompt)] + state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {<span class="str">"next_agent"</span>: response.content.strip()}
+
+<span class="kw">def</span> <span class="fn">make_agent_node</span>(agent, name: <span class="tp">str</span>):
+    <span class="kw">def</span> <span class="fn">node</span>(state: SupervisorState):
+        result = agent.invoke({<span class="str">"messages"</span>: state[<span class="str">"messages"</span>]})
+        last = result[<span class="str">"messages"</span>][-<span class="nu">1</span>]
+        <span class="kw">return</span> {<span class="str">"messages"</span>: [HumanMessage(content=last.content, name=name)]}
+    <span class="kw">return</span> node
+
+builder = StateGraph(SupervisorState)
+builder.add_node(<span class="str">"supervisor"</span>,  supervisor_node)
+builder.add_node(<span class="str">"researcher"</span>,  make_agent_node(research_agent, <span class="str">"Researcher"</span>))
+builder.add_node(<span class="str">"analyst"</span>,     make_agent_node(analyst_agent,  <span class="str">"Analyst"</span>))
+builder.add_node(<span class="str">"writer"</span>,      make_agent_node(writer_agent,   <span class="str">"Writer"</span>))
+
+builder.add_edge(START, <span class="str">"supervisor"</span>)
+builder.add_conditional_edges(
+    <span class="str">"supervisor"</span>,
+    <span class="kw">lambda</span> s: s[<span class="str">"next_agent"</span>],
+    {<span class="str">"researcher"</span>: <span class="str">"researcher"</span>, <span class="str">"analyst"</span>: <span class="str">"analyst"</span>,
+     <span class="str">"writer"</span>: <span class="str">"writer"</span>, <span class="str">"FINISH"</span>: END}
+)
+<span class="kw">for</span> agent_name <span class="kw">in</span> [<span class="str">"researcher"</span>, <span class="str">"analyst"</span>, <span class="str">"writer"</span>]:
+    builder.add_edge(agent_name, <span class="str">"supervisor"</span>)</pre>
+</section>
+
+<!-- ══════ RAG ══════ -->
+<section id="rag">
+<h2><span class="ico">📚</span>RAG Patterns</h2>
+
+<pre data-label="Python — Standard RAG graph"><span class="kw">from</span> langchain_community.vectorstores <span class="kw">import</span> Chroma
+<span class="kw">from</span> langchain_google_vertexai <span class="kw">import</span> VertexAIEmbeddings
+<span class="kw">from</span> langchain_core.documents <span class="kw">import</span> Document
+
+<span class="cm"># ── Vector store setup ───────────────────────────────────────</span>
+embeddings = VertexAIEmbeddings(model=<span class="str">"text-embedding-005"</span>)
+vectorstore = Chroma(
+    collection_name=<span class="str">"financial_docs"</span>,
+    embedding_function=embeddings,
+    persist_directory=<span class="str">"./chroma_db"</span>,
+)
+retriever = vectorstore.as_retriever(search_kwargs={<span class="str">"k"</span>: <span class="nu">5</span>})
+
+<span class="cm"># ── RAG State ───────────────────────────────────────────────</span>
+<span class="kw">class</span> <span class="tp">RAGState</span>(TypedDict):
+    question: <span class="tp">str</span>
+    context: <span class="tp">list</span>[Document]
+    answer: <span class="tp">str</span>
+
+<span class="cm"># ── Nodes ───────────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">retrieve</span>(state: RAGState) -> RAGState:
+    docs = retriever.invoke(state[<span class="str">"question"</span>])
+    <span class="kw">return</span> {<span class="str">"context"</span>: docs}
+
+<span class="kw">def</span> <span class="fn">generate</span>(state: RAGState) -> RAGState:
+    context_text = <span class="str">"\n\n"</span>.join(d.page_content <span class="kw">for</span> d <span class="kw">in</span> state[<span class="str">"context"</span>])
+    prompt = <span class="str">f"""Answer using only the provided context. Cite page numbers.
+
+Context:
+{context_text}
+
+Question: {state['question']}
+Answer:"""</span>
+    response = llm.invoke(prompt)
+    <span class="kw">return</span> {<span class="str">"answer"</span>: response.content}
+
+builder = StateGraph(RAGState)
+builder.add_node(<span class="str">"retrieve"</span>, retrieve)
+builder.add_node(<span class="str">"generate"</span>, generate)
+builder.add_edge(START, <span class="str">"retrieve"</span>)
+builder.add_edge(<span class="str">"retrieve"</span>, <span class="str">"generate"</span>)
+builder.add_edge(<span class="str">"generate"</span>, END)</pre>
+</section>
+
+<!-- ══════ ADAPTIVE RAG ══════ -->
+<section id="adaptive-rag">
+<h2><span class="ico">🔬</span>Adaptive RAG / Self-RAG</h2>
+<p>Adaptive RAG uses a grader to evaluate retrieved documents and the generated answer — rewriting the query or falling back to web search when quality is poor.</p>
+
+<pre data-label="Python — Adaptive RAG with graders"><span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel
+
+<span class="kw">class</span> <span class="tp">GradeDoc</span>(BaseModel):
+    relevant: <span class="tp">bool</span>
+    reason: <span class="tp">str</span>
+
+<span class="kw">class</span> <span class="tp">GradeAnswer</span>(BaseModel):
+    grounded: <span class="tp">bool</span>
+    useful: <span class="tp">bool</span>
+
+grader_llm = llm.with_structured_output(GradeDoc)
+answer_grader = llm.with_structured_output(GradeAnswer)
+
+<span class="kw">class</span> <span class="tp">AdaptiveRAGState</span>(TypedDict):
+    question: <span class="tp">str</span>
+    context: <span class="tp">list</span>[Document]
+    answer: <span class="tp">str</span>
+    retries: <span class="tp">int</span>
+
+<span class="kw">def</span> <span class="fn">grade_documents</span>(state: AdaptiveRAGState) -> AdaptiveRAGState:
+    filtered = []
+    <span class="kw">for</span> doc <span class="kw">in</span> state[<span class="str">"context"</span>]:
+        grade = grader_llm.invoke(
+            <span class="str">f"Question: {state['question']}\nDocument: {doc.page_content}\nIs relevant?"</span>
+        )
+        <span class="kw">if</span> grade.relevant:
+            filtered.append(doc)
+    <span class="kw">return</span> {<span class="str">"context"</span>: filtered}
+
+<span class="kw">def</span> <span class="fn">decide_after_grading</span>(state: AdaptiveRAGState) -> <span class="tp">str</span>:
+    <span class="kw">if not</span> state[<span class="str">"context"</span>] <span class="kw">or</span> state[<span class="str">"retries"</span>] > <span class="nu">2</span>:
+        <span class="kw">return</span> <span class="str">"web_search"</span>     <span class="cm"># fall back to web</span>
+    <span class="kw">return</span> <span class="str">"generate"</span>
+
+<span class="kw">def</span> <span class="fn">rewrite_query</span>(state: AdaptiveRAGState) -> AdaptiveRAGState:
+    rewrite = llm.invoke(
+        <span class="str">f"Rewrite this query for better retrieval: {state['question']}"</span>
+    )
+    <span class="kw">return</span> {<span class="str">"question"</span>: rewrite.content, <span class="str">"retries"</span>: state[<span class="str">"retries"</span>] + <span class="nu">1</span>}
+
+<span class="kw">def</span> <span class="fn">grade_answer</span>(state: AdaptiveRAGState) -> <span class="tp">str</span>:
+    grade = answer_grader.invoke(
+        <span class="str">f"Question: {state['question']}\nAnswer: {state['answer']}"</span>
+    )
+    <span class="kw">return</span> END <span class="kw">if</span> (grade.grounded <span class="kw">and</span> grade.useful) <span class="kw">else</span> <span class="str">"rewrite"</span>
+
+builder.add_node(<span class="str">"retrieve"</span>,       retrieve)
+builder.add_node(<span class="str">"grade_docs"</span>,     grade_documents)
+builder.add_node(<span class="str">"generate"</span>,       generate)
+builder.add_node(<span class="str">"rewrite"</span>,        rewrite_query)
+builder.add_node(<span class="str">"web_search"</span>,     web_search_node)
+builder.add_edge(START, <span class="str">"retrieve"</span>)
+builder.add_edge(<span class="str">"retrieve"</span>, <span class="str">"grade_docs"</span>)
+builder.add_conditional_edges(<span class="str">"grade_docs"</span>, decide_after_grading)
+builder.add_edge(<span class="str">"generate"</span>, <span class="str">"grade_answer_node"</span>)
+builder.add_conditional_edges(<span class="str">"grade_answer_node"</span>, grade_answer)</pre>
+</section>
+
+<!-- ══════ STATE ══════ -->
+<section id="state">
+<h2><span class="ico">🗃</span>State Design</h2>
+
+<pre data-label="Python — State patterns"><span class="kw">from</span> typing <span class="kw">import</span> Annotated
+<span class="kw">from</span> operator <span class="kw">import</span> add
+<span class="kw">from</span> langgraph.graph.message <span class="kw">import</span> add_messages
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, field_validator
+
+<span class="cm"># ── 1. TypedDict (standard) ─────────────────────────────────</span>
+<span class="kw">class</span> <span class="tp">AgentState</span>(TypedDict):
+    messages: Annotated[<span class="tp">list</span>, add_messages]  <span class="cm"># reducer: append messages</span>
+    steps: Annotated[<span class="tp">int</span>, <span class="kw">lambda</span> a, b: a + b]  <span class="cm"># reducer: sum</span>
+    context: <span class="tp">str</span>                               <span class="cm"># last-write-wins (no reducer)</span>
+    max_steps: <span class="tp">int</span>                             <span class="cm"># configuration constant</span>
+
+<span class="cm"># ── 2. Pydantic (validation + defaults) ─────────────────────</span>
+<span class="kw">class</span> <span class="tp">ValidatedState</span>(BaseModel):
+    messages: Annotated[<span class="tp">list</span>, add_messages] = []
+    confidence: <span class="tp">float</span> = <span class="nu">0.0</span>
+    retries: <span class="tp">int</span> = <span class="nu">0</span>
+
+    <span class="at">@field_validator</span>(<span class="str">"confidence"</span>)
+    <span class="kw">def</span> <span class="fn">clamp_confidence</span>(cls, v): <span class="kw">return</span> max(<span class="nu">0.0</span>, min(<span class="nu">1.0</span>, v))
+
+<span class="cm"># ── 3. Input/Output schemas (restrict what callers see) ──────</span>
+<span class="kw">class</span> <span class="tp">InputState</span>(TypedDict):
+    question: <span class="tp">str</span>
+
+<span class="kw">class</span> <span class="tp">OutputState</span>(TypedDict):
+    answer: <span class="tp">str</span>
+    sources: <span class="tp">list</span>[<span class="tp">str</span>]
+
+graph = builder.compile(input_schema=InputState, output_schema=OutputState)
+
+<span class="cm"># ── 4. Private state (internal only, not in input/output) ────</span>
+<span class="kw">class</span> <span class="tp">PrivateState</span>(TypedDict):
+    _intermediate_steps: <span class="tp">list</span>  <span class="cm"># underscore = private by convention</span></pre>
+
+<div class="call warn">
+  <span class="call-icon">⚠</span>
+  <div class="call-body"><strong>Keep state minimal.</strong> Don't store transient values (loop variables, intermediate strings) in state — pass through function scope. Only persist what needs to survive across nodes or be accessible from multiple nodes. Large state objects increase checkpoint size and slow persistence.</div>
+</div>
+</section>
+
+<!-- ══════ MEMORY ══════ -->
+<section id="memory">
+<h2><span class="ico">🧩</span>Memory & Checkpointers</h2>
+
+<pre data-label="Python — Checkpointer options"><span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> InMemorySaver    <span class="cm"># dev/testing only</span>
+<span class="kw">from</span> langgraph.checkpoint.sqlite <span class="kw">import</span> SqliteSaver       <span class="cm"># local / small apps</span>
+<span class="kw">from</span> langgraph.checkpoint.postgres <span class="kw">import</span> PostgresSaver   <span class="cm"># production</span>
+<span class="kw">from</span> psycopg_pool <span class="kw">import</span> ConnectionPool
+
+<span class="cm"># ── Dev: in-memory (no persistence between restarts) ────────</span>
+checkpointer = InMemorySaver()
+
+<span class="cm"># ── Dev: SQLite (persists to disk) ──────────────────────────</span>
+<span class="kw">with</span> SqliteSaver.from_conn_string(<span class="str">":memory:"</span>) <span class="kw">as</span> cp:
+    graph = builder.compile(checkpointer=cp)
+
+<span class="cm"># ── Production: Postgres ────────────────────────────────────</span>
+DB_URI = <span class="str">"postgresql://user:pass@host:5432/langgraph?sslmode=require"</span>
+pool = ConnectionPool(conninfo=DB_URI, max_size=<span class="nu">10</span>, open=<span class="kw">False</span>)
+pool.open()
+<span class="kw">with</span> pool.connection() <span class="kw">as</span> conn:
+    pg_saver = PostgresSaver(conn)
+    pg_saver.setup()                <span class="cm"># creates tables on first run</span>
+    graph = builder.compile(checkpointer=pg_saver)
+
+<span class="cm"># ── Thread-scoped config ─────────────────────────────────────</span>
+config = {
+    <span class="str">"configurable"</span>: {
+        <span class="str">"thread_id"</span>: <span class="str">f"tenant-{tenant_id}:user-{user_id}:session-{session_id}"</span>,
+        <span class="str">"checkpoint_ns"</span>: <span class="str">f"tenant-{tenant_id}"</span>,   <span class="cm"># multi-tenant isolation</span>
+    }
+}
+
+<span class="cm"># ── Time travel: replay from a specific checkpoint ───────────</span>
+checkpoints = <span class="tp">list</span>(graph.get_state_history(config))
+past_config = checkpoints[-<span class="nu">3</span>].config    <span class="cm"># 3 steps back</span>
+graph.invoke(<span class="kw">None</span>, config=past_config)   <span class="cm"># replay from there</span>
+
+<span class="cm"># ── Inspect current state ───────────────────────────────────</span>
+state = graph.get_state(config)
+<span class="kw">print</span>(state.values)          <span class="cm"># current state dict</span>
+<span class="kw">print</span>(state.next)            <span class="cm"># next nodes to execute</span>
+<span class="kw">print</span>(state.metadata)        <span class="cm"># step number, source</span></pre>
+
+<h3>Long-term cross-session memory</h3>
+<pre data-label="Python — InMemoryStore (cross-thread)"><span class="kw">from</span> langgraph.store.memory <span class="kw">import</span> InMemoryStore
+
+store = InMemoryStore()
+
+<span class="kw">def</span> <span class="fn">memory_node</span>(state: MessagesState, store=store):
+    <span class="cm"># Load user preferences from long-term store</span>
+    user_id = state[<span class="str">"user_id"</span>]
+    prefs = store.get((<span class="str">"user_prefs"</span>, user_id), <span class="str">"preferences"</span>)
+
+    <span class="cm"># After generating response, save new facts</span>
+    store.put(
+        (<span class="str">"user_prefs"</span>, user_id), <span class="str">"preferences"</span>,
+        {<span class="str">"currency"</span>: <span class="str">"INR"</span>, <span class="str">"domain"</span>: <span class="str">"finance"</span>}
+    )
+    <span class="kw">return</span> state
+
+graph = builder.compile(checkpointer=InMemorySaver(), store=store)</pre>
+</section>
+
+<!-- ══════ SUBGRAPHS ══════ -->
+<section id="subgraphs">
+<h2><span class="ico">🔲</span>Subgraphs</h2>
+<p>Subgraphs are independently compiled graphs used as nodes in a parent graph. They manage their own internal state and expose only what the parent needs.</p>
+
+<pre data-label="Python — Subgraph as node"><span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, START, END
+
+<span class="cm"># ── Subgraph: internal state ─────────────────────────────────</span>
+<span class="kw">class</span> <span class="tp">ResearchSubState</span>(TypedDict):
+    query: <span class="tp">str</span>        <span class="cm"># shared with parent (same key name)</span>
+    search_results: <span class="tp">list</span>  <span class="cm"># internal to subgraph</span>
+    summary: <span class="tp">str</span>      <span class="cm"># output back to parent</span>
+
+<span class="kw">def</span> <span class="fn">search_step</span>(state: ResearchSubState):
+    results = tavily.invoke(state[<span class="str">"query"</span>])
+    <span class="kw">return</span> {<span class="str">"search_results"</span>: results}
+
+<span class="kw">def</span> <span class="fn">summarise_step</span>(state: ResearchSubState):
+    summary = llm.invoke(<span class="str">f"Summarise: {state['search_results']}"</span>)
+    <span class="kw">return</span> {<span class="str">"summary"</span>: summary.content}
+
+sub_builder = StateGraph(ResearchSubState)
+sub_builder.add_node(<span class="str">"search"</span>,   search_step)
+sub_builder.add_node(<span class="str">"summarise"</span>, summarise_step)
+sub_builder.add_edge(START, <span class="str">"search"</span>)
+sub_builder.add_edge(<span class="str">"search"</span>, <span class="str">"summarise"</span>)
+sub_builder.add_edge(<span class="str">"summarise"</span>, END)
+research_subgraph = sub_builder.compile()
+
+<span class="cm"># ── Parent graph: add subgraph as a node ─────────────────────</span>
+<span class="kw">class</span> <span class="tp">ParentState</span>(TypedDict):
+    query: <span class="tp">str</span>           <span class="cm"># same key as subgraph — state is passed down</span>
+    summary: <span class="tp">str</span>         <span class="cm"># output from subgraph flows back up</span>
+    final_report: <span class="tp">str</span>
+
+parent = StateGraph(ParentState)
+parent.add_node(<span class="str">"research"</span>, research_subgraph)  <span class="cm"># compiled subgraph as node</span>
+parent.add_node(<span class="str">"report"</span>, <span class="kw">lambda</span> s: {<span class="str">"final_report"</span>: s[<span class="str">"summary"</span>]})
+parent.add_edge(START, <span class="str">"research"</span>)
+parent.add_edge(<span class="str">"research"</span>, <span class="str">"report"</span>)
+parent.add_edge(<span class="str">"report"</span>, END)
+
+<span class="cm"># Stream with subgraph events visible</span>
+<span class="kw">async for</span> event <span class="kw">in</span> graph.astream(input, stream_mode=<span class="str">"updates"</span>, subgraphs=<span class="kw">True</span>):
+    namespace, data = event
+    <span class="kw">print</span>(<span class="str">f"[{' > '.join(namespace) or 'root'}]"</span>, data)</pre>
+</section>
+
+<!-- ══════ STREAMING ══════ -->
+<section id="streaming">
+<h2><span class="ico">⚡</span>Streaming</h2>
+
+<div class="tw">
+  <table>
+    <tr><th>Mode</th><th>What streams</th><th>Best for</th></tr>
+    <tr><td><code>messages</code></td><td>Token-by-token LLM output (AIMessageChunk)</td><td>Chat UI, real-time display</td></tr>
+    <tr><td><code>updates</code></td><td>Dict of state changes after each node</td><td>Dashboards, progress tracking</td></tr>
+    <tr><td><code>values</code></td><td>Full state snapshot after each superstep</td><td>Debugging, state inspection</td></tr>
+    <tr><td><code>custom</code></td><td>Anything you emit via <code>astream_events</code></td><td>Tool call results, intermediate data</td></tr>
+    <tr><td><code>debug</code></td><td>Every internal event (verbose)</td><td>Deep debugging</td></tr>
+  </table>
+</div>
+
+<pre data-label="Python — Streaming patterns"><span class="kw">import</span> asyncio
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> AIMessageChunk
+
+<span class="cm"># ── Token streaming (chat UI) ────────────────────────────────</span>
+<span class="kw">async for</span> chunk <span class="kw">in</span> graph.astream(
+    {<span class="str">"messages"</span>: [(<span class="str">"user"</span>, <span class="str">"Explain SEBI regulations"</span>)]},
+    config=config,
+    stream_mode=<span class="str">"messages"</span>,
+):
+    msg, metadata = chunk
+    <span class="kw">if</span> isinstance(msg, AIMessageChunk) <span class="kw">and</span> msg.content:
+        <span class="kw">print</span>(msg.content, end=<span class="str">""</span>, flush=<span class="kw">True</span>)
+
+<span class="cm"># ── Node updates (dashboard) ─────────────────────────────────</span>
+<span class="kw">async for</span> update <span class="kw">in</span> graph.astream(input, stream_mode=<span class="str">"updates"</span>):
+    node_name = <span class="tp">list</span>(update.keys())[<span class="nu">0</span>]
+    <span class="kw">print</span>(<span class="str">f"✓ {node_name} completed"</span>)
+
+<span class="cm"># ── Multi-mode: tokens + node events ────────────────────────</span>
+<span class="kw">async for</span> chunk <span class="kw">in</span> graph.astream(
+    input, config=config,
+    stream_mode=[<span class="str">"messages"</span>, <span class="str">"updates"</span>],
+    subgraphs=<span class="kw">True</span>,
+    version=<span class="str">"v2"</span>,              <span class="cm"># v2: chunk has type/ns/data keys</span>
+):
+    <span class="kw">if</span> chunk[<span class="str">"type"</span>] == <span class="str">"messages"</span>:
+        msg, _ = chunk[<span class="str">"data"</span>]
+        <span class="kw">if</span> isinstance(msg, AIMessageChunk) <span class="kw">and</span> msg.content:
+            <span class="kw">print</span>(msg.content, end=<span class="str">""</span>, flush=<span class="kw">True</span>)
+    <span class="kw">elif</span> chunk[<span class="str">"type"</span>] == <span class="str">"updates"</span>:
+        node = <span class="tp">list</span>(chunk[<span class="str">"data"</span>].keys())[<span class="nu">0</span>]
+        ns = chunk[<span class="str">"ns"</span>]
+        <span class="kw">print</span>(<span class="str">f"\n[{' > '.join(ns) or 'root'}::{node}]"</span>)
+
+<span class="cm"># ── Custom stream events ─────────────────────────────────────</span>
+<span class="kw">from</span> langchain_core.callbacks.manager <span class="kw">import</span> adispatch_custom_event
+
+<span class="kw">async def</span> <span class="fn">my_node</span>(state):
+    <span class="kw">await</span> adispatch_custom_event(<span class="str">"tool_start"</span>, {<span class="str">"tool"</span>: <span class="str">"web_search"</span>})
+    result = <span class="kw">await</span> do_search(state[<span class="str">"query"</span>])
+    <span class="kw">await</span> adispatch_custom_event(<span class="str">"tool_end"</span>, {<span class="str">"results"</span>: len(result)})
+    <span class="kw">return</span> {<span class="str">"context"</span>: result}
+
+<span class="kw">async for</span> event <span class="kw">in</span> graph.astream_events(input, version=<span class="str">"v2"</span>):
+    <span class="kw">if</span> event[<span class="str">"event"</span>] == <span class="str">"on_custom_event"</span>:
+        <span class="kw">print</span>(event[<span class="str">"name"</span>], event[<span class="str">"data"</span>])</pre>
+</section>
+
+<!-- ══════ HITL ══════ -->
+<section id="hitl">
+<h2><span class="ico">🙋</span>Human-in-the-Loop (HITL)</h2>
+
+<pre data-label="Python — interrupt() pattern"><span class="kw">from</span> langgraph.types <span class="kw">import</span> interrupt, Command
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> InMemorySaver
+
+<span class="kw">def</span> <span class="fn">approve_action</span>(state: MessagesState):
+    <span class="cm"># Graph pauses here — state is checkpointed</span>
+    action = state[<span class="str">"proposed_action"</span>]
+    user_input = interrupt({
+        <span class="str">"message"</span>: <span class="str">f"Approve this action?\n{action}"</span>,
+        <span class="str">"options"</span>: [<span class="str">"yes"</span>, <span class="str">"no"</span>, <span class="str">"edit"</span>]
+    })  <span class="cm"># blocks until Command(resume=...) is called</span>
+
+    <span class="kw">if</span> user_input == <span class="str">"yes"</span>:
+        <span class="kw">return</span> {<span class="str">"approved"</span>: <span class="kw">True</span>}
+    <span class="kw">elif</span> user_input == <span class="str">"no"</span>:
+        <span class="kw">return</span> {<span class="str">"approved"</span>: <span class="kw">False</span>}
+    <span class="kw">else</span>:
+        <span class="cm"># Loop: ask again with edited action</span>
+        edited = interrupt({<span class="str">"message"</span>: <span class="str">"Enter edited action:"</span>})
+        <span class="kw">return</span> {<span class="str">"proposed_action"</span>: edited, <span class="str">"approved"</span>: <span class="kw">True</span>}
+
+graph = builder.compile(checkpointer=InMemorySaver())
+
+<span class="cm"># 1. Run until interrupt</span>
+result = graph.invoke(input, config=config)
+<span class="cm"># result["__interrupt__"] contains the interrupt payload</span>
+
+<span class="cm"># 2. Inspect state</span>
+state = graph.get_state(config)
+
+<span class="cm"># 3. Resume with user's answer</span>
+graph.invoke(Command(resume=<span class="str">"yes"</span>), config=config)
+
+<span class="cm"># 4. Or update state and continue</span>
+graph.update_state(config, {<span class="str">"proposed_action"</span>: <span class="str">"revised plan"</span>})
+graph.invoke(<span class="kw">None</span>, config=config)  <span class="cm"># resume from updated state</span></pre>
+
+<pre data-label="Python — Static breakpoints (pause before/after node)"><span class="cm"># Compile with breakpoints — simpler than interrupt()</span>
+graph = builder.compile(
+    checkpointer=InMemorySaver(),
+    interrupt_before=[<span class="str">"execute_tools"</span>],   <span class="cm"># pause BEFORE this node runs</span>
+    interrupt_after=[<span class="str">"planner"</span>],           <span class="cm"># pause AFTER this node runs</span>
+)
+
+<span class="cm"># Inspect, optionally modify, then continue</span>
+state = graph.get_state(config)
+<span class="kw">print</span>(state.next)                     <span class="cm"># which node will run next</span>
+graph.update_state(config, {<span class="str">"plan"</span>: modified_plan})
+graph.invoke(<span class="kw">None</span>, config=config)      <span class="cm"># continue</span></pre>
+</section>
+
+<!-- ══════ ERROR HANDLING ══════ -->
+<section id="error">
+<h2><span class="ico">🛡</span>Error Handling</h2>
+
+<pre data-label="Python — Retry + fallback patterns"><span class="kw">from</span> tenacity <span class="kw">import</span> retry, stop_after_attempt, wait_exponential
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> ToolMessage
+
+<span class="cm"># ── Retry on node failure ────────────────────────────────────</span>
+<span class="at">@retry</span>(stop=stop_after_attempt(<span class="nu">3</span>), wait=wait_exponential(min=<span class="nu">1</span>, max=<span class="nu">10</span>))
+<span class="kw">async def</span> <span class="fn">resilient_node</span>(state: AgentState):
+    <span class="kw">return await</span> llm.ainvoke(state[<span class="str">"messages"</span>])
+
+<span class="cm"># ── Max steps guard (prevent infinite loops) ────────────────</span>
+<span class="kw">def</span> <span class="fn">should_continue</span>(state: AgentState) -> <span class="tp">str</span>:
+    <span class="kw">if</span> state[<span class="str">"steps"</span>] >= state.get(<span class="str">"max_steps"</span>, <span class="nu">20</span>):
+        <span class="kw">return</span> <span class="str">"force_end"</span>     <span class="cm"># emergency exit</span>
+    last_msg = state[<span class="str">"messages"</span>][-<span class="nu">1</span>]
+    <span class="kw">return</span> <span class="str">"tools"</span> <span class="kw">if</span> last_msg.tool_calls <span class="kw">else</span> END
+
+<span class="cm"># ── Tool error as ToolMessage (not exception) ───────────────</span>
+<span class="kw">def</span> <span class="fn">safe_tool_node</span>(state: MessagesState):
+    last = state[<span class="str">"messages"</span>][-<span class="nu">1</span>]
+    results = []
+    <span class="kw">for</span> tc <span class="kw">in</span> last.tool_calls:
+        <span class="kw">try</span>:
+            result = tool_map[tc[<span class="str">"name"</span>]].invoke(tc[<span class="str">"args"</span>])
+            results.append(ToolMessage(content=<span class="tp">str</span>(result), tool_call_id=tc[<span class="str">"id"</span>]))
+        <span class="kw">except</span> Exception <span class="kw">as</span> e:
+            results.append(ToolMessage(
+                content=<span class="str">f"Error: {e}. Try a different approach."</span>,
+                tool_call_id=tc[<span class="str">"id"</span>]
+            ))
+    <span class="kw">return</span> {<span class="str">"messages"</span>: results}
+
+<span class="cm"># ── Fallback LLM node ────────────────────────────────────────</span>
+primary_llm = ChatVertexAI(model=<span class="str">"gemini-2.0-flash"</span>)
+fallback_llm = AzureChatOpenAI(azure_deployment=<span class="str">"gpt-4o"</span>)
+resilient_llm = primary_llm.with_fallbacks([fallback_llm])</pre>
+</section>
+
+<!-- ══════ DEBUGGING ══════ -->
+<section id="debug">
+<h2><span class="ico">🔬</span>Debugging — LangSmith & Local</h2>
+<p>LangGraph 1.x integrates deeply with LangSmith. Every node execution, LLM call, and tool call becomes a traced span. This is the primary production debugging path.</p>
+
+<pre data-label=".env — Enable tracing"><span class="cm"># Enable LangSmith tracing — add to .env before starting your process</span>
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=ls__xxxxxxxxxxxxxxxx
+LANGCHAIN_PROJECT=arthavidya-agent
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com  <span class="cm"># default</span></pre>
+
+<pre data-label="Python — Local debugging toolkit"><span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph
+
+<span class="cm"># ── 1. Visualise graph structure ─────────────────────────────</span>
+graph = builder.compile()
+<span class="kw">print</span>(graph.get_graph().draw_ascii())          <span class="cm"># terminal ASCII art</span>
+graph.get_graph().draw_mermaid_png()            <span class="cm"># .png file of the graph</span>
+graph.get_graph(xray=<span class="kw">True</span>).draw_mermaid_png() <span class="cm"># show subgraph internals</span>
+
+<span class="cm"># ── 2. Debug stream — every internal event ───────────────────</span>
+<span class="kw">for</span> event <span class="kw">in</span> graph.stream(input, config=config, stream_mode=<span class="str">"debug"</span>):
+    <span class="kw">print</span>(event[<span class="str">"type"</span>], event.get(<span class="str">"step"</span>))
+
+<span class="cm"># ── 3. Inspect state at any checkpoint ──────────────────────</span>
+state = graph.get_state(config)
+<span class="kw">print</span>(<span class="str">"current values:"</span>,  state.values)
+<span class="kw">print</span>(<span class="str">"next nodes:"</span>,      state.next)
+<span class="kw">print</span>(<span class="str">"at step:"</span>,         state.metadata[<span class="str">"step"</span>])
+
+<span class="cm"># ── 4. Full state history (time travel) ─────────────────────</span>
+<span class="kw">for</span> snapshot <span class="kw">in</span> graph.get_state_history(config):
+    <span class="kw">print</span>(snapshot.metadata[<span class="str">"step"</span>], snapshot.next, snapshot.config)
+
+<span class="cm"># ── 5. Print every message in a run ─────────────────────────</span>
+final = graph.invoke(input, config=config)
+<span class="kw">for</span> msg <span class="kw">in</span> final[<span class="str">"messages"</span>]:
+    <span class="kw">print</span>(<span class="str">f"[{msg.type}] {msg.content[:200]}"</span>)
+
+<span class="cm"># ── 6. astream_events — fine-grained event trace ────────────</span>
+<span class="kw">async for</span> event <span class="kw">in</span> graph.astream_events(input, version=<span class="str">"v2"</span>):
+    kind = event[<span class="str">"event"</span>]
+    name = event[<span class="str">"name"</span>]
+    <span class="kw">if</span> kind == <span class="str">"on_chat_model_start"</span>:
+        <span class="kw">print</span>(<span class="str">f"→ LLM start: {name}"</span>)
+    <span class="kw">elif</span> kind == <span class="str">"on_tool_start"</span>:
+        <span class="kw">print</span>(<span class="str">f"→ Tool: {name} args={event['data']['input']}"</span>)
+    <span class="kw">elif</span> kind == <span class="str">"on_chat_model_end"</span>:
+        output = event[<span class="str">"data"</span>][<span class="str">"output"</span>]
+        tokens = output.usage_metadata
+        <span class="kw">print</span>(<span class="str">f"← LLM done | tokens: {tokens}"</span>)</pre>
+
+<h3>LangSmith key debugging workflows</h3>
+<div class="cards cards2" style="margin-top:12px;">
+  <div class="card">
+    <div class="ctag">LANGSMITH</div>
+    <div class="ctitle">Trace Explorer</div>
+    <div class="cbody">Every graph run becomes a trace with nested spans. Click any node span to see input state, output state, latency, token usage. Filter by project, tag, or date range at smith.langchain.com.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">LANGSMITH</div>
+    <div class="ctitle">Dataset + Evaluation</div>
+    <div class="cbody">Save failing traces to a dataset. Run <code>evaluate()</code> against it with a custom evaluator. Catch regressions in CI: <code>pytest --langsmith-eval</code>.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">LANGSMITH</div>
+    <div class="ctitle">LangSmith Studio</div>
+    <div class="cbody">Visual graph editor. Run and replay traces interactively. Modify node inputs and re-run from any point. Invaluable for debugging HITL flows.</div>
+  </div>
+  <div class="card">
+    <div class="ctag">LANGSMITH</div>
+    <div class="ctitle">Playground</div>
+    <div class="cbody">Replay any traced LLM call with modified prompts. Compare model outputs side-by-side. Iterate on system prompt without re-running the full graph.</div>
+  </div>
+</div>
+
+<pre data-label="Python — Annotate traces with metadata"><span class="kw">from</span> langsmith <span class="kw">import</span> traceable, Client
+
+client = Client()
+
+<span class="cm"># Add metadata to any graph run for filtering in LangSmith</span>
+config = {
+    <span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"t1"</span>},
+    <span class="str">"metadata"</span>: {
+        <span class="str">"user_id"</span>: <span class="str">"u123"</span>,
+        <span class="str">"session_type"</span>: <span class="str">"financial_research"</span>,
+        <span class="str">"model_version"</span>: <span class="str">"arthavidya-v0.2"</span>,
+    },
+    <span class="str">"tags"</span>: [<span class="str">"production"</span>, <span class="str">"nse"</span>],
+}
+
+<span class="cm"># Add feedback to a run</span>
+client.create_feedback(
+    run_id=run_id,
+    key=<span class="str">"correctness"</span>,
+    score=<span class="nu">1.0</span>,
+    comment=<span class="str">"Answer was accurate and well-cited"</span>
+)
+
+<span class="cm"># @traceable wraps any function in a LangSmith span</span>
+<span class="at">@traceable</span>(name=<span class="str">"custom_retriever"</span>)
+<span class="kw">def</span> <span class="fn">hybrid_search</span>(query: <span class="tp">str</span>) -> <span class="tp">list</span>:
+    bm25 = keyword_search(query)
+    dense = vector_search(query)
+    <span class="kw">return</span> rerank(bm25 + dense)</pre>
+
+<div class="call warn">
+  <span class="call-icon">⚠</span>
+  <div class="call-body"><strong>Debug tip — state not updating?</strong> Check your reducer. If two nodes write the same key without a reducer, the last write wins. If they run in parallel in the same superstep, this creates a race condition. Use <code>Annotated[list, add]</code> reducers for accumulation.</div>
+</div>
+</section>
+
+<!-- ══════ STANDARDS ══════ -->
+<section id="standards">
+<h2><span class="ico">📏</span>Standards & Best Practices</h2>
+
+<div class="tw">
+  <table>
+    <tr><th>Rule</th><th>Severity</th><th>Rationale</th></tr>
+    <tr>
+      <td>Always type state with TypedDict or Pydantic</td>
+      <td><span class="sev must">MUST</span></td>
+      <td>Untyped dicts break IDE support, hide bugs, cause silent key errors at runtime</td>
+    </tr>
+    <tr>
+      <td>Assign a meaningful <code>thread_id</code> on every invocation</td>
+      <td><span class="sev must">MUST</span></td>
+      <td>Required for checkpointing, HITL, and time-travel debugging to work</td>
+    </tr>
+    <tr>
+      <td>Use Postgres checkpointer in production (not InMemorySaver)</td>
+      <td><span class="sev must">MUST</span></td>
+      <td>InMemorySaver loses all state on process restart — unacceptable for prod</td>
+    </tr>
+    <tr>
+      <td>Set <code>max_steps</code> guard on every cyclical graph</td>
+      <td><span class="sev must">MUST</span></td>
+      <td>Prevents infinite loops from runaway models / bad tool outputs</td>
+    </tr>
+    <tr>
+      <td>Never raise unhandled exceptions in tool functions</td>
+      <td><span class="sev must">MUST</span></td>
+      <td>Crashes the graph node. Return error string as ToolMessage instead</td>
+    </tr>
+    <tr>
+      <td>Enable LangSmith tracing from day one</td>
+      <td><span class="sev should">SHOULD</span></td>
+      <td>Impossible to debug complex agents without traces. Traces are free in dev tier</td>
+    </tr>
+    <tr>
+      <td>Prefer <code>async</code> nodes for I/O-bound work</td>
+      <td><span class="sev should">SHOULD</span></td>
+      <td>Parallel subgraphs and <code>Send()</code> fan-out use asyncio — sync nodes block the event loop</td>
+    </tr>
+    <tr>
+      <td>Separate tool definitions from graph wiring</td>
+      <td><span class="sev should">SHOULD</span></td>
+      <td>Tools should be independently testable. Graph file only does wiring</td>
+    </tr>
+    <tr>
+      <td>Use <code>input_schema</code> / <code>output_schema</code> on compiled graphs</td>
+      <td><span class="sev should">SHOULD</span></td>
+      <td>Hides internal state from callers; enables cleaner API surface</td>
+    </tr>
+    <tr>
+      <td>Keep state minimal — transient data in function scope</td>
+      <td><span class="sev should">SHOULD</span></td>
+      <td>Bloated state = large checkpoints = slow persistence = hard-to-read debug traces</td>
+    </tr>
+    <tr>
+      <td>Use connection pooling for Postgres checkpointer</td>
+      <td><span class="sev should">SHOULD</span></td>
+      <td>One connection per request = connection exhaustion under load</td>
+    </tr>
+    <tr>
+      <td>Avoid storing LangChain RunnableConfig in state</td>
+      <td><span class="sev avoid">AVOID</span></td>
+      <td>Config is not serializable; breaks checkpointing silently</td>
+    </tr>
+    <tr>
+      <td>Avoid using <code>.invoke()</code> for streaming-first apps</td>
+      <td><span class="sev avoid">AVOID</span></td>
+      <td>Returns only after full completion — users see a spinner for 30+ second runs</td>
+    </tr>
+    <tr>
+      <td>Avoid top-level graph mutations after compile()</td>
+      <td><span class="sev avoid">AVOID</span></td>
+      <td>The compiled graph is immutable. Add new nodes by rebuilding the StateGraph</td>
+    </tr>
+  </table>
+</div>
+
+<h3>Project layout</h3>
+<pre data-label="directory structure">my_agent/
+├── graphs/
+│   ├── __init__.py
+│   ├── main_graph.py        <span class="cm"># StateGraph wiring only</span>
+│   ├── research_subgraph.py <span class="cm"># subgraph definitions</span>
+│   └── rag_graph.py
+├── nodes/
+│   ├── llm_nodes.py         <span class="cm"># LLM call nodes</span>
+│   ├── tool_nodes.py        <span class="cm"># custom tool executor nodes</span>
+│   └── router_nodes.py      <span class="cm"># conditional edge functions</span>
+├── tools/
+│   ├── web_search.py        <span class="cm"># tool definitions (independently testable)</span>
+│   ├── database.py
+│   └── calculators.py
+├── state/
+│   └── schemas.py           <span class="cm"># TypedDict / Pydantic state definitions</span>
+├── config/
+│   └── settings.py          <span class="cm"># pydantic-settings, env var loading</span>
+├── tests/
+│   ├── test_nodes.py        <span class="cm"># unit tests per node</span>
+│   ├── test_tools.py
+│   └── test_graph.py        <span class="cm"># integration tests with InMemorySaver</span>
+└── CLAUDE.md                <span class="cm"># langgraph context for Claude Code</span></pre>
+</section>
+
+<!-- ══════ REFS ══════ -->
+<section id="refs">
+<h2><span class="ico">🔗</span>Reference Links</h2>
+
+<ul class="llist">
+  <li><span class="ltag">Docs</span><a href="https://docs.langchain.com/oss/python/langgraph/overview">docs.langchain.com — LangGraph Overview</a></li>
+  <li><span class="ltag">API</span><a href="https://reference.langchain.com/python/langgraph">reference.langchain.com — LangGraph API Reference</a></li>
+  <li><span class="ltag">GitHub</span><a href="https://github.com/langchain-ai/langgraph">github.com/langchain-ai/langgraph</a></li>
+  <li><span class="ltag">Quickstart</span><a href="https://docs.langchain.com/oss/python/langgraph/quickstart">docs.langchain.com — LangGraph Quickstart</a></li>
+  <li><span class="ltag">Guides</span><a href="https://docs.langchain.com/oss/python/langgraph/how-tos">How-to Guides (streaming, memory, subgraphs)</a></li>
+  <li><span class="ltag">HITL</span><a href="https://docs.langchain.com/oss/python/langgraph/interrupts">docs.langchain.com — Interrupts & HITL</a></li>
+  <li><span class="ltag">Checkpointers</span><a href="https://pypi.org/project/langgraph-checkpoint/">PyPI — langgraph-checkpoint</a></li>
+  <li><span class="ltag">LangSmith</span><a href="https://smith.langchain.com">smith.langchain.com — Tracing & Evaluation</a></li>
+  <li><span class="ltag">Academy</span><a href="https://academy.langchain.com">academy.langchain.com — Free LangGraph Course</a></li>
+  <li><span class="ltag">Vertex AI</span><a href="https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/langgraph">Vertex AI Agent Engine — LangGraph docs</a></li>
+  <li><span class="ltag">Azure</span><a href="https://learn.microsoft.com/azure/ai-services/openai/">Azure OpenAI Service docs</a></li>
+  <li><span class="ltag">Templates</span><a href="https://github.com/langchain-ai/langgraph/tree/main/examples">LangGraph examples on GitHub</a></li>
+  <li><span class="ltag">Forum</span><a href="https://forum.langchain.com">forum.langchain.com — Community Q&amp;A</a></li>
+  <li><span class="ltag">Best practices</span><a href="https://www.swarnendu.de/blog/langgraph-best-practices/">LangGraph Best Practices — Swarnendu De</a></li>
+</ul>
+</section>
+
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const secs = document.querySelectorAll('section');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting)
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#'+e.target.id));
+  });
+},{rootMargin:'-5% 0px -80% 0px'});
+secs.forEach(s => s.id && io.observe(s));
+</script>
+</body>
+</html>
