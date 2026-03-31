@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weights &amp; Biases (W&amp;B) Enterprise Handbook</title>
+<link rel="stylesheet" href="styles/wandb-enterprise-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Weights &amp; Biases</div>
+    <div class="logo-sub">Enterprise Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Foundation</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#module-1">Experiment Tracking</a>
+    <a class="nav-link" href="#setup">Setup</a>
+    <a class="nav-link" href="#init-config">Init &amp; Config</a>
+    <a class="nav-link" href="#training-loop">Training Loop</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Media &amp; Tables</div>
+    <a class="nav-link" href="#module-2">Rich Media</a>
+    <a class="nav-link" href="#logging-media">Logging Media</a>
+    <a class="nav-link" href="#wandb-tables">W&amp;B Tables</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Sweeps</div>
+    <a class="nav-link" href="#module-3">Sweep Architecture</a>
+    <a class="nav-link" href="#sweep-config">Sweep Config</a>
+    <a class="nav-link" href="#sweep-execution">Execution</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Artifacts</div>
+    <a class="nav-link" href="#module-4">Artifacts</a>
+    <a class="nav-link" href="#log-artifacts">Logging Artifacts</a>
+    <a class="nav-link" href="#consume-artifacts">Consuming Artifacts</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Frameworks</div>
+    <a class="nav-link" href="#module-5">Integrations</a>
+    <a class="nav-link" href="#hugging-face">Hugging Face</a>
+    <a class="nav-link" href="#lightning-keras">Lightning / Keras</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Collaboration</div>
+    <a class="nav-link" href="#module-6">Dashboards &amp; Reports</a>
+    <a class="nav-link" href="#ui-experience">UI Experience</a>
+    <a class="nav-link" href="#reports">Reports</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Pitfalls</div>
+    <a class="nav-link" href="#module-7">Anti-Patterns</a>
+    <a class="nav-link" href="#network-bottlenecks">Network Bottlenecks</a>
+    <a class="nav-link" href="#orphaned-runs">Orphaned Runs</a>
+    <a class="nav-link" href="#artifact-bloat">Artifact Bloat</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Weights &amp; Biases (W&amp;B) Enterprise Handbook</h1>
+    <p class="u-hero-subtle">A production-ready guide to experiment tracking, media logging, sweeps, artifacts, framework integrations, and collaboration patterns that keep ML teams reproducible and out of spreadsheet chaos.</p>
+    <div class="hero-meta">
+      <span class="badge badge-gold">Experiment Tracking</span>
+      <span class="badge badge-teal">Artifacts + Lineage</span>
+      <span class="badge badge-blue">Sweeps + Dashboards</span>
+      <span class="badge badge-purple">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">i</span>
+    <div class="callout-body"><strong>Why W&amp;B matters:</strong> once a team has more than a few experiments, the failure mode is almost always the same: nobody knows which run produced the current model, which hyperparameters were used, or where the correct metrics live. W&amp;B solves that by making runs, config, artifacts, and collaboration part of the workflow instead of an afterthought.</div>
+  </div>
+
+  <section id="module-1">
+    <h2>Module 1: The Foundation (Tracking Experiments)</h2>
+    <p>Experiment tracking is the first layer of MLOps discipline. Without it, teams end up with model names like <code>model_v4_final_really_final.pt</code> and no reliable way to reproduce results. W&amp;B gives every run an identity, a config, a metric history, and a home in the UI.</p>
+
+    <div class="mode-card gold">
+      <div class="mode-header">
+        <span class="mode-name">Reproducibility Rule</span>
+        <span class="mode-shortcut">config + artifacts + code</span>
+      </div>
+      <p class="u-muted-small">A run becomes reproducible when you can recover the hyperparameters, the code version, and the exact dataset or model artifact it used. W&amp;B is valuable because it ties those pieces together.</p>
+    </div>
+  </section>
+
+  <section id="setup">
+    <h2>The Setup</h2>
+    <p>Never hardcode a W&amp;B API key into source code. Treat it like any other credential. The secure pattern is to store the key in an environment variable and let <code>wandb login</code> or <code>wandb.login()</code> read it from the environment. That keeps secrets out of repos and CI logs.</p>
+
+    <pre># PowerShell
+$env:WANDB_API_KEY="your_api_key_here"
+wandb login
+
+# Bash
+export WANDB_API_KEY="your_api_key_here"
+wandb login</pre>
+
+    <pre>from __future__ import annotations
+
+import os
+
+import wandb
+
+
+def login_to_wandb() -&gt; None:
+    api_key: str | None = os.getenv("WANDB_API_KEY")
+    if not api_key:
+        raise RuntimeError("WANDB_API_KEY is not set in the environment.")
+
+    # Read the key from the environment instead of hardcoding secrets in source.
+    wandb.login(key=api_key, relogin=True)
+
+
+if __name__ == "__main__":
+    login_to_wandb()</pre>
+  </section>
+
+  <section id="init-config">
+    <h2>Init &amp; Config</h2>
+    <p><code>wandb.init()</code> starts a tracked run. The <code>config</code> dictionary is critical because it turns hyperparameters into filterable metadata in the W&amp;B UI. That means you can group runs by learning rate, batch size, optimizer, or architecture instead of reverse-engineering those choices from notes later.</p>
+
+    <pre>from __future__ import annotations
+
+import wandb
+
+
+run = wandb.init(
+    project="my-project",
+    job_type="train",
+    group="resnet50-baselines",
+    tags=["baseline", "image-classification"],
+    config={
+        "learning_rate": 1e-3,
+        "batch_size": 64,
+        "epochs": 10,
+        "optimizer": "adamw",
+        "model_name": "resnet50",
+        "dataset_name": "imagenette",
+    },
+)
+
+# Access config values the same way everywhere in your training code.
+learning_rate: float = wandb.config.learning_rate
+batch_size: int = wandb.config.batch_size
+
+print(f"Tracking run: {run.name}")</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#10003;</span>
+      <div class="callout-body"><strong>Why config matters:</strong> if the team cannot filter by hyperparameter, you eventually fall back to screenshots and spreadsheets. Config turns the UI into a real query surface for experiments.</div>
+    </div>
+  </section>
+
+  <section id="training-loop">
+    <h2>The Training Loop</h2>
+    <p>The right pattern is to log metrics at meaningful checkpoints, not mindlessly on every inner-loop operation. A good mental model is that W&amp;B is your experiment journal. You write entries often enough to reconstruct the story, but not so often that journaling becomes the workload.</p>
+
+    <pre>from __future__ import annotations
+
+import math
+import random
+from typing import Final
+
+import wandb
+
+
+TOTAL_EPOCHS: Final[int] = 5
+LOG_EVERY_N_STEPS: Final[int] = 20
+
+
+def train() -&gt; None:
+    run = wandb.init(
+        project="my-project",
+        config={
+            "epochs": TOTAL_EPOCHS,
+            "learning_rate": 1e-3,
+            "model_name": "toy-classifier",
+        },
+    )
+
+    try:
+        global_step: int = 0
+
+        for epoch in range(TOTAL_EPOCHS):
+            running_loss: float = 0.0
+            running_accuracy: float = 0.0
+
+            for step in range(100):
+                # Simulate a real training step. Replace with your model code.
+                loss: float = max(0.05, math.exp(-global_step / 150) + random.uniform(0.0, 0.02))
+                accuracy: float = min(0.99, 0.50 + global_step / 400 + random.uniform(0.0, 0.03))
+
+                running_loss += loss
+                running_accuracy += accuracy
+                global_step += 1
+
+                if global_step % LOG_EVERY_N_STEPS == 0:
+                    # Log aggregated metrics instead of spamming the network every batch.
+                    wandb.log(
+                        {
+                            "train/loss": running_loss / LOG_EVERY_N_STEPS,
+                            "train/accuracy": running_accuracy / LOG_EVERY_N_STEPS,
+                            "epoch": epoch,
+                            "global_step": global_step,
+                        },
+                        step=global_step,
+                    )
+                    running_loss = 0.0
+                    running_accuracy = 0.0
+
+        wandb.log({"status": "completed", "final_step": global_step})
+    finally:
+        # Always close the run, even if the script errors or exits early.
+        wandb.finish()
+
+
+if __name__ == "__main__":
+    train()</pre>
+  </section>
+
+  <section id="module-2">
+    <h2>Module 2: Rich Media &amp; Interactive Visualizations</h2>
+    <p>W&amp;B is not just for scalar loss curves. In production ML, the question is often not “did accuracy go up?” but “what kinds of examples fail, how do predictions drift, and what evidence do we have beyond a single number?” Media logging makes those answers visible.</p>
+  </section>
+
+  <section id="logging-media">
+    <h2>Logging Media</h2>
+    <p>Images, plots, and audio samples are especially useful when the output itself is the product. In a vision pipeline, logging one prediction image every 10 epochs is like checking real specimens in a lab instead of only reading aggregate metrics on a dashboard.</p>
+
+    <pre>from __future__ import annotations
+
+import numpy as np
+import matplotlib.pyplot as plt
+import wandb
+
+
+run = wandb.init(project="media-demo", config={"epochs": 30})
+
+try:
+    sample_rate: int = 16000
+
+    for epoch in range(wandb.config.epochs):
+        if epoch % 10 == 0:
+            # Example image payload.
+            image_array = np.random.randint(0, 255, size=(128, 128, 3), dtype=np.uint8)
+
+            # Example matplotlib figure payload.
+            fig, ax = plt.subplots(figsize=(4, 3))
+            ax.plot(np.linspace(0, 1, 50), np.random.rand(50))
+            ax.set_title(f"Prediction confidence at epoch {epoch}")
+
+            # Example audio payload.
+            audio_waveform = np.random.uniform(-0.1, 0.1, size=(sample_rate,)).astype(np.float32)
+
+            wandb.log(
+                {
+                    "examples/prediction_image": wandb.Image(image_array, caption=f"Epoch {epoch} sample"),
+                    "charts/confidence_curve": wandb.Image(fig),
+                    "audio/sample_output": wandb.Audio(audio_waveform, sample_rate=sample_rate, caption=f"Epoch {epoch}"),
+                    "epoch": epoch,
+                }
+            )
+
+            plt.close(fig)
+finally:
+    wandb.finish()</pre>
+  </section>
+
+  <section id="wandb-tables">
+    <h2>W&amp;B Tables</h2>
+    <p><code>wandb.Table()</code> is one of the most useful features for model debugging because it captures row-level evidence. Instead of seeing “validation accuracy = 0.88,” you can inspect the exact predictions, labels, and confidence scores that created that number. It turns the UI into an interactive dataframe for failure analysis.</p>
+
+    <pre>from __future__ import annotations
+
+import random
+
+import wandb
+
+
+run = wandb.init(project="table-demo")
+
+try:
+    prediction_table = wandb.Table(columns=["text", "actual_label", "predicted_label", "confidence"])
+
+    rows = [
+        ("refund still not received after 10 days", "billing", "billing", 0.97),
+        ("the app crashes on launch on ios", "bug", "bug", 0.93),
+        ("can you add dark mode to the dashboard", "feature", "billing", 0.41),
+    ]
+
+    for text, actual_label, predicted_label, confidence in rows:
+        prediction_table.add_data(text, actual_label, predicted_label, confidence)
+
+    wandb.log({"validation/prediction_table": prediction_table})
+finally:
+    wandb.finish()</pre>
+  </section>
+
+  <section id="module-3">
+    <h2>Module 3: Hyperparameter Optimization (W&amp;B Sweeps)</h2>
+    <p>Sweeps separate parameter search orchestration from local execution. The W&amp;B backend acts as the controller that proposes the next hyperparameter set, while your machine runs the training job as an agent. That division matters because it lets teams coordinate many experiments without custom orchestration glue.</p>
+  </section>
+
+  <section id="sweep-config">
+    <h2>Sweep Configuration</h2>
+    <p>A sweep config defines what metric to optimize, how to search, and what parameter ranges are legal. Think of it as a search contract: you are telling the controller what it is allowed to try and how success should be measured.</p>
+
+    <pre>import wandb
+
+
+sweep_config = {
+    "method": "bayes",
+    "metric": {
+        "name": "val/accuracy",
+        "goal": "maximize",
+    },
+    "parameters": {
+        "learning_rate": {
+            "distribution": "log_uniform_values",
+            "min": 1e-5,
+            "max": 1e-2,
+        },
+        "batch_size": {
+            "values": [32, 64, 128],
+        },
+        "dropout": {
+            "distribution": "uniform",
+            "min": 0.1,
+            "max": 0.5,
+        },
+        "optimizer": {
+            "values": ["adamw", "sgd"],
+        },
+    },
+}</pre>
+
+    <pre>method: random
+metric:
+  name: val/loss
+  goal: minimize
+parameters:
+  learning_rate:
+    distribution: log_uniform_values
+    min: 0.00001
+    max: 0.01
+  batch_size:
+    values: [32, 64, 128]</pre>
+  </section>
+
+  <section id="sweep-execution">
+    <h2>Execution</h2>
+    <p>The local training function reads whatever parameters the W&amp;B controller assigned to the current run. That means your training function stays standard, while the sweep controller decides which configuration should run next.</p>
+
+    <pre>from __future__ import annotations
+
+import random
+
+import wandb
+
+
+sweep_config = {
+    "method": "random",
+    "metric": {"name": "val/accuracy", "goal": "maximize"},
+    "parameters": {
+        "learning_rate": {"values": [1e-4, 5e-4, 1e-3]},
+        "batch_size": {"values": [32, 64]},
+    },
+}
+
+
+def train_sweep() -&gt; None:
+    with wandb.init(project="sweep-demo") as run:
+        config = wandb.config
+        score = 0.70 + random.uniform(0.0, 0.2)
+
+        # Replace this with the real training loop using config.learning_rate, etc.
+        wandb.log(
+            {
+                "val/accuracy": score,
+                "learning_rate": config.learning_rate,
+                "batch_size": config.batch_size,
+            }
+        )
+
+
+sweep_id = wandb.sweep(sweep=sweep_config, project="sweep-demo")
+wandb.agent(sweep_id, function=train_sweep, count=10)</pre>
+  </section>
+
+  <section id="module-4">
+    <h2>Module 4: Data &amp; Model Versioning (Artifacts)</h2>
+    <p>You should never upload a 5GB model weight file through <code>wandb.log()</code> as if it were just another metric. Artifacts exist to track datasets, models, and derived assets with lineage. They answer the question “which exact asset version fed this run?” instead of leaving that answer in a README or file path convention.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#10003;</span>
+      <div class="callout-body"><strong>Reproducibility depends on lineage:</strong> config tells you how a run was executed, and artifacts tell you what concrete data and model files it used. Together they make a run reproducible for any teammate.</div>
+    </div>
+  </section>
+
+  <section id="log-artifacts">
+    <h2>Logging a Dataset / Model</h2>
+    <p>Artifacts are the right primitive for durable assets because they version files, preserve relationships, and show downstream usage. This is closer to package management than metric logging.</p>
+
+    <pre>from __future__ import annotations
+
+from pathlib import Path
+
+import wandb
+
+
+run = wandb.init(project="artifact-demo", job_type="train")
+
+try:
+    dataset_artifact = wandb.Artifact(name="raw-data", type="dataset")
+    dataset_artifact.add_dir("data/raw")
+    run.log_artifact(dataset_artifact)
+
+    model_artifact = wandb.Artifact(name="fraud-model", type="model")
+    model_artifact.add_file("checkpoints/model.pt")
+    model_artifact.metadata = {
+        "framework": "pytorch",
+        "stage": "candidate",
+    }
+    run.log_artifact(model_artifact)
+finally:
+    wandb.finish()</pre>
+  </section>
+
+  <section id="consume-artifacts">
+    <h2>Consuming an Artifact</h2>
+    <p>Downstream jobs such as evaluation, batch inference, or deployment should consume a named artifact version instead of a loose file path. That is how you make a deployment pipeline deterministic instead of depending on whichever file happened to be in a directory.</p>
+
+    <pre>from __future__ import annotations
+
+from pathlib import Path
+
+import wandb
+
+
+run = wandb.init(project="artifact-demo", job_type="deploy")
+
+try:
+    artifact = run.use_artifact("fraud-model:latest")
+    artifact_dir: str = artifact.download()
+
+    model_path = Path(artifact_dir) / "model.pt"
+    print(f"Downloaded model artifact to {model_path}")
+finally:
+    wandb.finish()</pre>
+  </section>
+
+  <section id="module-5">
+    <h2>Module 5: Seamless Framework Integrations</h2>
+    <p>One reason teams adopt W&amp;B quickly is that it integrates with common training frameworks without requiring manual metric plumbing everywhere. The core benefit is leverage: you keep the framework's training abstractions while still getting centralized tracking and visualization.</p>
+  </section>
+
+  <section id="hugging-face">
+    <h2>Hugging Face</h2>
+    <p>For Hugging Face workflows, W&amp;B usually becomes a one-line integration by setting <code>report_to="wandb"</code>. That is useful because it turns standard trainer outputs into shared experiment records with almost no extra code.</p>
+
+    <pre>from __future__ import annotations
+
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, Trainer, TrainingArguments
+
+
+model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+
+training_args = TrainingArguments(
+    output_dir="./outputs",
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
+    num_train_epochs=3,
+    evaluation_strategy="epoch",
+    logging_strategy="steps",
+    logging_steps=50,
+    report_to="wandb",
+)
+
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    eval_dataset=eval_dataset,
+    tokenizer=tokenizer,
+)
+
+trainer.train()</pre>
+  </section>
+
+  <section id="lightning-keras">
+    <h2>PyTorch Lightning / Keras</h2>
+    <p>The Lightning and Keras integrations work for the same reason: W&amp;B plugs into the framework's callback or logger system, so training events are forwarded automatically instead of being logged by hand.</p>
+
+    <pre>from lightning.pytorch.loggers import WandbLogger
+
+
+wandb_logger = WandbLogger(project="lightning-project", log_model="all")
+
+# Trainer(logger=wandb_logger, max_epochs=10)</pre>
+
+    <pre>from wandb.integration.keras import WandbCallback
+
+
+# model.fit(x_train, y_train, callbacks=[WandbCallback()])</pre>
+  </section>
+
+  <section id="module-6">
+    <h2>Module 6: Collaboration &amp; Reports</h2>
+    <p>Once runs are tracked consistently, the web UI becomes the team's shared control room. This is where W&amp;B moves from a personal logger to a collaboration platform: dashboards, grouped runs, run comparison, tables, media, and reportable narratives all live in one place.</p>
+  </section>
+
+  <section id="ui-experience">
+    <h2>The UI Experience</h2>
+    <p>The W&amp;B UI is most powerful when your runs are grouped with intention. If every run is just dumped into a project with random names, the dashboard becomes clutter. If runs carry groups, tags, job types, and consistent metric names, the UI becomes queryable and comparable.</p>
+
+    <pre>from __future__ import annotations
+
+import wandb
+
+
+run = wandb.init(
+    project="ranking-system",
+    group="ablation-learning-rate",
+    job_type="train",
+    tags=["ablation", "ranking", "resnet-encoder"],
+    config={
+        "learning_rate": 5e-4,
+        "batch_size": 128,
+        "encoder": "resnet50",
+    },
+)
+
+try:
+    # Define how metrics should be summarized in the dashboard.
+    wandb.define_metric("epoch")
+    wandb.define_metric("val/accuracy", summary="max")
+    wandb.define_metric("val/loss", summary="min")
+
+    wandb.log({"epoch": 1, "val/accuracy": 0.86, "val/loss": 0.42})
+finally:
+    wandb.finish()</pre>
+
+    <p>In practice, group runs by the variable you are trying to compare, such as optimizer family, data slice, or backbone. That way the dashboard answers actual experiment questions instead of acting as a flat dump of run history.</p>
+  </section>
+
+  <section id="reports">
+    <h2>W&amp;B Reports</h2>
+    <p>A W&amp;B Report is essentially a live research memo: text plus embedded charts, tables, media, and comparisons pulled directly from tracked runs. The reason teams like reports is that they remove the stale-slide problem. When new runs finish, the embedded visuals can update without someone rebuilding screenshots manually.</p>
+
+    <div class="mode-card teal">
+      <div class="mode-header">
+        <span class="mode-name">Report Workflow</span>
+        <span class="mode-shortcut">Narrative + live assets</span>
+      </div>
+      <p class="u-muted-small">A good report explains the hypothesis, links the relevant run groups, embeds the charts that support the conclusion, and records the next action for stakeholders.</p>
+    </div>
+
+    <ul class="bullet">
+      <li><strong>Use reports for decisions, not dumps.</strong> Frame the hypothesis, the comparison set, and the conclusion.</li>
+      <li><strong>Embed live panels.</strong> Prefer linked charts over screenshots so new results appear automatically.</li>
+      <li><strong>Share with stakeholders.</strong> Reports are ideal when product, research, and engineering need one living source of truth.</li>
+    </ul>
+  </section>
+
+  <section id="module-7">
+    <h2>Module 7: Common Pitfalls &amp; Anti-Patterns</h2>
+    <p>W&amp;B is useful, but it is easy to misuse. Most failure modes are not bugs in the SDK. They are workflow mistakes: logging too often, never closing runs, or treating artifacts like disposable uploads instead of reusable lineage objects.</p>
+  </section>
+
+  <section id="network-bottlenecks">
+    <h2>1. Network Bottlenecks</h2>
+    <p>Calling <code>wandb.log()</code> inside a very tight inner loop, especially every batch, can slow training and generate noisy plots. The fix is to aggregate metrics and log every <code>N</code> steps. The analogy is batching telemetry packets instead of opening a new network conversation for every tiny event.</p>
+
+    <pre>from __future__ import annotations
+
+import wandb
+
+
+run = wandb.init(project="pitfalls-demo")
+
+try:
+    accumulated_loss: float = 0.0
+    log_every: int = 50
+
+    for step in range(1000):
+        loss = 1.0 / (step + 1)
+        accumulated_loss += loss
+
+        if (step + 1) % log_every == 0:
+            wandb.log({"train/loss": accumulated_loss / log_every, "step": step + 1}, step=step + 1)
+            accumulated_loss = 0.0
+finally:
+    wandb.finish()</pre>
+  </section>
+
+  <section id="orphaned-runs">
+    <h2>2. Orphaned Runs</h2>
+    <p>Runs get orphaned when notebooks are interrupted or scripts crash before cleanup. That leaves runs stuck in a running or crashed state and makes the project messy. The fix is to always close the run, preferably in a <code>finally</code> block or context manager.</p>
+
+    <pre>from __future__ import annotations
+
+import wandb
+
+
+def run_experiment() -&gt; None:
+    run = wandb.init(project="pitfalls-demo")
+    try:
+        wandb.log({"status": "started"})
+        # Replace with real notebook or training logic.
+        raise RuntimeError("simulated failure")
+    except Exception as exc:
+        wandb.log({"error_message": str(exc)})
+        raise
+    finally:
+        wandb.finish()</pre>
+  </section>
+
+  <section id="artifact-bloat">
+    <h2>3. Artifact Bloat</h2>
+    <p>Uploading the same massive dataset on every run wastes bandwidth and storage. The correct pattern is to publish the dataset artifact once, version it when it truly changes, and have all downstream runs reference that artifact. Think of it like referencing a package version instead of emailing the same ZIP file to every teammate.</p>
+
+    <pre>from __future__ import annotations
+
+import wandb
+
+
+def log_dataset_once() -&gt; None:
+    with wandb.init(project="artifact-governance", job_type="data-publish") as run:
+        artifact = wandb.Artifact(name="customer-churn-dataset", type="dataset")
+        artifact.add_dir("data/customer_churn")
+        run.log_artifact(artifact)
+
+
+def reference_existing_dataset() -&gt; None:
+    with wandb.init(project="artifact-governance", job_type="train") as run:
+        artifact = run.use_artifact("customer-churn-dataset:latest")
+        dataset_dir = artifact.download()
+        print(dataset_dir)</pre>
+
+    <div class="callout danger">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Team rule:</strong> upload durable assets once, reference them many times, and update the artifact version only when the asset itself actually changes.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">W&amp;B Docs</span> <a href="https://docs.wandb.ai/">Official W&amp;B documentation</a></li>
+      <li><span class="ll-tag">SDK</span> <a href="https://docs.wandb.ai/ref/python">Python SDK reference</a></li>
+      <li><span class="ll-tag">Sweeps</span> <a href="https://docs.wandb.ai/guides/sweeps">W&amp;B Sweeps guide</a></li>
+      <li><span class="ll-tag">Artifacts</span> <a href="https://docs.wandb.ai/guides/artifacts">Artifacts guide</a></li>
+      <li><span class="ll-tag">Reports</span> <a href="https://docs.wandb.ai/guides/reports">Reports guide</a></li>
+      <li><span class="ll-tag">Integrations</span> <a href="https://docs.wandb.ai/guides/integrations">Framework integrations</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach(s => s.id && observer.observe(s));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
