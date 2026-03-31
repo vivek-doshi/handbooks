@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hugging Face Fine-Tuning &amp; LLM Handbook</title>
+<link rel="stylesheet" href="styles/hugging-face-fine-tuning-llm-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Hugging Face</div>
+    <div class="logo-sub">Fine-Tuning &amp; LLM Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Foundations</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#module-1">transformers &amp; datasets</a>
+    <a class="nav-link" href="#loading-models">Loading Models &amp; Tokenizers</a>
+    <a class="nav-link" href="#chat-templates">Chat Templates</a>
+    <a class="nav-link" href="#data-handling">Efficient Data Handling</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Optimization</div>
+    <a class="nav-link" href="#module-2">Memory &amp; Hardware</a>
+    <a class="nav-link" href="#vram-problem">VRAM Problem</a>
+    <a class="nav-link" href="#quantization">QLoRA / bitsandbytes</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">PEFT</div>
+    <a class="nav-link" href="#module-3">Parameter-Efficient Tuning</a>
+    <a class="nav-link" href="#lora">How LoRA Works</a>
+    <a class="nav-link" href="#peft-setup">Setting up PEFT</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Training</div>
+    <a class="nav-link" href="#module-4">trl &amp; SFTTrainer</a>
+    <a class="nav-link" href="#sfttrainer">Why SFTTrainer</a>
+    <a class="nav-link" href="#training-script">Training Script</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Alignment</div>
+    <a class="nav-link" href="#module-5">DPO</a>
+    <a class="nav-link" href="#beyond-sft">Beyond SFT</a>
+    <a class="nav-link" href="#dpo">DPOTrainer</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Deployment</div>
+    <a class="nav-link" href="#module-6">Inference &amp; Deployment</a>
+    <a class="nav-link" href="#inference-adapters">Inference with Adapters</a>
+    <a class="nav-link" href="#merge">Merging Weights</a>
+    <a class="nav-link" href="#hub">Hugging Face Hub</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Pitfalls</div>
+    <a class="nav-link" href="#module-7">Common Mistakes</a>
+    <a class="nav-link" href="#forgetting">Catastrophic Forgetting</a>
+    <a class="nav-link" href="#oom">OOM Errors</a>
+    <a class="nav-link" href="#tokenizers">Mismatched Tokenizers</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Hugging Face Fine-Tuning &amp; LLM Handbook</h1>
+    <p class="u-hero-subtle">A production-ready guide to modern Hugging Face fine-tuning with <code>transformers</code>, <code>datasets</code>, <code>peft</code>, <code>trl</code>, and <code>bitsandbytes</code>, with a strong focus on QLoRA, SFTTrainer, and deployment-ready adapter workflows.</p>
+    <div class="hero-meta">
+      <span class="badge badge-gold">QLoRA + SFTTrainer</span>
+      <span class="badge badge-red">VRAM-Aware Training</span>
+      <span class="badge badge-green">PEFT + Deployment</span>
+      <span class="badge badge-blue">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">i</span>
+    <div class="callout-body"><strong>Practical position:</strong> for modern LLM fine-tuning, full-parameter training is rarely the right default. QLoRA and PEFT are preferred because they reduce VRAM requirements dramatically, move faster, and are usually sufficient for instruction tuning and domain adaptation on 7B to 13B class models.</div>
+  </div>
+
+  <section id="module-1">
+    <h2>Module 1: The Foundation (transformers &amp; datasets)</h2>
+    <p>The Hugging Face stack separates concerns cleanly: <code>transformers</code> handles model and tokenizer abstractions, while <code>datasets</code> handles data loading and efficient preprocessing. This matters because LLM training pipelines fail fastest when model formatting and dataset formatting drift apart.</p>
+  </section>
+
+  <section id="loading-models">
+    <h2>Loading Models &amp; Tokenizers</h2>
+    <p>A causal language model and its tokenizer must stay aligned. For instruct models, setting a valid <code>pad_token</code> is important because the trainer and data collators often need a padding token during batching. If the tokenizer has no pad token, the common safe baseline is to reuse the EOS token.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+
+model_id = "mistralai/Mistral-7B-Instruct-v0.3"
+
+tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
+
+# Many decoder-only models do not define a pad token by default.
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    torch_dtype=torch.float16,
+    device_map="auto",
+)
+
+# Keep the model config aligned with tokenizer padding behavior.
+model.config.pad_token_id = tokenizer.pad_token_id
+
+print(tokenizer.pad_token, tokenizer.pad_token_id)</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Hardware reality:</strong> a 7B model in float16 needs roughly 14 GB of VRAM just to hold weights for inference. Training requires much more because activations, gradients, optimizer states, and temporary buffers also consume memory.</div>
+    </div>
+  </section>
+
+  <section id="chat-templates">
+    <h2>Chat Templates</h2>
+    <p>Chat templates define how structured conversational messages become the token sequence the model actually sees. This step is critical for instruct tuning because the model was trained on a specific dialogue serialization format. If you feed the right content with the wrong template, the model can behave like it has forgotten how to chat.</p>
+
+    <pre>from __future__ import annotations
+
+from transformers import AutoTokenizer
+
+
+model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+messages = [
+    {"role": "system", "content": "You are a concise support assistant."},
+    {"role": "user", "content": "Summarize the password reset policy."},
+]
+
+formatted_text = tokenizer.apply_chat_template(
+    messages,
+    tokenize=False,
+    add_generation_prompt=True,
+)
+
+tokenized = tokenizer.apply_chat_template(
+    messages,
+    tokenize=True,
+    add_generation_prompt=True,
+    return_tensors="pt",
+)
+
+print(formatted_text)
+print(tokenized.shape)</pre>
+
+    <p>A good analogy is an API contract. The message roles are the logical schema, but the chat template is the wire format. If the wire format is wrong, the receiving system misinterprets the payload.</p>
+  </section>
+
+  <section id="data-handling">
+    <h2>Efficient Data Handling</h2>
+    <p>The <code>datasets</code> library is designed for batched, vectorized preprocessing. Using <code>.map(..., batched=True)</code> is important because tokenization is much faster and cleaner when you process batches instead of looping row-by-row in Python.</p>
+
+    <pre>from __future__ import annotations
+
+from datasets import load_dataset
+from transformers import AutoTokenizer
+
+
+model_id = "mistralai/Mistral-7B-Instruct-v0.3"
+tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
+
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+dataset = load_dataset("json", data_files="train.jsonl", split="train")
+
+
+def format_and_tokenize(batch: dict[str, list[str]]) -> dict[str, list[list[int]]]:
+    texts: list[str] = []
+
+    for prompt, response in zip(batch["prompt"], batch["response"]):
+        messages = [
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": response},
+        ]
+        text = tokenizer.apply_chat_template(messages, tokenize=False)
+        texts.append(text)
+
+    return tokenizer(
+        texts,
+        truncation=True,
+        max_length=2048,
+    )
+
+
+tokenized_dataset = dataset.map(
+    format_and_tokenize,
+    batched=True,
+    remove_columns=dataset.column_names,
+)
+
+print(tokenized_dataset[0].keys())</pre>
+  </section>
+
+  <section id="module-2">
+    <h2>Module 2: Memory &amp; Hardware Optimization (bitsandbytes)</h2>
+    <p>The reason memory optimization matters is simple: base model size scales faster than most teams' GPU budgets. QLoRA and 4-bit loading exist because commodity 24 GB GPUs cannot comfortably full-fine-tune modern 7B+ models.</p>
+  </section>
+
+  <section id="vram-problem">
+    <h2>The VRAM Problem</h2>
+    <p>A rough rule of thumb is that a 7B parameter model in float16 needs about 14 GB of VRAM for inference because each parameter occupies 2 bytes. Training costs more because gradients, optimizer states, and activations also live in memory. That is why naive full fine-tuning often exceeds 40 GB or more even before sequence length and batch size are increased.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">7B Float16 Inference</div>
+        <div class="card-body">About 14 GB for weights alone, before KV cache and runtime overhead.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">QLoRA on 24 GB GPUs</div>
+        <div class="card-body">A common practical fit for 7B instruct tuning with gradient accumulation and checkpointing.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">13B and Beyond</div>
+        <div class="card-body">Usually needs stronger memory discipline, lower batch sizes, and careful sequence-length management even with QLoRA.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="quantization">
+    <h2>Quantization (QLoRA)</h2>
+    <p>QLoRA loads the base model in 4-bit precision while training low-rank adapters in higher precision. This is why it is preferred: you avoid updating billions of full-precision parameters and instead attach a tiny trainable layer set on top of a frozen quantized backbone.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+
+model_id = "mistralai/Mistral-7B-Instruct-v0.3"
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_compute_dtype=torch.float16,
+)
+
+tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    quantization_config=bnb_config,
+    torch_dtype=torch.float16,
+    device_map="auto",
+)
+
+model.config.pad_token_id = tokenizer.pad_token_id</pre>
+  </section>
+
+  <section id="module-3">
+    <h2>Module 3: Parameter-Efficient Fine-Tuning (peft)</h2>
+    <p>PEFT exists because full-parameter tuning is too expensive for many real workflows. LoRA is the standard approach because it freezes the original weights and learns only a small set of trainable low-rank matrices inserted into key linear layers.</p>
+  </section>
+
+  <section id="lora">
+    <h2>How LoRA Works</h2>
+    <p>LoRA approximates weight updates using a low-rank decomposition. Instead of rewriting a full large matrix, it learns a compact delta. A practical analogy is editing a giant spreadsheet by storing only the changed formulas, not duplicating the whole file.</p>
+
+    <div class="mode-card gold">
+      <div class="mode-header">
+        <span class="mode-name">Why LoRA Is Preferred</span>
+        <span class="mode-shortcut">Cost, speed, portability</span>
+      </div>
+      <p class="u-muted-small">LoRA adapters are small, easy to version, and fast to train. For most domain adaptation and instruct-tuning tasks, they offer a much better cost-to-quality ratio than full fine-tuning.</p>
+    </div>
+  </section>
+
+  <section id="peft-setup">
+    <h2>Setting up PEFT</h2>
+    <p>The important LoRA parameters are <code>r</code> for rank, <code>lora_alpha</code> for scaling, and <code>target_modules</code> for which projections to adapt. For decoder-only transformers, <code>q_proj</code> and <code>v_proj</code> are common high-value targets.</p>
+
+    <pre>from __future__ import annotations
+
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+
+
+model = prepare_model_for_kbit_training(model)
+
+peft_config = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM",
+    target_modules=["q_proj", "v_proj"],
+)
+
+model = get_peft_model(model, peft_config)
+model.print_trainable_parameters()</pre>
+
+    <p>Why these values? A rank like 16 is a common starting point because it gives enough adaptation capacity without making the adapter unnecessarily large. A learning rate around $2e^{-4}$ is often used for LoRA because only the small adapter layers are being optimized, not the full model.</p>
+  </section>
+
+  <section id="module-4">
+    <h2>Module 4: The Training Loop (trl &amp; SFTTrainer)</h2>
+    <p>The modern Hugging Face stack for supervised LLM fine-tuning usually centers on <code>SFTTrainer</code>. The base <code>Trainer</code> is generic. <code>SFTTrainer</code> is purpose-built for supervised fine-tuning of causal LMs and handles common formatting expectations more directly.</p>
+  </section>
+
+  <section id="sfttrainer">
+    <h2>Why not vanilla Trainer?</h2>
+    <p><code>SFTTrainer</code> is preferred because it fits the actual task shape of LLM supervised fine-tuning. It integrates more naturally with conversational data formatting, PEFT workflows, and common packing/tokenization patterns used in instruct tuning.</p>
+  </section>
+
+  <section id="training-script">
+    <h2>The Training Script</h2>
+    <p>This is the standard QLoRA + SFTTrainer pattern most teams should start from for 7B-class models on constrained hardware.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+from datasets import load_dataset
+from peft import LoraConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TrainingArguments
+from trl import SFTTrainer
+
+
+model_id = "mistralai/Mistral-7B-Instruct-v0.3"
+
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_compute_dtype=torch.float16,
+)
+
+tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    quantization_config=bnb_config,
+    torch_dtype=torch.float16,
+    device_map="auto",
+)
+model.config.pad_token_id = tokenizer.pad_token_id
+model.gradient_checkpointing_enable()  # Saves memory by recomputing activations during backward pass.
+
+dataset = load_dataset("json", data_files="train.jsonl", split="train")
+
+
+def format_example(example: dict[str, str]) -> dict[str, str]:
+    messages = [
+        {"role": "user", "content": example["prompt"]},
+        {"role": "assistant", "content": example["response"]},
+    ]
+    return {"text": tokenizer.apply_chat_template(messages, tokenize=False)}
+
+
+dataset = dataset.map(format_example)
+
+peft_config = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.05,
+    bias="none",
+    task_type="CAUSAL_LM",
+    target_modules=["q_proj", "v_proj"],
+)
+
+training_args = TrainingArguments(
+    output_dir="./outputs",
+    per_device_train_batch_size=1,
+    gradient_accumulation_steps=16,
+    learning_rate=2e-4,  # Common LoRA starting point because only adapter weights are trained.
+    num_train_epochs=3,
+    logging_steps=10,
+    save_strategy="epoch",
+    bf16=False,
+    fp16=True,
+    optim="paged_adamw_8bit",
+    lr_scheduler_type="cosine",
+    warmup_ratio=0.03,
+    report_to="none",
+)
+
+trainer = SFTTrainer(
+    model=model,
+    args=training_args,
+    train_dataset=dataset,
+    peft_config=peft_config,
+    dataset_text_field="text",
+    tokenizer=tokenizer,
+    max_seq_length=2048,
+    packing=False,
+)
+
+trainer.train()</pre>
+  </section>
+
+  <section id="module-5">
+    <h2>Module 5: Advanced Alignment (DPO)</h2>
+    <p>Supervised fine-tuning teaches the model how to respond in your desired format or domain. Preference tuning teaches the model which responses are better. That distinction matters because a model can be fluent and still be misaligned with quality preferences.</p>
+  </section>
+
+  <section id="beyond-sft">
+    <h2>Beyond SFT</h2>
+    <p>SFT is usually the first stage. DPO and similar alignment methods come later when the goal is to push the model toward preferred behavior using paired chosen and rejected completions rather than only imitating demonstrations.</p>
+  </section>
+
+  <section id="dpo">
+    <h2>Direct Preference Optimization (DPO)</h2>
+    <p>DPO works on datasets containing prompts plus two candidate responses: one preferred and one rejected. Instead of training the model only to imitate a gold answer, it trains the model to increase preference for better outputs relative to worse ones.</p>
+
+    <pre>from __future__ import annotations
+
+from datasets import load_dataset
+from transformers import TrainingArguments
+from trl import DPOTrainer
+
+
+preference_dataset = load_dataset("json", data_files="preferences.jsonl", split="train")
+
+# Expected columns typically include: prompt, chosen, rejected
+training_args = TrainingArguments(
+    output_dir="./dpo-outputs",
+    per_device_train_batch_size=1,
+    gradient_accumulation_steps=16,
+    learning_rate=5e-5,
+    num_train_epochs=1,
+    logging_steps=10,
+    fp16=True,
+    report_to="none",
+)
+
+dpo_trainer = DPOTrainer(
+    model=model,
+    ref_model=None,
+    args=training_args,
+    train_dataset=preference_dataset,
+    tokenizer=tokenizer,
+    beta=0.1,
+)
+
+# dpo_trainer.train()</pre>
+  </section>
+
+  <section id="module-6">
+    <h2>Module 6: Inference, Merging, &amp; Deployment</h2>
+    <p>Once training finishes, the next decisions are operational: do you serve the base model plus adapter separately, or merge the adapter weights into the base model for a simpler production artifact?</p>
+  </section>
+
+  <section id="inference-adapters">
+    <h2>Inference with Adapters</h2>
+    <p>Serving adapters directly is useful when you want one base model with many specialized LoRA variants. This is convenient for experimentation and multi-tenant setups.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+from peft import AutoPeftModelForCausalLM
+from transformers import AutoTokenizer
+
+
+adapter_path = "./outputs/checkpoint-final"
+
+tokenizer = AutoTokenizer.from_pretrained(adapter_path)
+model = AutoPeftModelForCausalLM.from_pretrained(
+    adapter_path,
+    torch_dtype=torch.float16,
+    device_map="auto",
+)
+
+messages = [{"role": "user", "content": "Explain LoRA in two short paragraphs."}]
+prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+
+with torch.no_grad():
+    outputs = model.generate(**inputs, max_new_tokens=200)
+
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))</pre>
+  </section>
+
+  <section id="merge">
+    <h2>Merging Weights</h2>
+    <p>Deploying adapters separately can be slower and operationally more complex because the base model and adapter must both be loaded and composed. Merging creates a single artifact that is usually simpler for production inference.</p>
+
+    <pre>from __future__ import annotations
+
+from peft import AutoPeftModelForCausalLM
+
+
+adapter_path = "./outputs/checkpoint-final"
+
+model = AutoPeftModelForCausalLM.from_pretrained(adapter_path, device_map="cpu")
+merged_model = model.merge_and_unload()
+
+merged_model.save_pretrained("./merged-model")
+tokenizer.save_pretrained("./merged-model")</pre>
+  </section>
+
+  <section id="hub">
+    <h2>The Hugging Face Hub</h2>
+    <p>The Hub is the natural distribution target for both adapters and merged models. Once pushed, the model becomes easier to version, document, and share with teammates or deployment pipelines.</p>
+
+    <pre>huggingface-cli login
+
+python -c "from transformers import AutoTokenizer, AutoModelForCausalLM; \
+tokenizer = AutoTokenizer.from_pretrained('./merged-model'); \
+model = AutoModelForCausalLM.from_pretrained('./merged-model'); \
+tokenizer.push_to_hub('your-org/your-merged-model'); \
+model.push_to_hub('your-org/your-merged-model')"</pre>
+  </section>
+
+  <section id="module-7">
+    <h2>Module 7: Common Pitfalls &amp; Anti-Patterns</h2>
+    <p>Fine-tuning failures usually come from data scope, memory planning, or tokenizer/model mismatches rather than the trainer itself. These are the problems to watch first.</p>
+  </section>
+
+  <section id="forgetting">
+    <h2>1. Catastrophic Forgetting</h2>
+    <p>If the dataset is too narrow or repetitive, the model can over-specialize and degrade on broader capabilities such as coding, general reasoning, or instruction following. This is why LoRA and moderate training schedules are safer defaults than aggressive full fine-tuning on small bespoke corpora.</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Mitigation:</strong> mix in representative task distributions, keep training durations modest, and evaluate on both domain-specific and general benchmark prompts before shipping.</div>
+    </div>
+  </section>
+
+  <section id="oom">
+    <h2>2. OOM (Out of Memory) Errors</h2>
+    <p>OOM errors are often solved by reducing instantaneous memory pressure rather than reducing total training signal. Gradient accumulation simulates a larger effective batch size. Gradient checkpointing trades extra compute for lower activation memory.</p>
+
+    <pre>from transformers import TrainingArguments
+
+
+training_args = TrainingArguments(
+    output_dir="./outputs",
+    per_device_train_batch_size=1,
+    gradient_accumulation_steps=32,
+    learning_rate=2e-4,
+    fp16=True,
+    optim="paged_adamw_8bit",
+)
+
+model.gradient_checkpointing_enable()</pre>
+
+    <p>On small GPUs like 16 GB or 24 GB cards, these two settings are often the first levers to pull before reducing sequence length too aggressively.</p>
+  </section>
+
+  <section id="tokenizers">
+    <h2>3. Mismatched Tokenizers</h2>
+    <p>If you add special tokens to the tokenizer but forget to resize the model embeddings, the model and tokenizer fall out of sync. That can cause unstable or garbage outputs because token ids point to embeddings the model never allocated.</p>
+
+    <pre>from __future__ import annotations
+
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+
+model_id = "mistralai/Mistral-7B-Instruct-v0.3"
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForCausalLM.from_pretrained(model_id, device_map="cpu")
+
+num_added_tokens = tokenizer.add_special_tokens(
+    {"additional_special_tokens": ["<|domain_policy|>"]}
+)
+
+if num_added_tokens > 0:
+    # Resize the model embeddings so new tokenizer ids have learned slots.
+    model.resize_token_embeddings(len(tokenizer))</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#10003;</span>
+      <div class="callout-body"><strong>Checklist:</strong> tokenizer changes, pad token behavior, chat templates, and embedding resize must all stay aligned before you start training.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">Transformers</span> <a href="https://huggingface.co/docs/transformers/index">Transformers documentation</a></li>
+      <li><span class="ll-tag">Datasets</span> <a href="https://huggingface.co/docs/datasets/index">Datasets documentation</a></li>
+      <li><span class="ll-tag">PEFT</span> <a href="https://huggingface.co/docs/peft/index">PEFT documentation</a></li>
+      <li><span class="ll-tag">TRL</span> <a href="https://huggingface.co/docs/trl/index">TRL documentation</a></li>
+      <li><span class="ll-tag">bitsandbytes</span> <a href="https://huggingface.co/docs/transformers/quantization/bitsandbytes">bitsandbytes quantization guide</a></li>
+      <li><span class="ll-tag">Hub</span> <a href="https://huggingface.co/docs/hub/index">Hugging Face Hub documentation</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach(s => s.id && observer.observe(s));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
