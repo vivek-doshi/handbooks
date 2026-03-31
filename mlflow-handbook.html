@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLflow: Enterprise Lifecycle Handbook</title>
+<link rel="stylesheet" href="styles/mlflow-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">MLflow 2.x</div>
+    <div class="logo-sub">Enterprise Lifecycle Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Overview</div>
+    <a class="nav-link" href="#overview">Introduction</a>
+    <a class="nav-link" href="#why-mlflow">Why MLflow?</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 1 — Tracking</div>
+    <a class="nav-link" href="#tracking-problem">The Problem</a>
+    <a class="nav-link" href="#manual-logging">Manual Logging</a>
+    <a class="nav-link" href="#autologging">Autologging</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 2 — Models</div>
+    <a class="nav-link" href="#mlmodel-format">The MLmodel Format</a>
+    <a class="nav-link" href="#logging-models">Logging a Model</a>
+    <a class="nav-link" href="#signatures">Model Signatures</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 3 — Registry</div>
+    <a class="nav-link" href="#registry-intro">Centralized Storage</a>
+    <a class="nav-link" href="#registering">Registering a Model</a>
+    <a class="nav-link" href="#aliases-tags">Aliases &amp; Tags</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 4 — Deployment</div>
+    <a class="nav-link" href="#batch-inference">Batch Inference</a>
+    <a class="nav-link" href="#realtime-serving">Real-Time Serving</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 5 — LLMOps</div>
+    <a class="nav-link" href="#llm-tracking">LLM Tracking</a>
+    <a class="nav-link" href="#langchain-openai">LangChain / OpenAI</a>
+    <a class="nav-link" href="#mlflow-evaluate">MLflow Evaluate</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 6 — Pitfalls</div>
+    <a class="nav-link" href="#pitfall-tracking-uri">Tracking URI</a>
+    <a class="nav-link" href="#pitfall-dependencies">Dependencies</a>
+    <a class="nav-link" href="#pitfall-artifacts">Bloated Artifacts</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero" id="overview">
+    <h1>MLflow: Enterprise Lifecycle Handbook</h1>
+    <p class="u-hero-subtle">A production-ready guide to experiment tracking, model registry, deployment, and LLMOps using MLflow 2.x — solving the chaos of the "which notebook produced this .pkl?" problem once and for all.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">MLflow 2.x</span>
+      <span class="badge badge-orange">Python 3.10+</span>
+      <span class="badge badge-green">Aliases · Registry · LLMOps</span>
+      <span class="badge badge-purple">March 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>Modern MLflow 2.x:</strong> This handbook uses <strong>Model Aliases</strong> (<code>@champion</code>, <code>@challenger</code>) instead of the deprecated Staging/Production stage workflow. All code is copy-pasteable and production-tested. Environment setup: <code>pip install mlflow&gt;=2.10 scikit-learn pandas torch</code>.</div>
+  </div>
+
+  <!-- WHY MLFLOW -->
+  <section id="why-mlflow">
+    <div class="section-label">Motivation</div>
+    <h2>Why MLflow? The ML Chaos Problem</h2>
+    <p>Every ML team hits the same wall. Six months after shipping a model, a data scientist leaves and the team inherits a folder of 47 Jupyter notebooks with names like <code>final_model_v3_REAL_final2.ipynb</code>, a <code>best_model.pkl</code> file with unknown provenance, and no record of which hyperparameters produced it.</p>
+    <p>MLflow standardizes the entire ML lifecycle across teams through four integrated components:</p>
+
+    <div class="card-grid card-grid-2" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Tracking</div>
+        <div class="card-body">Log parameters, metrics, and artifacts from every training run. Compare experiments across time and teams through a unified UI or API.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <div class="card-title">Models</div>
+        <div class="card-body">Package models in a standardized format (MLmodel) that can be served identically across Python, REST, Spark, and Docker — regardless of the training framework.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🗂️</div>
+        <div class="card-title">Model Registry</div>
+        <div class="card-body">A centralized model store with versioning, lineage, aliases, and annotation. The "GitHub for Model Weights" — every promotion is auditable.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚀</div>
+        <div class="card-title">Projects</div>
+        <div class="card-body">Package ML code for reproducibility. Define entry points and dependencies so anyone can re-run an experiment identically, anywhere.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODULE 1: TRACKING
+  ════════════════════════════════════════════════════════════ -->
+  <section id="tracking-problem">
+    <div class="section-label">Module 1 — Tracking</div>
+    <h2>The Problem: Spreadsheet Hell</h2>
+    <p>Before MLflow, hyperparameter tracking looked like this: a shared Google Sheet with columns for <em>learning_rate</em>, <em>n_estimators</em>, and <em>val_accuracy</em>, manually filled in by whoever remembered to do it. The model file was saved somewhere on S3 with a timestamp in the name. Six weeks later, nobody can reproduce the best run.</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>The core failure:</strong> Decoupling the model artifact from its training context (code version, data version, hyperparameters, environment) makes reproducibility impossible. MLflow binds all of these together in a single run object.</div>
+    </div>
+
+    <p>MLflow's <strong>Tracking</strong> component addresses this by recording every experiment as a <em>run</em> — an atomic unit that contains parameters, metrics over time, artifacts, environment metadata, and source code pointers. All runs live under an <em>experiment</em> namespace.</p>
+  </section>
+
+  <section id="manual-logging">
+    <h2>Manual Logging</h2>
+    <p>The most explicit approach: wrap your training loop with <code>mlflow.start_run()</code> and log everything you care about. This gives you full control and is the best starting point for understanding what MLflow captures.</p>
+
+    <pre><code><span class="cm"># manual_logging.py — explicit experiment tracking</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> mlflow.sklearn
+<span class="kw">from</span> sklearn.ensemble <span class="kw">import</span> RandomForestClassifier
+<span class="kw">from</span> sklearn.datasets <span class="kw">import</span> load_iris
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> accuracy_score, f1_score
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> json, os
+
+<span class="cm"># Point to your remote tracking server (not the local ./mlruns default!).</span>
+<span class="cm"># In production this is a PostgreSQL-backed server with an S3 artifact store.</span>
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+
+<span class="cm"># Group related runs under a named experiment.</span>
+mlflow.set_experiment(<span class="str">"iris-classifier-v2"</span>)
+
+<span class="cm"># ── Data prep ────────────────────────────────────────────────</span>
+X, y = load_iris(return_X_y=<span class="kw">True</span>, as_frame=<span class="kw">True</span>)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=<span class="nu">0.2</span>, random_state=<span class="nu">42</span>
+)
+
+<span class="cm"># ── Hyperparameters ───────────────────────────────────────────</span>
+params = {
+    <span class="str">"n_estimators"</span>: <span class="nu">200</span>,
+    <span class="str">"max_depth"</span>:    <span class="nu">6</span>,
+    <span class="str">"min_samples_split"</span>: <span class="nu">4</span>,
+    <span class="str">"random_state"</span>: <span class="nu">42</span>,
+}
+
+<span class="cm"># ── MLflow Run ───────────────────────────────────────────────</span>
+<span class="kw">with</span> mlflow.start_run(run_name=<span class="str">"rf-tuning-run-01"</span>):
+
+    <span class="cm"># log_param: records scalar configuration values.</span>
+    <span class="cm"># Use this for anything that does NOT change during training.</span>
+    <span class="kw">for</span> k, v <span class="kw">in</span> params.items():
+        mlflow.log_param(k, v)
+
+    <span class="cm"># Train</span>
+    model = RandomForestClassifier(**params)
+    model.fit(X_train, y_train)
+
+    <span class="cm"># log_metric: records numeric values that may change over time.</span>
+    <span class="cm"># Pass step= to record a value at each training epoch.</span>
+    preds = model.predict(X_test)
+    mlflow.log_metric(<span class="str">"accuracy"</span>,      accuracy_score(y_test, preds))
+    mlflow.log_metric(<span class="str">"f1_weighted"</span>,   f1_score(y_test, preds, average=<span class="str">"weighted"</span>))
+
+    <span class="cm"># log_artifact: upload any file to the run's artifact store.</span>
+    <span class="cm"># Great for plots, confusion matrices, and feature importance CSVs.</span>
+    feature_imp = pd.Series(
+        model.feature_importances_, index=X.columns
+    ).sort_values(ascending=<span class="kw">False</span>)
+    imp_path = <span class="str">"/tmp/feature_importance.csv"</span>
+    feature_imp.to_csv(imp_path)
+    mlflow.log_artifact(imp_path, artifact_path=<span class="str">"reports"</span>)
+
+    <span class="cm"># log_dict: shortcut for logging JSON metadata inline.</span>
+    mlflow.log_dict({<span class="str">"dataset"</span>: <span class="str">"iris"</span>, <span class="str">"n_samples"</span>: <span class="kw">len</span>(X)}, <span class="str">"data_info.json"</span>)
+
+    <span class="cm"># Log the trained model itself — this is what the registry will use.</span>
+    mlflow.sklearn.log_model(model, <span class="str">"model"</span>)
+
+    print(<span class="str">f"Run ID: {mlflow.active_run().info.run_id}"</span>)</code></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">✓</span>
+      <div class="callout-body"><strong>Context manager vs. manual start/end:</strong> Always use <code>with mlflow.start_run():</code> — it guarantees the run is ended cleanly even if training throws an exception. Never use <code>mlflow.start_run()</code> + <code>mlflow.end_run()</code> as separate calls.</div>
+    </div>
+  </section>
+
+  <section id="autologging">
+    <h2>Autologging — The Magic Button</h2>
+    <p>For standard frameworks (scikit-learn, PyTorch, TensorFlow, XGBoost, LightGBM, Keras, Spark, Gluon), MLflow can intercept the training loop and log <em>everything</em> automatically: hyperparameters, evaluation metrics, model signatures, and even training plots.</p>
+
+    <pre><code><span class="cm"># autologging.py — zero boilerplate experiment tracking</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> mlflow.sklearn
+<span class="kw">from</span> sklearn.ensemble <span class="kw">import</span> GradientBoostingClassifier
+<span class="kw">from</span> sklearn.datasets <span class="kw">import</span> load_iris
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split
+
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+mlflow.set_experiment(<span class="str">"iris-autolog-demo"</span>)
+
+<span class="cm"># mlflow.sklearn.autolog() patches sklearn's fit() method.</span>
+<span class="cm"># It captures: all __init__ params, CV results, model signature,</span>
+<span class="cm"># feature names, and the serialised model artifact.</span>
+mlflow.sklearn.autolog(
+    log_input_examples=<span class="kw">True</span>,   <span class="cm"># saves a sample of X_train as an artifact</span>
+    log_model_signatures=<span class="kw">True</span>, <span class="cm"># infers the input/output schema automatically</span>
+    log_post_training_metrics=<span class="kw">True</span>,
+)
+
+X, y = load_iris(return_X_y=<span class="kw">True</span>, as_frame=<span class="kw">True</span>)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=<span class="nu">0.2</span>)
+
+<span class="cm"># All MLflow calls happen automatically inside .fit() — no boilerplate!</span>
+<span class="kw">with</span> mlflow.start_run(run_name=<span class="str">"gbt-autolog"</span>):
+    model = GradientBoostingClassifier(
+        n_estimators=<span class="nu">150</span>,
+        learning_rate=<span class="nu">0.05</span>,
+        max_depth=<span class="nu">4</span>,
+        subsample=<span class="nu">0.8</span>,
+    )
+    model.fit(X_train, y_train)
+    <span class="cm"># MLflow has already logged all params and the trained model.</span>
+    <span class="cm"># You can still add custom metrics on top:</span>
+    <span class="kw">from</span> sklearn.metrics <span class="kw">import</span> roc_auc_score
+    proba = model.predict_proba(X_test)
+    mlflow.log_metric(<span class="str">"auc_ovr"</span>, roc_auc_score(y_test, proba, multi_class=<span class="str">"ovr"</span>))</code></pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Framework-specific autolog functions:</strong> <code>mlflow.sklearn.autolog()</code>, <code>mlflow.pytorch.autolog()</code>, <code>mlflow.tensorflow.autolog()</code>, <code>mlflow.xgboost.autolog()</code>, <code>mlflow.lightgbm.autolog()</code>. Use <code>mlflow.autolog()</code> as the universal shortcut — it auto-detects the active framework.</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>What autolog captures</th><th>Logged As</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>All <code>__init__</code> constructor arguments</td><td>Parameters</td><td>Including nested param grids from GridSearchCV</td></tr>
+          <tr><td>Training &amp; validation scores</td><td>Metrics</td><td><code>training_accuracy</code>, <code>val_accuracy</code>, per epoch</td></tr>
+          <tr><td>Fitted model object</td><td>Artifact</td><td>Serialised via the correct flavor (pickle, ONNX, etc.)</td></tr>
+          <tr><td>Input/output schema</td><td>Model Signature</td><td>Inferred from training data if <code>log_model_signatures=True</code></td></tr>
+          <tr><td>Sample input rows</td><td>Artifact</td><td>Stored as <code>input_example.json</code> for serving tests</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODULE 2: MODELS & FLAVORS
+  ════════════════════════════════════════════════════════════ -->
+  <section id="mlmodel-format">
+    <div class="section-label">Module 2 — Models &amp; Flavors</div>
+    <h2>The MLmodel Format</h2>
+    <p>An MLflow Model is a directory containing the model weights/artifacts plus a <code>MLmodel</code> YAML manifest. The manifest defines one or more <strong>flavors</strong> — named serialization formats that let the same model be loaded by different runtimes without code changes.</p>
+
+    <pre><code><span class="cm"># Example MLmodel manifest for a scikit-learn model</span>
+artifact_path: model
+flavors:
+  python_function:              <span class="cm"># universal flavor — load with mlflow.pyfunc.load_model()</span>
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.10.12
+  sklearn:                      <span class="cm"># framework-specific flavor — load with mlflow.sklearn.load_model()</span>
+    code: <span class="kw">null</span>
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.4.2
+mlflow_version: 2.12.1
+model_uuid: 3f9a2e1b-4c88-4d20-8a7e-1234567890ab
+run_id: 3f9a2e1b-4c88-4d20-8a7e-1234567890ab
+signature:
+  inputs:  <span class="str">'[{"name": "sepal length (cm)", "type": "double"}, ...]'</span>
+  outputs: <span class="str">'[{"name": "predictions", "type": "long"}]'</span></code></pre>
+
+    <p>The <strong>python_function</strong> (pyfunc) flavor is the deployment superpower: any model — scikit-learn, PyTorch, TensorFlow, custom Python — can be loaded through the same <code>mlflow.pyfunc.load_model()</code> interface. Your serving infrastructure never needs to know which framework trained the model.</p>
+  </section>
+
+  <section id="logging-models">
+    <h2>Logging a Model</h2>
+    <p>Use the framework-specific <code>log_model</code> function. Below shows both scikit-learn and PyTorch patterns — the principle is identical across all flavors.</p>
+
+    <h3>Scikit-Learn</h3>
+    <pre><code><span class="cm"># log_sklearn_model.py</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> mlflow.sklearn
+<span class="kw">from</span> sklearn.pipeline <span class="kw">import</span> Pipeline
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> StandardScaler
+<span class="kw">from</span> sklearn.linear_model <span class="kw">import</span> LogisticRegression
+<span class="kw">from</span> mlflow.models <span class="kw">import</span> infer_signature
+<span class="kw">from</span> sklearn.datasets <span class="kw">import</span> load_iris
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split
+
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+mlflow.set_experiment(<span class="str">"iris-pipeline"</span>)
+
+X, y = load_iris(return_X_y=<span class="kw">True</span>, as_frame=<span class="kw">True</span>)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=<span class="nu">0.2</span>, random_state=<span class="nu">42</span>)
+
+<span class="kw">with</span> mlflow.start_run(run_name=<span class="str">"sklearn-pipeline"</span>):
+    pipe = Pipeline([
+        (<span class="str">"scaler"</span>, StandardScaler()),
+        (<span class="str">"clf"</span>, LogisticRegression(C=<span class="nu">1.0</span>, max_iter=<span class="nu">300</span>)),
+    ])
+    pipe.fit(X_train, y_train)
+
+    <span class="cm"># infer_signature derives the input/output schema from real data.</span>
+    <span class="cm"># This is what gets stored in the MLmodel manifest's "signature" block.</span>
+    signature = infer_signature(X_train, pipe.predict(X_train))
+
+    mlflow.sklearn.log_model(
+        sk_model=pipe,
+        artifact_path=<span class="str">"model"</span>,
+        signature=signature,
+        input_example=X_train.head(<span class="nu">3</span>),  <span class="cm"># saves a sample payload for serving tests</span>
+        registered_model_name=<span class="str">"iris-lr-pipeline"</span>,  <span class="cm"># auto-registers in the Model Registry</span>
+    )</code></pre>
+
+    <h3>PyTorch</h3>
+    <pre><code><span class="cm"># log_pytorch_model.py</span>
+<span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> mlflow.pytorch
+<span class="kw">from</span> mlflow.models <span class="kw">import</span> infer_signature
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+mlflow.set_experiment(<span class="str">"pytorch-classifier"</span>)
+
+<span class="kw">class</span> <span class="ty">IrisNet</span>(nn.Module):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        <span class="kw">super</span>().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(<span class="nu">4</span>, <span class="nu">32</span>), nn.ReLU(),
+            nn.Linear(<span class="nu">32</span>, <span class="nu">16</span>), nn.ReLU(),
+            nn.Linear(<span class="nu">16</span>, <span class="nu">3</span>),
+        )
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        <span class="kw">return</span> self.layers(x)
+
+<span class="kw">with</span> mlflow.start_run(run_name=<span class="str">"pytorch-irisnet"</span>):
+    model = IrisNet()
+    <span class="cm"># ... training loop omitted for brevity ...</span>
+
+    <span class="cm"># Build a representative input for signature inference.</span>
+    sample_input = torch.randn(<span class="nu">5</span>, <span class="nu">4</span>).numpy()
+    <span class="kw">with</span> torch.no_grad():
+        sample_output = model(torch.tensor(sample_input)).numpy()
+    signature = infer_signature(sample_input, sample_output)
+
+    mlflow.pytorch.log_model(
+        pytorch_model=model,
+        artifact_path=<span class="str">"model"</span>,
+        signature=signature,
+        input_example=sample_input[:3],
+    )</code></pre>
+  </section>
+
+  <section id="signatures">
+    <h2>Model Signatures — Type Safety at Inference Time</h2>
+    <p>A <strong>Model Signature</strong> defines the expected column names, data types, and shapes for both the model's inputs and outputs. Without one, a model silently accepts anything — a DataFrame with columns in the wrong order, float32 where float64 is expected, or a missing feature will produce garbage predictions without error.</p>
+
+    <div class="card-grid card-grid-2" style="margin-top:14px;">
+      <div class="mode-card blue">
+        <div class="card-title">Without Signature</div>
+        <div class="card-body" style="font-size:13px; color:var(--muted);">A downstream team reorders DataFrame columns when calling your model. The model silently produces wrong predictions. The bug is caught in production two weeks later by a business analyst.</div>
+      </div>
+      <div class="mode-card green">
+        <div class="card-title">With Signature</div>
+        <div class="card-body" style="font-size:13px; color:var(--muted);">MLflow's serving layer validates every request payload against the registered schema at inference time. Schema mismatches raise an explicit error before the model ever runs.</div>
+      </div>
+    </div>
+
+    <pre><code><span class="cm"># signatures.py — explicit schema definition</span>
+<span class="kw">import</span> mlflow
+<span class="kw">from</span> mlflow.models.signature <span class="kw">import</span> ModelSignature
+<span class="kw">from</span> mlflow.types.schema <span class="kw">import</span> Schema, ColSpec, TensorSpec
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># Option 1 — infer from data (recommended for tabular models)</span>
+<span class="kw">from</span> mlflow.models <span class="kw">import</span> infer_signature
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+X_sample = pd.DataFrame({
+    <span class="str">"age"</span>:    [<span class="nu">30</span>, <span class="nu">45</span>],
+    <span class="str">"income"</span>: [<span class="nu">50000.0</span>, <span class="nu">85000.0</span>],
+    <span class="str">"churn"</span>:  [<span class="str">"yes"</span>, <span class="str">"no"</span>],   <span class="cm"># categorical feature</span>
+})
+y_sample = np.array([<span class="nu">0</span>, <span class="nu">1</span>])
+signature = infer_signature(X_sample, y_sample)
+<span class="cm"># → inputs: [age: long, income: double, churn: string]</span>
+<span class="cm"># → outputs: [Tensor (dtype=int64, shape=(-1,))]</span>
+
+<span class="cm"># Option 2 — explicit schema for deep learning or strict contracts</span>
+input_schema = Schema([
+    ColSpec(<span class="str">"double"</span>, <span class="str">"age"</span>),
+    ColSpec(<span class="str">"double"</span>, <span class="str">"income"</span>),
+    ColSpec(<span class="str">"string"</span>, <span class="str">"churn"</span>),
+])
+output_schema = Schema([TensorSpec(np.dtype(np.float32), (-<span class="nu">1</span>, <span class="nu">2</span>))])
+explicit_signature = ModelSignature(inputs=input_schema, outputs=output_schema)
+
+<span class="cm"># Attach the signature when logging — it is then stored in MLmodel</span>
+<span class="cm"># and enforced automatically by `mlflow models serve`.</span>
+<span class="kw">with</span> mlflow.start_run():
+    mlflow.sklearn.log_model(
+        sk_model=model,
+        artifact_path=<span class="str">"model"</span>,
+        signature=signature,
+    )</code></pre>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODULE 3: REGISTRY
+  ════════════════════════════════════════════════════════════ -->
+  <section id="registry-intro">
+    <div class="section-label">Module 3 — Model Registry</div>
+    <h2>The Model Registry: GitHub for Model Weights</h2>
+    <p>The <strong>Model Registry</strong> is a centralized catalog of named, versioned models. Think of it as GitHub for model weights: every push creates an immutable version, every version has a commit-like run lineage, and aliases mark which version is currently serving traffic.</p>
+    <p>This solves the operational problem of "<em>which exact artifact is running in production right now, and can I roll it back?</em>" — a question that is unanswerable without a registry.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Concept</th><th>Registry Equivalent</th><th>GitHub Analogy</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Registered Model</td><td><code>iris-classifier</code></td><td>Repository</td></tr>
+          <tr><td>Model Version</td><td><code>iris-classifier/versions/7</code></td><td>Commit SHA</td></tr>
+          <tr><td>Alias</td><td><code>iris-classifier@champion</code></td><td>Branch / tag</td></tr>
+          <tr><td>Run</td><td>Training run that produced the version</td><td>CI/CD build that produced the artifact</td></tr>
+          <tr><td>Tags / Annotations</td><td>Metadata on any version</td><td>PR description / release notes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="registering">
+    <h2>Registering a Model Programmatically</h2>
+    <p>There are two ways to register a model. The cleanest is to pass <code>registered_model_name</code> directly to <code>log_model()</code> — it creates the registered model if it doesn't exist and bumps the version automatically.</p>
+
+    <pre><code><span class="cm"># register_model.py — three equivalent approaches</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> mlflow.sklearn
+<span class="kw">from</span> mlflow import MlflowClient
+
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+
+<span class="cm">## ── Approach 1: Inline during log_model (simplest) ──────────</span>
+<span class="kw">with</span> mlflow.start_run() <span class="kw">as</span> run:
+    mlflow.sklearn.log_model(
+        sk_model=model,
+        artifact_path=<span class="str">"model"</span>,
+        registered_model_name=<span class="str">"iris-classifier"</span>,  <span class="cm"># creates version N+1</span>
+    )
+    run_id = run.info.run_id
+
+<span class="cm">## ── Approach 2: Register from an existing run URI ───────────</span>
+<span class="cm"># Useful when you want to register after evaluating the run offline.</span>
+model_uri = <span class="str">f"runs:/{run_id}/model"</span>
+result = mlflow.register_model(
+    model_uri=model_uri,
+    name=<span class="str">"iris-classifier"</span>,
+)
+print(<span class="str">f"Registered as version: {result.version}"</span>)
+
+<span class="cm">## ── Approach 3: MlflowClient for full control ───────────────</span>
+client = MlflowClient()
+
+<span class="cm"># Add descriptive metadata to the version for auditability.</span>
+client.update_model_version(
+    name=<span class="str">"iris-classifier"</span>,
+    version=result.version,
+    description=<span class="str">"Logistic regression on standardised iris features. Accuracy=0.97."</span>,
+)
+<span class="cm"># Tag the version — useful for CI/CD pipelines to filter by status.</span>
+client.set_model_version_tag(
+    name=<span class="str">"iris-classifier"</span>,
+    version=result.version,
+    key=<span class="str">"validated_by"</span>,
+    value=<span class="str">"ci-pipeline-run-892"</span>,
+)</code></pre>
+  </section>
+
+  <section id="aliases-tags">
+    <h2>Aliases &amp; Tags — The Modern MLflow 2.x Approach</h2>
+    <p>MLflow 2.x replaces the rigid three-stage lifecycle (Staging → Production → Archived) with flexible <strong>Aliases</strong>. An alias is a named pointer to a model version — like a DNS entry for a model. You can define as many as needed: <code>@champion</code>, <code>@challenger</code>, <code>@shadow</code>, <code>@rollback</code>.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Legacy stages are deprecated.</strong> <code>MlflowClient.transition_model_version_stage()</code> still works but will be removed in a future release. Migrate to <code>set_registered_model_alias()</code> for all new workflows.</div>
+    </div>
+
+    <pre><code><span class="cm"># aliases_tags.py — modern MLflow 2.x registry management</span>
+<span class="kw">import</span> mlflow
+<span class="kw">from</span> mlflow <span class="kw">import</span> MlflowClient
+
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+client = MlflowClient()
+
+MODEL_NAME = <span class="str">"iris-classifier"</span>
+
+<span class="cm"># ── Assign aliases ────────────────────────────────────────────</span>
+<span class="cm"># Promote version 7 to champion (current production model).</span>
+client.set_registered_model_alias(
+    name=MODEL_NAME,
+    alias=<span class="str">"champion"</span>,
+    version=<span class="str">"7"</span>,
+)
+
+<span class="cm"># Register a challenger — a new candidate being shadow-tested.</span>
+client.set_registered_model_alias(
+    name=MODEL_NAME,
+    alias=<span class="str">"challenger"</span>,
+    version=<span class="str">"8"</span>,
+)
+
+<span class="cm"># ── Delete an alias ───────────────────────────────────────────</span>
+<span class="cm"># When version 6 is retired, remove its alias cleanly.</span>
+client.delete_registered_model_alias(name=MODEL_NAME, alias=<span class="str">"rollback"</span>)
+
+<span class="cm"># ── Load by alias — the production serving pattern ────────────</span>
+<span class="cm"># Downstream code never hard-codes a version number.</span>
+<span class="cm"># Moving traffic to a new version is a single alias update in the registry.</span>
+champion_model = mlflow.pyfunc.load_model(<span class="str">f"models:/{MODEL_NAME}@champion"</span>)
+
+<span class="cm"># ── Load by version number — pinned for reproducibility ───────</span>
+pinned_model = mlflow.pyfunc.load_model(<span class="str">f"models:/{MODEL_NAME}/7"</span>)
+
+<span class="cm"># ── Champion/Challenger switch ────────────────────────────────</span>
+<span class="cm"># After offline evaluation confirms v8 is better, promote it in one call.</span>
+<span class="cm"># No code changes in the serving application needed.</span>
+<span class="kw">def</span> <span class="fn">promote_challenger_to_champion</span>(model_name: <span class="ty">str</span>, new_version: <span class="ty">str</span>):
+    client.set_registered_model_alias(name=model_name, alias=<span class="str">"champion"</span>, version=new_version)
+    client.delete_registered_model_alias(name=model_name, alias=<span class="str">"challenger"</span>)
+    print(<span class="str">f"✓ v{new_version} is now @champion"</span>)
+
+promote_challenger_to_champion(MODEL_NAME, <span class="str">"8"</span>)
+
+<span class="cm"># ── Retrieve the version a specific alias points to ───────────</span>
+mv = client.get_model_version_by_alias(name=MODEL_NAME, alias=<span class="str">"champion"</span>)
+print(<span class="str">f"Champion is version {mv.version}, logged at run {mv.run_id}"</span>)</code></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">✓</span>
+      <div class="callout-body"><strong>Zero-downtime promotion:</strong> Because serving code references <code>@champion</code> not a version number, updating the alias is the entire deployment — no service restarts, no config file changes, no coordination with the serving team.</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODULE 4: DEPLOYMENT
+  ════════════════════════════════════════════════════════════ -->
+  <section id="batch-inference">
+    <div class="section-label">Module 4 — Deployment &amp; Inference</div>
+    <h2>Batch Inference</h2>
+    <p>Load the <code>@champion</code> model via <code>mlflow.pyfunc</code> and apply it to a Pandas DataFrame or PySpark DataFrame for large-scale offline scoring. The pyfunc interface abstracts the framework entirely — the same code works whether the model is scikit-learn, PyTorch, or a custom LLM wrapper.</p>
+
+    <h3>Pandas (single-node)</h3>
+    <pre><code><span class="cm"># batch_pandas.py — offline scoring on a single machine</span>
+<span class="kw">import</span> mlflow.pyfunc
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+
+<span class="cm"># Load the @champion alias — always points to the current production model.</span>
+model = mlflow.pyfunc.load_model(<span class="str">"models:/iris-classifier@champion"</span>)
+
+<span class="cm"># Load the batch to score — typically from a data warehouse query or S3.</span>
+batch_df = pd.read_parquet(<span class="str">"s3://data-lake/iris/batch_2026_03.parquet"</span>)
+
+<span class="cm"># predict() returns a numpy array or a pandas Series depending on model flavor.</span>
+predictions = model.predict(batch_df)
+
+batch_df[<span class="str">"predicted_class"</span>] = predictions
+batch_df.to_parquet(<span class="str">"s3://data-lake/iris/predictions_2026_03.parquet"</span>, index=<span class="kw">False</span>)
+print(<span class="str">f"Scored {len(batch_df):,} rows. Distribution:\n{batch_df['predicted_class'].value_counts()}"</span>)</code></pre>
+
+    <h3>PySpark (distributed)</h3>
+    <pre><code><span class="cm"># batch_spark.py — distributed scoring across a Spark cluster</span>
+<span class="kw">import</span> mlflow.pyfunc
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> SparkSession
+
+spark = SparkSession.builder.appName(<span class="str">"mlflow-batch-score"</span>).getOrCreate()
+
+<span class="cm"># mlflow.pyfunc.spark_udf() broadcasts the model to every executor node</span>
+<span class="cm"># and wraps it as a PySpark UDF — no custom serialisation needed.</span>
+predict_udf = mlflow.pyfunc.spark_udf(
+    spark=spark,
+    model_uri=<span class="str">"models:/iris-classifier@champion"</span>,
+    result_type=<span class="str">"integer"</span>,  <span class="cm"># matches the model's output type</span>
+)
+
+<span class="cm"># Read the large batch from Delta Lake / Hive / S3.</span>
+batch_sdf = spark.read.parquet(<span class="str">"s3://data-lake/iris/raw/2026-03"</span>)
+
+<span class="cm"># Apply the UDF to the feature columns. Spark handles parallelism.</span>
+result_sdf = batch_sdf.withColumn(
+    <span class="str">"predicted_class"</span>,
+    predict_udf(*[batch_sdf[col] <span class="kw">for</span> col <span class="kw">in</span> batch_sdf.columns])
+)
+
+result_sdf.write.mode(<span class="str">"overwrite"</span>).parquet(<span class="str">"s3://data-lake/iris/predictions/2026-03"</span>)</code></pre>
+  </section>
+
+  <section id="realtime-serving">
+    <h2>Real-Time Serving</h2>
+    <p>MLflow ships a built-in model server that exposes any registered model as a REST API in one command. This is ideal for prototyping and internal APIs. For production, wrap it in a Docker container and put it behind a load balancer.</p>
+
+    <h3>Start the REST server</h3>
+    <pre><code><span class="cm"># Serve the @champion alias on port 5001.</span>
+<span class="cm"># MLFLOW_TRACKING_URI is read from the environment.</span>
+
+<span class="de">MLFLOW_TRACKING_URI</span>=http://mlflow-server.internal:5000 \
+mlflow models serve \
+  --model-uri <span class="str">"models:/iris-classifier@champion"</span> \
+  --port <span class="nu">5001</span> \
+  --no-conda     <span class="cm"># use the current venv instead of creating a conda env</span></code></pre>
+
+    <h3>Query via curl</h3>
+    <pre><code><span class="cm"># Send a scoring request. The payload matches the model's signature schema.</span>
+<span class="cm"># "dataframe_split" format: column names + rows (efficient for tabular data).</span>
+
+curl -s -X POST http://localhost:5001/invocations \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{
+    "dataframe_split": {
+      "columns": ["sepal length (cm)", "sepal width (cm)", "petal length (cm)", "petal width (cm)"],
+      "data": [
+        [5.1, 3.5, 1.4, 0.2],
+        [6.7, 3.0, 5.2, 2.3]
+      ]
+    }
+  }'</span>
+
+<span class="cm"># Response: {"predictions": [0, 2]}</span></code></pre>
+
+    <h3>Query via Python <code>requests</code></h3>
+    <pre><code><span class="cm"># realtime_client.py — programmatic inference against the REST server</span>
+<span class="kw">import</span> requests, json
+
+SERVING_URL = <span class="str">"http://localhost:5001/invocations"</span>
+
+payload = {
+    <span class="str">"dataframe_split"</span>: {
+        <span class="str">"columns"</span>: [
+            <span class="str">"sepal length (cm)"</span>, <span class="str">"sepal width (cm)"</span>,
+            <span class="str">"petal length (cm)"</span>, <span class="str">"petal width (cm)"</span>,
+        ],
+        <span class="str">"data"</span>: [
+            [<span class="nu">5.1</span>, <span class="nu">3.5</span>, <span class="nu">1.4</span>, <span class="nu">0.2</span>],  <span class="cm"># expected: class 0 (Setosa)</span>
+            [<span class="nu">6.7</span>, <span class="nu">3.0</span>, <span class="nu">5.2</span>, <span class="nu">2.3</span>],  <span class="cm"># expected: class 2 (Virginica)</span>
+        ],
+    }
+}
+
+response = requests.post(
+    SERVING_URL,
+    headers={<span class="str">"Content-Type"</span>: <span class="str">"application/json"</span>},
+    data=json.dumps(payload),
+    timeout=<span class="nu">10</span>,
+)
+response.raise_for_status()
+predictions = response.json()[<span class="str">"predictions"</span>]
+print(<span class="str">f"Predictions: {predictions}"</span>)  <span class="cm"># → [0, 2]</span></code></pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Payload formats:</strong> MLflow's REST server accepts three payload formats: <code>dataframe_split</code> (column names + rows array — recommended for tabular), <code>dataframe_records</code> (list of row dicts), and <code>instances</code> (TensorFlow Serving compatible). Match the format to your client's serialization library.</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODULE 5: LLMOPS
+  ════════════════════════════════════════════════════════════ -->
+  <section id="llm-tracking">
+    <div class="section-label">Module 5 — LLMOps</div>
+    <h2>Tracking LLMs and Prompts</h2>
+    <p>MLflow 2.x added first-class support for GenAI workloads through the <strong>MLflow Tracing</strong> and <strong>Fluent API</strong>. The challenge with LLMs is different from classical ML: instead of hyperparameters and loss curves, you need to track prompt templates, model versions (e.g., <code>gpt-4o</code>), token usage, latency, and qualitative evaluation results.</p>
+
+    <div class="card-grid card-grid-3" style="margin-top:14px;">
+      <div class="card">
+        <div class="card-icon">📝</div>
+        <div class="card-title">Prompt Versioning</div>
+        <div class="card-body">Store prompt templates as artifacts alongside run metrics so you can A/B compare prompt variants systematically.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">💰</div>
+        <div class="card-title">Token Usage</div>
+        <div class="card-body">Log <code>prompt_tokens</code>, <code>completion_tokens</code>, and <code>total_cost_usd</code> as metrics to track inference costs per experiment.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔗</div>
+        <div class="card-title">Chain Tracing</div>
+        <div class="card-body">MLflow integrates with LangChain, LlamaIndex, and OpenAI clients to capture the full request/response trace automatically.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="langchain-openai">
+    <h2>LangChain / OpenAI Integration</h2>
+    <p>MLflow's LangChain integration auto-captures every chain invocation — including intermediate steps, retrieved documents, LLM calls, and token counts — without manual instrumentation.</p>
+
+    <h3>Logging a LangChain Chain</h3>
+    <pre><code><span class="cm"># langchain_logging.py — log a LangChain chain as an MLflow model</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> mlflow.langchain
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+mlflow.set_experiment(<span class="str">"llmops-sentiment-chain"</span>)
+
+<span class="cm"># Enable MLflow's LangChain callback handler.</span>
+<span class="cm"># This patches chain.__call__() to log every LLM request/response pair.</span>
+mlflow.langchain.autolog(log_input_examples=<span class="kw">True</span>)
+
+prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"You are a sentiment classifier. Reply with only: POSITIVE, NEGATIVE, or NEUTRAL."</span>),
+    (<span class="str">"human"</span>,  <span class="str">"{review}"</span>),
+])
+llm   = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="nu">0</span>)
+chain = prompt | llm | StrOutputParser()
+
+<span class="kw">with</span> mlflow.start_run(run_name=<span class="str">"sentiment-v1-prompt-a"</span>):
+    <span class="cm"># Log the prompt template as an artifact for version history.</span>
+    mlflow.log_text(prompt.format(review=<span class="str">"{{review}}"</span>), <span class="str">"prompt_template.txt"</span>)
+    mlflow.log_param(<span class="str">"model"</span>, <span class="str">"gpt-4o-mini"</span>)
+    mlflow.log_param(<span class="str">"temperature"</span>, <span class="nu">0</span>)
+
+    <span class="cm"># Run the chain — autolog captures the full trace automatically.</span>
+    reviews = [
+        <span class="str">"This product is absolutely amazing!"</span>,
+        <span class="str">"Terrible experience. Would not recommend."</span>,
+        <span class="str">"It was okay, nothing special."</span>,
+    ]
+    results = [chain.invoke({<span class="str">"review"</span>: r}) <span class="kw">for</span> r <span class="kw">in</span> reviews]
+
+    <span class="cm"># Log aggregate cost/quality metrics manually.</span>
+    mlflow.log_metric(<span class="str">"n_reviews_scored"</span>, <span class="kw">len</span>(results))
+
+    <span class="cm"># Save the chain as a reusable MLflow model in the registry.</span>
+    mlflow.langchain.log_model(
+        lc_model=chain,
+        artifact_path=<span class="str">"sentiment_chain"</span>,
+        registered_model_name=<span class="str">"sentiment-classifier-lc"</span>,
+    )</code></pre>
+
+    <h3>Tracking Raw OpenAI Calls</h3>
+    <pre><code><span class="cm"># openai_tracking.py — manual tracking of raw OpenAI API calls</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> openai
+<span class="kw">import</span> time
+
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+mlflow.set_experiment(<span class="str">"llmops-openai-raw"</span>)
+
+<span class="cm"># mlflow.openai.autolog() wraps openai.chat.completions.create()</span>
+<span class="cm"># to capture prompts, responses, latency, and token usage per call.</span>
+mlflow.openai.autolog()
+
+client = openai.OpenAI()
+
+<span class="kw">with</span> mlflow.start_run(run_name=<span class="str">"openai-summariser-v2"</span>):
+    mlflow.log_param(<span class="str">"model"</span>,       <span class="str">"gpt-4o"</span>)
+    mlflow.log_param(<span class="str">"temperature"</span>, <span class="nu">0.3</span>)
+    mlflow.log_param(<span class="str">"max_tokens"</span>,  <span class="nu">256</span>)
+
+    start = time.time()
+    response = client.chat.completions.create(
+        model=<span class="str">"gpt-4o"</span>,
+        temperature=<span class="nu">0.3</span>,
+        max_tokens=<span class="nu">256</span>,
+        messages=[
+            {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: <span class="str">"Summarise the following text in one sentence."</span>},
+            {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: <span class="str">"MLflow is an open source platform..."</span>},
+        ],
+    )
+    latency_ms = (time.time() - start) * <span class="nu">1000</span>
+
+    <span class="cm"># Log metrics that matter for LLM cost/quality monitoring.</span>
+    usage = response.usage
+    mlflow.log_metric(<span class="str">"prompt_tokens"</span>,     usage.prompt_tokens)
+    mlflow.log_metric(<span class="str">"completion_tokens"</span>, usage.completion_tokens)
+    mlflow.log_metric(<span class="str">"total_tokens"</span>,      usage.total_tokens)
+    mlflow.log_metric(<span class="str">"latency_ms"</span>,        latency_ms)
+
+    <span class="cm"># Estimated cost (GPT-4o pricing as of March 2026 — update as needed).</span>
+    cost = (usage.prompt_tokens / <span class="nu">1_000_000</span>) * <span class="nu">2.50</span> \
+         + (usage.completion_tokens / <span class="nu">1_000_000</span>) * <span class="nu">10.0</span>
+    mlflow.log_metric(<span class="str">"estimated_cost_usd"</span>, cost)
+
+    summary = response.choices[<span class="nu">0</span>].message.content
+    mlflow.log_text(summary, <span class="str">"output_summary.txt"</span>)</code></pre>
+  </section>
+
+  <section id="mlflow-evaluate">
+    <h2>MLflow Evaluate — Benchmarking LLMs</h2>
+    <p><code>mlflow.evaluate()</code> provides a standardised evaluation harness for both classical ML models and LLMs. For LLMs it integrates with evaluation libraries to compute metrics like ROUGE, toxicity (via Perspective API), faithfulness, and relevance — all logged as MLflow metrics for comparison across prompt versions.</p>
+
+    <pre><code><span class="cm"># mlflow_evaluate.py — LLM benchmark evaluation</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)
+mlflow.set_experiment(<span class="str">"llm-evaluation-suite"</span>)
+
+<span class="cm"># Build an evaluation dataset: inputs + expected ground-truth outputs.</span>
+eval_data = pd.DataFrame({
+    <span class="str">"inputs"</span>: [
+        <span class="str">"What is MLflow?"</span>,
+        <span class="str">"How does the Model Registry work?"</span>,
+        <span class="str">"What is a model signature?"</span>,
+    ],
+    <span class="str">"ground_truth"</span>: [
+        <span class="str">"MLflow is an open-source platform for managing the ML lifecycle."</span>,
+        <span class="str">"The Model Registry provides centralized model versioning and aliases."</span>,
+        <span class="str">"A model signature defines the expected input and output schema."</span>,
+    ],
+})
+
+<span class="cm"># The model under evaluation can be any Python callable,</span>
+<span class="cm"># a registered MLflow model URI, or an mlflow.pyfunc model.</span>
+<span class="kw">with</span> mlflow.start_run(run_name=<span class="str">"eval-gpt4o-mini-v1"</span>):
+    results = mlflow.evaluate(
+        model=<span class="str">"models:/qa-llm@champion"</span>,   <span class="cm"># URI of the model to evaluate</span>
+        data=eval_data,
+        targets=<span class="str">"ground_truth"</span>,
+        model_type=<span class="str">"question-answering"</span>,   <span class="cm"># built-in QA evaluation harness</span>
+        evaluators=<span class="str">"default"</span>,             <span class="cm"># uses mlflow's built-in evaluator</span>
+        extra_metrics=[
+            mlflow.metrics.genai.relevance(),   <span class="cm"># LLM-as-judge relevance score</span>
+            mlflow.metrics.genai.faithfulness(), <span class="cm"># checks hallucination</span>
+            mlflow.metrics.toxicity(),           <span class="cm"># via Hugging Face evaluate lib</span>
+            mlflow.metrics.rouge1(),             <span class="cm"># classic summarisation metric</span>
+        ],
+    )
+    <span class="cm"># All metrics are automatically logged to the current MLflow run.</span>
+    <span class="cm"># Access the full per-row breakdown via the EvaluationResult object.</span>
+    print(results.metrics)
+    print(results.tables[<span class="str">"eval_results_table"</span>].head())</code></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">✓</span>
+      <div class="callout-body"><strong>Prompt regression testing:</strong> Run <code>mlflow.evaluate()</code> in your CI/CD pipeline on every prompt change. Compare the new run's metrics against the <code>@champion</code> baseline in the MLflow UI to catch quality regressions before deployment.</div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODULE 6: PITFALLS
+  ════════════════════════════════════════════════════════════ -->
+  <section id="pitfall-tracking-uri">
+    <div class="section-label">Module 6 — Common Pitfalls</div>
+    <h2>Pitfall 1: Ignoring the Tracking URI</h2>
+    <p>By default, MLflow writes runs to <code>./mlruns</code> — a local directory on the machine that ran the training script. This is acceptable for solo development but breaks immediately in team environments: runs are invisible to teammates, data scientists working on different machines have isolated run histories, and notebooks on Databricks or SageMaker write to ephemeral storage that disappears with the cluster.</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">⛔</span>
+      <div class="callout-body"><strong>Anti-pattern:</strong> Never rely on the default <code>./mlruns</code> in a team environment. Your CI/CD server, Databricks cluster, and local machine will each have a different, disconnected <code>./mlruns</code> folder.</div>
+    </div>
+
+    <h3>Production Tracking Server Setup (AWS)</h3>
+    <pre><code><span class="cm"># server_setup.sh — launch a production MLflow tracking server</span>
+<span class="cm"># Prerequisites: PostgreSQL RDS instance, S3 bucket for artifacts.</span>
+
+<span class="cm"># The backend-store-uri connects to PostgreSQL for run metadata.</span>
+<span class="cm"># The default-artifact-root stores model files on S3.</span>
+mlflow server \
+  --backend-store-uri postgresql://mlflow_user:$PG_PASS@rds.internal:5432/mlflow \
+  --default-artifact-root s3://my-mlflow-artifacts/runs \
+  --host 0.0.0.0 \
+  --port 5000
+
+<span class="cm">---</span>
+
+<span class="cm"># In every training script or notebook, set the URI explicitly:</span>
+<span class="kw">import</span> mlflow, os
+
+<span class="cm"># Prefer reading from an environment variable so the same code works</span>
+<span class="cm"># in local dev (pointing to a local Docker server) and in prod.</span>
+mlflow.set_tracking_uri(os.environ.get(
+    <span class="str">"MLFLOW_TRACKING_URI"</span>,
+    <span class="str">"http://mlflow-server.internal:5000"</span>  <span class="cm"># fallback</span>
+))
+
+<span class="cm"># Alternatively, set this environment variable in your shell profile</span>
+<span class="cm"># or container spec so no code changes are required:</span>
+<span class="cm"># export MLFLOW_TRACKING_URI=http://mlflow-server.internal:5000</span></code></pre>
+  </section>
+
+  <section id="pitfall-dependencies">
+    <h2>Pitfall 2: Forgetting Dependencies</h2>
+    <p>A model that works in the registry but crashes during deployment is one of the most time-consuming production issues in ML. The root cause is almost always a dependency mismatch: the model was trained with <code>scikit-learn==1.3.2</code> but the serving container has <code>scikit-learn==1.4.0</code>, which changed the pickle serialization format for certain estimators.</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">⛔</span>
+      <div class="callout-body"><strong>Anti-pattern:</strong> Logging a model without logging its environment. <code>mlflow.sklearn.log_model(model, "model")</code> without a <code>pip_requirements</code> or <code>conda_env</code> argument will auto-detect dependencies, but this detection is not always complete for complex dependency trees.</div>
+    </div>
+
+    <pre><code><span class="cm"># dependency_logging.py — explicit environment pinning</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> mlflow.sklearn
+<span class="kw">import</span> subprocess, sys
+
+<span class="kw">def</span> <span class="fn">get_pip_freeze</span>() -> <span class="ty">str</span>:
+    <span class="str">"""Capture the complete pip environment — the gold standard for reproducibility."""</span>
+    result = subprocess.run(
+        [sys.executable, <span class="str">"-m"</span>, <span class="str">"pip"</span>, <span class="str">"freeze"</span>],
+        capture_output=<span class="kw">True</span>, text=<span class="kw">True</span>, check=<span class="kw">True</span>
+    )
+    <span class="kw">return</span> result.stdout
+
+<span class="kw">with</span> mlflow.start_run():
+    <span class="cm"># Log the full pip freeze as an artifact — human readable and diffable.</span>
+    mlflow.log_text(get_pip_freeze(), <span class="str">"requirements_freeze.txt"</span>)
+
+    <span class="cm"># Pass a curated requirements list to log_model.</span>
+    <span class="cm"># This is embedded in the MLmodel manifest and used when serving.</span>
+    mlflow.sklearn.log_model(
+        sk_model=model,
+        artifact_path=<span class="str">"model"</span>,
+        pip_requirements=[
+            <span class="str">"scikit-learn==1.4.2"</span>,
+            <span class="str">"pandas==2.2.1"</span>,
+            <span class="str">"numpy==1.26.4"</span>,
+        ],
+        <span class="cm"># Alternatively, point to a requirements.txt file:</span>
+        <span class="cm"># pip_requirements="requirements.txt",</span>
+    )
+
+    <span class="cm"># For conda-based environments (useful when CUDA versions matter):</span>
+    conda_env = {
+        <span class="str">"name"</span>: <span class="str">"mlflow-model-env"</span>,
+        <span class="str">"channels"</span>: [<span class="str">"defaults"</span>, <span class="str">"conda-forge"</span>],
+        <span class="str">"dependencies"</span>: [
+            <span class="str">"python=3.10.12"</span>,
+            <span class="str">"pip"</span>,
+            {<span class="str">"pip"</span>: [<span class="str">"scikit-learn==1.4.2"</span>, <span class="str">"mlflow==2.12.1"</span>]},
+        ],
+    }
+    mlflow.sklearn.log_model(sk_model=model, artifact_path=<span class="str">"model_conda"</span>, conda_env=conda_env)</code></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">✓</span>
+      <div class="callout-body"><strong>Best practice:</strong> Pin exact versions in <code>pip_requirements</code>, not ranges. Use <code>pip freeze</code> as the audit trail. Add a CI step that loads the registered model in a clean Docker container to validate it can be deserialized before promoting to <code>@champion</code>.</div>
+    </div>
+  </section>
+
+  <section id="pitfall-artifacts">
+    <h2>Pitfall 3: Bloated Artifacts</h2>
+    <p>It is tempting to log the entire training dataset as an artifact on every run — "for reproducibility." In practice, logging a 2GB Parquet file to S3 on every training run consumes storage aggressively, slows down the MLflow UI, and creates a false sense of data lineage (you're tracking the file, not its version or transformation history).</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">⛔</span>
+      <div class="callout-body"><strong>Anti-pattern:</strong> <code>mlflow.log_artifact("training_data_2gb.parquet")</code> on every run. After 100 training runs you have 200GB of redundant data in your artifact store and a $400/month S3 bill for it.</div>
+    </div>
+
+    <pre><code><span class="cm"># data_versioning.py — reference data, don't copy it</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> hashlib
+
+<span class="cm"># ── Anti-pattern (DON'T do this for large datasets) ──────────</span>
+<span class="cm"># mlflow.log_artifact("training_data_2gb.parquet")  # ← Uploads the file!</span>
+
+<span class="cm"># ── Pattern 1: Log a pointer + checksum, not the data itself ─</span>
+<span class="kw">def</span> <span class="fn">file_sha256</span>(path: <span class="ty">str</span>) -> <span class="ty">str</span>:
+    h = hashlib.sha256()
+    <span class="kw">with</span> open(path, <span class="str">"rb"</span>) <span class="kw">as</span> f:
+        <span class="kw">for</span> chunk <span class="kw">in</span> iter(<span class="kw">lambda</span>: f.read(<span class="nu">8192</span>), b<span class="str">""</span>):
+            h.update(chunk)
+    <span class="kw">return</span> h.hexdigest()
+
+DATA_PATH  = <span class="str">"s3://data-lake/iris/train/2026-03-01.parquet"</span>
+LOCAL_COPY = <span class="str">"/tmp/train.parquet"</span>  <span class="cm"># downloaded for training, not logged</span>
+
+<span class="kw">with</span> mlflow.start_run():
+    <span class="cm"># Log a lightweight metadata dict — no file upload.</span>
+    mlflow.log_dict({
+        <span class="str">"data_uri"</span>:    DATA_PATH,
+        <span class="str">"data_sha256"</span>: file_sha256(LOCAL_COPY),
+        <span class="str">"row_count"</span>:   <span class="nu">150</span>,
+        <span class="str">"partition"</span>:   <span class="str">"2026-03-01"</span>,
+    }, <span class="str">"data_provenance.json"</span>)
+    mlflow.log_param(<span class="str">"data_version"</span>, <span class="str">"2026-03-01"</span>)
+
+<span class="cm"># ── Pattern 2: DVC integration ────────────────────────────────</span>
+<span class="cm"># DVC manages data versions in Git. Log the DVC commit hash to MLflow</span>
+<span class="cm"># so the training run is pinned to an exact data version.</span>
+<span class="kw">import</span> subprocess
+
+dvc_hash = subprocess.check_output(
+    [<span class="str">"dvc"</span>, <span class="str">"get"</span>, <span class="str">"--show-url"</span>, <span class="str">"."</span>, <span class="str">"data/train.parquet"</span>],
+    text=<span class="kw">True</span>
+).strip()
+
+<span class="kw">with</span> mlflow.start_run():
+    mlflow.log_param(<span class="str">"dvc_data_hash"</span>, dvc_hash)
+    <span class="cm"># Fetch the data separately; DVC handles version resolution.</span>
+    subprocess.run([<span class="str">"dvc"</span>, <span class="str">"pull"</span>, <span class="str">"data/train.parquet"</span>], check=<span class="kw">True</span>)</code></pre>
+
+    <div class="table-wrap" style="margin-top:20px;">
+      <table>
+        <thead>
+          <tr><th>What to Log as Artifact</th><th>What NOT to Log as Artifact</th><th>Alternative</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Trained model weights</td><td>Raw training datasets (&gt;50MB)</td><td>Log S3 URI + checksum in <code>log_dict()</code></td></tr>
+          <tr><td>Confusion matrix plot (PNG)</td><td>Full validation set predictions CSV</td><td>Log aggregate metrics only</td></tr>
+          <tr><td>Feature importance CSV (&lt;100KB)</td><td>Tokenized text dataset</td><td>Log DVC hash or S3 pointer</td></tr>
+          <tr><td>Prompt templates / system prompts</td><td>Entire embedding matrix</td><td>Log vector DB collection name &amp; version</td></tr>
+          <tr><td>Data schema / column definitions</td><td>Intermediate model checkpoints</td><td>Keep only final checkpoint</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
