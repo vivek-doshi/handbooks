@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLOps &amp; Model Deployment Handbook</title>
+<link rel="stylesheet" href="styles/mlops-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">MLOps</div>
+    <div class="logo-sub">Model Deployment Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Overview</div>
+    <a class="nav-link" href="#overview">Introduction</a>
+    <a class="nav-link" href="#toc">Table of Contents</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 1</div>
+    <a class="nav-link" href="#dvc">Data &amp; Model Versioning</a>
+    <a class="nav-link" href="#dvc-setup">DVC Setup &amp; Workflow</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 2</div>
+    <a class="nav-link" href="#experiment-tracking">Experiment Tracking</a>
+    <a class="nav-link" href="#wandb">Weights &amp; Biases</a>
+    <a class="nav-link" href="#mlflow">MLflow &amp; Model Registry</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 3</div>
+    <a class="nav-link" href="#pipelines">Continuous Training</a>
+    <a class="nav-link" href="#dvc-pipelines">DVC Pipelines</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 4</div>
+    <a class="nav-link" href="#deployment">Deployment Environments</a>
+    <a class="nav-link" href="#fastapi">FastAPI Serving</a>
+    <a class="nav-link" href="#docker">Containerization</a>
+    <a class="nav-link" href="#batch">Batch &amp; Edge</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 5</div>
+    <a class="nav-link" href="#monitoring">Model Monitoring</a>
+    <a class="nav-link" href="#drift">Data &amp; Concept Drift</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 6</div>
+    <a class="nav-link" href="#pitfalls">Pitfalls &amp; Anti-Patterns</a>
+    <a class="nav-link" href="#best-practices">Best Practices</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero" id="overview">
+    <h1>MLOps &amp; Model Deployment Handbook</h1>
+    <p class="u-hero-subtle">Production-grade patterns for versioning data, tracking experiments, deploying models, and monitoring inference — because MLOps is not just DevOps for ML. It handles a fundamentally new axis of variability: <strong>Data and Model Weights</strong>.</p>
+    <div class="hero-meta">
+      <span class="badge badge-sky">MLOps</span>
+      <span class="badge badge-blue">DVC · MLflow · W&amp;B</span>
+      <span class="badge badge-green">FastAPI · Docker · ONNX</span>
+      <span class="badge badge-purple">March 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>Core principle — Reproducibility:</strong> Every tool, snippet, and workflow in this handbook answers one question: <em>"If the engineer who built this quits tomorrow, can the team reproduce the exact same model?"</em> If the answer is no, the system is not production-ready.</div>
+  </div>
+
+  <!-- ========== TABLE OF CONTENTS ========== -->
+  <section id="toc">
+    <h2>Table of Contents</h2>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <div class="card-title">Module 1: Versioning Data &amp; Models</div>
+        <div class="card-body">Why Git fails for large files. DVC alongside Git. S3 remotes for datasets and weights.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Module 2: Experiment Tracking &amp; Registry</div>
+        <div class="card-body">Weights &amp; Biases integration. MLflow Model Registry. Staging → Production lifecycle.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔄</div>
+        <div class="card-title">Module 3: Continuous Training Pipelines</div>
+        <div class="card-body">DVC Pipelines as DAGs. Selective re-execution. Automated retraining triggers.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🚀</div>
+        <div class="card-title">Module 4: Deployment &amp; Model Serving</div>
+        <div class="card-body">FastAPI endpoints. Docker for ML. Batch inference. Edge &amp; browser deployment.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">👁</div>
+        <div class="card-title">Module 5: Monitoring &amp; Observability</div>
+        <div class="card-body">Silent failures. Data drift vs. concept drift. Evidently AI and Prometheus/Grafana.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚠</div>
+        <div class="card-title">Module 6: Pitfalls &amp; Best Practices</div>
+        <div class="card-body">Training-serving skew. Over-engineering V1. Ignoring baselines. Feature stores.</div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Traditional DevOps vs. MLOps:</strong> In DevOps, you version <em>code</em>. In MLOps, you version <em>code + data + model weights + hyperparameters + environment</em>. A single change in any of these dimensions produces a different model.</div>
+    </div>
+  </section>
+
+
+  <!-- ================================================================== -->
+  <!--  MODULE 1: VERSIONING DATA AND MODELS (DVC)                        -->
+  <!-- ================================================================== -->
+  <section id="dvc">
+    <h2>Module 1 — Versioning Data &amp; Models</h2>
+
+    <h3>The Problem: Why Git Fails for ML Artifacts</h3>
+    <p>Git was designed for text files — source code, configs, markdown. It stores every version of every file in the <code>.git</code> directory. When you try to commit a 50GB training dataset or a 2GB <code>.pt</code> PyTorch checkpoint, three things go wrong immediately:</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Problem</th><th>What Happens</th><th>Impact</th></tr>
+        <tr><td><strong>Repository bloat</strong></td><td>Every version of the dataset is stored in <code>.git/objects</code></td><td>A 50GB dataset with 10 versions → 500GB repo</td></tr>
+        <tr><td><strong>Clone times</strong></td><td><code>git clone</code> downloads the entire history</td><td>New team members wait hours to clone</td></tr>
+        <tr><td><strong>GitHub/GitLab limits</strong></td><td>File size limits (100MB GitHub, 5GB GitLab LFS)</td><td>Push rejected; workflow broken</td></tr>
+        <tr><td><strong>No diffing</strong></td><td>Git can't meaningfully diff binary files</td><td><code>git log</code> becomes useless for data changes</td></tr>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Real scenario:</strong> A data scientist runs <code>git add training_data.parquet</code> on a 12GB file. Git computes a SHA-1 hash of the entire file, copies it into <code>.git/objects</code>, and now the repo is permanently 12GB larger — even if you delete the file in the next commit. You'd need <code>git filter-branch</code> or BFG Repo Cleaner to fix it.</div>
+    </div>
+
+    <h3>Git LFS — A Partial Solution (and Why It's Not Enough)</h3>
+    <p>Git Large File Storage (LFS) replaces large files with lightweight pointers inside the Git repo, while storing the actual file contents on a remote server. This helps — but it has critical limitations for ML:</p>
+
+    <ul class="bullet">
+      <li><strong>No data pipeline integration:</strong> LFS doesn't know about your training pipeline or which dataset version produced which model.</li>
+      <li><strong>Costly hosting:</strong> GitHub LFS bandwidth and storage have strict quotas and overage charges.</li>
+      <li><strong>No experiment linking:</strong> LFS can't connect a specific dataset version to a specific experiment result.</li>
+    </ul>
+  </section>
+
+  <!-- DVC SETUP -->
+  <section id="dvc-setup">
+    <h2>DVC — Data Version Control</h2>
+
+    <p><strong>DVC</strong> (Data Version Control) solves this by working <em>alongside</em> Git. The architecture is elegant:</p>
+
+    <div class="mode-card sky">
+      <div class="mode-header">
+        <span class="mode-name">DVC Architecture</span>
+        <span class="mode-shortcut">git + dvc</span>
+      </div>
+      <p class="u-muted-small"><strong>Git stores:</strong> Small pointer files (<code>.dvc</code> files) containing the MD5 hash of the actual data.<br><strong>DVC stores:</strong> The actual heavy files (datasets, model weights) in a configured remote (S3, GCS, Azure Blob, local NAS).<br><strong>Result:</strong> Your repo stays lightweight. Your data is versioned, shareable, and reproducible.</p>
+    </div>
+
+    <div class="flow">
+      <span class="flow-step">git init</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">dvc init</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">dvc add data/</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">dvc remote add</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">dvc push</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">git commit</span>
+    </div>
+
+    <h3>Step-by-Step: Initialize DVC in a Project</h3>
+
+    <pre><span class="comment"># Step 1: Create a new project and initialize Git + DVC</span>
+mkdir ml-fraud-detection && cd ml-fraud-detection
+git init
+pip install dvc[s3]          <span class="comment"># Install DVC with S3 support (also: dvc[gs], dvc[azure])</span>
+dvc init                     <span class="comment"># Creates .dvc/ directory and .dvcignore</span>
+
+<span class="comment"># DVC init creates these files automatically:</span>
+<span class="comment">#   .dvc/.gitignore    — prevents DVC cache from entering Git</span>
+<span class="comment">#   .dvc/config        — DVC configuration</span>
+<span class="comment">#   .dvcignore         — like .gitignore but for DVC</span>
+
+git add .dvc .dvcignore
+git commit -m <span class="str">"Initialize DVC"</span></pre>
+
+    <h3>Step 2: Add a Large Dataset to DVC</h3>
+
+    <pre><span class="comment"># Assume we have a 12GB raw dataset</span>
+ls -lh data/
+<span class="comment"># data/transactions_2024.parquet   12GB</span>
+<span class="comment"># data/labels.csv                  450MB</span>
+
+<span class="comment"># Track the entire data/ directory with DVC</span>
+dvc add data/
+
+<span class="comment"># This creates two things:</span>
+<span class="comment"># 1. data.dvc         — a small pointer file (YAML) with the MD5 hash</span>
+<span class="comment"># 2. data/.gitignore  — prevents Git from tracking the actual data files</span>
+
+<span class="comment"># Let's inspect the pointer file:</span>
+cat data.dvc
+<span class="comment"># outs:</span>
+<span class="comment"># - md5: a1b2c3d4e5f6...  (hash of the data directory)</span>
+<span class="comment">#   size: 12884901888</span>
+<span class="comment">#   nfiles: 2</span>
+<span class="comment">#   path: data</span>
+
+<span class="comment"># Now commit the POINTER file to Git (not the data itself)</span>
+git add data.dvc data/.gitignore
+git commit -m <span class="str">"Track training data v1 with DVC"</span></pre>
+
+    <h3>Step 3: Configure an S3 Remote and Push</h3>
+
+    <pre><span class="comment"># Configure S3 as the DVC remote storage</span>
+dvc remote add -d myremote s3://my-mlops-bucket/dvc-store
+<span class="comment"># -d flag makes this the default remote</span>
+
+<span class="comment"># Optional: set S3 region and endpoint (for MinIO or other S3-compatible stores)</span>
+dvc remote modify myremote region us-east-1
+
+<span class="comment"># Push the actual data files to S3</span>
+dvc push
+<span class="comment"># Uploading data/transactions_2024.parquet to s3://my-mlops-bucket/dvc-store/...</span>
+<span class="comment"># 2 files pushed</span>
+
+<span class="comment"># Commit the remote configuration</span>
+git add .dvc/config
+git commit -m <span class="str">"Configure S3 remote for DVC storage"</span>
+git push origin main</pre>
+
+    <h3>Step 4: Reproduce on Another Machine</h3>
+
+    <pre><span class="comment"># A teammate clones the repo — it's fast because no heavy files in Git</span>
+git clone https://github.com/team/ml-fraud-detection.git
+cd ml-fraud-detection
+
+<span class="comment"># Pull the actual data from S3 using the pointer files</span>
+dvc pull
+<span class="comment"># Downloading data/transactions_2024.parquet from s3://...</span>
+<span class="comment"># 2 files fetched, 2 files updated</span>
+
+<span class="comment"># The data directory is now identical to the original — same hash, same bytes</span></pre>
+
+    <h3>Versioning Model Weights</h3>
+
+    <pre><span class="comment"># After training, track the model checkpoint</span>
+dvc add models/fraud_detector_v1.pt   <span class="comment"># 2.1GB PyTorch model</span>
+
+git add models/fraud_detector_v1.pt.dvc models/.gitignore
+git commit -m <span class="str">"Add trained model v1 — F1=0.87, AUC=0.94"</span>
+git tag -a <span class="str">"model-v1"</span> -m <span class="str">"Baseline fraud detector"</span>
+
+dvc push
+
+<span class="comment"># Later, retrain with new data → track v2</span>
+dvc add models/fraud_detector_v2.pt
+git add models/fraud_detector_v2.pt.dvc
+git commit -m <span class="str">"Model v2 — F1=0.91, AUC=0.96 (added transaction velocity features)"</span>
+git tag -a <span class="str">"model-v2"</span> -m <span class="str">"Improved with velocity features"</span>
+dvc push
+
+<span class="comment"># Roll back to v1 if v2 degrades in production</span>
+git checkout model-v1
+dvc checkout              <span class="comment"># Restores the v1 model weights from cache/remote</span></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>DVC + Git Tags = Time Travel for ML.</strong> Every Git tag maps to a specific dataset version <em>and</em> model version. You can <code>git checkout</code> any tag and <code>dvc checkout</code> to get the exact data and model from that point in time. This is the foundation of ML reproducibility.</div>
+    </div>
+
+    <h4>DVC Commands Cheat Sheet</h4>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Command</th><th>Purpose</th><th>Git Equivalent</th></tr>
+        <tr><td><code>dvc init</code></td><td>Initialize DVC in a Git repo</td><td><code>git init</code></td></tr>
+        <tr><td><code>dvc add &lt;file&gt;</code></td><td>Start tracking a file/directory</td><td><code>git add</code></td></tr>
+        <tr><td><code>dvc push</code></td><td>Upload tracked files to remote</td><td><code>git push</code></td></tr>
+        <tr><td><code>dvc pull</code></td><td>Download tracked files from remote</td><td><code>git pull</code></td></tr>
+        <tr><td><code>dvc checkout</code></td><td>Sync data files to match current Git commit</td><td><code>git checkout</code></td></tr>
+        <tr><td><code>dvc diff</code></td><td>Show changes in tracked data</td><td><code>git diff</code></td></tr>
+        <tr><td><code>dvc remote add</code></td><td>Configure storage backend</td><td><code>git remote add</code></td></tr>
+        <tr><td><code>dvc gc</code></td><td>Garbage collect unused cache</td><td><code>git gc</code></td></tr>
+      </table>
+    </div>
+  </section>
+
+
+  <!-- ================================================================== -->
+  <!--  MODULE 2: EXPERIMENT TRACKING & MODEL REGISTRY                    -->
+  <!-- ================================================================== -->
+  <section id="experiment-tracking">
+    <h2>Module 2 — Experiment Tracking &amp; Model Registry</h2>
+
+    <h3>The Messy Notebook Problem</h3>
+    <p>Every data science team has experienced this: a shared drive or repo full of files named <code>model_v1.ipynb</code>, <code>model_v2_fixed.ipynb</code>, <code>model_v3_FINAL.ipynb</code>, <code>model_v3_FINAL_actually_final.ipynb</code>. Inside each notebook, hyperparameters are hardcoded, results are printed to stdout, and there's no way to compare runs systematically.</p>
+
+    <div class="mode-card red">
+      <div class="mode-header">
+        <span class="mode-name">Anti-Pattern: The Notebook Graveyard</span>
+        <span class="mode-shortcut">chaos</span>
+      </div>
+      <p class="u-muted-small">Without experiment tracking, you lose: <strong>(1)</strong> which hyperparameters produced which metrics, <strong>(2)</strong> which dataset version was used, <strong>(3)</strong> which code version was run, <strong>(4)</strong> system metrics (GPU utilization, memory), and <strong>(5)</strong> the ability to compare 50 runs side-by-side.</p>
+    </div>
+
+    <p>Experiment tracking tools solve this by automatically logging every detail of every training run into a centralized database with a UI for comparison, filtering, and analysis.</p>
+  </section>
+
+  <!-- W&B -->
+  <section id="wandb">
+    <h2>Weights &amp; Biases (W&amp;B)</h2>
+
+    <p>W&amp;B is a hosted experiment tracking platform that provides real-time dashboards, hyperparameter sweeps, model versioning, and team collaboration. It's the industry standard for experiment tracking in research and production ML teams.</p>
+
+    <h3>W&amp;B Integration with a Scikit-Learn Training Loop</h3>
+
+    <pre><span class="comment"># pip install wandb scikit-learn pandas</span>
+<span class="kw">import</span> wandb
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">from</span> sklearn.ensemble <span class="kw">import</span> RandomForestClassifier
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> f1_score, roc_auc_score, classification_report
+<span class="kw">import</span> joblib
+
+<span class="comment"># ── Step 1: Initialize a W&amp;B run ──────────────────────────────────────</span>
+<span class="comment"># Every call to wandb.init() creates a new "run" in your W&amp;B project.</span>
+<span class="comment"># All logs, metrics, and artifacts are grouped under this run.</span>
+run = wandb.init(
+    project=<span class="str">"fraud-detection"</span>,       <span class="comment"># Groups runs under one project dashboard</span>
+    name=<span class="str">"rf-baseline-v1"</span>,            <span class="comment"># Human-readable name for this specific run</span>
+    config={                            <span class="comment"># Hyperparameters — logged and searchable</span>
+        <span class="str">"model_type"</span>: <span class="str">"RandomForest"</span>,
+        <span class="str">"n_estimators"</span>: <span class="num">200</span>,
+        <span class="str">"max_depth"</span>: <span class="num">15</span>,
+        <span class="str">"min_samples_split"</span>: <span class="num">5</span>,
+        <span class="str">"class_weight"</span>: <span class="str">"balanced"</span>,  <span class="comment"># Important for imbalanced fraud data</span>
+        <span class="str">"dataset_version"</span>: <span class="str">"v2.1"</span>,
+        <span class="str">"feature_count"</span>: <span class="num">47</span>,
+        <span class="str">"test_size"</span>: <span class="num">0.2</span>,
+    },
+    tags=[<span class="str">"baseline"</span>, <span class="str">"sklearn"</span>, <span class="str">"fraud"</span>],
+)
+
+<span class="comment"># ── Step 2: Load data and split ────────────────────────────────────────</span>
+df = pd.read_parquet(<span class="str">"data/transactions_2024.parquet"</span>)
+X = df.drop(columns=[<span class="str">"is_fraud"</span>])
+y = df[<span class="str">"is_fraud"</span>]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=run.config[<span class="str">"test_size"</span>], stratify=y, random_state=<span class="num">42</span>
+)
+
+<span class="comment"># Log dataset statistics — helps debug data issues later</span>
+wandb.log({
+    <span class="str">"dataset/total_samples"</span>: len(df),
+    <span class="str">"dataset/fraud_ratio"</span>: y.mean(),
+    <span class="str">"dataset/train_size"</span>: len(X_train),
+    <span class="str">"dataset/test_size"</span>: len(X_test),
+})
+
+<span class="comment"># ── Step 3: Train the model ────────────────────────────────────────────</span>
+model = RandomForestClassifier(
+    n_estimators=run.config[<span class="str">"n_estimators"</span>],
+    max_depth=run.config[<span class="str">"max_depth"</span>],
+    min_samples_split=run.config[<span class="str">"min_samples_split"</span>],
+    class_weight=run.config[<span class="str">"class_weight"</span>],
+    random_state=<span class="num">42</span>,
+    n_jobs=-<span class="num">1</span>,                      <span class="comment"># Use all CPU cores</span>
+)
+model.fit(X_train, y_train)
+
+<span class="comment"># ── Step 4: Evaluate and log metrics ───────────────────────────────────</span>
+y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, <span class="num">1</span>]
+
+f1 = f1_score(y_test, y_pred)
+auc = roc_auc_score(y_test, y_prob)
+
+<span class="comment"># wandb.log() sends metrics to the dashboard in real-time</span>
+wandb.log({
+    <span class="str">"metrics/f1_score"</span>: f1,
+    <span class="str">"metrics/auc_roc"</span>: auc,
+    <span class="str">"metrics/accuracy"</span>: model.score(X_test, y_test),
+})
+
+<span class="comment"># Log feature importances as a W&amp;B bar chart</span>
+feature_importance = pd.DataFrame({
+    <span class="str">"feature"</span>: X.columns,
+    <span class="str">"importance"</span>: model.feature_importances_,
+}).sort_values(<span class="str">"importance"</span>, ascending=<span class="kw">False</span>).head(<span class="num">20</span>)
+
+wandb.log({
+    <span class="str">"feature_importances"</span>: wandb.Table(dataframe=feature_importance)
+})
+
+<span class="comment"># ── Step 5: Save model as W&amp;B Artifact ─────────────────────────────────</span>
+<span class="comment"># Artifacts provide versioned, immutable model storage</span>
+joblib.dump(model, <span class="str">"models/rf_fraud_v1.joblib"</span>)
+artifact = wandb.Artifact(
+    name=<span class="str">"fraud-detector"</span>,
+    type=<span class="str">"model"</span>,
+    description=<span class="str">"Random Forest baseline for fraud detection"</span>,
+    metadata={<span class="str">"f1"</span>: f1, <span class="str">"auc"</span>: auc},
+)
+artifact.add_file(<span class="str">"models/rf_fraud_v1.joblib"</span>)
+run.log_artifact(artifact)
+
+<span class="comment"># ── Step 6: Close the run ──────────────────────────────────────────────</span>
+run.finish()
+print(<span class="str">f"Run complete — F1: {f1:.4f}, AUC: {auc:.4f}"</span>)</pre>
+
+    <h3>W&amp;B with a PyTorch Training Loop</h3>
+
+    <pre><span class="comment"># pip install wandb torch</span>
+<span class="kw">import</span> wandb
+<span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+<span class="kw">from</span> torch.utils.data <span class="kw">import</span> DataLoader
+
+<span class="comment"># Initialize with PyTorch-specific config</span>
+run = wandb.init(
+    project=<span class="str">"fraud-detection"</span>,
+    name=<span class="str">"mlp-v1"</span>,
+    config={
+        <span class="str">"model_type"</span>: <span class="str">"MLP"</span>,
+        <span class="str">"hidden_dim"</span>: <span class="num">256</span>,
+        <span class="str">"learning_rate"</span>: <span class="num">1e-3</span>,
+        <span class="str">"epochs"</span>: <span class="num">50</span>,
+        <span class="str">"batch_size"</span>: <span class="num">512</span>,
+        <span class="str">"optimizer"</span>: <span class="str">"AdamW"</span>,
+        <span class="str">"weight_decay"</span>: <span class="num">1e-4</span>,
+    },
+)
+
+<span class="comment"># ... (model definition and data loading omitted for brevity) ...</span>
+
+<span class="comment"># Training loop with W&amp;B logging</span>
+<span class="kw">for</span> epoch <span class="kw">in</span> range(run.config[<span class="str">"epochs"</span>]):
+    model.train()
+    epoch_loss = <span class="num">0.0</span>
+    <span class="kw">for</span> batch_X, batch_y <span class="kw">in</span> train_loader:
+        optimizer.zero_grad()
+        preds = model(batch_X)
+        loss = criterion(preds, batch_y)
+        loss.backward()
+        optimizer.step()
+        epoch_loss += loss.item()
+
+    avg_loss = epoch_loss / len(train_loader)
+
+    <span class="comment"># Log per-epoch metrics — these appear as interactive charts in W&amp;B</span>
+    wandb.log({
+        <span class="str">"epoch"</span>: epoch,
+        <span class="str">"train/loss"</span>: avg_loss,
+        <span class="str">"train/learning_rate"</span>: optimizer.param_groups[<span class="num">0</span>][<span class="str">"lr"</span>],
+    })
+
+    <span class="comment"># Validation every 5 epochs</span>
+    <span class="kw">if</span> epoch % <span class="num">5</span> == <span class="num">0</span>:
+        val_loss, val_f1 = evaluate(model, val_loader)  <span class="comment"># Custom eval function</span>
+        wandb.log({
+            <span class="str">"val/loss"</span>: val_loss,
+            <span class="str">"val/f1_score"</span>: val_f1,
+        })
+
+<span class="comment"># wandb.watch() — auto-logs gradients and parameter histograms</span>
+<span class="comment"># Call this BEFORE the training loop for full gradient tracking</span>
+<span class="comment"># wandb.watch(model, log="all", log_freq=100)</span>
+
+run.finish()</pre>
+  </section>
+
+  <!-- MLflow -->
+  <section id="mlflow">
+    <h2>MLflow — Model Registry &amp; Lifecycle</h2>
+
+    <p>While W&amp;B excels at experiment tracking and visualization, <strong>MLflow</strong> is the open-source standard for the <em>model lifecycle</em>: logging models, versioning them, and transitioning them through stages (Staging → Production → Archived). Many teams use <strong>both</strong>: W&amp;B for experiment dashboards and MLflow for model registry and deployment.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Capability</th><th>Weights &amp; Biases</th><th>MLflow</th></tr>
+        <tr><td><strong>Experiment tracking UI</strong></td><td>Best-in-class dashboards and comparison</td><td>Good, but more basic</td></tr>
+        <tr><td><strong>Model Registry</strong></td><td>Artifact-based, less structured</td><td>First-class with staging/production</td></tr>
+        <tr><td><strong>Hosting</strong></td><td>SaaS (hosted) — free tier available</td><td>Self-hosted (or Databricks managed)</td></tr>
+        <tr><td><strong>Cost</strong></td><td>Free for individuals; paid for teams</td><td>Free and open-source</td></tr>
+        <tr><td><strong>Deployment</strong></td><td>Not a deployment tool</td><td>Built-in <code>mlflow models serve</code></td></tr>
+        <tr><td><strong>Best for</strong></td><td>Research teams, rapid prototyping</td><td>Production pipelines, model governance</td></tr>
+      </table>
+    </div>
+
+    <h3>MLflow: Log, Register, and Promote a Model</h3>
+
+    <pre><span class="comment"># pip install mlflow scikit-learn</span>
+<span class="kw">import</span> mlflow
+<span class="kw">import</span> mlflow.sklearn
+<span class="kw">from</span> sklearn.ensemble <span class="kw">import</span> GradientBoostingClassifier
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> f1_score, roc_auc_score
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+<span class="comment"># ── Step 1: Set the tracking URI ───────────────────────────────────────</span>
+<span class="comment"># MLflow stores runs in a "tracking server" — local or remote</span>
+mlflow.set_tracking_uri(<span class="str">"http://mlflow-server.internal:5000"</span>)  <span class="comment"># Or "sqlite:///mlflow.db" for local</span>
+mlflow.set_experiment(<span class="str">"fraud-detection"</span>)
+
+<span class="comment"># ── Step 2: Start a run and log everything ─────────────────────────────</span>
+<span class="kw">with</span> mlflow.start_run(run_name=<span class="str">"gbm-tuned-v3"</span>) <span class="kw">as</span> run:
+
+    <span class="comment"># Log hyperparameters</span>
+    params = {
+        <span class="str">"n_estimators"</span>: <span class="num">300</span>,
+        <span class="str">"max_depth"</span>: <span class="num">8</span>,
+        <span class="str">"learning_rate"</span>: <span class="num">0.05</span>,
+        <span class="str">"subsample"</span>: <span class="num">0.8</span>,
+        <span class="str">"min_samples_leaf"</span>: <span class="num">20</span>,
+    }
+    mlflow.log_params(params)
+
+    <span class="comment"># Load data and train</span>
+    df = pd.read_parquet(<span class="str">"data/transactions_2024.parquet"</span>)
+    X_train, X_test, y_train, y_test = train_test_split(
+        df.drop(columns=[<span class="str">"is_fraud"</span>]), df[<span class="str">"is_fraud"</span>],
+        test_size=<span class="num">0.2</span>, stratify=df[<span class="str">"is_fraud"</span>], random_state=<span class="num">42</span>
+    )
+
+    model = GradientBoostingClassifier(**params, random_state=<span class="num">42</span>)
+    model.fit(X_train, y_train)
+
+    <span class="comment"># Evaluate and log metrics</span>
+    y_pred = model.predict(X_test)
+    y_prob = model.predict_proba(X_test)[:, <span class="num">1</span>]
+
+    metrics = {
+        <span class="str">"f1_score"</span>: f1_score(y_test, y_pred),
+        <span class="str">"auc_roc"</span>: roc_auc_score(y_test, y_prob),
+        <span class="str">"accuracy"</span>: model.score(X_test, y_test),
+    }
+    mlflow.log_metrics(metrics)
+
+    <span class="comment"># ── Step 3: Log the trained model ──────────────────────────────────</span>
+    <span class="comment"># mlflow.sklearn.log_model serializes the model with its conda/pip</span>
+    <span class="comment"># environment, so it can be loaded anywhere without dependency issues</span>
+    mlflow.sklearn.log_model(
+        sk_model=model,
+        artifact_path=<span class="str">"model"</span>,                     <span class="comment"># Subdirectory in the run artifacts</span>
+        registered_model_name=<span class="str">"fraud-detector"</span>,     <span class="comment"># Auto-registers in Model Registry</span>
+        input_example=X_test.iloc[:<span class="num">5</span>],              <span class="comment"># Saves a sample for schema inference</span>
+    )
+
+    <span class="comment"># Log additional artifacts (feature importance plot, confusion matrix, etc.)</span>
+    mlflow.log_artifact(<span class="str">"reports/confusion_matrix.png"</span>)
+
+    print(<span class="str">f"Run ID: {run.info.run_id}"</span>)
+    print(<span class="str">f"F1: {metrics['f1_score']:.4f}, AUC: {metrics['auc_roc']:.4f}"</span>)</pre>
+
+    <h3>Transitioning Model Stages in the Registry</h3>
+
+    <pre><span class="comment"># pip install mlflow</span>
+<span class="kw">from</span> mlflow.tracking <span class="kw">import</span> MlflowClient
+
+client = MlflowClient(tracking_uri=<span class="str">"http://mlflow-server.internal:5000"</span>)
+
+<span class="comment"># ── List all versions of the "fraud-detector" model ────────────────────</span>
+<span class="kw">for</span> mv <span class="kw">in</span> client.search_model_versions(<span class="str">"name='fraud-detector'"</span>):
+    print(<span class="str">f"Version {mv.version}: stage={mv.current_stage}, run_id={mv.run_id}"</span>)
+
+<span class="comment"># ── Promote version 3 to Staging for A/B testing ──────────────────────</span>
+client.transition_model_version_stage(
+    name=<span class="str">"fraud-detector"</span>,
+    version=<span class="num">3</span>,
+    stage=<span class="str">"Staging"</span>,
+    archive_existing_versions=<span class="kw">False</span>,    <span class="comment"># Keep current Staging version for comparison</span>
+)
+
+<span class="comment"># ── After validation, promote to Production ────────────────────────────</span>
+client.transition_model_version_stage(
+    name=<span class="str">"fraud-detector"</span>,
+    version=<span class="num">3</span>,
+    stage=<span class="str">"Production"</span>,
+    archive_existing_versions=<span class="kw">True</span>,    <span class="comment"># Archive previous Production version</span>
+)
+
+<span class="comment"># ── Load the Production model anywhere in your codebase ────────────────</span>
+<span class="kw">import</span> mlflow.pyfunc
+
+model = mlflow.pyfunc.load_model(<span class="str">"models:/fraud-detector/Production"</span>)
+predictions = model.predict(new_data)   <span class="comment"># Works with any MLflow-logged model flavor</span></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Best practice — use both tools:</strong> Log to W&amp;B during experimentation for rich dashboards and hyperparameter sweeps. Once you've identified the best model, log it to MLflow's Model Registry for the Staging → Production promotion workflow. This gives you the best of both worlds.</div>
+    </div>
+  </section>
+
+
+  <!-- ================================================================== -->
+  <!--  MODULE 3: CONTINUOUS TRAINING & PIPELINES                         -->
+  <!-- ================================================================== -->
+  <section id="pipelines">
+    <h2>Module 3 — Continuous Training &amp; Pipelines</h2>
+
+    <h3>From Monolithic Script to DAG</h3>
+    <p>Most ML projects start as a single Python script or Jupyter notebook: load data, preprocess, train, evaluate — all in one file. This seems simple, but it has a fundamental problem: <strong>when you change one thing, you have to re-run everything.</strong></p>
+
+    <p>Imagine your training pipeline takes 4 hours. You fix a bug in the evaluation metric. Without a pipeline, you rerun all 4 hours. With a pipeline, only the evaluation step reruns (2 minutes).</p>
+
+    <div class="mode-card sky">
+      <div class="mode-header">
+        <span class="mode-name">Pipeline Architecture — DAG (Directed Acyclic Graph)</span>
+        <span class="mode-shortcut">dvc repro</span>
+      </div>
+      <p class="u-muted-small">An ML pipeline is a <strong>DAG</strong> — a directed acyclic graph of steps where each step declares its <em>dependencies</em> (inputs) and <em>outputs</em>. The pipeline runner (DVC, Airflow, Kubeflow) computes which steps need rerunning based on what changed.</p>
+    </div>
+
+    <div class="flow">
+      <span class="flow-step">data_prep.py</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">feature_eng.py</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">train.py</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">evaluate.py</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">metrics.json</span>
+    </div>
+
+    <p>Each step is a standalone script with clearly defined inputs and outputs. If you change <code>feature_eng.py</code>, only <code>feature_eng</code>, <code>train</code>, and <code>evaluate</code> rerun. <code>data_prep</code> is skipped because its inputs haven't changed.</p>
+  </section>
+
+  <section id="dvc-pipelines">
+    <h2>DVC Pipelines — <code>dvc.yaml</code></h2>
+
+    <p>DVC Pipelines define your ML workflow in a <code>dvc.yaml</code> file. Each <code>stage</code> declares its command, dependencies (scripts + data), parameters, and outputs. DVC computes MD5 hashes of everything and only reruns stages where something changed.</p>
+
+    <h3>Complete <code>dvc.yaml</code> Pipeline</h3>
+
+    <pre><span class="comment"># dvc.yaml — defines the full ML training pipeline</span>
+<span class="key">stages</span>:
+
+  <span class="comment"># Stage 1: Data Preparation</span>
+  <span class="key">data_prep</span>:
+    <span class="key">cmd</span>: python src/data_prep.py
+    <span class="key">deps</span>:                            <span class="comment"># If any dependency changes, this stage reruns</span>
+      - src/data_prep.py             <span class="comment"># The script itself</span>
+      - data/raw/                    <span class="comment"># Raw data directory</span>
+    <span class="key">params</span>:                          <span class="comment"># Read from params.yaml — changes trigger rerun</span>
+      - data_prep.test_size
+      - data_prep.random_seed
+    <span class="key">outs</span>:                            <span class="comment"># Stage outputs — cached and tracked by DVC</span>
+      - data/processed/train.parquet
+      - data/processed/test.parquet
+
+  <span class="comment"># Stage 2: Feature Engineering</span>
+  <span class="key">feature_engineering</span>:
+    <span class="key">cmd</span>: python src/feature_eng.py
+    <span class="key">deps</span>:
+      - src/feature_eng.py
+      - data/processed/train.parquet
+      - data/processed/test.parquet
+    <span class="key">params</span>:
+      - features.velocity_window
+      - features.amount_bins
+    <span class="key">outs</span>:
+      - data/features/train_features.parquet
+      - data/features/test_features.parquet
+
+  <span class="comment"># Stage 3: Model Training</span>
+  <span class="key">train</span>:
+    <span class="key">cmd</span>: python src/train.py
+    <span class="key">deps</span>:
+      - src/train.py
+      - data/features/train_features.parquet
+    <span class="key">params</span>:
+      - train.n_estimators
+      - train.max_depth
+      - train.learning_rate
+    <span class="key">outs</span>:
+      - models/model.joblib          <span class="comment"># Trained model — cached for reproduction</span>
+
+  <span class="comment"># Stage 4: Evaluation</span>
+  <span class="key">evaluate</span>:
+    <span class="key">cmd</span>: python src/evaluate.py
+    <span class="key">deps</span>:
+      - src/evaluate.py
+      - models/model.joblib
+      - data/features/test_features.parquet
+    <span class="key">metrics</span>:                         <span class="comment"># Special: tracked by DVC for comparison</span>
+      - reports/metrics.json:
+          <span class="key">cache</span>: <span class="kw">false</span>                <span class="comment"># Don't cache — always regenerate</span>
+    <span class="key">plots</span>:                           <span class="comment"># Generates plots viewable with dvc plots</span>
+      - reports/confusion_matrix.csv:
+          <span class="key">x</span>: predicted
+          <span class="key">y</span>: actual</pre>
+
+    <h3>The <code>params.yaml</code> Configuration File</h3>
+
+    <pre><span class="comment"># params.yaml — single source of truth for all hyperparameters</span>
+<span class="key">data_prep</span>:
+  <span class="key">test_size</span>: <span class="num">0.2</span>
+  <span class="key">random_seed</span>: <span class="num">42</span>
+
+<span class="key">features</span>:
+  <span class="key">velocity_window</span>: <span class="num">3600</span>            <span class="comment"># Seconds — transaction velocity feature</span>
+  <span class="key">amount_bins</span>: <span class="num">10</span>                  <span class="comment"># Number of bins for amount discretization</span>
+
+<span class="key">train</span>:
+  <span class="key">n_estimators</span>: <span class="num">300</span>
+  <span class="key">max_depth</span>: <span class="num">8</span>
+  <span class="key">learning_rate</span>: <span class="num">0.05</span></pre>
+
+    <h3>Running and Reproducing the Pipeline</h3>
+
+    <pre><span class="comment"># Run the full pipeline — DVC determines what needs (re)running</span>
+dvc repro
+
+<span class="comment"># Output (first run — everything runs):</span>
+<span class="comment"># Running stage 'data_prep':</span>
+<span class="comment">#   > python src/data_prep.py</span>
+<span class="comment"># Running stage 'feature_engineering':</span>
+<span class="comment">#   > python src/feature_eng.py</span>
+<span class="comment"># Running stage 'train':</span>
+<span class="comment">#   > python src/train.py</span>
+<span class="comment"># Running stage 'evaluate':</span>
+<span class="comment">#   > python src/evaluate.py</span>
+
+<span class="comment"># ── Now change a hyperparameter: ───────────────────────────────────────</span>
+<span class="comment"># Edit params.yaml → train.n_estimators: 500</span>
+dvc repro
+
+<span class="comment"># Output (only affected stages rerun):</span>
+<span class="comment"># Stage 'data_prep' didn't change, skipping</span>
+<span class="comment"># Stage 'feature_engineering' didn't change, skipping</span>
+<span class="comment"># Running stage 'train':                    ← only train + evaluate rerun</span>
+<span class="comment">#   > python src/train.py</span>
+<span class="comment"># Running stage 'evaluate':</span>
+<span class="comment">#   > python src/evaluate.py</span>
+
+<span class="comment"># ── Compare metrics across experiments: ────────────────────────────────</span>
+dvc metrics diff
+<span class="comment"># Path              Metric    Old      New</span>
+<span class="comment"># reports/metrics   f1_score  0.87     0.91</span>
+<span class="comment"># reports/metrics   auc_roc   0.94     0.96</span>
+
+<span class="comment"># ── View plots: ────────────────────────────────────────────────────────</span>
+dvc plots show reports/confusion_matrix.csv</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>How DVC knows what to skip:</strong> DVC computes MD5 hashes of every dependency (script files, data files, parameters). It stores these hashes in <code>dvc.lock</code>. On <code>dvc repro</code>, it recomputes hashes and only reruns stages where at least one dependency hash has changed. This is the same principle as <code>make</code> — but for ML.</div>
+    </div>
+
+    <h3>Triggering Pipelines Automatically (CI/CD)</h3>
+
+    <pre><span class="comment"># .github/workflows/retrain.yml — GitHub Actions pipeline trigger</span>
+<span class="key">name</span>: Retrain Model
+<span class="key">on</span>:
+  <span class="key">schedule</span>:
+    - <span class="key">cron</span>: <span class="str">"0 2 * * 1"</span>            <span class="comment"># Every Monday at 2am — weekly retraining</span>
+  <span class="key">push</span>:
+    <span class="key">paths</span>:
+      - <span class="str">"data/**"</span>                   <span class="comment"># Retrain when data changes</span>
+      - <span class="str">"src/**"</span>                    <span class="comment"># Retrain when code changes</span>
+      - <span class="str">"params.yaml"</span>              <span class="comment"># Retrain when hyperparams change</span>
+
+<span class="key">jobs</span>:
+  <span class="key">retrain</span>:
+    <span class="key">runs-on</span>: ubuntu-latest
+    <span class="key">steps</span>:
+      - <span class="key">uses</span>: actions/checkout@v4
+      - <span class="key">uses</span>: actions/setup-python@v5
+        <span class="key">with</span>:
+          <span class="key">python-version</span>: <span class="str">"3.11"</span>
+      - <span class="key">run</span>: pip install -r requirements.txt
+      - <span class="key">run</span>: dvc pull                <span class="comment"># Fetch data from S3</span>
+      - <span class="key">run</span>: dvc repro               <span class="comment"># Run the pipeline</span>
+      - <span class="key">run</span>: dvc push                <span class="comment"># Push new outputs back to S3</span>
+      - <span class="key">run</span>: |
+          git add dvc.lock reports/metrics.json
+          git commit -m <span class="str">"[CI] Retrain model — $(date +%Y-%m-%d)"</span>
+          git push</pre>
+  </section>
+
+
+  <!-- ================================================================== -->
+  <!--  MODULE 4: DEPLOYMENT ENVIRONMENTS & MODEL SERVING                 -->
+  <!-- ================================================================== -->
+  <section id="deployment">
+    <h2>Module 4 — Deployment Environments &amp; Model Serving</h2>
+
+    <p>A trained model sitting in a <code>.joblib</code> file is worthless to the business. It needs to be <em>served</em> — accessible to other systems to make predictions. There are four primary deployment patterns, each suited to different latency, throughput, and cost requirements.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Real-Time REST API</div>
+        <div class="card-body">Latency: &lt;100ms. Use for: fraud detection at checkout, recommendation engines (&lt;500 req/s). Stack: FastAPI + Uvicorn behind a load balancer.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <div class="card-title">Batch Predictions</div>
+        <div class="card-body">Latency: hours. Use for: scoring 10M users overnight, weekly churn predictions. Stack: PySpark / Databricks / Airflow + S3.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <div class="card-title">Streaming</div>
+        <div class="card-body">Latency: seconds. Use for: real-time anomaly detection on IoT data. Stack: Kafka + Faust/Spark Streaming + model loaded in-process.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📱</div>
+        <div class="card-title">Edge / Browser</div>
+        <div class="card-body">Latency: &lt;10ms. Use for: on-device inference (mobile, IoT). Stack: TensorFlow Lite, ONNX Runtime, Transformers.js.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FastAPI -->
+  <section id="fastapi">
+    <h2>Real-Time Serving with FastAPI</h2>
+
+    <p>FastAPI is the standard Python framework for serving ML models via REST APIs. It's fast (built on Starlette + Uvicorn), auto-generates OpenAPI docs, and supports Pydantic for request/response validation — preventing malformed input from reaching your model.</p>
+
+    <h3>Production FastAPI Model Server</h3>
+
+    <pre><span class="comment"># app/main.py — FastAPI model serving endpoint</span>
+<span class="comment"># pip install fastapi uvicorn mlflow pydantic</span>
+<span class="kw">import</span> os
+<span class="kw">import</span> logging
+<span class="kw">from</span> contextlib <span class="kw">import</span> asynccontextmanager
+
+<span class="kw">import</span> mlflow.pyfunc
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, HTTPException
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field
+
+logger = logging.getLogger(__name__)
+
+<span class="comment"># ── Request / Response schemas ─────────────────────────────────────────</span>
+<span class="comment"># Pydantic validates every incoming request automatically.</span>
+<span class="comment"># If a field is missing or the wrong type, FastAPI returns a 422 error.</span>
+<span class="kw">class</span> <span class="type">TransactionInput</span>(BaseModel):
+    amount: <span class="type">float</span> = Field(gt=<span class="num">0</span>, description=<span class="str">"Transaction amount in USD"</span>)
+    merchant_category: <span class="type">str</span> = Field(description=<span class="str">"MCC code (e.g., 'grocery', 'travel')"</span>)
+    hour_of_day: <span class="type">int</span> = Field(ge=<span class="num">0</span>, le=<span class="num">23</span>)
+    day_of_week: <span class="type">int</span> = Field(ge=<span class="num">0</span>, le=<span class="num">6</span>)
+    transaction_velocity: <span class="type">float</span> = Field(ge=<span class="num">0</span>, description=<span class="str">"Transactions in last hour"</span>)
+    distance_from_home: <span class="type">float</span> = Field(ge=<span class="num">0</span>, description=<span class="str">"Miles from user's home address"</span>)
+
+<span class="kw">class</span> <span class="type">PredictionOutput</span>(BaseModel):
+    is_fraud: <span class="type">bool</span>
+    fraud_probability: <span class="type">float</span>
+    model_version: <span class="type">str</span>
+
+<span class="comment"># ── Model loading at startup ───────────────────────────────────────────</span>
+<span class="comment"># Load the model ONCE at startup, not per-request.</span>
+<span class="comment"># The lifespan context manager ensures cleanup on shutdown.</span>
+ml_models = {}
+
+@asynccontextmanager
+<span class="kw">async def</span> <span class="fn">lifespan</span>(app: FastAPI):
+    <span class="comment"># Load model from MLflow Model Registry — "Production" stage</span>
+    model_uri = os.getenv(<span class="str">"MODEL_URI"</span>, <span class="str">"models:/fraud-detector/Production"</span>)
+    logger.info(<span class="str">f"Loading model from: {model_uri}"</span>)
+    ml_models[<span class="str">"fraud_detector"</span>] = mlflow.pyfunc.load_model(model_uri)
+    ml_models[<span class="str">"model_version"</span>] = model_uri
+    logger.info(<span class="str">"Model loaded successfully"</span>)
+    <span class="kw">yield</span>
+    <span class="comment"># Cleanup on shutdown</span>
+    ml_models.clear()
+
+app = FastAPI(
+    title=<span class="str">"Fraud Detection API"</span>,
+    version=<span class="str">"1.0.0"</span>,
+    lifespan=lifespan,
+)
+
+<span class="comment"># ── Health check endpoint ──────────────────────────────────────────────</span>
+@app.get(<span class="str">"/health"</span>)
+<span class="kw">async def</span> <span class="fn">health</span>():
+    <span class="kw">return</span> {<span class="str">"status"</span>: <span class="str">"healthy"</span>, <span class="str">"model_loaded"</span>: <span class="str">"fraud_detector"</span> <span class="kw">in</span> ml_models}
+
+<span class="comment"># ── Prediction endpoint ────────────────────────────────────────────────</span>
+@app.post(<span class="str">"/predict"</span>, response_model=PredictionOutput)
+<span class="kw">async def</span> <span class="fn">predict</span>(transaction: TransactionInput):
+    <span class="kw">try</span>:
+        <span class="comment"># Convert the validated Pydantic model to a DataFrame</span>
+        <span class="comment"># MLflow models expect pandas DataFrames as input</span>
+        input_df = pd.DataFrame([transaction.model_dump()])
+
+        <span class="comment"># Get prediction — model.predict returns numpy array</span>
+        model = ml_models[<span class="str">"fraud_detector"</span>]
+        probability = <span class="type">float</span>(model.predict(input_df)[<span class="num">0</span>])
+
+        <span class="kw">return</span> PredictionOutput(
+            is_fraud=probability > <span class="num">0.5</span>,
+            fraud_probability=round(probability, <span class="num">4</span>),
+            model_version=ml_models[<span class="str">"model_version"</span>],
+        )
+    <span class="kw">except</span> <span class="type">Exception</span> <span class="kw">as</span> e:
+        logger.error(<span class="str">f"Prediction error: {e}"</span>)
+        <span class="kw">raise</span> HTTPException(status_code=<span class="num">500</span>, detail=<span class="str">"Prediction failed"</span>)
+
+<span class="comment"># ── Run with: uvicorn app.main:app --host 0.0.0.0 --port 8000 ─────────</span></pre>
+
+    <h3>Testing the API</h3>
+
+    <pre><span class="comment"># Test with curl</span>
+curl -X POST http://localhost:8000/predict \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{
+    "amount": 4999.99,
+    "merchant_category": "electronics",
+    "hour_of_day": 3,
+    "day_of_week": 2,
+    "transaction_velocity": 12.0,
+    "distance_from_home": 850.5
+  }'</span>
+
+<span class="comment"># Response:</span>
+<span class="comment"># {</span>
+<span class="comment">#   "is_fraud": true,</span>
+<span class="comment">#   "fraud_probability": 0.9213,</span>
+<span class="comment">#   "model_version": "models:/fraud-detector/Production"</span>
+<span class="comment"># }</span></pre>
+  </section>
+
+  <!-- Docker -->
+  <section id="docker">
+    <h2>Containerization — Production Dockerfile</h2>
+
+    <p>Packaging your FastAPI model server into a Docker container ensures it runs identically everywhere — your laptop, staging, production, Kubernetes. The key challenge with ML containers is <strong>image size</strong>: PyTorch + CUDA can exceed 8GB. Use multi-stage builds and CPU-only variants to keep images lean.</p>
+
+    <h3>Production Dockerfile for ML</h3>
+
+    <pre><span class="comment"># Dockerfile — Production ML model server</span>
+<span class="comment"># Multi-stage build to minimize final image size</span>
+
+<span class="comment"># ── Stage 1: Builder (install dependencies) ────────────────────────────</span>
+<span class="kw">FROM</span> python:3.11-slim <span class="kw">AS</span> builder
+
+<span class="comment"># Prevents Python from writing .pyc files and enables unbuffered output</span>
+<span class="kw">ENV</span> PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+<span class="kw">WORKDIR</span> /build
+
+<span class="comment"># Install dependencies in a virtual environment for clean copying</span>
+<span class="kw">RUN</span> python -m venv /opt/venv
+<span class="kw">ENV</span> PATH="/opt/venv/bin:$PATH"
+
+<span class="comment"># Copy and install requirements FIRST (Docker layer caching)</span>
+<span class="comment"># This layer is cached unless requirements.txt changes</span>
+<span class="kw">COPY</span> requirements.txt .
+<span class="kw">RUN</span> pip install --no-cache-dir -r requirements.txt
+
+<span class="comment"># ── Stage 2: Runtime (minimal image) ───────────────────────────────────</span>
+<span class="kw">FROM</span> python:3.11-slim <span class="kw">AS</span> runtime
+
+<span class="kw">ENV</span> PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+<span class="comment"># Copy the virtual environment from builder</span>
+<span class="kw">COPY</span> --from=builder /opt/venv /opt/venv
+<span class="kw">ENV</span> PATH="/opt/venv/bin:$PATH"
+
+<span class="comment"># Create a non-root user for security</span>
+<span class="kw">RUN</span> groupadd -r mluser &amp;&amp; useradd -r -g mluser mluser
+
+<span class="kw">WORKDIR</span> /app
+
+<span class="comment"># Copy application code</span>
+<span class="kw">COPY</span> app/ ./app/
+<span class="kw">COPY</span> models/ ./models/
+
+<span class="comment"># Switch to non-root user</span>
+<span class="kw">USER</span> mluser
+
+<span class="comment"># Expose the port</span>
+<span class="kw">EXPOSE</span> 8000
+
+<span class="comment"># Health check — Docker/K8s uses this to determine container health</span>
+<span class="kw">HEALTHCHECK</span> --interval=30s --timeout=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+<span class="comment"># Run with Uvicorn — 4 worker processes for production</span>
+<span class="kw">CMD</span> ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]</pre>
+
+    <h4>requirements.txt (CPU-optimized)</h4>
+
+    <pre><span class="comment"># requirements.txt — use CPU-only PyTorch to save ~5GB in image size</span>
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+mlflow==2.16.0
+pandas==2.2.0
+scikit-learn==1.5.0
+pydantic==2.9.0
+
+<span class="comment"># For PyTorch models, use the CPU-only variant:</span>
+<span class="comment"># --extra-index-url https://download.pytorch.org/whl/cpu</span>
+<span class="comment"># torch==2.4.0+cpu</span></pre>
+
+    <h3>Build and Run</h3>
+
+    <pre><span class="comment"># Build the image (tag with model version for traceability)</span>
+docker build -t fraud-detector:v3-2026.03 .
+
+<span class="comment"># Run locally for testing</span>
+docker run -p 8000:8000 \
+  -e MODEL_URI=<span class="str">"models:/fraud-detector/Production"</span> \
+  -e MLFLOW_TRACKING_URI=<span class="str">"http://mlflow-server:5000"</span> \
+  fraud-detector:v3-2026.03
+
+<span class="comment"># Check image size — target under 1GB for sklearn models</span>
+docker images fraud-detector
+<span class="comment"># REPOSITORY        TAG             SIZE</span>
+<span class="comment"># fraud-detector    v3-2026.03      487MB   ← Good: sklearn + FastAPI</span></pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Image size matters:</strong> A 6GB Docker image means 6GB pulled on every Kubernetes pod startup. With 10 replicas auto-scaling, that's 60GB of network transfer. Use <code>python:3.11-slim</code> (not <code>python:3.11</code>), install CPU-only variants of PyTorch/TensorFlow, and use multi-stage builds. Target: &lt;500MB for sklearn, &lt;2GB for PyTorch CPU.</div>
+    </div>
+  </section>
+
+  <!-- Batch & Edge -->
+  <section id="batch">
+    <h2>Batch Predictions</h2>
+
+    <p>Not every prediction needs to happen in real-time. Batch inference — scoring millions of records on a schedule — is often <strong>cheaper, simpler, and more reliable</strong> than maintaining a real-time API.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Aspect</th><th>Real-Time API</th><th>Batch Predictions</th></tr>
+        <tr><td><strong>Latency</strong></td><td>&lt;100ms per request</td><td>Minutes to hours for entire dataset</td></tr>
+        <tr><td><strong>Infrastructure</strong></td><td>Always-on servers, load balancers, auto-scaling</td><td>Spin up, score, spin down (ephemeral)</td></tr>
+        <tr><td><strong>Cost</strong></td><td>24/7 compute costs</td><td>Pay only when the job runs</td></tr>
+        <tr><td><strong>Error handling</strong></td><td>Must handle failures in real-time</td><td>Retry the entire job if it fails</td></tr>
+        <tr><td><strong>Use cases</strong></td><td>Fraud at checkout, chatbots</td><td>Daily churn scoring, weekly recommendations, marketing segmentation</td></tr>
+      </table>
+    </div>
+
+    <h3>PySpark Batch Scoring Example</h3>
+
+    <pre><span class="comment"># batch_score.py — Score 10M users with PySpark</span>
+<span class="comment"># Runs as a scheduled Databricks job or Airflow task</span>
+<span class="kw">import</span> mlflow.pyfunc
+<span class="kw">from</span> pyspark.sql <span class="kw">import</span> SparkSession
+<span class="kw">from</span> pyspark.sql.functions <span class="kw">import</span> pandas_udf
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+spark = SparkSession.builder.appName(<span class="str">"batch-fraud-scoring"</span>).getOrCreate()
+
+<span class="comment"># Load the Production model from MLflow</span>
+model = mlflow.pyfunc.load_model(<span class="str">"models:/fraud-detector/Production"</span>)
+
+<span class="comment"># Load the user transaction data (e.g., from a Delta Lake / S3 path)</span>
+transactions_df = spark.read.parquet(<span class="str">"s3://data-lake/transactions/2026-03-30/"</span>)
+
+<span class="comment"># Define a Pandas UDF for distributed scoring across the Spark cluster</span>
+@pandas_udf(<span class="str">"double"</span>)
+<span class="kw">def</span> <span class="fn">score_batch</span>(amount: pd.Series, velocity: pd.Series, distance: pd.Series) -> pd.Series:
+    <span class="comment"># This function runs on each Spark executor in parallel</span>
+    input_df = pd.DataFrame({
+        <span class="str">"amount"</span>: amount,
+        <span class="str">"transaction_velocity"</span>: velocity,
+        <span class="str">"distance_from_home"</span>: distance,
+    })
+    <span class="kw">return</span> pd.Series(model.predict(input_df))
+
+<span class="comment"># Score all 10M rows — distributed across the Spark cluster</span>
+scored_df = transactions_df.withColumn(
+    <span class="str">"fraud_probability"</span>,
+    score_batch(<span class="str">"amount"</span>, <span class="str">"transaction_velocity"</span>, <span class="str">"distance_from_home"</span>)
+)
+
+<span class="comment"># Write results back to the data lake for downstream consumers</span>
+scored_df.write.mode(<span class="str">"overwrite"</span>).parquet(<span class="str">"s3://data-lake/scores/fraud/2026-03-30/"</span>)</pre>
+
+    <h3>Edge &amp; Browser Deployment</h3>
+    <p>For ultra-low-latency or offline scenarios, models can be deployed directly to edge devices or web browsers:</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Target</th><th>Format</th><th>Tool</th><th>Use Case</th></tr>
+        <tr><td><strong>Mobile (Android/iOS)</strong></td><td>TFLite, Core ML</td><td>TensorFlow Lite, Core ML Tools</td><td>On-device image classification, voice commands</td></tr>
+        <tr><td><strong>IoT / Embedded</strong></td><td>ONNX, TFLite Micro</td><td>ONNX Runtime, TF Micro</td><td>Sensor anomaly detection, predictive maintenance</td></tr>
+        <tr><td><strong>Web Browser</strong></td><td>ONNX, TF.js</td><td>Transformers.js, ONNX Runtime Web</td><td>Client-side text classification, image segmentation</td></tr>
+      </table>
+    </div>
+
+    <pre><span class="comment"># Convert a PyTorch model to ONNX for cross-platform deployment</span>
+<span class="kw">import</span> torch
+
+<span class="comment"># Assume `model` is a trained PyTorch model and `dummy_input` matches input shape</span>
+dummy_input = torch.randn(<span class="num">1</span>, <span class="num">47</span>)   <span class="comment"># Batch of 1, 47 features</span>
+
+torch.onnx.export(
+    model,
+    dummy_input,
+    <span class="str">"models/fraud_detector.onnx"</span>,
+    input_names=[<span class="str">"features"</span>],
+    output_names=[<span class="str">"fraud_probability"</span>],
+    dynamic_axes={<span class="str">"features"</span>: {<span class="num">0</span>: <span class="str">"batch_size"</span>}},  <span class="comment"># Allow variable batch size</span>
+    opset_version=<span class="num">17</span>,
+)
+
+<span class="comment"># The .onnx file can now run on:</span>
+<span class="comment"># - ONNX Runtime (Python, C++, C#, Java)</span>
+<span class="comment"># - ONNX Runtime Web (browser via WebAssembly)</span>
+<span class="comment"># - ONNX Runtime Mobile (Android, iOS)</span></pre>
+  </section>
+
+
+  <!-- ================================================================== -->
+  <!--  MODULE 5: MODEL MONITORING & OBSERVABILITY                        -->
+  <!-- ================================================================== -->
+  <section id="monitoring">
+    <h2>Module 5 — Model Monitoring &amp; Observability</h2>
+
+    <h3>Silent Failures: The Invisible Problem</h3>
+    <p>When a web server fails, it crashes. You get a 500 error, a stack trace, and an alert fires at 3am. When an ML model fails, <strong>nothing crashes</strong>. The model still returns predictions — they're just <em>wrong</em>. A fraud detection model might start approving fraudulent transactions. A recommendation engine might start surfacing irrelevant products. The API returns 200 OK every time.</p>
+
+    <div class="mode-card red">
+      <div class="mode-header">
+        <span class="mode-name">ML Models Don't Crash — They Degrade Silently</span>
+        <span class="mode-shortcut">critical</span>
+      </div>
+      <p class="u-muted-small">Traditional monitoring (latency, error rates, CPU) catches infrastructure failures. But an ML model can have perfect latency and zero errors while its predictions are completely wrong. You need <strong>statistical monitoring</strong> — tracking the distribution of inputs and outputs against the training baseline.</p>
+    </div>
+
+    <p>This is why ML monitoring is fundamentally different from software monitoring. You need to track:</p>
+
+    <ul class="bullet">
+      <li><strong>Input distributions:</strong> Are the features the model receives in production similar to training data?</li>
+      <li><strong>Output distributions:</strong> Is the model's confidence/prediction distribution shifting?</li>
+      <li><strong>Ground truth feedback:</strong> When labels become available (delayed), has actual model accuracy degraded?</li>
+    </ul>
+  </section>
+
+  <section id="drift">
+    <h2>Data Drift vs. Concept Drift</h2>
+
+    <p>These are the two primary modes of ML model degradation. Understanding the difference is essential for building the right monitoring and retraining strategy.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Data Drift (Covariate Shift)</div>
+        <div class="card-body">
+          <strong>Definition:</strong> The distribution of input features changes, but the relationship between features and target stays the same.<br><br>
+          <strong>Example:</strong> Your fraud model was trained when the average transaction was $50. After a holiday season, the average jumps to $200. The model receives inputs it rarely saw during training.<br><br>
+          <strong>Detection:</strong> Compare input feature distributions (mean, std, quantiles) between training data and live production data.<br><br>
+          <strong>Fix:</strong> Retrain on recent data that includes the new distribution.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔀</div>
+        <div class="card-title">Concept Drift</div>
+        <div class="card-body">
+          <strong>Definition:</strong> The relationship between features and the target variable changes. The "rules" the model learned are no longer true.<br><br>
+          <strong>Example:</strong> During COVID-19, millions of legitimate users suddenly started making large online purchases from home. The patterns that previously indicated fraud (large online orders, unusual locations) became normal behavior.<br><br>
+          <strong>Detection:</strong> Monitor prediction accuracy against delayed ground truth labels. Statistical tests on P(Y|X).<br><br>
+          <strong>Fix:</strong> Retrain with relabeled data that reflects the new reality.
+        </div>
+      </div>
+    </div>
+
+    <h3>Monitoring with Evidently AI</h3>
+
+    <p>Evidently AI is an open-source library for calculating data drift, prediction drift, and model performance metrics. It generates HTML reports and can export metrics to Prometheus/Grafana for real-time dashboards.</p>
+
+    <pre><span class="comment"># pip install evidently pandas</span>
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">from</span> evidently.report <span class="kw">import</span> Report
+<span class="kw">from</span> evidently.metric_preset <span class="kw">import</span> DataDriftPreset, TargetDriftPreset
+<span class="kw">from</span> evidently.metrics <span class="kw">import</span> (
+    DatasetDriftMetric,
+    DataDriftTable,
+    ColumnDriftMetric,
+)
+
+<span class="comment"># ── Load reference (training) data and current (production) data ───────</span>
+<span class="comment"># The reference dataset is the data the model was trained on.</span>
+<span class="comment"># The current dataset is a sample of recent production inference data.</span>
+reference_data = pd.read_parquet(<span class="str">"data/training_data_sample.parquet"</span>)
+current_data = pd.read_parquet(<span class="str">"data/production_data_last_7_days.parquet"</span>)
+
+<span class="comment"># ── Generate a Data Drift Report ───────────────────────────────────────</span>
+<span class="comment"># Evidently compares the statistical distribution of every feature</span>
+<span class="comment"># between reference and current using appropriate statistical tests:</span>
+<span class="comment"># - Kolmogorov-Smirnov test for numerical features</span>
+<span class="comment"># - Chi-squared test for categorical features</span>
+<span class="comment"># - Jensen-Shannon divergence for large datasets</span>
+
+drift_report = Report(metrics=[
+    DatasetDriftMetric(),          <span class="comment"># Overall: "Has the dataset drifted?"</span>
+    DataDriftTable(),              <span class="comment"># Per-feature drift results with p-values</span>
+    ColumnDriftMetric(             <span class="comment"># Deep dive on a critical feature</span>
+        column_name=<span class="str">"amount"</span>
+    ),
+])
+
+drift_report.run(
+    reference_data=reference_data,
+    current_data=current_data,
+)
+
+<span class="comment"># Save as an interactive HTML report</span>
+drift_report.save_html(<span class="str">"reports/data_drift_report.html"</span>)
+
+<span class="comment"># ── Extract metrics programmatically for alerting ──────────────────────</span>
+result = drift_report.as_dict()
+dataset_drift = result[<span class="str">"metrics"</span>][<span class="num">0</span>][<span class="str">"result"</span>]
+
+print(<span class="str">f"Dataset drift detected: {dataset_drift['dataset_drift']}"</span>)
+print(<span class="str">f"Share of drifted features: {dataset_drift['share_of_drifted_columns']:.1%}"</span>)
+print(<span class="str">f"Number of drifted columns: {dataset_drift['number_of_drifted_columns']}"</span>)
+
+<span class="comment"># ── Trigger alert if drift exceeds threshold ───────────────────────────</span>
+<span class="kw">if</span> dataset_drift[<span class="str">"share_of_drifted_columns"</span>] > <span class="num">0.3</span>:  <span class="comment"># More than 30% of features drifted</span>
+    print(<span class="str">"⚠ ALERT: Significant data drift detected — consider retraining"</span>)
+    <span class="comment"># In production: send to PagerDuty, Slack, or trigger retrain pipeline</span></pre>
+
+    <h3>Prometheus + Grafana for Real-Time Monitoring</h3>
+
+    <p>For real-time monitoring of a deployed model API, export custom metrics to Prometheus and visualize them in Grafana dashboards.</p>
+
+    <pre><span class="comment"># app/metrics.py — Custom Prometheus metrics for ML model monitoring</span>
+<span class="comment"># pip install prometheus-client</span>
+<span class="kw">from</span> prometheus_client <span class="kw">import</span> (
+    Counter, Histogram, Gauge, Summary,
+    generate_latest, CONTENT_TYPE_LATEST,
+)
+<span class="kw">from</span> starlette.responses <span class="kw">import</span> Response
+
+<span class="comment"># ── Define ML-specific metrics ─────────────────────────────────────────</span>
+
+<span class="comment"># Count predictions by outcome — alerts if fraud ratio spikes</span>
+prediction_counter = Counter(
+    <span class="str">"model_predictions_total"</span>,
+    <span class="str">"Total predictions made"</span>,
+    [<span class="str">"outcome"</span>],               <span class="comment"># Labels: "fraud" or "legitimate"</span>
+)
+
+<span class="comment"># Track prediction confidence distribution</span>
+prediction_confidence = Histogram(
+    <span class="str">"model_prediction_confidence"</span>,
+    <span class="str">"Distribution of model confidence scores"</span>,
+    buckets=[<span class="num">0.1</span>, <span class="num">0.2</span>, <span class="num">0.3</span>, <span class="num">0.4</span>, <span class="num">0.5</span>, <span class="num">0.6</span>, <span class="num">0.7</span>, <span class="num">0.8</span>, <span class="num">0.9</span>, <span class="num">0.95</span>, <span class="num">0.99</span>],
+)
+
+<span class="comment"># Track input feature distributions (for drift detection)</span>
+input_amount = Summary(
+    <span class="str">"model_input_amount"</span>,
+    <span class="str">"Distribution of transaction amounts seen by the model"</span>,
+)
+
+<span class="comment"># Track inference latency</span>
+inference_latency = Histogram(
+    <span class="str">"model_inference_duration_seconds"</span>,
+    <span class="str">"Model inference latency"</span>,
+    buckets=[<span class="num">0.005</span>, <span class="num">0.01</span>, <span class="num">0.025</span>, <span class="num">0.05</span>, <span class="num">0.1</span>, <span class="num">0.25</span>, <span class="num">0.5</span>, <span class="num">1.0</span>],
+)
+
+<span class="comment"># ── Usage in the FastAPI predict endpoint: ─────────────────────────────</span>
+<span class="comment"># prediction_counter.labels(outcome="fraud").inc()</span>
+<span class="comment"># prediction_confidence.observe(0.92)</span>
+<span class="comment"># input_amount.observe(transaction.amount)</span>
+<span class="comment"># with inference_latency.time():</span>
+<span class="comment">#     result = model.predict(input_df)</span>
+
+<span class="comment"># ── Expose /metrics endpoint for Prometheus scraping ───────────────────</span>
+<span class="kw">async def</span> <span class="fn">metrics_endpoint</span>(request):
+    <span class="kw">return</span> Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Key Grafana alerts to configure:</strong> (1) Fraud prediction ratio deviates &gt;2σ from baseline (data drift). (2) Average prediction confidence drops below 0.6 (model uncertainty). (3) P99 inference latency exceeds 200ms (performance degradation). (4) Input feature <code>amount</code> mean deviates &gt;20% from training mean.</div>
+    </div>
+  </section>
+
+
+  <!-- ================================================================== -->
+  <!--  MODULE 6: COMMON PITFALLS, ANTI-PATTERNS & BEST PRACTICES         -->
+  <!-- ================================================================== -->
+  <section id="pitfalls">
+    <h2>Module 6 — Common Pitfalls &amp; Anti-Patterns</h2>
+
+    <h3>Pitfall 1: Training-Serving Skew</h3>
+
+    <div class="mode-card red">
+      <div class="mode-header">
+        <span class="mode-name">The #1 Cause of Silent Model Failures</span>
+        <span class="mode-shortcut">critical</span>
+      </div>
+      <p class="u-muted-small"><strong>Training-Serving Skew</strong> occurs when the code that computes features during training is different from the code that computes features in the production serving path. The model receives features computed differently than what it was trained on, producing incorrect predictions — silently.</p>
+    </div>
+
+    <p><strong>Example:</strong> During training, your feature <code>transaction_velocity</code> is computed as "number of transactions in the last 60 minutes" using a Pandas window function. In production, the API engineer reimplements it as "number of transactions in the last 3600 seconds" using a Redis counter. Rounding differences, timezone handling, or edge cases cause <strong>subtly different values</strong> — enough to degrade the model but not enough to throw an error.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Root Cause</th><th>Training Code</th><th>Serving Code</th><th>Impact</th></tr>
+        <tr><td>Different libraries</td><td>Pandas <code>.rolling()</code></td><td>SQL <code>WINDOW</code></td><td>Floating point differences</td></tr>
+        <tr><td>Different languages</td><td>Python preprocessing</td><td>Java/Go preprocessing</td><td>Different null handling</td></tr>
+        <tr><td>Stale features</td><td>Feature computed on full history</td><td>Feature computed on last 24h</td><td>Distribution mismatch</td></tr>
+        <tr><td>Missing transforms</td><td>Applies StandardScaler</td><td>Forgets to scale</td><td>Completely wrong predictions</td></tr>
+      </table>
+    </div>
+
+    <h4>Solution: Feature Stores</h4>
+    <p>A <strong>Feature Store</strong> (Feast, Tecton, Databricks Feature Store) ensures the same feature computation code is used for both training and serving. Features are computed once and stored, then served consistently to both the training pipeline and the production API.</p>
+
+    <pre><span class="comment"># Using Feast — the most popular open-source Feature Store</span>
+<span class="comment"># pip install feast</span>
+
+<span class="comment"># feature_definitions.py — define features ONCE</span>
+<span class="kw">from</span> feast <span class="kw">import</span> Entity, FeatureView, Field, FileSource
+<span class="kw">from</span> feast.types <span class="kw">import</span> Float64, Int64
+
+<span class="comment"># Entity — the "who" or "what" the features describe</span>
+user = Entity(
+    name=<span class="str">"user_id"</span>,
+    join_keys=[<span class="str">"user_id"</span>],
+    description=<span class="str">"Unique user identifier"</span>,
+)
+
+<span class="comment"># Feature View — a group of related features computed from the same source</span>
+user_transaction_features = FeatureView(
+    name=<span class="str">"user_transaction_features"</span>,
+    entities=[user],
+    schema=[
+        Field(name=<span class="str">"transaction_velocity_1h"</span>, dtype=Float64),
+        Field(name=<span class="str">"avg_amount_7d"</span>, dtype=Float64),
+        Field(name=<span class="str">"unique_merchants_30d"</span>, dtype=Int64),
+    ],
+    source=FileSource(
+        path=<span class="str">"data/user_features.parquet"</span>,
+        timestamp_field=<span class="str">"event_timestamp"</span>,
+    ),
+)
+
+<span class="comment"># ── Training: fetch historical features ────────────────────────────────</span>
+<span class="comment"># from feast import FeatureStore</span>
+<span class="comment"># store = FeatureStore(repo_path=".")</span>
+<span class="comment"># training_df = store.get_historical_features(</span>
+<span class="comment">#     entity_df=entity_df,  # DataFrame with user_id + timestamp</span>
+<span class="comment">#     features=["user_transaction_features:transaction_velocity_1h",</span>
+<span class="comment">#               "user_transaction_features:avg_amount_7d"],</span>
+<span class="comment"># ).to_df()</span>
+
+<span class="comment"># ── Serving: fetch online features (same computation!) ─────────────────</span>
+<span class="comment"># features = store.get_online_features(</span>
+<span class="comment">#     features=["user_transaction_features:transaction_velocity_1h",</span>
+<span class="comment">#               "user_transaction_features:avg_amount_7d"],</span>
+<span class="comment">#     entity_rows=[{"user_id": "user_12345"}],</span>
+<span class="comment"># ).to_dict()</span></pre>
+
+    <h3>Pitfall 2: Over-Engineering V1</h3>
+
+    <div class="mode-card amber">
+      <div class="mode-header">
+        <span class="mode-name">You Don't Need Kubernetes for Your First Model</span>
+        <span class="mode-shortcut">common</span>
+      </div>
+      <p class="u-muted-small">Teams spend 3 months building a Kubeflow + Kubernetes + Istio + Argo stack before deploying a single model. Meanwhile, the business still has zero ML in production. The first model should ship in weeks, not months.</p>
+    </div>
+
+    <p><strong>The reality:</strong> Most ML use cases in year one can be solved with:</p>
+
+    <ul class="bullet">
+      <li><strong>Batch predictions:</strong> A cron job running a Python script on a single EC2 instance that writes predictions to a database.</li>
+      <li><strong>Simple API:</strong> A single FastAPI + Docker container behind an Application Load Balancer.</li>
+      <li><strong>Managed services:</strong> SageMaker endpoints, Vertex AI endpoints, Azure ML — zero infrastructure management.</li>
+    </ul>
+
+    <h4>The Right Progression</h4>
+    <div class="flow">
+      <span class="flow-step">V0: Cron + Script</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">V1: FastAPI + Docker</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">V2: K8s + Auto-scaling</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">V3: Full MLOps Platform</span>
+    </div>
+
+    <p>Only move to the next level when you have <strong>evidence</strong> (traffic volume, team size, model count) that the current level is insufficient. Premature optimization is the root of all evil — in infrastructure too.</p>
+
+    <h3>Pitfall 3: Ignoring the Baseline</h3>
+
+    <div class="mode-card amber">
+      <div class="mode-header">
+        <span class="mode-name">Always Deploy a Baseline First</span>
+        <span class="mode-shortcut">important</span>
+      </div>
+      <p class="u-muted-small">A team spends 6 weeks building a Transformer-based model with 92% accuracy. They ship it and declare success. But nobody measured what a simple Logistic Regression achieves: 89% accuracy. The Transformer's 3% improvement may not justify 10x the inference cost and 50x the engineering complexity.</p>
+    </div>
+
+    <p><strong>The baseline methodology:</strong></p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Level</th><th>Baseline Type</th><th>Example</th><th>Purpose</th></tr>
+        <tr><td><strong>0</strong></td><td>Heuristic / Rule-based</td><td>"Flag if amount &gt; $5000 and time is 2-5am"</td><td>What can you achieve with zero ML?</td></tr>
+        <tr><td><strong>1</strong></td><td>Simple ML model</td><td>Logistic Regression with top 10 features</td><td>Minimum viable ML benchmark</td></tr>
+        <tr><td><strong>2</strong></td><td>Moderate model</td><td>Gradient Boosted Trees (XGBoost/LightGBM)</td><td>Strong baseline with low complexity</td></tr>
+        <tr><td><strong>3</strong></td><td>Complex model</td><td>Deep learning, Transformers</td><td>Only if Level 2 is insufficient</td></tr>
+      </table>
+    </div>
+
+    <p>Deploy Level 0 first. Measure its business impact. Then deploy Level 1 and measure the <strong>incremental improvement</strong>. This prevents the scenario where a team has a great model but can't prove it's better than a simple <code>if</code> statement.</p>
+  </section>
+
+  <!-- BEST PRACTICES -->
+  <section id="best-practices">
+    <h2>Best Practices Summary</h2>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-icon">✅</div>
+        <div class="card-title">Version Everything</div>
+        <div class="card-body">Code (Git) + Data (DVC) + Models (MLflow) + Config (params.yaml) + Environment (Docker). If any piece is missing, you can't reproduce the model.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">✅</div>
+        <div class="card-title">Automate the Pipeline</div>
+        <div class="card-body">If retraining requires a human to run cells in a notebook, it will break. Use DVC Pipelines, Airflow, or GitHub Actions to make retraining a single command.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">✅</div>
+        <div class="card-title">Monitor Inputs, Not Just Outputs</div>
+        <div class="card-body">Ground truth labels are often delayed (fraud confirmed after 30 days). Monitor input feature distributions to detect drift before it impacts business metrics.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">✅</div>
+        <div class="card-title">Ship Simple, Then Iterate</div>
+        <div class="card-body">A Logistic Regression in production beats a Transformer in a notebook. Ship a baseline, measure impact, then improve. The business doesn't care about your SOTA benchmark.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">✅</div>
+        <div class="card-title">Use Feature Stores for Consistency</div>
+        <div class="card-body">One source of truth for feature computation eliminates training-serving skew — the #1 silent killer of model accuracy in production.</div>
+      </div>
+      <div class="card">
+        <div class="card-icon">✅</div>
+        <div class="card-title">Tag Models with Git Commits</div>
+        <div class="card-body">Every deployed model should be traceable back to a specific Git commit, dataset version, and training run. Use MLflow + Git tags + DVC for full lineage.</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ========== REFERENCE LINKS ========== -->
+  <section id="refs">
+    <h2>Reference Links</h2>
+
+    <ul class="link-list">
+      <li><span class="ll-tag">DVC</span> <a href="https://dvc.org/doc">dvc.org/doc — Official Documentation</a></li>
+      <li><span class="ll-tag">MLflow</span> <a href="https://mlflow.org/docs/latest/index.html">mlflow.org — MLflow Docs</a></li>
+      <li><span class="ll-tag">W&amp;B</span> <a href="https://docs.wandb.ai/">docs.wandb.ai — Weights &amp; Biases Documentation</a></li>
+      <li><span class="ll-tag">FastAPI</span> <a href="https://fastapi.tiangolo.com/">fastapi.tiangolo.com — FastAPI Documentation</a></li>
+      <li><span class="ll-tag">Evidently</span> <a href="https://docs.evidentlyai.com/">docs.evidentlyai.com — Evidently AI Docs</a></li>
+      <li><span class="ll-tag">Feast</span> <a href="https://docs.feast.dev/">docs.feast.dev — Feast Feature Store</a></li>
+      <li><span class="ll-tag">ONNX</span> <a href="https://onnxruntime.ai/">onnxruntime.ai — ONNX Runtime</a></li>
+      <li><span class="ll-tag">Docker</span> <a href="https://docs.docker.com/build/building/multi-stage/">Docker Multi-Stage Builds</a></li>
+      <li><span class="ll-tag">Paper</span> <a href="https://papers.nips.cc/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html">Hidden Technical Debt in ML Systems (Google, NeurIPS)</a></li>
+      <li><span class="ll-tag">Book</span> <a href="https://www.oreilly.com/library/view/designing-machine-learning/9781098107956/">Designing Machine Learning Systems — Chip Huyen</a></li>
+    </ul>
+  </section>
+
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach(s => s.id && observer.observe(s));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
