@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Docker &amp; Containerization Enterprise Handbook</title>
+<link rel="stylesheet" href="styles/docker-containerization-enterprise-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Docker &amp; Containers</div>
+    <div class="logo-sub">Enterprise Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Start Here</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#toc">Table of Contents</a>
+    <a class="nav-link" href="#operating-model">Operating Model</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 1</div>
+    <a class="nav-link" href="#core-commands">Core Commands</a>
+    <a class="nav-link" href="#lifecycle">Lifecycle</a>
+    <a class="nav-link" href="#housekeeping">Housekeeping</a>
+    <a class="nav-link" href="#inspection">Inspection</a>
+    <a class="nav-link" href="#monitoring">Monitoring</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 2</div>
+    <a class="nav-link" href="#production-dockerfiles">Production Dockerfiles</a>
+    <a class="nav-link" href="#layer-caching">Layer Caching</a>
+    <a class="nav-link" href="#least-privilege">Least Privilege</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 3</div>
+    <a class="nav-link" href="#anti-patterns">Anti-Patterns</a>
+    <a class="nav-link" href="#running-as-root">Running as Root</a>
+    <a class="nav-link" href="#fat-images">Fat Images</a>
+    <a class="nav-link" href="#zombie-processes">Zombie Processes</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 4</div>
+    <a class="nav-link" href="#debugging">Docker Debugging</a>
+    <a class="nav-link" href="#shell-access">Shell Access</a>
+    <a class="nav-link" href="#crashing-containers">Crashing Containers</a>
+    <a class="nav-link" href="#log-analysis">Log Analysis</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 5</div>
+    <a class="nav-link" href="#docker-vs-podman">Docker vs Podman</a>
+    <a class="nav-link" href="#architecture">Architecture</a>
+    <a class="nav-link" href="#security">Security</a>
+    <a class="nav-link" href="#migration">Migration</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 6</div>
+    <a class="nav-link" href="#orchestration">Orchestration</a>
+    <a class="nav-link" href="#docker-swarm">Docker Swarm</a>
+    <a class="nav-link" href="#kubernetes">Kubernetes</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <div class="hero-kicker">Production Container Operations</div>
+    <h1>Docker &amp; Containerization Enterprise Handbook</h1>
+    <p class="u-hero-subtle">A practical handbook for engineers who build, ship, debug, and govern containers in production. The focus is operational reality: immutable images, stateless services, lean runtime layers, least privilege, and the commands teams actually use under pressure.</p>
+    <div class="hero-meta">
+      <span class="badge badge-amber">Docker CLI</span>
+      <span class="badge badge-cyan">Multi-Stage Builds</span>
+      <span class="badge badge-green">Security &amp; Least Privilege</span>
+      <span class="badge badge-slate">March 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">i</span>
+    <div class="callout-body"><strong>Production culture:</strong> containerization is not just packaging. Mature teams treat images as immutable release artifacts, keep containers stateless, externalize configuration, and assume every container may be rescheduled onto another host at any time.</div>
+  </div>
+
+  <section id="operating-model">
+    <h2>Operating Model</h2>
+    <p>Containers work best when the engineering model is disciplined. Build once, promote the exact same image through environments, inject configuration at runtime, and write logs to stdout/stderr so the platform can aggregate them. If a container needs hand-edited state on disk, interactive SSH fixes, or ad hoc package installation after deployment, the system is already drifting away from container-native operations.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">Immutability</div>
+        <div class="card-body">Rebuild the image for every change. Do not patch running containers. That is how teams preserve traceability and rollback safety.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Statelessness</div>
+        <div class="card-body">Assume the container filesystem is disposable. Put durable data in managed databases, object stores, or explicitly mounted volumes.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Least Privilege</div>
+        <div class="card-body">Run as a non-root user, minimize capabilities, and ship the smallest runtime image that can do the job.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="toc">
+    <h2>Table of Contents</h2>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Module 1: Core Commands</div>
+        <div class="card-body">Lifecycle management, safe cleanup, deep inspection, and live CPU or memory triage with the Docker CLI.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Module 2: Industry-Standard Dockerfiles</div>
+        <div class="card-body">A production-ready multi-stage FastAPI image, layer-cache strategy, and explicit non-root runtime execution.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Module 3: Common Mistakes &amp; Anti-Patterns</div>
+        <div class="card-body">Why root containers, bloated images, and bad process management keep causing avoidable incidents.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Module 4: Debugging in Docker</div>
+        <div class="card-body">Interactive shells, entrypoint overrides, and log workflows for services that fail during startup.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Module 5: Docker vs Podman</div>
+        <div class="card-body">Daemon-backed versus daemonless operation, rootless defaults, and practical migration notes.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Module 6: Orchestration</div>
+        <div class="card-body">Why standalone containers are insufficient in HA production and why Kubernetes became the standard.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="core-commands">
+    <h2>Module 1: Core Commands (The Useful CLI Guide)</h2>
+    <p>Most engineers do not struggle with <code>docker run</code>; they struggle with fleets of stale images, crash-looping services, and figuring out what a container is actually doing on a busy host. This module focuses on the commands used in daily delivery and incident response.</p>
+  </section>
+
+  <section id="lifecycle">
+    <h3>Lifecycle: Start, Stop, Remove, and Reset</h3>
+    <p>Container lifecycle operations are usually part of local development cleanup, CI runners, or emergency host maintenance. Be deliberate: broad deletion commands are useful, but they are destructive, so they belong in controlled dev or ephemeral CI environments, not shared production hosts.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Real-world scenario:</strong> a shared self-hosted CI runner accumulates hundreds of stopped containers after interrupted jobs. Disk pressure builds until new pipelines fail. A scheduled cleanup job using targeted lifecycle commands restores the runner without rebooting the machine.</div>
+    </div>
+
+    <pre><span class="comment"># Start a stopped container again when you want to preserve its writable layer for investigation.</span>
+docker start api-dev
+
+<span class="comment"># Stop a running container gracefully and give the process time to handle SIGTERM.</span>
+docker stop --time 20 api-dev
+
+<span class="comment"># Restart a service after changing an injected env var or bind-mounted config file.</span>
+docker restart api-dev
+
+<span class="comment"># Remove a container that is already stopped so its name can be reused cleanly.</span>
+docker rm api-dev
+
+<span class="comment"># Force stop and remove a stuck container in one command during local cleanup or CI teardown.</span>
+docker rm -f api-dev
+
+<span class="comment"># Remove every container on an ephemeral development machine; use only when you intend a full reset.</span>
+docker rm -f $(docker ps -aq)</pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Command</th><th>When to Use It</th><th>Operational Note</th></tr>
+        <tr><td><code>docker start</code></td><td>Resume a stopped container for debugging</td><td>Useful when you want the original writable layer intact</td></tr>
+        <tr><td><code>docker stop</code></td><td>Normal shutdown</td><td>Sends SIGTERM, then SIGKILL after the timeout</td></tr>
+        <tr><td><code>docker rm</code></td><td>Delete stopped containers</td><td>Safe default when cleanup is intentional and scoped</td></tr>
+        <tr><td><code>docker rm -f</code></td><td>Kill and remove in one shot</td><td>Common in CI teardown and local recovery workflows</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="housekeeping">
+    <h3>Housekeeping: Reclaim Image, Build Cache, and Volume Space</h3>
+    <p>Docker hosts quietly collect abandoned layers, stopped containers, unused networks, and orphaned volumes. The right cleanup command can recover tens of gigabytes in minutes, but volume pruning requires care because persistent application state may live there.</p>
+
+    <div class="callout billing">
+      <span class="callout-icon">$</span>
+      <div class="callout-body"><strong>Real-world scenario:</strong> an EC2-based build server runs out of disk every Friday because each branch build leaves behind intermediate layers. A nightly prune job cuts build failures and avoids emergency EBS expansion.</div>
+    </div>
+
+    <pre><span class="comment"># See total Docker disk usage before deleting anything so you know where space is going.</span>
+docker system df
+
+<span class="comment"># Remove stopped containers, dangling images, unused networks, and build cache.</span>
+docker system prune
+
+<span class="comment"># Remove unused images as well, not just dangling ones; good for disposable dev hosts.</span>
+docker system prune -a
+
+<span class="comment"># Include anonymous volumes when you know the host should be fully reset.</span>
+docker system prune -a --volumes
+
+<span class="comment"># Remove only unused volumes after verifying no stateful local databases depend on them.</span>
+docker volume prune
+
+<span class="comment"># List volumes first so you can spot anything that looks like live PostgreSQL or Redis data.</span>
+docker volume ls</pre>
+
+    <p>On production platforms, pruning is usually delegated to host maintenance automation or avoided entirely because production containers are orchestrated and short-lived. The more mature pattern is to keep hosts immutable too, replacing them rather than hand-cleaning them.</p>
+  </section>
+
+  <section id="inspection">
+    <h3>Inspection: Find IP Addresses, Mounts, and Environment Values</h3>
+    <p><code>docker inspect</code> exposes the raw runtime metadata that the CLI summary commands hide. This matters when a service is unreachable, a secret was not injected, or you need to confirm which image digest actually launched.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">i</span>
+      <div class="callout-body"><strong>Real-world scenario:</strong> a sidecar integration fails only in one environment. Inspection shows the target container started without the expected <code>API_BASE_URL</code> variable because the wrong Compose override file was used in deployment.</div>
+    </div>
+
+    <pre><span class="comment"># Dump full container metadata as JSON when you need the authoritative runtime view.</span>
+docker inspect api-dev
+
+<span class="comment"># Extract the bridge-network IP address with Go templating for fast host-level debugging.</span>
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' api-dev
+
+<span class="comment"># Use jq to pull environment variables and scan them cleanly in incident response.</span>
+docker inspect api-dev | jq -r '.[0].Config.Env[]'
+
+<span class="comment"># Filter for a specific environment variable when you suspect a bad secret or endpoint value.</span>
+docker inspect api-dev | jq -r '.[0].Config.Env[]' | grep '^API_BASE_URL='
+
+<span class="comment"># Confirm which image digest actually started, not just the mutable image tag.</span>
+docker inspect api-dev | jq -r '.[0].Image'
+
+<span class="comment"># Inspect mounts to verify whether the service is reading from a named volume or bind mount.</span>
+docker inspect api-dev | jq -r '.[0].Mounts[] | [.Type, .Source, .Destination] | @tsv'</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">+</span>
+      <div class="callout-body"><strong>Operational habit:</strong> when a deployment behaves differently than expected, inspect the live container before changing code. Many outages are configuration mismatches, not application regressions.</div>
+    </div>
+  </section>
+
+  <section id="monitoring">
+    <h3>Monitoring: Real-Time CPU and Memory Triage</h3>
+    <p><code>docker stats</code> is the fastest way to answer, "is this container starving the host or being OOM-killed?" It is not a replacement for Prometheus, Datadog, or Kubernetes metrics, but it is invaluable during a live shell session on a node.</p>
+
+    <pre><span class="comment"># Watch all running containers and spot CPU spikes, memory leaks, or network saturation in real time.</span>
+docker stats
+
+<span class="comment"># Focus on one suspect service to reduce noise during an incident.</span>
+docker stats api-dev
+
+<span class="comment"># Capture a one-time snapshot for automation or an incident timeline.</span>
+docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}'</pre>
+
+    <p>If memory usage is pinned and restart counts keep climbing, the next questions are usually whether the process has a leak, whether heap limits are misconfigured, or whether the workload exceeds the container limit that was set by Compose or the orchestrator.</p>
+  </section>
+
+  <section id="production-dockerfiles">
+    <h2>Module 2: Industry-Standard Dockerfiles</h2>
+    <p>A production Dockerfile is not just a working Dockerfile. It should build reproducibly, leverage cache correctly, keep the runtime image small, avoid privilege escalation, and start the application with a signal-safe process model. The example below uses FastAPI because it is common in internal platforms and straightforward to read.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">+</span>
+      <div class="callout-body"><strong>Real-world scenario:</strong> a platform team standardizes one approved base pattern across dozens of Python services. Build times drop because cache behavior becomes predictable, and security review becomes easier because every service follows the same hardening model.</div>
+    </div>
+
+    <pre><span class="comment"># Dockerfile - production-ready FastAPI image with multi-stage build, non-root runtime, and signal-safe startup.</span>
+<span class="kw">FROM</span> python:3.12-slim <span class="kw">AS</span> builder
+
+<span class="comment"># Keep Python deterministic and quiet in containers.</span>
+<span class="kw">ENV</span> PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+<span class="comment"># Builder stage includes compilers only because some wheels may need native build support.</span>
+<span class="kw">RUN</span> apt-get update &amp;&amp; apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    dumb-init \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*
+
+<span class="kw">WORKDIR</span> /build
+
+<span class="comment"># Copy dependency manifests first so Docker can reuse this layer when app code changes but deps do not.</span>
+<span class="kw">COPY</span> requirements.txt ./
+
+<span class="comment"># Install dependencies into a dedicated prefix that can be copied into the runtime stage.</span>
+<span class="kw">RUN</span> pip install --prefix=/install -r requirements.txt
+
+<span class="comment"># Copy the application after dependencies so source-only changes do not invalidate dependency caching.</span>
+<span class="kw">COPY</span> app ./app
+
+
+<span class="kw">FROM</span> python:3.12-slim <span class="kw">AS</span> runtime
+
+<span class="comment"># Keep Python runtime behavior container-friendly and declare the application home.</span>
+<span class="kw">ENV</span> PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    APP_HOME=/app
+
+<span class="comment"># Install only the tiny runtime package we still need; no compiler toolchain should survive into production.</span>
+<span class="kw">RUN</span> apt-get update &amp;&amp; apt-get install -y --no-install-recommends \
+    dumb-init \
+    &amp;&amp; rm -rf /var/lib/apt/lists/* \
+    &amp;&amp; groupadd --system appuser \
+    &amp;&amp; useradd --system --gid appuser --create-home --home-dir /home/appuser appuser
+
+<span class="kw">WORKDIR</span> ${APP_HOME}
+
+<span class="comment"># Bring in the already-built Python dependencies from the builder stage.</span>
+<span class="kw">COPY</span> --from=builder /install /usr/local
+
+<span class="comment"># Copy only the application code needed at runtime.</span>
+<span class="kw">COPY</span> --chown=appuser:appuser app ./app
+
+<span class="comment"># Drop privileges before the service starts so an RCE does not immediately become root on the container.</span>
+<span class="kw">USER</span> appuser
+
+<span class="comment"># Document the application port for humans and tooling.</span>
+<span class="kw">EXPOSE</span> 8000
+
+<span class="comment"># dumb-init becomes PID 1 so signals are forwarded and zombie processes are reaped correctly.</span>
+<span class="kw">ENTRYPOINT</span> ["/usr/bin/dumb-init", "--"]
+
+<span class="comment"># Exec-form CMD avoids an extra shell process and lets the app receive SIGTERM directly.</span>
+<span class="kw">CMD</span> ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]</pre>
+
+    <pre><span class="comment"># requirements.txt - pin versions for reproducibility across CI, staging, and production.</span>
+fastapi==0.116.1
+uvicorn[standard]==0.35.0</pre>
+  </section>
+
+  <section id="layer-caching">
+    <h3>Layer Caching: Why Copying Dependencies First Matters</h3>
+    <p>Docker caches each build layer based on the instruction and the files used by that instruction. If you copy the entire repository before installing dependencies, then any code change invalidates the dependency-install layer, forcing a full rebuild. That is why mature Dockerfiles copy <code>package.json</code>, <code>package-lock.json</code>, <code>poetry.lock</code>, or <code>requirements.txt</code> before the rest of the application.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">i</span>
+      <div class="callout-body"><strong>Real-world scenario:</strong> a monorepo API pipeline takes 11 minutes per build because the Dockerfile copies the entire repository before dependency installation. Reordering three lines drops repeat build times to under 2 minutes for source-only changes.</div>
+    </div>
+
+    <div class="flow">
+      <span class="flow-step">COPY requirements.txt</span>
+      <span class="flow-arrow">-&gt;</span>
+      <span class="flow-step">RUN pip install</span>
+      <span class="flow-arrow">-&gt;</span>
+      <span class="flow-step">COPY app source</span>
+      <span class="flow-arrow">-&gt;</span>
+      <span class="flow-step">Fast rebuilds for code-only changes</span>
+    </div>
+
+    <pre><span class="comment"># Bad pattern - every source code change forces dependencies to reinstall, slowing every CI build.</span>
+<span class="kw">COPY</span> . .
+<span class="kw">RUN</span> pip install -r requirements.txt
+
+<span class="comment"># Good pattern - dependency layers stay cached until the manifest changes.</span>
+<span class="kw">COPY</span> requirements.txt ./
+<span class="kw">RUN</span> pip install -r requirements.txt
+<span class="kw">COPY</span> app ./app</pre>
+
+    <p>In a monorepo, the impact is even larger. One changed README should not trigger a 10-minute dependency rebuild for every service image in the pipeline.</p>
+  </section>
+
+  <section id="least-privilege">
+    <h3>Security &amp; Least Privilege: Non-Root by Default</h3>
+    <p>The default user in many images is <code>root</code>. If an attacker gets code execution inside that container, root-level filesystem access and broader kernel interaction become immediately available. Running as a dedicated unprivileged user limits the blast radius and aligns with enterprise policy checks.</p>
+
+    <pre><span class="comment"># Create a system group and user with no login shell because the app does not need interactive privileges.</span>
+<span class="kw">RUN</span> groupadd --system appuser \
+    &amp;&amp; useradd --system --gid appuser --create-home --home-dir /home/appuser appuser
+
+<span class="comment"># Ensure the application files are owned by the non-root account before dropping privileges.</span>
+<span class="kw">COPY</span> --chown=appuser:appuser app ./app
+
+<span class="comment"># From this line onward, the container runtime executes as the unprivileged account.</span>
+<span class="kw">USER</span> appuser</pre>
+
+    <div class="callout danger">
+      <span class="callout-icon">x</span>
+      <div class="callout-body"><strong>Enterprise reality:</strong> many admission controllers and image scanning policies now flag or reject images that run as root. Least-privilege is no longer an optional hardening step; it is often a deployment prerequisite.</div>
+    </div>
+  </section>
+
+  <section id="anti-patterns">
+    <h2>Module 3: Common Mistakes &amp; Anti-Patterns</h2>
+    <p>Junior engineers often get a container to run and assume the job is done. In practice, the first version of a Dockerfile often bakes in security risk, wasted storage, or brittle runtime behavior. These issues are predictable and worth eliminating early.</p>
+  </section>
+
+  <section id="running-as-root">
+    <h3>1. Running as Root</h3>
+    <p>Leaving the image at its default root user is the most common container hardening failure. The container boundary is not a security boundary in the same sense as a VM boundary. Kernel escapes are rare but serious, and root inside the container is still more powerful than it needs to be.</p>
+
+    <div class="mode-card red">
+      <div class="mode-header">
+        <div class="mode-name">Why it breaks enterprise policy</div>
+      </div>
+      <p>Security teams care because root containers can write to more paths, manipulate file ownership, and sometimes exploit overly permissive host mounts. In regulated environments, root containers often fail compliance review before the service even reaches staging.</p>
+    </div>
+
+    <pre><span class="comment"># Risky - the process still runs as root because no USER instruction was ever declared.</span>
+<span class="kw">FROM</span> python:3.12-slim
+<span class="kw">WORKDIR</span> /app
+<span class="kw">COPY</span> . .
+<span class="kw">CMD</span> ["python", "app.py"]
+
+<span class="comment"># Better - create a dedicated runtime user and run the app without root privileges.</span>
+<span class="kw">RUN</span> groupadd --system appuser &amp;&amp; useradd --system --gid appuser appuser
+<span class="kw">USER</span> appuser</pre>
+  </section>
+
+  <section id="fat-images">
+    <h3>2. Fat Images</h3>
+    <p>Another frequent mistake is installing build tools like <code>gcc</code>, <code>curl</code>, package managers, and debugging utilities in the final image. That makes the image larger, slower to distribute, broader in attack surface, and noisier to scan. If the service only needs the built artifacts at runtime, those tools should stay in a builder stage and never ship to production.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Real-world scenario:</strong> an API image grows past 1.5 GB because the final stage still includes compilers, package indexes, test fixtures, and temporary archives. Deployments slow down across every region because each node has to pull the bloated layer set.</div>
+    </div>
+
+    <pre><span class="comment"># Anti-pattern - the final image keeps compilers and package metadata forever.</span>
+<span class="kw">FROM</span> python:3.12-slim
+<span class="kw">RUN</span> apt-get update &amp;&amp; apt-get install -y gcc curl build-essential
+<span class="kw">COPY</span> requirements.txt ./
+<span class="kw">RUN</span> pip install -r requirements.txt
+
+<span class="comment"># Better - compile in builder, copy only the runtime result into the final stage.</span>
+<span class="kw">FROM</span> python:3.12-slim <span class="kw">AS</span> builder
+<span class="kw">RUN</span> apt-get update &amp;&amp; apt-get install -y --no-install-recommends gcc build-essential
+
+<span class="kw">FROM</span> python:3.12-slim <span class="kw">AS</span> runtime
+<span class="kw">COPY</span> --from=builder /install /usr/local</pre>
+
+    <p>Multi-stage builds solve the problem cleanly. The builder image can be heavy and disposable. The runtime image should be boring, small, and predictable.</p>
+  </section>
+
+  <section id="zombie-processes">
+    <h3>3. Zombie Processes, PID 1, and CMD vs ENTRYPOINT</h3>
+    <p>Containers are often launched with a shell-form command like <code>CMD uvicorn app.main:app --host 0.0.0.0 --port 8000</code>. That quietly inserts <code>/bin/sh -c</code> as PID 1. Signals may not be forwarded correctly, child processes may not be reaped, and shutdown behavior becomes messy. The result is hanging deployments, stuck rollouts, or orphaned worker processes.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Pattern</th><th>Behavior</th><th>Recommendation</th></tr>
+        <tr><td>Shell-form CMD</td><td>Runs through <code>/bin/sh -c</code></td><td>Avoid for production app processes</td></tr>
+        <tr><td>Exec-form CMD</td><td>Process receives signals directly</td><td>Preferred for most containers</td></tr>
+        <tr><td><code>dumb-init</code> as ENTRYPOINT</td><td>Proper signal forwarding and zombie reaping</td><td>Strong default for long-running services</td></tr>
+      </table>
+    </div>
+
+    <pre><span class="comment"># Problematic - shell form inserts a shell as PID 1 and complicates signal handling.</span>
+<span class="kw">CMD</span> uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+<span class="comment"># Better - dumb-init is PID 1 and the app starts in exec form so SIGTERM reaches it directly.</span>
+<span class="kw">ENTRYPOINT</span> ["/usr/bin/dumb-init", "--"]
+<span class="kw">CMD</span> ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]</pre>
+
+    <p>Use <code>ENTRYPOINT</code> for the fixed executable wrapper and <code>CMD</code> for default arguments that operators may want to override. That split is easier to reason about during debugging and orchestration.</p>
+  </section>
+
+  <section id="debugging">
+    <h2>Module 4: Debugging in a Dockerized Environment</h2>
+    <p>When a containerized service fails, the debugging sequence should be systematic: confirm container state, inspect the effective configuration, check logs, then enter the container or override the entrypoint if necessary. Avoid changing the image during triage unless you have already reproduced the issue and know the root cause.</p>
+  </section>
+
+  <section id="shell-access">
+    <h3>Shell Access Inside a Running Container</h3>
+    <p>If the service is still up, <code>docker exec</code> is the cleanest way to inspect the live filesystem, current environment, generated config files, or local network reachability. Prefer <code>/bin/sh</code> because many slim images do not include Bash.</p>
+
+    <pre><span class="comment"># Open a POSIX shell in a running container to inspect files, env vars, and network reachability.</span>
+docker exec -it api-dev /bin/sh
+
+<span class="comment"># Print environment variables inside the container when injection problems are suspected.</span>
+docker exec -it api-dev /bin/sh -c 'env | sort'
+
+<span class="comment"># Verify the app port is listening from inside the container namespace.</span>
+docker exec -it api-dev /bin/sh -c 'ss -lntp || netstat -lntp'</pre>
+  </section>
+
+  <section id="crashing-containers">
+    <h3>Debugging a Container That Crashes on Startup</h3>
+    <p>If the container exits immediately, there is nothing to <code>exec</code> into. The usual pattern is to run the image again but override the entrypoint so the container stays alive long enough for inspection. This is especially useful for missing env vars, import errors, bad working directories, or permissions problems.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">i</span>
+      <div class="callout-body"><strong>Real-world scenario:</strong> a freshly built image works in CI but exits instantly in staging. Overriding the entrypoint reveals the app expects a certificate file that was present in the CI workspace but never copied into the final runtime image.</div>
+    </div>
+
+    <pre><span class="comment"># Start the image with a shell instead of the normal entrypoint so you can inspect it interactively.</span>
+docker run -it --rm --entrypoint /bin/sh myorg/payments-api:2026.03.31
+
+<span class="comment"># Once inside, try the original startup command manually to see the raw error immediately.</span>
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+<span class="comment"># If the image uses an init wrapper, inspect the configured metadata first to understand the normal start path.</span>
+docker image inspect myorg/payments-api:2026.03.31 | jq -r '.[0].Config.Entrypoint, .[0].Config.Cmd'</pre>
+  </section>
+
+  <section id="log-analysis">
+    <h3>Log Analysis: Read, Follow, and Scope Output</h3>
+    <p>Container logs should go to stdout and stderr. That design keeps the image simple and lets the platform decide how logs are collected. During debugging, start with the last few lines, then follow the stream in real time if the service is still running.</p>
+
+    <pre><span class="comment"># Print the most recent 100 log lines so you do not drown in historical noise.</span>
+docker logs --tail 100 api-dev
+
+<span class="comment"># Follow the log stream live during startup or while replaying a failing request.</span>
+docker logs -f --tail 100 api-dev
+
+<span class="comment"># Include timestamps so you can align container events with load balancer or application logs elsewhere.</span>
+docker logs -f --tail 100 --timestamps api-dev
+
+<span class="comment"># Scope logs to a recent window when investigating a specific incident interval.</span>
+docker logs --since 15m --timestamps api-dev</pre>
+
+    <p>If logs are empty, that itself is a clue. The process may be failing before it initializes logging, or stdout may be redirected incorrectly inside the image. In mature environments, the next step is correlating container logs with orchestrator events and node-level metrics.</p>
+  </section>
+
+  <section id="docker-vs-podman">
+    <h2>Module 5: Docker vs Podman</h2>
+    <p>Docker remains the most recognized container tooling ecosystem, but Podman is increasingly common in enterprises that want a daemonless model and stronger rootless defaults. The CLI experience is intentionally similar, so the choice is mostly about architecture and operating constraints rather than day-one usability.</p>
+  </section>
+
+  <section id="architecture">
+    <h3>Architecture: Daemon-Based vs Daemonless</h3>
+    <p>Docker uses a long-running background daemon that receives requests from the CLI and performs build or runtime operations on the host. Podman is daemonless: the CLI launches containers directly through the OCI stack without requiring a central persistent daemon process.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Real-world scenario:</strong> a hardened jump host disallows persistent privileged background services. Podman fits the operating model cleanly because engineers can run containers without managing a resident daemon process.</div>
+    </div>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Docker</div>
+        <div class="card-body">Client-server model with a resident daemon. Mature ecosystem, familiar workflows, and broad third-party tooling support.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Podman</div>
+        <div class="card-body">Daemonless architecture with a CLI that speaks OCI-native concepts directly. Often preferred where reduced daemon footprint matters.</div>
+      </div>
+    </div>
+
+    <pre><span class="comment"># Show Docker server details to confirm the daemon-backed client-server model in use on the host.</span>
+docker info
+
+<span class="comment"># Show Podman host information and runtime details without relying on a long-lived daemon service.</span>
+podman info
+
+<span class="comment"># Check whether dockerd is present on the machine when comparing host architecture choices.</span>
+ps -ef | grep dockerd</pre>
+  </section>
+
+  <section id="security">
+    <h3>Security: Why Rootless Podman Appeals to Enterprises</h3>
+    <p>Podman is favored in stricter security environments because rootless containers are a first-class default rather than an afterthought. That reduces the privileges required to run workloads locally or on shared systems. Docker also supports rootless modes, but Podman built much of its operational identity around that model from the start.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">+</span>
+      <div class="callout-body"><strong>Enterprise pattern:</strong> security-conscious workstation fleets often standardize on Podman for developers who need local containers but should not have broad root-equivalent daemon access on corporate laptops.</div>
+    </div>
+
+    <pre><span class="comment"># Run a rootless container with Podman and print the effective user identity inside the container.</span>
+podman run --rm alpine:3.21 id
+
+<span class="comment"># Inspect Podman security settings on the host when validating a rootless rollout plan.</span>
+podman info --format '{{.Host.Security}}'
+
+<span class="comment"># Check whether Docker is running in rootless mode before comparing security posture.</span>
+docker info | grep -i rootless</pre>
+  </section>
+
+  <section id="migration">
+    <h3>Migration: Close Enough to Be a Drop-In for Many Teams</h3>
+    <p>For many day-to-day commands, Podman is intentionally close to Docker. That is why teams often start with an alias during evaluation. The similarity reduces retraining cost, though build behavior, networking defaults, and Compose workflows should still be tested carefully before standardizing.</p>
+
+    <pre><span class="comment"># Alias docker to podman in a shell profile during evaluation so common commands continue to work.</span>
+alias docker=podman
+
+<span class="comment"># Confirm the replacement CLI is available before telling developers to switch.</span>
+podman version
+
+<span class="comment"># Test your standard image build path under Podman before assuming full compatibility.</span>
+podman build -t myorg/payments-api:test .</pre>
+  </section>
+
+  <section id="orchestration">
+    <h2>Module 6: Container Orchestration (Kubernetes vs Docker Swarm)</h2>
+    <p>A single Docker host is fine for local development, demos, and some small internal tools. It is not enough for serious production platforms that need high availability, rolling deployments, service discovery, autoscaling, health-based restarts, and standardized networking or secret management.</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">x</span>
+      <div class="callout-body"><strong>The need for orchestration:</strong> if a node dies and your only copy of a service dies with it, you do not have a production platform. Orchestration exists to schedule replacements, spread replicas, balance traffic, and keep desired state enforced automatically.</div>
+    </div>
+  </section>
+
+  <section id="docker-swarm">
+    <h3>Docker Swarm</h3>
+    <p>Docker Swarm is Docker's built-in clustering and orchestration layer. It is simple to learn and lighter to operate than Kubernetes, which made it attractive for small teams and hobby deployments. Today it is mostly seen in smaller environments, legacy internal platforms, or teams that explicitly trade ecosystem depth for simplicity.</p>
+
+    <pre><span class="comment"># Initialize a Swarm manager on a small lab cluster or proof-of-concept environment.</span>
+docker swarm init
+
+<span class="comment"># Deploy a replicated service to understand the Swarm operating model.</span>
+docker service create --name web --replicas 3 -p 8080:80 nginx:1.27-alpine
+
+<span class="comment"># Inspect the desired replica count versus actual running tasks.</span>
+docker service ls</pre>
+
+    <p>Swarm's simplicity is real, but the ecosystem momentum is not. Most enterprises no longer choose it for new strategic platforms because vendor integrations, policy tooling, and managed-cloud support overwhelmingly center on Kubernetes.</p>
+  </section>
+
+  <section id="kubernetes">
+    <h3>Kubernetes (K8s)</h3>
+    <p>Kubernetes is the industry-standard orchestration platform. It won because it provided a rich, extensible control plane and because the entire cloud-native ecosystem standardized around it. At a minimum, engineers should understand Pods, Deployments, and Services:</p>
+
+    <ul>
+      <li><strong>Pods:</strong> the smallest deployable unit, usually containing one main application container and sometimes sidecars for logging, proxies, or agents.</li>
+      <li><strong>Deployments:</strong> declarative controllers for stateless workloads that manage rollout strategy, replica count, and replacement of failed Pods.</li>
+      <li><strong>Services:</strong> stable virtual endpoints that expose Pods and provide internal load balancing and service discovery.</li>
+    </ul>
+
+    <div class="callout info">
+      <span class="callout-icon">i</span>
+      <div class="callout-body"><strong>Why K8s won the orchestration war:</strong> self-healing, declarative desired state, broad cloud vendor support, mature ingress and policy tooling, first-class observability integrations, and an enormous ecosystem of controllers and operators.</div>
+    </div>
+
+    <pre><span class="comment"># Inspect the rollout health of a Deployment during a production release.</span>
+kubectl rollout status deployment/payments-api --namespace production
+
+<span class="comment"># List Pods with node placement and restart counts when debugging stability issues.</span>
+kubectl get pods -n production -o wide
+
+<span class="comment"># Check the Service object that fronts the workload and verify cluster IP or load balancer exposure.</span>
+kubectl get service payments-api -n production</pre>
+
+    <p>Kubernetes is more complex than raw Docker by design. That complexity is justified when teams need horizontal scale, reliability, release control, and policy enforcement across many services. If the workload is a single internal API with modest traffic, a managed container platform like ECS Fargate, Cloud Run, Azure Container Apps, or a simple VM may still be the better engineering decision.</p>
+  </section>
+
+  <section id="closing-notes">
+    <h2>Closing Guidance</h2>
+    <p>The best container teams optimize for boring operations. Images are small, startup commands are explicit, containers do one job well, and rebuilds are cheap enough that nobody is tempted to patch live systems. If you remember only three things, remember these: build immutable artifacts, run them with the least privilege possible, and hand serious production scheduling to an orchestrator rather than a human.</p>
+  </section>
+</main>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
