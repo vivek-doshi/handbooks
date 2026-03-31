@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyTorch: Beginner to Intermediate Handbook</title>
+<link rel="stylesheet" href="styles/pytorch-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">PyTorch</div>
+    <div class="logo-sub">Beginner to Intermediate Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Foundations</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#module-1">Module 1 Overview</a>
+    <a class="nav-link" href="#tensors">Tensors vs NumPy</a>
+    <a class="nav-link" href="#autograd">Autograd</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Models</div>
+    <a class="nav-link" href="#module-2">Module 2 Overview</a>
+    <a class="nav-link" href="#nn-module">nn.Module</a>
+    <a class="nav-link" href="#building-network">Building a Network</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Data Pipeline</div>
+    <a class="nav-link" href="#module-3">Module 3 Overview</a>
+    <a class="nav-link" href="#datasets">Custom Datasets</a>
+    <a class="nav-link" href="#dataloaders">DataLoaders</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Training</div>
+    <a class="nav-link" href="#module-4">Module 4 Overview</a>
+    <a class="nav-link" href="#training-loop">Standard Training Loop</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Production Use</div>
+    <a class="nav-link" href="#module-5">Module 5 Overview</a>
+    <a class="nav-link" href="#vision">Computer Vision &amp; Video AI</a>
+    <a class="nav-link" href="#nlp">NLP</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Intermediate</div>
+    <a class="nav-link" href="#module-6">Module 6 Overview</a>
+    <a class="nav-link" href="#saving-loading">Saving &amp; Loading</a>
+    <a class="nav-link" href="#compile">torch.compile</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>PyTorch: Beginner to Intermediate Handbook</h1>
+    <p class="u-hero-subtle">A developer-focused guide to tensors, autograd, model construction, data pipelines, explicit training loops, and the production patterns that make PyTorch useful beyond tutorials.</p>
+    <div class="hero-meta">
+      <span class="badge badge-red">PyTorch 2.x</span>
+      <span class="badge badge-blue">CUDA + Apple MPS</span>
+      <span class="badge badge-green">Training Loop Fundamentals</span>
+      <span class="badge badge-purple">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">i</span>
+    <div class="callout-body"><strong>Why PyTorch still matters:</strong> it gives you direct control over tensors, gradients, modules, and optimization steps. That explicitness is why it remains strong for research, custom architectures, debugging, and production systems where the training loop itself is part of the product logic.</div>
+  </div>
+
+  <section id="module-1">
+    <h2>Module 1: The Foundation (Tensors &amp; Autograd)</h2>
+    <p>PyTorch is a deep learning framework built around tensors and automatic differentiation. The short version is that it lets you write model code in normal Python while still computing gradients efficiently. Compared to higher-level APIs, PyTorch is usually the better choice when you need custom architectures, dynamic control flow, or tighter visibility into what the model is doing at each step.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">Research Fit</div>
+        <div class="card-body">Use PyTorch when the model architecture changes frequently, includes conditional logic, or needs custom layers and losses.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Engineering Fit</div>
+        <div class="card-body">Use it when the training pipeline is not generic and you need explicit control over batching, gradients, or device placement.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Why Not Only High-Level APIs</div>
+        <div class="card-body">Higher-level tools are faster for standard tasks, but they usually abstract away the very pieces you need when experiments stop being standard.</div>
+      </div>
+    </div>
+
+    <div class="mode-card red">
+      <div class="mode-header">
+        <span class="mode-name">Dynamic Computation Graphs</span>
+        <span class="mode-shortcut">Define-by-run</span>
+      </div>
+      <p class="u-muted-small">A useful analogy is spreadsheet formulas that update as you perform operations. PyTorch builds the graph as your Python code runs, so debugging and experimentation feel much closer to ordinary programming.</p>
+    </div>
+  </section>
+
+  <section id="tensors">
+    <h2>Tensors vs. NumPy</h2>
+    <p>Tensors are PyTorch's core building block because they combine numerical arrays with hardware awareness and autograd integration. NumPy arrays are great for CPU-based scientific computing. Tensors do that job and add GPU acceleration plus gradient tracking. If NumPy arrays are raw materials in a workshop, tensors are raw materials already mounted onto the machine you plan to use.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+
+
+def get_device() -&gt; torch.device:
+    # Prefer CUDA when available, then Apple Metal (MPS), then CPU.
+    return torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+
+device: torch.device = get_device()
+
+# Create tensors directly in PyTorch.
+features: torch.Tensor = torch.tensor(
+    [[1.0, 2.0], [3.0, 4.0]],
+    dtype=torch.float32,
+)
+weights: torch.Tensor = torch.tensor(
+    [[0.5, 1.0], [1.5, -0.5]],
+    dtype=torch.float32,
+)
+
+# Move data to the selected device so computation happens there.
+features = features.to(device)
+weights = weights.to(device)
+
+# Matrix multiplication is a first-class tensor operation.
+output: torch.Tensor = features @ weights
+
+print(f"Running on device: {device}")
+print(output)
+
+# Move back to CPU before converting to NumPy for external libraries.
+output_cpu: torch.Tensor = output.to("cpu")
+output_numpy = output_cpu.numpy()
+print(output_numpy)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#10003;</span>
+      <div class="callout-body"><strong>Practical rule:</strong> keep data as tensors as long as possible. Every unnecessary conversion between tensor and NumPy adds friction and can break gradient-aware workflows.</div>
+    </div>
+  </section>
+
+  <section id="autograd">
+    <h2>Autograd</h2>
+    <p>Autograd is PyTorch's automatic differentiation engine. It records tensor operations and computes gradients when you call <code>backward()</code>. That matters because training is fundamentally repeated calculus: you make a prediction, measure the error, and ask how each parameter should change to reduce that error. Autograd is the machinery that answers that question.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+
+
+def get_device() -&gt; torch.device:
+    return torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+
+device: torch.device = get_device()
+
+# requires_grad=True tells PyTorch to track operations on this tensor.
+x: torch.Tensor = torch.tensor(3.0, device=device, requires_grad=True)
+
+# Build any differentiable expression using normal Python math syntax.
+y: torch.Tensor = x**2 + 2 * x + 1
+
+# Backpropagate through the graph to compute dy/dx.
+y.backward()
+
+print(f"y = {y.item():.2f}")
+print(f"dy/dx at x=3 is {x.grad.item():.2f}")
+
+# The analytical derivative is 2x + 2, so at x=3 the gradient is 8.</pre>
+
+    <p>The important design choice is that PyTorch lets gradients emerge from regular code. You do not manually derive each parameter update in day-to-day modeling. You define the forward computation, and autograd derives the backward pass for supported operations.</p>
+  </section>
+
+  <section id="module-2">
+    <h2>Module 2: Building Models (torch.nn)</h2>
+    <p>The <code>torch.nn</code> package gives structure to model code. Instead of managing every parameter tensor manually, you group layers into reusable modules. This is similar to moving from loose functions to a well-encapsulated class design: it organizes state, behavior, and composition in one place.</p>
+  </section>
+
+  <section id="nn-module">
+    <h2>The <code>nn.Module</code> Base Class</h2>
+    <p>Every trainable PyTorch model subclasses <code>nn.Module</code>. That base class tracks parameters, exposes <code>train()</code> and <code>eval()</code> modes, and makes it easy to move the entire model between CPU, CUDA, and MPS. If tensors are the atoms, <code>nn.Module</code> is the container that turns those atoms into a machine.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+from torch import nn
+
+
+class TinyLinearModel(nn.Module):
+    def __init__(self, input_dim: int, output_dim: int) -&gt; None:
+        super().__init__()
+        # Register a trainable layer so PyTorch can find its parameters.
+        self.linear = nn.Linear(input_dim, output_dim)
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        # forward defines the data path through the model.
+        return self.linear(x)</pre>
+  </section>
+
+  <section id="building-network">
+    <h2>Building a Network</h2>
+    <p>An MLP is the standard first example because it shows the two responsibilities every model has: define layers in <code>__init__</code>, then define data flow in <code>forward</code>. PyTorch separates those steps so the architecture is explicit and inspectable.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+from torch import nn
+
+
+def get_device() -&gt; torch.device:
+    return torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+
+class MLP(nn.Module):
+    def __init__(self, input_dim: int, hidden_dim: int, num_classes: int) -&gt; None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_classes),
+        )
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        return self.network(x)
+
+
+device: torch.device = get_device()
+model: MLP = MLP(input_dim=16, hidden_dim=32, num_classes=3).to(device)
+
+sample_batch: torch.Tensor = torch.randn(8, 16, device=device)
+logits: torch.Tensor = model(sample_batch)
+
+print(logits.shape)  # torch.Size([8, 3])</pre>
+  </section>
+
+  <section id="module-3">
+    <h2>Module 3: Datasets &amp; DataLoaders</h2>
+    <p>You generally should not load an entire production dataset into RAM because memory becomes the bottleneck before the model does. Real systems stream, batch, shuffle, and prefetch data. The Dataset/DataLoader split exists so data access and model training stay decoupled.</p>
+  </section>
+
+  <section id="datasets">
+    <h2>Custom Datasets</h2>
+    <p>A <code>Dataset</code> is the contract for how to fetch one sample at a time. Think of it as the catalog interface for a library: <code>__len__</code> tells you how many books exist, and <code>__getitem__</code> tells you how to retrieve one specific book.</p>
+
+    <pre>from __future__ import annotations
+
+from typing import Tuple
+
+import torch
+from torch.utils.data import Dataset
+
+
+class ToyClassificationDataset(Dataset[Tuple[torch.Tensor, torch.Tensor]]):
+    def __init__(self, num_samples: int = 1000, num_features: int = 16, num_classes: int = 3) -&gt; None:
+        super().__init__()
+        self.features: torch.Tensor = torch.randn(num_samples, num_features)
+        self.labels: torch.Tensor = torch.randint(0, num_classes, (num_samples,), dtype=torch.long)
+
+    def __len__(self) -&gt; int:
+        return self.features.size(0)
+
+    def __getitem__(self, index: int) -&gt; Tuple[torch.Tensor, torch.Tensor]:
+        # Return exactly one feature tensor and one label tensor.
+        return self.features[index], self.labels[index]</pre>
+  </section>
+
+  <section id="dataloaders">
+    <h2>DataLoaders</h2>
+    <p>The <code>DataLoader</code> handles batching, shuffling, and worker processes so the GPU or MPS device is not left idle waiting for data. In practice, this is the conveyor belt between storage and training.</p>
+
+    <pre>from __future__ import annotations
+
+import os
+
+import torch
+from torch.utils.data import DataLoader
+
+
+dataset = ToyClassificationDataset(num_samples=2048, num_features=16, num_classes=3)
+
+loader = DataLoader(
+    dataset,
+    batch_size=64,
+    shuffle=True,
+    num_workers=0 if os.name == "nt" else 2,
+    pin_memory=torch.cuda.is_available(),
+)
+
+for batch_features, batch_labels in loader:
+    print(batch_features.shape, batch_labels.shape)
+    break</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Windows note:</strong> worker behavior differs across platforms. Starting with <code>num_workers=0</code> is the safest baseline when you are debugging data loading locally.</div>
+    </div>
+  </section>
+
+  <section id="module-4">
+    <h2>Module 4: The Standard Training Loop</h2>
+    <p>PyTorch makes you write the training loop explicitly because training is where many real experiments differ. Some teams use custom losses, mixed objectives, curriculum learning, dynamic masking, multi-optimizer schedules, or gradient accumulation. A manual loop is not ceremony; it is control.</p>
+  </section>
+
+  <section id="training-loop">
+    <h2>The 5-Step Process</h2>
+    <p>The core loop is always the same: predict, measure error, clear stale gradients, backpropagate, then update weights. The analogy is steering a vehicle: you observe the road, measure deviation, reset the steering decision, compute the correction, and then actually turn the wheel.</p>
+
+    <pre>from __future__ import annotations
+
+import os
+
+import torch
+from torch import nn
+from torch.optim import Adam
+from torch.utils.data import DataLoader, Dataset
+
+
+def get_device() -&gt; torch.device:
+    return torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+
+class ToyClassificationDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
+    def __init__(self, num_samples: int = 1000, num_features: int = 16, num_classes: int = 3) -&gt; None:
+        super().__init__()
+        self.features: torch.Tensor = torch.randn(num_samples, num_features)
+        self.labels: torch.Tensor = torch.randint(0, num_classes, (num_samples,), dtype=torch.long)
+
+    def __len__(self) -&gt; int:
+        return self.features.size(0)
+
+    def __getitem__(self, index: int) -&gt; tuple[torch.Tensor, torch.Tensor]:
+        return self.features[index], self.labels[index]
+
+
+class MLP(nn.Module):
+    def __init__(self, input_dim: int, hidden_dim: int, num_classes: int) -&gt; None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_classes),
+        )
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        return self.network(x)
+
+
+device: torch.device = get_device()
+dataset = ToyClassificationDataset(num_samples=2048, num_features=16, num_classes=3)
+loader = DataLoader(
+    dataset,
+    batch_size=64,
+    shuffle=True,
+    num_workers=0 if os.name == "nt" else 2,
+    pin_memory=torch.cuda.is_available(),
+)
+
+model = MLP(input_dim=16, hidden_dim=32, num_classes=3).to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = Adam(model.parameters(), lr=1e-3)
+
+num_epochs: int = 3
+
+for epoch in range(num_epochs):
+    model.train()
+    running_loss: float = 0.0
+
+    for batch_features, batch_labels in loader:
+        batch_features = batch_features.to(device)
+        batch_labels = batch_labels.to(device)
+
+        # 1. Forward pass: compute predictions from the current model weights.
+        logits: torch.Tensor = model(batch_features)
+
+        # 2. Calculate the loss: measure how wrong the predictions are.
+        loss: torch.Tensor = criterion(logits, batch_labels)
+
+        # 3. Zero the gradients: clear gradient values from the previous step.
+        optimizer.zero_grad()
+
+        # 4. Backward pass: compute gradients of the loss with respect to parameters.
+        loss.backward()
+
+        # 5. Update weights: apply the optimizer step using the new gradients.
+        optimizer.step()
+
+        running_loss += loss.item()
+
+    average_loss: float = running_loss / len(loader)
+    print(f"Epoch {epoch + 1}/{num_epochs} - loss: {average_loss:.4f}")</pre>
+  </section>
+
+  <section id="module-5">
+    <h2>Module 5: Real-World Use Cases</h2>
+    <p>PyTorch is widely used because it scales from experimentation to production with relatively few mental model changes. The same tensor and module concepts you use for a toy MLP also show up in segmentation, diffusion, video restoration, and transformer fine-tuning.</p>
+  </section>
+
+  <section id="vision">
+    <h2>Computer Vision &amp; Video AI</h2>
+    <p>PyTorch is a strong fit for computer vision because convolutional and transformer-based vision models are ultimately tensor operations plus custom losses. The <code>torchvision</code> ecosystem adds datasets, transforms, pretrained backbones, and image utilities so you can focus on the architecture and objective.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Super-Resolution / Upscaling</div>
+        <div class="card-body">You train a model to map a low-resolution tensor to a high-resolution tensor, often with pixel loss, perceptual loss, or adversarial objectives.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Frame Interpolation</div>
+        <div class="card-body">You model motion between frames and predict intermediate frames, which requires explicit control over warping, losses, and temporal logic.</div>
+      </div>
+    </div>
+
+    <p>A good analogy is film restoration. <code>torchvision</code> provides the tools for reading and transforming the footage, while your PyTorch model defines how to reconstruct missing detail, sharpen features, or infer the in-between motion.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+from torch import nn
+from torchvision import models, transforms
+
+
+class VisionBackbone(nn.Module):
+    def __init__(self, num_classes: int) -&gt; None:
+        super().__init__()
+        backbone = models.resnet18(weights=None)
+        backbone.fc = nn.Linear(backbone.fc.in_features, num_classes)
+        self.model = backbone
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        return self.model(x)
+
+
+image_transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+    ]
+)</pre>
+  </section>
+
+  <section id="nlp">
+    <h2>Natural Language Processing (NLP)</h2>
+    <p>PyTorch is also the foundational engine under much of modern NLP tooling. Libraries like Hugging Face Transformers expose a higher-level interface, but underneath they still rely on PyTorch tensors, modules, optimizers, attention layers, and autograd. If you fine-tune an LLM, you are still ultimately running a PyTorch training loop.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#10003;</span>
+      <div class="callout-body"><strong>Practical takeaway:</strong> even if you use a higher-level library for NLP, understanding PyTorch helps you debug memory issues, customize heads, freeze layers, and reason about performance.</div>
+    </div>
+  </section>
+
+  <section id="module-6">
+    <h2>Module 6: Intermediate Features</h2>
+    <p>Once the basics are stable, two features matter immediately in real projects: saving/loading weights correctly and using runtime compilation when it actually helps. These are not advanced for the sake of sophistication; they are table stakes for reproducibility and speed.</p>
+  </section>
+
+  <section id="saving-loading">
+    <h2>Saving &amp; Loading Models</h2>
+    <p>The correct pattern is to save the <code>state_dict()</code> rather than serializing the whole model object. That avoids tight coupling to the exact Python class path and reduces cross-environment loading problems. It is the difference between saving the blueprint and saving a snapshot of the entire workshop.</p>
+
+    <pre>from __future__ import annotations
+
+import torch
+from torch import nn
+
+
+class MLP(nn.Module):
+    def __init__(self, input_dim: int, hidden_dim: int, num_classes: int) -&gt; None:
+        super().__init__()
+        self.network = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_classes),
+        )
+
+    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:
+        return self.network(x)
+
+
+model = MLP(input_dim=16, hidden_dim=32, num_classes=3)
+
+# Save only learned weights and buffers.
+torch.save(model.state_dict(), "mlp_state_dict.pt")
+
+# Recreate the model architecture before loading weights.
+loaded_model = MLP(input_dim=16, hidden_dim=32, num_classes=3)
+state_dict = torch.load("mlp_state_dict.pt", map_location="cpu")
+loaded_model.load_state_dict(state_dict)
+loaded_model.eval()  # Switch to inference mode for predictable behavior.</pre>
+  </section>
+
+  <section id="compile">
+    <h2>Model Compilation</h2>
+    <p><code>torch.compile()</code>, introduced in PyTorch 2.0, can optimize execution for training and inference by compiling parts of the model graph. Use it as an engineering lever, not a ritual. Benchmark it on your real workload, because speedups vary by model shape and backend.</p>
+
+    <pre>compiled_model = torch.compile(model)</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Recommendation:</strong> first make the uncompiled version correct, deterministic enough for debugging, and benchmarked. Then add <code>torch.compile()</code> and measure end-to-end impact instead of assuming it will help every case.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">PyTorch</span> <a href="https://pytorch.org/docs/stable/index.html">Official PyTorch documentation</a></li>
+      <li><span class="ll-tag">Autograd</span> <a href="https://pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html">Autograd tutorial</a></li>
+      <li><span class="ll-tag">torch.nn</span> <a href="https://pytorch.org/docs/stable/nn.html">torch.nn reference</a></li>
+      <li><span class="ll-tag">Data</span> <a href="https://pytorch.org/docs/stable/data.html">Dataset and DataLoader docs</a></li>
+      <li><span class="ll-tag">torchvision</span> <a href="https://pytorch.org/vision/stable/index.html">torchvision documentation</a></li>
+      <li><span class="ll-tag">Compile</span> <a href="https://pytorch.org/get-started/pytorch-2.0/">PyTorch 2 compile overview</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach(s => s.id && observer.observe(s));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
