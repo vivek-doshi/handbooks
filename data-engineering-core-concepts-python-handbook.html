@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Engineering Core Concepts & Python Handbook</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b27;
+    --bg3: #1e2536;
+    --bg4: #252d42;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0;
+    --muted: #8b93a7;
+    --accent: #6c8ef5;
+    --accent2: #4fd1a5;
+    --accent3: #f5c06c;
+    --accent4: #e27d76;
+    --accent5: #b47cf5;
+    --code-bg: #0d1117;
+    --tag-bg: rgba(108,142,245,0.12);
+    --tag-text: #8fadf7;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  .sidebar {
+    width: 248px;
+    min-width: 248px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    flex-shrink: 0;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .logo-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .nav-section { margin-bottom: 4px; }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 10px 20px 4px;
+  }
+  .nav-link {
+    display: block;
+    padding: 6px 20px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.15s, background 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-link:hover { color: var(--text); background: var(--bg3); }
+  .nav-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(108,142,245,0.06); }
+
+  .main {
+    flex: 1;
+    max-width: 940px;
+    padding: 40px 48px 80px;
+    overflow-x: hidden;
+  }
+
+  section { margin-bottom: 60px; scroll-margin-top: 24px; }
+  h1 { font-size: 28px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .page-sub { font-size: 15px; color: var(--muted); margin-bottom: 32px; line-height: 1.5; }
+  h2 {
+    font-size: 20px; font-weight: 600; color: var(--text);
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 10px; }
+  h4 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 20px 0 8px; }
+  p { color: var(--muted); margin-bottom: 10px; line-height: 1.7; font-size: 14px; }
+  p strong { color: var(--text); font-weight: 500; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .hero {
+    background: linear-gradient(135deg, rgba(108,142,245,0.08) 0%, rgba(79,209,165,0.05) 100%);
+    border: 1px solid rgba(108,142,245,0.2);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(108,142,245,0.15), transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 { font-size: 22px; margin-bottom: 4px; }
+  .hero-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge-blue { background: rgba(108,142,245,0.15); color: #8fadf7; border: 1px solid rgba(108,142,245,0.25); }
+  .badge-green { background: rgba(79,209,165,0.12); color: #5dd1a0; border: 1px solid rgba(79,209,165,0.2); }
+  .badge-amber { background: rgba(245,192,108,0.12); color: #f5c06c; border: 1px solid rgba(245,192,108,0.2); }
+  .badge-purple { background: rgba(180,124,245,0.12); color: #b47cf5; border: 1px solid rgba(180,124,245,0.2); }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  pre::-webkit-scrollbar { height: 4px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+  pre code { background: none; padding: 0; border-radius: 0; color: inherit; font-size: 13px; }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 8px 12px;
+    background: var(--bg3);
+    color: var(--text);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border2);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .card-grid { display: grid; gap: 14px; }
+  .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .card-kicker {
+    display: inline-block;
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--bg3);
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .mode-card {
+    border-radius: 10px;
+    padding: 18px 20px;
+    border-left: 3px solid;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .mode-card.blue { border-left-color: var(--accent); }
+  .mode-card.green { border-left-color: var(--accent2); }
+  .mode-card.amber { border-left-color: var(--accent3); }
+  .mode-card.red { border-left-color: var(--accent4); }
+  .mode-card.purple { border-left-color: var(--accent5); }
+  .mode-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .mode-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .mode-shortcut {
+    font-family: var(--mono); font-size: 11px;
+    background: var(--bg4); padding: 2px 8px;
+    border-radius: 4px; color: var(--muted);
+    border: 1px solid var(--border2);
+  }
+  .mode-when { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .mode-when strong { color: var(--text); }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag {
+    font-size: 11px; padding: 2px 8px;
+    background: var(--tag-bg); color: var(--tag-text);
+    border-radius: 12px;
+    border: 1px solid rgba(108,142,245,0.15);
+  }
+
+  .callout {
+    display: flex; gap: 12px;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 14px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { color: var(--muted); }
+  .callout-body strong { color: var(--text); }
+  .callout.tip { background: rgba(79,209,165,0.07); border: 1px solid rgba(79,209,165,0.18); }
+  .callout.warn { background: rgba(245,192,108,0.07); border: 1px solid rgba(245,192,108,0.18); }
+  .callout.info { background: rgba(108,142,245,0.07); border: 1px solid rgba(108,142,245,0.18); }
+  .callout.danger { background: rgba(226,125,118,0.07); border: 1px solid rgba(226,125,118,0.18); }
+
+  .flow {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    margin: 12px 0;
+  }
+  .flow-step {
+    font-size: 12px; font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+  }
+  .flow-arrow { color: var(--muted); font-size: 14px; }
+
+  .toc-list {
+    list-style: none;
+    display: grid;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .toc-list li {
+    padding: 10px 14px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .toc-list strong { color: var(--text); }
+
+  .link-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+  .link-list li {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 14px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 7px; font-size: 13px;
+    transition: border-color 0.15s;
+  }
+  .link-list li:hover { border-color: var(--border2); }
+  .link-list .ll-tag { font-size: 10px; color: var(--muted); background: var(--bg3); padding: 1px 6px; border-radius: 4px; flex-shrink: 0; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { padding: 24px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Data Engineering</div>
+    <div class="logo-sub">Core Concepts & Python</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Start Here</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#toc">Table of Contents</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 1</div>
+    <a class="nav-link" href="#module-1">Module 1</a>
+    <a class="nav-link" href="#etl-vs-elt">ETL vs ELT</a>
+    <a class="nav-link" href="#storage-architectures">Storage Architectures</a>
+    <a class="nav-link" href="#file-formats">File Formats</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 2</div>
+    <a class="nav-link" href="#module-2">Data Ingestion</a>
+    <a class="nav-link" href="#api-extraction">API Extraction</a>
+    <a class="nav-link" href="#database-extraction">Database Extraction</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 3</div>
+    <a class="nav-link" href="#module-3">Cleaning & Transformation</a>
+    <a class="nav-link" href="#data-quality">Data Quality</a>
+    <a class="nav-link" href="#pandas-polars">Pandas / Polars</a>
+    <a class="nav-link" href="#pyspark-transform">PySpark</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 4</div>
+    <a class="nav-link" href="#module-4">Orchestration</a>
+    <a class="nav-link" href="#why-orchestration">Why Orchestrators</a>
+    <a class="nav-link" href="#airflow">Apache Airflow</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 5</div>
+    <a class="nav-link" href="#module-5">Real-World Scenarios</a>
+    <a class="nav-link" href="#scenario-batch">Daily Sales Pipeline</a>
+    <a class="nav-link" href="#scenario-streaming">Fraud Detection</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Resources</div>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Data Engineering Core Concepts & Python Handbook</h1>
+    <p style="color: var(--muted); font-size: 14px; margin-top: 6px; margin-bottom: 0;">A production-focused guide to modern data engineering fundamentals: data movement, storage design, scalable file formats, orchestration, and Python-first implementation patterns across the modern data stack.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">Python First</span>
+      <span class="badge badge-green">Pandas · Polars · PySpark · Airflow</span>
+      <span class="badge badge-amber">Warehouse · Lake · Lakehouse</span>
+      <span class="badge badge-purple">Complete Edition</span>
+    </div>
+  </div>
+
+  <section id="toc">
+    <h2>Table of Contents</h2>
+    <p>This handbook is organized around the core concerns of a production data engineer: how data moves, where it lives, how it is cleaned, how pipelines are scheduled, and how all of those parts combine in real systems used by analytics, machine learning, and business teams.</p>
+
+    <ul class="toc-list">
+      <li><strong>Module 1: Core Concepts & Architecture</strong><br>ETL vs ELT, storage architectures, and why columnar formats like Parquet matter at scale.</li>
+      <li><strong>Module 2: Data Ingestion (Extraction)</strong><br>Reliable API pulls with retries and memory-safe database extraction with SQLAlchemy chunking.</li>
+      <li><strong>Module 3: Data Cleaning & Transformation</strong><br>Data quality problems, practical cleaning with Pandas or Polars, and PySpark transformations for large datasets.</li>
+      <li><strong>Module 4: Data Orchestration & Scheduling</strong><br>Why cron breaks at scale and how Apache Airflow coordinates production pipelines.</li>
+      <li><strong>Module 5: Real-World Scenarios & Use Cases</strong><br>E-commerce batch pipelines, streaming fraud detection, and how the modern data stack fits together.</li>
+    </ul>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Writing approach:</strong> each module uses direct explanations, real-world analogies, and copy-pasteable Python so the handbook stays practical for engineers building or operating real pipelines.</div>
+    </div>
+  </section>
+
+  <section id="module-1">
+    <h2>Module 1: Core Concepts & Architecture</h2>
+    <p>Data engineering is mostly about moving data from where it is created to where it becomes useful, while keeping the process scalable, observable, and cheap enough to run every day. If software engineering is about building services, data engineering is about building <strong>reliable delivery systems for data</strong>.</p>
+
+    <div class="flow">
+      <div class="flow-step">Source systems</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Ingestion</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Storage layer</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Transformation</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Analytics / ML / Apps</div>
+    </div>
+
+    <div class="card-grid card-grid-3" style="margin-top: 14px;">
+      <div class="card">
+        <div class="card-title">Think in systems</div>
+        <div class="card-body">The job is not just to write a script. The job is to design a repeatable system that still works when row counts grow from thousands to millions or billions.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Optimize for downstream use</div>
+        <div class="card-body">A good pipeline is shaped by the consumer: dashboards, data scientists, reverse ETL jobs, or machine learning features all need different data contracts.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Scale changes design</div>
+        <div class="card-body">Choices that look trivial on a laptop, such as CSV output or reading everything into memory, become operational failures in production.</div>
+      </div>
+    </div>
+
+    <h3 id="etl-vs-elt">ETL vs ELT</h3>
+    <p><strong>ETL</strong> means <strong>Extract, Transform, Load</strong>. Data is pulled from source systems, transformed before landing in the destination, and then loaded into a warehouse or database.</p>
+    <p><strong>ELT</strong> means <strong>Extract, Load, Transform</strong>. Raw data is first loaded into a scalable storage system such as a cloud warehouse or data lake, and transformations happen afterward inside that platform.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Pattern</th><th>How it works</th><th>Best fit</th><th>Main tradeoff</th></tr>
+        <tr>
+          <td><strong>ETL</strong></td>
+          <td>Transform before loading into the target system.</td>
+          <td>Strict schemas, legacy warehouses, sensitive filtering before storage, smaller or controlled pipelines.</td>
+          <td>Transformation layer becomes a bottleneck if compute does not scale well.</td>
+        </tr>
+        <tr>
+          <td><strong>ELT</strong></td>
+          <td>Load raw data first, then transform inside the warehouse or lakehouse.</td>
+          <td>Modern cloud analytics stacks such as Snowflake, BigQuery, Redshift, Databricks, and dbt-driven teams.</td>
+          <td>You must govern raw data carefully because more data lands before cleanup.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="mode-card blue">
+      <div class="mode-header">
+        <span class="mode-name">Real-world analogy</span>
+        <span class="mode-shortcut">Factory vs warehouse</span>
+      </div>
+      <p class="mode-when"><strong>ETL</strong> is like cleaning, labeling, and boxing products at the factory before shipping them to the warehouse.</p>
+      <p class="mode-when"><strong>ELT</strong> is like sending everything to a massive distribution center first, then sorting and repackaging it closer to the buyers using much larger infrastructure.</p>
+    </div>
+
+    <h4>When should a team use which?</h4>
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Choose ETL when</div>
+        <div class="card-body">
+          You must remove sensitive fields before storage, the target system is not built for heavy transformation, or you need strong control over exactly what lands downstream. ETL still appears in regulated environments and tightly governed integrations.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Choose ELT when</div>
+        <div class="card-body">
+          You are using scalable cloud compute, want reproducible SQL or Spark transformations, need raw data retained for reprocessing, or want analytics engineering teams to transform data close to the warehouse. This is the common default in the modern data stack.
+        </div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Practical rule:</strong> if your destination can scale compute separately from storage, ELT is usually the better default. If raw data cannot be retained safely or the target is weak at transformation, ETL can still be the right answer.</div>
+    </div>
+
+    <h3 id="storage-architectures">Storage Architectures</h3>
+    <p>Modern data platforms are built around three main storage patterns: <strong>data warehouses</strong>, <strong>data lakes</strong>, and <strong>data lakehouses</strong>. The differences are not just branding. They change how data is stored, queried, and governed.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Architecture</th><th>Definition</th><th>Examples</th><th>Where it shines</th></tr>
+        <tr>
+          <td><strong>Data Warehouse</strong></td>
+          <td>Managed analytical database optimized for structured data, SQL queries, and BI workloads.</td>
+          <td>Snowflake, BigQuery, Redshift</td>
+          <td>Fast analytics, dashboarding, governed business metrics, SQL-heavy teams</td>
+        </tr>
+        <tr>
+          <td><strong>Data Lake</strong></td>
+          <td>Low-cost object storage that holds raw and processed data in many formats.</td>
+          <td>AWS S3, Azure Data Lake Storage, Google Cloud Storage</td>
+          <td>Cheap storage, flexible schemas, ML and archival workloads, raw ingestion</td>
+        </tr>
+        <tr>
+          <td><strong>Data Lakehouse</strong></td>
+          <td>A lake plus table-format and governance features that make it behave more like a warehouse.</td>
+          <td>Databricks with Delta Lake, Apache Iceberg, Apache Hudi</td>
+          <td>One platform for BI, ML, and large-scale data engineering with open storage</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="mode-card green">
+      <div class="mode-header">
+        <span class="mode-name">Data Warehouse</span>
+        <span class="mode-shortcut">Structured analytics</span>
+      </div>
+      <p class="mode-when"><strong>What it is:</strong> a warehouse is the polished showroom. It holds curated tables that business users, analysts, and BI tools can trust.</p>
+      <p class="mode-when"><strong>Why teams use it:</strong> warehouses separate storage and compute well, scale SQL, and are built for concurrent analytics workloads.</p>
+    </div>
+
+    <div class="mode-card amber">
+      <div class="mode-header">
+        <span class="mode-name">Data Lake</span>
+        <span class="mode-shortcut">Cheap, flexible storage</span>
+      </div>
+      <p class="mode-when"><strong>What it is:</strong> a lake is the raw materials yard. It stores CSV, JSON, Parquet, images, logs, and unstructured files at low cost.</p>
+      <p class="mode-when"><strong>Why teams use it:</strong> you can land data quickly, keep historical raw files, and support many use cases without forcing everything into rigid schemas upfront.</p>
+    </div>
+
+    <div class="mode-card purple">
+      <div class="mode-header">
+        <span class="mode-name">Data Lakehouse</span>
+        <span class="mode-shortcut">Best of both when done well</span>
+      </div>
+      <p class="mode-when"><strong>What it is:</strong> a lakehouse keeps open object storage but adds transaction logs, schema enforcement, table versioning, and ACID-like behaviors.</p>
+      <p class="mode-when"><strong>Why teams use it:</strong> it reduces the gap between raw storage and analytics-grade tables, which is especially useful for mixed analytics and machine learning workloads.</p>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Architecture trap:</strong> many teams treat S3 alone as a full analytics platform. It is not. A lake without table management, schema control, partitioning discipline, and query engines becomes a file graveyard.</div>
+    </div>
+
+    <h3 id="file-formats">File Formats and Why Columnar Storage Matters</h3>
+    <p>File format choice is one of the highest-leverage decisions in analytics engineering. At small scale, CSV is convenient. At production scale, it is usually the wrong default.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Row-oriented formats</div>
+        <div class="card-body">CSV and JSON store records row by row. They are easy to inspect, but they are bulky, slow to scan, and expensive for analytical queries that only need a few columns.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Column-oriented formats</div>
+        <div class="card-body">Parquet and ORC store data by column. Query engines can read only the columns they need, compress repeated values well, and skip irrelevant chunks faster.</div>
+      </div>
+    </div>
+
+    <div class="mode-card red">
+      <div class="mode-header">
+        <span class="mode-name">Real-world analogy</span>
+        <span class="mode-shortcut">Warehouse aisles</span>
+      </div>
+      <p class="mode-when"><strong>CSV</strong> is like storing every item for an order in one mixed box. To find all prices, you still have to open every box and inspect everything.</p>
+      <p class="mode-when"><strong>Parquet</strong> is like storing all prices on one shelf, all customer IDs on another shelf, and all timestamps on a third. If an analyst only needs prices and timestamps, the system reads only those shelves.</p>
+    </div>
+
+    <h4>Why column-oriented formats are crucial</h4>
+    <ul class="link-list">
+      <li><span class="ll-tag">Scan</span> Analytical queries often select a small subset of columns from wide tables. Columnar storage avoids reading everything.</li>
+      <li><span class="ll-tag">Compression</span> Repeated column values compress far better than mixed row text, which reduces storage cost and IO.</li>
+      <li><span class="ll-tag">Speed</span> Query engines such as Spark, DuckDB, BigQuery external tables, and Snowflake stages work far more efficiently with Parquet.</li>
+      <li><span class="ll-tag">Schema</span> Parquet stores typed metadata, which is much safer than inferring types from CSV strings on every read.</li>
+    </ul>
+
+    <p>The snippet below writes a Pandas DataFrame to <code>.parquet</code> with Snappy compression. It also writes CSV for comparison, but the recommendation is clear: use Parquet for analytics and large-scale storage unless you have a specific interoperability reason not to.</p>
+
+    <pre><code>from pathlib import Path
+
+import pandas as pd
+
+
+def save_orders_dataset() -> None:
+    """Save the same dataset as CSV and Parquet to show the production-safe default."""
+    output_dir = Path("./data_output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    orders_df = pd.DataFrame(
+        {
+            "order_id": [1001, 1002, 1003, 1004],
+            "customer_id": [501, 502, 501, 503],
+            "order_total": [125.50, 88.10, 42.99, 310.75],
+            "currency": ["USD", "USD", "USD", "USD"],
+            "order_ts": pd.to_datetime(
+                [
+                    "2026-03-25 10:15:00",
+                    "2026-03-25 11:05:00",
+                    "2026-03-26 08:43:00",
+                    "2026-03-26 17:20:00",
+                ]
+            ),
+        }
+    )
+
+    try:
+        # CSV is easy to inspect, but usually inefficient for analytics workloads.
+        orders_df.to_csv(output_dir / "orders.csv", index=False)
+
+        # Parquet stores typed columns and compresses efficiently.
+        # Snappy is a common production default because it balances speed and compression.
+        orders_df.to_parquet(
+            output_dir / "orders.parquet",
+            index=False,
+            compression="snappy",
+            engine="pyarrow",
+        )
+
+        print("Saved CSV and Parquet versions to ./data_output")
+    except ImportError as exc:
+        print("Missing optional dependency. Install pyarrow to write Parquet files.")
+        print(f"Details: {exc}")
+    except OSError as exc:
+        print("File write failed. Check directory permissions and available disk space.")
+        print(f"Details: {exc}")
+
+
+if __name__ == "__main__":
+    save_orders_dataset()</code></pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Scalability note:</strong> when data grows to millions of rows, the difference between CSV and Parquet stops being academic. It directly affects storage cost, load times, cloud query spend, and whether downstream jobs finish on time.</div>
+    </div>
+  </section>
+
+  <section id="module-2">
+    <h2>Module 2: Data Ingestion (Extraction)</h2>
+    <p>Extraction is where many pipelines quietly fail. A small demo script can make a single request or run one SQL query, but production extraction must handle timeouts, retries, pagination, authentication, and memory pressure. This is where a lot of "works on my laptop" code turns into brittle operations work.</p>
+
+    <div class="flow">
+      <div class="flow-step">Source API / DB</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Reliable extraction</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Raw landing zone</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Transform layer</div>
+    </div>
+
+    <h3 id="api-extraction">API Extraction</h3>
+    <p>REST APIs are a common source for SaaS data such as CRM records, billing events, and support tickets. The mistake beginners make is assuming one <code>requests.get()</code> call is enough. In production, APIs fail transiently, rate limit, and occasionally return malformed payloads. Retries and defensive parsing are not optional.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Scalability concern:</strong> API extraction is often network-bound and vendor-limited. The bottleneck is usually not CPU. It is backoff strategy, pagination discipline, and checkpointing progress so a failed run can resume safely.</div>
+    </div>
+
+    <pre><code>from __future__ import annotations
+
+from typing import Any
+
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+
+def build_session() -> requests.Session:
+    """Create a requests session with retry behavior for transient API failures."""
+    retry_strategy = Retry(
+        total=5,
+        connect=5,
+        read=5,
+        backoff_factor=1.0,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
+        raise_on_status=False,
+    )
+
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session = requests.Session()
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    session.headers.update(
+        {
+            "Accept": "application/json",
+            "User-Agent": "data-engineering-handbook/1.0",
+        }
+    )
+    return session
+
+
+def fetch_all_pages(base_url: str, api_token: str) -> list[dict[str, Any]]:
+    """Pull paginated JSON records from an API with retries and basic validation."""
+    session = build_session()
+    session.headers.update({"Authorization": f"Bearer {api_token}"})
+
+    results: list[dict[str, Any]] = []
+    next_url: str | None = base_url
+
+    try:
+        while next_url:
+            response = session.get(next_url, timeout=30)
+            response.raise_for_status()
+
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise ValueError("Expected a JSON object at the top level.")
+
+            records = payload.get("results", [])
+            if not isinstance(records, list):
+                raise ValueError("Expected 'results' to be a list.")
+
+            results.extend(record for record in records if isinstance(record, dict))
+            next_url = payload.get("next")
+
+        return results
+    except requests.exceptions.Timeout as exc:
+        print("API request timed out. Increase timeout or inspect network conditions.")
+        raise RuntimeError("API extraction timed out") from exc
+    except requests.exceptions.HTTPError as exc:
+        print(f"HTTP error while calling API: {exc}")
+        raise RuntimeError("API extraction failed with HTTP error") from exc
+    except ValueError as exc:
+        print(f"Unexpected response shape: {exc}")
+        raise RuntimeError("API extraction failed because payload was malformed") from exc
+    finally:
+        session.close()
+
+
+if __name__ == "__main__":
+    API_URL = "https://api.example.com/v1/orders"
+    API_TOKEN = "replace-with-real-token"
+
+    try:
+        orders = fetch_all_pages(API_URL, API_TOKEN)
+        print(f"Fetched {len(orders)} records from the API")
+    except RuntimeError as exc:
+        print(f"Extraction job failed: {exc}")</code></pre>
+
+    <p>This pattern is production-friendly because it retries transient failures, validates the payload shape, and handles pagination without assuming the dataset fits in a single response.</p>
+
+    <h3 id="database-extraction">Database Extraction</h3>
+    <p>Database extraction becomes dangerous when engineers read entire tables into memory. That works for 50,000 rows and fails badly at 50 million rows. The fix is straightforward: stream or chunk reads so memory stays bounded.</p>
+
+    <pre><code>from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
+
+
+def build_engine() -> Engine:
+    """Build a SQLAlchemy engine. Swap the URL for your real database."""
+    connection_url = "postgresql+psycopg2://user:password@localhost:5432/analytics"
+    return create_engine(connection_url, pool_pre_ping=True)
+
+
+def extract_orders_in_chunks(output_dir: str = "./db_extract") -> None:
+    """Read rows in chunks so the job does not exhaust memory on large tables."""
+    query = text(
+        """
+        SELECT order_id, customer_id, order_total, order_status, created_at
+        FROM fact_orders
+        WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+        ORDER BY created_at
+        """
+    )
+
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    engine = build_engine()
+
+    try:
+        with engine.connect() as connection:
+            for chunk_number, chunk_df in enumerate(
+                pd.read_sql_query(query, connection, chunksize=100_000),
+                start=1,
+            ):
+                output_path = Path(output_dir) / f"orders_chunk_{chunk_number:03d}.parquet"
+
+                # Writing each chunk immediately prevents one huge in-memory dataframe.
+                chunk_df.to_parquet(output_path, index=False, compression="snappy")
+                print(f"Wrote {len(chunk_df):,} rows to {output_path}")
+    except Exception as exc:
+        print("Database extraction failed. Check connectivity, credentials, and SQL syntax.")
+        raise RuntimeError("Chunked database extraction failed") from exc
+    finally:
+        engine.dispose()
+
+
+if __name__ == "__main__":
+    extract_orders_in_chunks()</code></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Production rule:</strong> for large database pulls, extract incrementally if possible, partition by time or primary key, and write chunks out immediately. If a job dies halfway through, you want partial progress on disk instead of an empty result and a blown memory budget.</div>
+    </div>
+
+    <h2 id="module-3">Module 3: Data Cleaning & Transformation (The Heavy Lifting)</h2>
+    <p>This is where raw data becomes usable. Most data engineering effort is not about connecting to the source. It is about making inconsistent, incomplete, and messy data safe for analytics and downstream models.</p>
+
+    <h3 id="data-quality">Data Quality Issues</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Issue</th><th>What it looks like</th><th>Why it matters</th></tr>
+        <tr>
+          <td><strong>Nulls</strong></td>
+          <td>Missing revenue, missing timestamps, empty country values</td>
+          <td>Breaks aggregations, model features, joins, and KPIs</td>
+        </tr>
+        <tr>
+          <td><strong>Duplicates</strong></td>
+          <td>Repeated orders, repeated click events, duplicate customer rows</td>
+          <td>Inflates counts, revenue, conversion metrics, and downstream trust issues</td>
+        </tr>
+        <tr>
+          <td><strong>Schema drift</strong></td>
+          <td>Column types or names change unexpectedly</td>
+          <td>Breaks parsers, silently corrupts pipelines, and causes hard-to-debug failures</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="mode-card amber">
+      <div class="mode-header">
+        <span class="mode-name">Real-world analogy</span>
+        <span class="mode-shortcut">Receiving dock</span>
+      </div>
+      <p class="mode-when"><strong>Raw data</strong> is like truck deliveries arriving with missing labels, duplicate boxes, and slightly different packing slips every day. Cleaning is the receiving dock process that checks, standardizes, and routes goods before they hit inventory systems.</p>
+    </div>
+
+    <h3 id="pandas-polars">Cleaning with Pandas and Polars</h3>
+    <p>For small to medium datasets, Pandas remains a strong default. Polars is increasingly popular because it is faster, more memory-efficient, and designed around a modern execution engine. The business logic is the same in both tools: deduplicate, normalize, fill missing values, and standardize timestamps.</p>
+
+    <pre><code>from __future__ import annotations
+
+import pandas as pd
+
+
+def clean_with_pandas() -> pd.DataFrame:
+    """Clean a messy dataset using Pandas with common production-safe steps."""
+    raw_df = pd.DataFrame(
+        {
+            "customer_name": [" Alice ", "bob", "bob", " CHARLIE "],
+            "city": [" New York ", "LONDON", "LONDON", " San Francisco "],
+            "sales_amount": [100.0, None, None, 250.0],
+            "order_date": ["2026-03-01", "2026/03/02", "2026/03/02", "2026-03-04"],
+        }
+    )
+
+    try:
+        cleaned_df = raw_df.drop_duplicates().copy()
+
+        # Fill missing numeric values with the column mean so aggregations remain usable.
+        sales_mean = cleaned_df["sales_amount"].mean()
+        cleaned_df["sales_amount"] = cleaned_df["sales_amount"].fillna(sales_mean)
+
+        # Standardize strings for safer joins and group-by behavior.
+        for column in ["customer_name", "city"]:
+            cleaned_df[column] = (
+                cleaned_df[column]
+                .astype("string")
+                .str.strip()
+                .str.lower()
+            )
+
+        # Coerce invalid values to NaT rather than crashing the whole job.
+        cleaned_df["order_date"] = pd.to_datetime(cleaned_df["order_date"], errors="coerce")
+
+        return cleaned_df
+    except Exception as exc:
+        print("Pandas cleaning step failed. Inspect source schema and values.")
+        raise RuntimeError("Pandas cleaning failed") from exc
+
+
+if __name__ == "__main__":
+    print(clean_with_pandas())</code></pre>
+
+    <pre><code>from __future__ import annotations
+
+import polars as pl
+
+
+def clean_with_polars() -> pl.DataFrame:
+    """Apply the same cleaning logic with Polars for better performance on larger local workloads."""
+    raw_df = pl.DataFrame(
+        {
+            "customer_name": [" Alice ", "bob", "bob", " CHARLIE "],
+            "city": [" New York ", "LONDON", "LONDON", " San Francisco "],
+            "sales_amount": [100.0, None, None, 250.0],
+            "order_date": ["2026-03-01", "2026/03/02", "2026/03/02", "2026-03-04"],
+        }
+    )
+
+    try:
+        mean_sales = raw_df.select(pl.col("sales_amount").mean()).item()
+
+        cleaned_df = (
+            raw_df
+            .unique()
+            .with_columns(
+                [
+                    pl.col("sales_amount").fill_null(mean_sales),
+                    pl.col("customer_name").str.strip_chars().str.to_lowercase(),
+                    pl.col("city").str.strip_chars().str.to_lowercase(),
+                    pl.col("order_date").str.strptime(pl.Date, strict=False),
+                ]
+            )
+        )
+
+        return cleaned_df
+    except Exception as exc:
+        print("Polars cleaning step failed. Verify data types and date formats.")
+        raise RuntimeError("Polars cleaning failed") from exc
+
+
+if __name__ == "__main__":
+    print(clean_with_polars())</code></pre>
+
+    <h3 id="pyspark-transform">Big Data Transformation with PySpark</h3>
+    <p>Once datasets exceed a single machine's RAM, local Pandas workflows stop being reliable. PySpark spreads both storage and compute across a cluster, which is why it is common in lakehouse platforms such as Databricks and EMR-backed data lakes.</p>
+
+    <pre><code>from __future__ import annotations
+
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+
+
+def transform_large_dataset() -> None:
+    """Run cleaning logic in Spark for datasets too large for one machine."""
+    spark = (
+        SparkSession.builder
+        .appName("data-engineering-handbook-cleaning")
+        .getOrCreate()
+    )
+
+    try:
+        df = spark.createDataFrame(
+            [
+                (1, " Alice ", 100.0, "2026-03-01", "completed"),
+                (2, "bob", None, "2026-03-02", "completed"),
+                (3, "", 50.0, "2026-03-03", "cancelled"),
+                (4, None, 300.0, "2026-03-04", "completed"),
+            ],
+            ["order_id", "customer_name", "sales_amount", "order_date", "order_status"],
+        )
+
+        cleaned_df = (
+            df
+            .withColumn("customer_name", F.trim(F.lower(F.col("customer_name"))))
+            .withColumn("sales_amount", F.coalesce(F.col("sales_amount"), F.lit(0.0)))
+            .withColumn("order_date", F.to_timestamp("order_date"))
+            .filter(F.col("order_status") == "completed")
+            .filter(F.col("customer_name").isNotNull() & (F.col("customer_name") != ""))
+        )
+
+        cleaned_df.show(truncate=False)
+    except Exception as exc:
+        print("PySpark transformation failed. Check Spark configuration and input schema.")
+        raise RuntimeError("PySpark transformation failed") from exc
+    finally:
+        spark.stop()
+
+
+if __name__ == "__main__":
+    transform_large_dataset()</code></pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Scalability note:</strong> Spark does not just make code faster. It changes the execution model. You stop assuming a dataframe fits in local RAM and instead push transformations to distributed executors that read partitioned files from a lake or lakehouse.</div>
+    </div>
+
+    <h2 id="module-4">Module 4: Data Orchestration & Scheduling</h2>
+    <p>Once pipelines multiply, the problem is no longer just running code on a schedule. The real problem is coordinating dependencies, knowing what failed, retrying safely, and alerting the right people fast enough for the business to care.</p>
+
+    <h3 id="why-orchestration">The Need for Orchestration</h3>
+    <p><strong>Cron jobs fail at scale</strong> because they only answer one question: "when should this command run?" Production pipelines need answers to much harder questions: what must finish before this task starts, what happens if task 3 fails, which dataset version was produced, and how does the on-call engineer know before downstream dashboards go stale?</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Cron problem</th><th>Why it hurts</th><th>What orchestrators add</th></tr>
+        <tr>
+          <td><strong>No dependency graph</strong></td>
+          <td>Jobs can run out of order or before upstream data is ready</td>
+          <td>DAGs with explicit task dependencies</td>
+        </tr>
+        <tr>
+          <td><strong>Poor observability</strong></td>
+          <td>Failures hide in logs on random machines</td>
+          <td>Central UI, logs, metadata, alerts</td>
+        </tr>
+        <tr>
+          <td><strong>Weak retry control</strong></td>
+          <td>Transient failures cause missed SLAs or duplicate runs</td>
+          <td>Task retries, backfills, idempotent scheduling</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="mode-card blue">
+      <div class="mode-header">
+        <span class="mode-name">Real-world analogy</span>
+        <span class="mode-shortcut">Airport control tower</span>
+      </div>
+      <p class="mode-when"><strong>Cron</strong> is a timer that tells pilots when to try taking off.</p>
+      <p class="mode-when"><strong>An orchestrator</strong> is the control tower coordinating which plane can move, which runway is free, what happens when weather changes, and who gets alerted when a plane is delayed.</p>
+    </div>
+
+    <h3 id="airflow">Apache Airflow</h3>
+    <p>Airflow is one of the most common orchestrators in the Python ecosystem. It is built around DAGs, task dependencies, retries, schedules, and rich operational metadata. The TaskFlow API makes DAGs feel like plain Python while still giving you orchestration features.</p>
+
+    <pre><code>from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+from airflow.decorators import dag, task
+
+
+@dag(
+    dag_id="daily_orders_pipeline",
+    start_date=datetime(2026, 3, 1),
+    schedule="@daily",
+    catchup=False,
+    tags=["handbook", "data-engineering"],
+)
+def daily_orders_pipeline():
+    """A simple ELT-style DAG using the TaskFlow API."""
+
+    @task(retries=2, retry_delay=timedelta(minutes=1))
+    def extract() -> list[dict[str, object]]:
+        # In production this would pull from an API, database, or cloud storage.
+        return [
+            {"order_id": 1, "amount": 120.0, "status": "completed"},
+            {"order_id": 2, "amount": 0.0, "status": "cancelled"},
+            {"order_id": 3, "amount": 75.5, "status": "completed"},
+        ]
+
+    @task
+    def transform(records: list[dict[str, object]]) -> list[dict[str, object]]:
+        try:
+            # Keep only business-valid rows for the downstream load step.
+            return [
+                record
+                for record in records
+                if record.get("status") == "completed" and float(record.get("amount", 0)) > 0
+            ]
+        except Exception as exc:
+            raise RuntimeError("Transform task failed") from exc
+
+    @task
+    def load(records: list[dict[str, object]]) -> None:
+        try:
+            # Replace this with a Snowflake, BigQuery, or warehouse load in real code.
+            print(f"Loading {len(records)} cleaned records into analytics storage")
+        except Exception as exc:
+            raise RuntimeError("Load task failed") from exc
+
+    load(transform(extract()))
+
+
+dag = daily_orders_pipeline()</code></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Production mindset:</strong> Airflow is most useful when tasks are idempotent, inputs are explicit, outputs are traceable, and retries do not create duplicate business records. Orchestration cannot fix unsafe task design.</div>
+    </div>
+
+    <h2 id="module-5">Module 5: Real-World Scenarios & Use Cases</h2>
+    <p>Concepts become easier to retain when you see how they combine in real architectures. The examples below show how ingestion, storage, transformation, and orchestration fit together in common production systems.</p>
+
+    <h3 id="scenario-batch">Scenario 1: E-commerce Daily Sales Pipeline</h3>
+    <p><strong>Goal:</strong> ingest daily transaction logs from AWS S3, clean the data in Databricks with PySpark, and load aggregated metrics into Snowflake so the BI team can power daily revenue dashboards.</p>
+
+    <div class="flow">
+      <div class="flow-step">App logs land in S3</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Databricks reads Parquet or JSON</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">PySpark cleans and aggregates</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">Snowflake serves BI</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Layer</th><th>Example technology</th><th>Responsibility</th></tr>
+        <tr>
+          <td><strong>Landing zone</strong></td>
+          <td>AWS S3</td>
+          <td>Store raw transaction files partitioned by date</td>
+        </tr>
+        <tr>
+          <td><strong>Processing</strong></td>
+          <td>Databricks + PySpark</td>
+          <td>Deduplicate, normalize currencies, filter invalid orders, aggregate daily sales</td>
+        </tr>
+        <tr>
+          <td><strong>Serving</strong></td>
+          <td>Snowflake</td>
+          <td>Expose curated fact tables and business metrics to dashboards</td>
+        </tr>
+        <tr>
+          <td><strong>Orchestration</strong></td>
+          <td>Airflow</td>
+          <td>Schedule the pipeline, retries, and alerting</td>
+        </tr>
+      </table>
+    </div>
+
+    <h4>Architecture cards</h4>
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-kicker">Ingress</div>
+        <div class="card-title">S3 Raw Zone</div>
+        <div class="card-body">Application transaction logs land in S3 partitions such as <code>date=YYYY-MM-DD</code>. Keeping raw files unchanged makes reprocessing possible when business logic changes or quality issues are discovered later.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Compute</div>
+        <div class="card-title">Databricks + PySpark</div>
+        <div class="card-body">Spark jobs deduplicate transactions, normalize currencies, fill missing fields, and generate curated silver or gold tables. This is where the heavy lifting happens when daily event volume is too large for local Python workflows.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Serving</div>
+        <div class="card-title">Snowflake Metrics Layer</div>
+        <div class="card-body">Aggregated revenue, refund, and customer metrics land in Snowflake so BI tools can query stable, governed tables without scanning raw event logs every morning.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Control Plane</div>
+        <div class="card-title">Airflow Orchestration</div>
+        <div class="card-body">Airflow coordinates the handoff between storage, Spark compute, and warehouse load steps. It also gives retries, SLA visibility, and alerts when the daily pipeline misses its reporting window.</div>
+      </div>
+    </div>
+
+    <p>Why this architecture works:</p>
+    <ul class="link-list">
+      <li><span class="ll-tag">S3</span> Cheap raw storage preserves full history for reprocessing.</li>
+      <li><span class="ll-tag">Spark</span> Handles large daily files and wide transformations without relying on one machine.</li>
+      <li><span class="ll-tag">Snowflake</span> Gives the BI team fast SQL performance and governed metrics.</li>
+      <li><span class="ll-tag">ELT</span> Keeps raw data available so transformation logic can evolve without re-extracting from apps.</li>
+    </ul>
+
+    <pre><code># Pseudo-flow for the daily sales pipeline
+
+def daily_sales_pipeline(execution_date: str) -> None:
+    raw_path = f"s3://company-raw/transactions/date={execution_date}/"
+
+    # 1. Read raw data from the lake.
+    raw_df = spark.read.parquet(raw_path)
+
+    # 2. Apply business cleaning rules.
+    cleaned_df = (
+        raw_df
+        .dropDuplicates(["transaction_id"])
+        .filter("order_status = 'completed'")
+        .fillna({"discount_amount": 0.0})
+    )
+
+    # 3. Aggregate for BI consumption.
+    agg_df = cleaned_df.groupBy("order_date", "country").sum("net_revenue")
+
+    # 4. Write curated results to Snowflake.
+    write_dataframe_to_snowflake(agg_df, table_name="daily_sales_metrics")</code></pre>
+
+    <h3 id="scenario-streaming">Scenario 2: Real-Time Fraud Detection (Streaming)</h3>
+    <p>Batch pipelines assume it is acceptable to wait. Fraud detection does not have that luxury. If you detect fraud six hours later, the money may already be gone. That is the paradigm shift from batch to streaming: process events continuously as they happen, not only in daily or hourly windows.</p>
+
+    <div class="mode-card red">
+      <div class="mode-header">
+        <span class="mode-name">Batch vs streaming</span>
+        <span class="mode-shortcut">Mindset change</span>
+      </div>
+      <p class="mode-when"><strong>Batch</strong> asks: what happened during the last time window?</p>
+      <p class="mode-when"><strong>Streaming</strong> asks: what should we do about this event right now, before the next event arrives?</p>
+    </div>
+
+    <h4>Architecture cards</h4>
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-kicker">Event Backbone</div>
+        <div class="card-title">Kafka Topics</div>
+        <div class="card-body">Payment events are published to Kafka in near real time. Kafka decouples producers from consumers so scoring services, audit pipelines, and monitoring tools can all react to the same event stream independently.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Decision Layer</div>
+        <div class="card-title">Streaming Consumer</div>
+        <div class="card-body">A Python consumer or stream-processing job enriches each payment with user context, velocity windows, and geographic checks before deciding whether the transaction should be approved, held, or escalated.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Risk Logic</div>
+        <div class="card-title">Rules or Model Scoring</div>
+        <div class="card-body">Simple threshold rules can catch obvious fraud patterns quickly, while ML scoring can rank more subtle risk signals. Mature systems often combine both because deterministic rules are easier to audit.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Feedback Loop</div>
+        <div class="card-title">Case Review and Labels</div>
+        <div class="card-body">Analyst review outcomes, chargeback signals, and confirmed fraud labels must flow back into the system so the rules and models improve over time instead of remaining static.</div>
+      </div>
+    </div>
+
+    <p>Apache Kafka acts as the event backbone. Producers publish payment events. Consumers read them continuously. A streaming application then enriches events, computes features such as transaction velocity or location mismatch, and decides whether to flag the event.</p>
+
+    <pre><code>from __future__ import annotations
+
+import json
+
+from kafka import KafkaConsumer
+
+
+def consume_fraud_events() -> None:
+    """Illustrative streaming consumer that would feed fraud rules or a model."""
+    consumer = KafkaConsumer(
+        "payments",
+        bootstrap_servers=["localhost:9092"],
+        auto_offset_reset="earliest",
+        enable_auto_commit=True,
+        group_id="fraud-detectors",
+        value_deserializer=lambda value: json.loads(value.decode("utf-8")),
+    )
+
+    try:
+        for message in consumer:
+            event = message.value
+
+            # In production, replace this with model scoring or a feature store lookup.
+            if event.get("amount", 0) > 5000 and event.get("country_mismatch", False):
+                print(f"Potential fraud detected for transaction {event.get('transaction_id')}")
+    except Exception as exc:
+        print("Streaming consumer failed. Check Kafka connectivity and payload schema.")
+        raise RuntimeError("Fraud streaming consumer failed") from exc
+    finally:
+        consumer.close()
+
+
+if __name__ == "__main__":
+    consume_fraud_events()</code></pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Streaming reality:</strong> Python is often used for consumers, rule engines, or inference services, but the bigger design question is event-time handling, late-arriving data, feature freshness, and exactly-once or at-least-once semantics. Streaming is less about syntax and more about operational guarantees.</div>
+    </div>
+
+    <h3>How the pieces combine in a modern stack</h3>
+    <p>A modern data platform is rarely one product. It is usually a layered system: sources feed a lake, transformations happen in Spark or warehouse SQL, curated data lands in a warehouse or lakehouse table format, orchestration coordinates jobs, and downstream consumers use BI, reverse ETL, ML features, or streaming decisions.</p>
+
+    <ul class="toc-list">
+      <li><strong>Storage:</strong> S3 or cloud object storage for raw data, Snowflake or BigQuery for governed analytics, and lakehouse formats for open-table workflows.</li>
+      <li><strong>Transformation:</strong> Pandas or Polars for small-scale work, PySpark for distributed processing, and SQL or dbt for modeled analytics layers.</li>
+      <li><strong>Orchestration:</strong> Airflow for dependencies, retries, backfills, and visibility.</li>
+      <li><strong>Serving:</strong> BI dashboards, ML feature stores, reverse ETL, or streaming applications depending on the consumer.</li>
+    </ul>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <p>These are the primary references worth keeping close when you move from handbook examples into production implementation work.</p>
+
+    <h3>Python Data Processing</h3>
+    <ul class="link-list">
+      <li><span class="ll-tag">Pandas</span> <a href="https://pandas.pydata.org/docs/">pandas.pydata.org docs</a></li>
+      <li><span class="ll-tag">Polars</span> <a href="https://docs.pola.rs/">docs.pola.rs</a></li>
+      <li><span class="ll-tag">PySpark</span> <a href="https://spark.apache.org/docs/latest/api/python/">Spark Python API docs</a></li>
+      <li><span class="ll-tag">SQLAlchemy</span> <a href="https://docs.sqlalchemy.org/">docs.sqlalchemy.org</a></li>
+      <li><span class="ll-tag">Requests</span> <a href="https://requests.readthedocs.io/">requests.readthedocs.io</a></li>
+    </ul>
+
+    <h3>Orchestration and Streaming</h3>
+    <ul class="link-list">
+      <li><span class="ll-tag">Airflow</span> <a href="https://airflow.apache.org/docs/">airflow.apache.org docs</a></li>
+      <li><span class="ll-tag">Kafka</span> <a href="https://kafka.apache.org/documentation/">kafka.apache.org documentation</a></li>
+      <li><span class="ll-tag">Confluent</span> <a href="https://developer.confluent.io/">developer.confluent.io</a></li>
+    </ul>
+
+    <h3>Modern Data Stack Platforms</h3>
+    <ul class="link-list">
+      <li><span class="ll-tag">Snowflake</span> <a href="https://docs.snowflake.com/">docs.snowflake.com</a></li>
+      <li><span class="ll-tag">BigQuery</span> <a href="https://cloud.google.com/bigquery/docs">Google BigQuery docs</a></li>
+      <li><span class="ll-tag">Databricks</span> <a href="https://docs.databricks.com/">docs.databricks.com</a></li>
+      <li><span class="ll-tag">Delta Lake</span> <a href="https://docs.delta.io/">docs.delta.io</a></li>
+      <li><span class="ll-tag">Apache Iceberg</span> <a href="https://iceberg.apache.org/docs/latest/">iceberg.apache.org docs</a></li>
+    </ul>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Recommended habit:</strong> use this handbook for concepts and patterns, then validate implementation details against the current vendor or library docs before building a production pipeline. Platform behavior, SDKs, and configuration defaults change faster than conceptual architecture does.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero, h2[id], h3[id]');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach((section) => section.id && observer.observe(section));
+</script>
+</body>
+</html>

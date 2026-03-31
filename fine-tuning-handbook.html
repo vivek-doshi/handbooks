@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fine-Tuning Models Handbook</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0e141b;
+    --bg2: #141d27;
+    --bg3: #1b2634;
+    --bg4: #223246;
+    --panel: rgba(255,255,255,0.03);
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.16);
+    --text: #edf2f7;
+    --muted: #95a3b6;
+    --accent: #58a6ff;
+    --accent2: #34c9a3;
+    --accent3: #f3b84f;
+    --accent4: #f07d6f;
+    --accent5: #86a8ff;
+    --code-bg: #0a1016;
+    --tag-bg: rgba(88,166,255,0.12);
+    --tag-text: #93c5fd;
+    --sans: 'Manrope', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Cascadia Code', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background:
+      radial-gradient(circle at top right, rgba(88,166,255,0.08), transparent 24%),
+      radial-gradient(circle at left bottom, rgba(52,201,163,0.06), transparent 28%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 252px;
+    min-width: 252px;
+    background: rgba(20,29,39,0.94);
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    flex-shrink: 0;
+    backdrop-filter: blur(18px);
+  }
+  .sidebar::-webkit-scrollbar { width: 5px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 8px; }
+
+  .logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .logo-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .nav-section { margin-bottom: 4px; }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 10px 20px 4px;
+  }
+  .nav-link {
+    display: block;
+    padding: 6px 20px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-link:hover {
+    color: var(--text);
+    background: var(--bg3);
+  }
+  .nav-link.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(88,166,255,0.08);
+  }
+
+  .main {
+    flex: 1;
+    max-width: 980px;
+    padding: 40px 48px 80px;
+    overflow-x: hidden;
+  }
+
+  section { margin-bottom: 60px; scroll-margin-top: 24px; }
+  h1 { font-size: 30px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  h2 {
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 38px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 15px; font-weight: 700; color: var(--text); margin: 24px 0 10px; }
+  h4 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin: 20px 0 8px;
+  }
+  p { color: var(--muted); margin-bottom: 10px; line-height: 1.75; }
+  p strong { color: var(--text); font-weight: 600; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .hero {
+    background:
+      linear-gradient(135deg, rgba(88,166,255,0.11) 0%, rgba(52,201,163,0.08) 100%),
+      var(--panel);
+    border: 1px solid rgba(88,166,255,0.22);
+    border-radius: 14px;
+    padding: 28px 30px;
+    margin-bottom: 36px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: auto -40px -40px auto;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, rgba(243,184,79,0.18), transparent 68%);
+    pointer-events: none;
+  }
+  .hero h1 { font-size: 24px; margin-bottom: 4px; }
+  .page-sub { font-size: 15px; color: var(--muted); margin-bottom: 24px; max-width: 760px; }
+  .hero-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .badge-blue { background: rgba(88,166,255,0.15); color: #a9d2ff; border-color: rgba(88,166,255,0.22); }
+  .badge-green { background: rgba(52,201,163,0.12); color: #7ce7ca; border-color: rgba(52,201,163,0.18); }
+  .badge-amber { background: rgba(243,184,79,0.12); color: #ffd78a; border-color: rgba(243,184,79,0.18); }
+  .badge-coral { background: rgba(240,125,111,0.12); color: #ffada3; border-color: rgba(240,125,111,0.18); }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+  }
+  pre::-webkit-scrollbar { height: 5px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 5px; }
+  code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #7ce7ca;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    padding: 9px 12px;
+    background: var(--bg3);
+    color: var(--text);
+    font-weight: 700;
+    border-bottom: 1px solid var(--border2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .card-grid { display: grid; gap: 14px; }
+  .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card {
+    background: rgba(20,29,39,0.88);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover {
+    border-color: var(--border2);
+    transform: translateY(-1px);
+  }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: var(--muted); line-height: 1.65; }
+  .card-kicker {
+    display: inline-block;
+    margin-bottom: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .mode-card {
+    border-radius: 12px;
+    padding: 18px 20px;
+    border-left: 3px solid;
+    background: rgba(20,29,39,0.88);
+    border-right: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .mode-card.blue { border-left-color: var(--accent); }
+  .mode-card.green { border-left-color: var(--accent2); }
+  .mode-card.amber { border-left-color: var(--accent3); }
+  .mode-card.red { border-left-color: var(--accent4); }
+  .mode-card.purple { border-left-color: var(--accent5); }
+  .mode-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .mode-name { font-size: 14px; font-weight: 700; color: var(--text); }
+  .mode-shortcut {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg4);
+    padding: 2px 8px;
+    border-radius: 5px;
+    color: var(--muted);
+    border: 1px solid var(--border2);
+  }
+  .mode-when { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .mode-when strong { color: var(--text); }
+
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    border-radius: 12px;
+    border: 1px solid rgba(88,166,255,0.18);
+  }
+
+  .callout {
+    display: flex;
+    gap: 12px;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 14px 0;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .callout-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .callout-body { color: var(--muted); }
+  .callout-body strong { color: var(--text); }
+  .callout.tip { background: rgba(52,201,163,0.08); border: 1px solid rgba(52,201,163,0.2); }
+  .callout.tip .callout-mark { background: rgba(52,201,163,0.14); color: #89eed3; }
+  .callout.warn { background: rgba(243,184,79,0.08); border: 1px solid rgba(243,184,79,0.2); }
+  .callout.warn .callout-mark { background: rgba(243,184,79,0.16); color: #ffd78a; }
+  .callout.info { background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.2); }
+  .callout.info .callout-mark { background: rgba(88,166,255,0.15); color: #aed3ff; }
+  .callout.danger { background: rgba(240,125,111,0.08); border: 1px solid rgba(240,125,111,0.2); }
+  .callout.danger .callout-mark { background: rgba(240,125,111,0.16); color: #ffc3bc; }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .flow-step {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+  }
+  .flow-arrow { color: var(--muted); font-size: 14px; }
+
+  .bullet-list {
+    list-style: none;
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .bullet-list li {
+    padding: 10px 12px 10px 38px;
+    position: relative;
+    background: rgba(20,29,39,0.82);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .bullet-list li::before {
+    content: '';
+    position: absolute;
+    left: 14px;
+    top: 15px;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+  }
+  .bullet-list strong { color: var(--text); }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+    margin: 14px 0;
+  }
+  .metric-box {
+    background: rgba(20,29,39,0.86);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .metric-label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .metric-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .metric-copy { font-size: 13px; color: var(--muted); }
+
+  .link-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 10px 0;
+  }
+  .link-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(20,29,39,0.86);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    transition: border-color 0.15s;
+  }
+  .link-list li:hover { border-color: var(--border2); }
+  .ll-tag {
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--bg3);
+    padding: 1px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .mini-note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { padding: 24px 20px 60px; }
+  }
+
+  @media (max-width: 720px) {
+    .hero { padding: 22px 20px; }
+    .flow { align-items: flex-start; }
+    table { min-width: 720px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Fine-Tuning</div>
+    <div class="logo-sub">Applied Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Getting Started</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#intro">Introduction</a>
+    <a class="nav-link" href="#need">When To Fine-Tune</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Core Training</div>
+    <a class="nav-link" href="#parameters">Key Parameters</a>
+    <a class="nav-link" href="#formats">Data Formats</a>
+    <a class="nav-link" href="#approaches">Approaches</a>
+    <a class="nav-link" href="#peft">LoRA and QLoRA</a>
+    <a class="nav-link" href="#optimizers">Optimizers</a>
+    <a class="nav-link" href="#objectives">Objectives</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Decision Making</div>
+    <a class="nav-link" href="#pretraining">Pretraining vs Fine-Tuning</a>
+    <a class="nav-link" href="#evaluation">Evaluation</a>
+    <a class="nav-link" href="#pitfalls">Best Practices</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Applied Work</div>
+    <a class="nav-link" href="#hardware">Hardware</a>
+    <a class="nav-link" href="#use-cases">Use Cases</a>
+    <a class="nav-link" href="#example">End-to-End Example</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Fine-Tuning Machine Learning and LLM Models</h1>
+    <p class="page-sub">A beginner-to-intermediate handbook focused on applied fine-tuning: what to tune, when to tune, how to structure data, which PEFT method to choose, and how to run a practical Hugging Face training loop without drowning in theory.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">Beginner to Intermediate</span>
+      <span class="badge badge-green">PyTorch + Hugging Face</span>
+      <span class="badge badge-amber">LoRA / QLoRA / Evaluation</span>
+      <span class="badge badge-coral">March 2026</span>
+    </div>
+  </div>
+
+  <section id="intro">
+    <h2>Introduction to Fine-Tuning</h2>
+    <p><strong>Fine-tuning</strong> means taking a model that already learned general patterns and continuing training on a smaller, task-specific dataset. Instead of teaching the model everything from zero, you adapt what it already knows so it performs better on your domain, format, labels, or response style.</p>
+
+    <div class="flow">
+      <div class="flow-step">Pretraining on huge corpus</div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-step">General language or task skill</div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-step">Fine-tuning on your data</div>
+      <span class="flow-arrow">&rarr;</span>
+      <div class="flow-step">Specialized behavior</div>
+    </div>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-kicker">Comparison</div>
+        <div class="card-title">Pretraining vs Fine-Tuning</div>
+        <div class="card-body">
+          <strong>Pretraining</strong> learns broad patterns from very large datasets such as web text, books, code, or domain corpora. It is expensive and usually done once.<br><br>
+          <strong>Fine-tuning</strong> is a smaller follow-up step that adapts a pretrained model to a target task like classification, summarization, chat, ranking, or domain adaptation.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Comparison</div>
+        <div class="card-title">Training From Scratch vs Transfer Learning</div>
+        <div class="card-body">
+          <strong>Training from scratch</strong> initializes random weights and requires a lot of data, compute, and time.<br><br>
+          <strong>Transfer learning</strong> starts from a pretrained model and reuses existing knowledge. Fine-tuning is the most common transfer-learning pattern for modern ML and LLM work.
+        </div>
+      </div>
+    </div>
+
+    <h3 id="need">When Fine-Tuning Is Required vs Not Required</h3>
+    <div class="mode-card green">
+      <div class="mode-header">
+        <span class="mode-name">Fine-tune when the model must learn stable behavior</span>
+        <span class="mode-shortcut">Good fit</span>
+      </div>
+      <p class="mode-when"><strong>Use it for:</strong> domain terminology, consistent output format, label prediction, product-specific assistant behavior, ranking objectives, or local deployment where a smaller model must perform better on a narrow task.</p>
+      <div class="tag-row">
+        <span class="tag">Domain adaptation</span>
+        <span class="tag">Instruction following</span>
+        <span class="tag">Classification</span>
+        <span class="tag">Reranking</span>
+      </div>
+    </div>
+
+    <div class="mode-card amber">
+      <div class="mode-header">
+        <span class="mode-name">Do not fine-tune by default</span>
+        <span class="mode-shortcut">Try cheaper options first</span>
+      </div>
+      <p class="mode-when"><strong>Skip it when:</strong> prompt engineering, retrieval-augmented generation (RAG), better evaluation prompts, or simple application logic can already solve the problem. Fine-tuning is slower to iterate and easier to get wrong if your dataset is weak.</p>
+      <div class="tag-row">
+        <span class="tag">Prompting first</span>
+        <span class="tag">RAG for fresh facts</span>
+        <span class="tag">Rules for deterministic logic</span>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-mark">01</span>
+      <div class="callout-body"><strong>Practical rule:</strong> if the model already knows the knowledge but does not behave the way you want, fine-tuning can help. If the model lacks the facts and those facts change often, RAG or a search layer is usually a better first move.</div>
+    </div>
+  </section>
+
+  <section id="parameters">
+    <h2>Key Parameters in Fine-Tuning</h2>
+    <p>Most failed fine-tuning runs come from a small set of knobs: learning rate, batch size, epochs, regularization, and scheduler behavior. You do not need to memorize every formula, but you should know <strong>what each parameter changes</strong> so you can debug training runs quickly.</p>
+
+    <pre><code>from transformers import TrainingArguments
+
+training_args = TrainingArguments(
+    learning_rate=2e-5,
+    per_device_train_batch_size=8,
+    num_train_epochs=3,
+    weight_decay=0.01,
+    warmup_steps=500,
+    logging_steps=100
+)</code></pre>
+
+    <div class="metric-grid">
+      <div class="metric-box">
+        <div class="metric-label">Formula</div>
+        <div class="metric-title">Weight update</div>
+        <div class="metric-copy"><code>w_{t+1} = w_t - \eta g_t</code>. The learning rate <code>\eta</code> controls how large each parameter update is.</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">Formula</div>
+        <div class="metric-title">Effective batch size</div>
+        <div class="metric-copy"><code>batch * grad_accumulation * num_devices</code>. This matters more than per-device batch size alone.</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">Formula</div>
+        <div class="metric-title">Warmup</div>
+        <div class="metric-copy"><code>lr_t = lr_max * t / warmup_steps</code> during warmup. This prevents unstable early updates.</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">Formula</div>
+        <div class="metric-title">Gradient clipping</div>
+        <div class="metric-copy"><code>g_clipped = g * min(1, max_norm / ||g||)</code>. Large gradient spikes get scaled down.</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Parameter</th>
+          <th>What it does</th>
+          <th>If you increase it</th>
+          <th>Overfitting</th>
+          <th>Convergence / Stability</th>
+        </tr>
+        <tr>
+          <td><strong>Learning rate</strong></td>
+          <td>Controls update size each step.</td>
+          <td>Training moves faster, but can overshoot good solutions.</td>
+          <td>Indirect effect. Too high can look like poor generalization because training becomes noisy.</td>
+          <td>Most sensitive knob. Too high causes divergence or oscillation. Too low wastes time and may underfit.</td>
+        </tr>
+        <tr>
+          <td><strong>Batch size</strong></td>
+          <td>Number of samples used for one gradient estimate.</td>
+          <td>Gradient becomes smoother and training often allows a slightly higher LR.</td>
+          <td>Very large batches can reduce helpful noise and sometimes generalize worse.</td>
+          <td>Usually improves stability, but uses more VRAM.</td>
+        </tr>
+        <tr>
+          <td><strong>Epochs</strong></td>
+          <td>How many full passes over the training data.</td>
+          <td>The model fits the training set more aggressively.</td>
+          <td>Main direct driver of overfitting if validation stops improving.</td>
+          <td>Enough epochs are needed to learn; too many memorize noise.</td>
+        </tr>
+        <tr>
+          <td><strong>Weight decay</strong></td>
+          <td>Penalizes large weights and acts as regularization.</td>
+          <td>Can reduce overfitting, but too much hurts fit.</td>
+          <td>Often helps if the model memorizes small datasets.</td>
+          <td>Moderate values improve robustness. Too high slows learning.</td>
+        </tr>
+        <tr>
+          <td><strong>Gradient clipping</strong></td>
+          <td>Caps very large gradient norms.</td>
+          <td>More aggressive clipping if the threshold is lower.</td>
+          <td>Not a direct anti-overfitting tool.</td>
+          <td>Strongly improves stability on transformer runs that spike in loss.</td>
+        </tr>
+        <tr>
+          <td><strong>Warmup steps</strong></td>
+          <td>Starts with a small LR and ramps up.</td>
+          <td>Safer early training, but too much warmup slows progress.</td>
+          <td>No major direct effect.</td>
+          <td>Useful for preventing early instability, especially with AdamW and large models.</td>
+        </tr>
+        <tr>
+          <td><strong>Scheduler</strong></td>
+          <td>Changes LR over time.</td>
+          <td>Depends on schedule type.</td>
+          <td>Good schedules reduce late-stage overfitting by lowering LR.</td>
+          <td>Linear and cosine are common because they balance speed and smooth finishing.</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Scheduler Types</h3>
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Scheduler</th>
+          <th>How it behaves</th>
+          <th>When to use it</th>
+        </tr>
+        <tr>
+          <td><strong>Linear decay</strong></td>
+          <td>LR ramps up, then decays steadily toward zero.</td>
+          <td>Safe default for many Hugging Face runs and classification tasks.</td>
+        </tr>
+        <tr>
+          <td><strong>Cosine decay</strong></td>
+          <td>LR drops slowly at first, then more smoothly near the end.</td>
+          <td>Common for LLM fine-tuning when you want gentle late-stage updates.</td>
+        </tr>
+        <tr>
+          <td><strong>Constant with warmup</strong></td>
+          <td>LR warms up, then stays fixed.</td>
+          <td>Useful when you want predictable tuning behavior or short runs.</td>
+        </tr>
+        <tr>
+          <td><strong>Polynomial decay</strong></td>
+          <td>LR shrinks using a curve you can shape.</td>
+          <td>More control-heavy setups; less common for beginners.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-mark">02</span>
+      <div class="callout-body"><strong>Debugging shortcut:</strong> if training is unstable, first lower learning rate, add or increase warmup, and make sure gradient clipping is on. If validation gets worse while training loss keeps improving, reduce epochs and strengthen regularization.</div>
+    </div>
+  </section>
+
+  <section id="formats">
+    <h2>Data Formats for Fine-Tuning</h2>
+    <p>Your dataset format should match the behavior you want the model to learn. Fine-tuning works best when the training examples already look like the prompts and outputs you expect at inference time.</p>
+
+    <h3>Instruction Tuning Format</h3>
+    <p>Use this when you want the model to follow task instructions and produce a single target answer.</p>
+    <pre><code>{
+  "instruction": "Translate English to French",
+  "input": "Hello",
+  "output": "Bonjour"
+}</code></pre>
+
+    <h3>Chat Format</h3>
+    <p>Use this when the model should behave like an assistant in multi-turn conversations.</p>
+    <pre><code>[
+  {"role": "user", "content": "What is AI?"},
+  {"role": "assistant", "content": "AI stands for Artificial Intelligence..."}
+]</code></pre>
+
+    <h3>Plain Text Format</h3>
+    <p>Use this for language modeling, continued pretraining, or next-token prediction on raw text. The model learns to continue text rather than answer explicit instruction fields.</p>
+    <pre><code>Artificial intelligence is a branch of computer science focused on building systems that can perform tasks requiring human-like reasoning.</code></pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Format</th>
+          <th>Best for</th>
+          <th>Pros</th>
+          <th>Cons</th>
+        </tr>
+        <tr>
+          <td><strong>Instruction tuning</strong></td>
+          <td>Single-turn tasks, extraction, summarization, QA, task transfer</td>
+          <td>Simple to build, easy to inspect, strong for SFT</td>
+          <td>Can miss conversational context if your real product is multi-turn</td>
+        </tr>
+        <tr>
+          <td><strong>Chat format</strong></td>
+          <td>Assistants, copilots, support bots, role-conditioned dialogue</td>
+          <td>Matches production chat behavior, preserves turns and tone</td>
+          <td>Formatting mistakes around roles can silently hurt training quality</td>
+        </tr>
+        <tr>
+          <td><strong>Plain text</strong></td>
+          <td>Continued pretraining, domain adaptation, language modeling</td>
+          <td>Easy to collect at scale, good for domain vocabulary</td>
+          <td>Does not directly teach instruction following or answer structure</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Dataset Preparation Tips</h3>
+    <ul class="bullet-list">
+      <li><strong>Keep the output shape consistent.</strong> If production answers should be JSON, tables, or short bullets, teach exactly that format during training.</li>
+      <li><strong>Deduplicate aggressively.</strong> Duplicates make the model memorize frequent samples and distort evaluation.</li>
+      <li><strong>Clean bad labels first.</strong> A smaller high-quality dataset usually beats a larger noisy one.</li>
+      <li><strong>Split train, validation, and test early.</strong> Do this before heavy preprocessing to reduce leakage.</li>
+      <li><strong>Watch sequence length.</strong> Overly long samples waste tokens and can hide the actual signal.</li>
+      <li><strong>Preserve edge cases.</strong> Include difficult examples so the model learns boundary behavior, not only easy cases.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="callout-mark">03</span>
+      <div class="callout-body"><strong>Simple heuristic:</strong> if your application is a chat assistant, train on chat-shaped data. If it is a single structured task, instruction format is usually simpler and more sample-efficient.</div>
+    </div>
+  </section>
+
+  <section id="approaches">
+    <h2>Fine-Tuning Approaches</h2>
+    <p>Not all fine-tuning means updating every weight. The main approaches differ in cost, memory, speed, and how much task-specific capacity you gain.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-kicker">Approach</div>
+        <div class="card-title">Full fine-tuning</div>
+        <div class="card-body">Train all model parameters. Highest flexibility and often the best quality ceiling, but also the most expensive in VRAM, optimizer state, and checkpoint size.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Approach</div>
+        <div class="card-title">Feature extraction</div>
+        <div class="card-body">Freeze the base model and train only a small head on top. Common for classification when the pretrained representation is already strong and you only need a task-specific output layer.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Approach</div>
+        <div class="card-title">PEFT</div>
+        <div class="card-body">Keep most weights frozen and train a small number of new parameters such as LoRA adapters. This is the practical default for many LLM fine-tuning workloads.</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Method</th>
+          <th>Memory</th>
+          <th>Speed</th>
+          <th>Performance</th>
+          <th>Use Case</th>
+        </tr>
+        <tr>
+          <td><strong>Full fine-tuning</strong></td>
+          <td>Highest</td>
+          <td>Slowest setup and heaviest checkpoints</td>
+          <td>Best ceiling when you have strong data and compute</td>
+          <td>High-value tasks, model ownership, strong hardware budget</td>
+        </tr>
+        <tr>
+          <td><strong>Feature extraction</strong></td>
+          <td>Lowest</td>
+          <td>Fast</td>
+          <td>Good for simpler supervised tasks, limited for generation</td>
+          <td>Classification, regression, small labeled datasets</td>
+        </tr>
+        <tr>
+          <td><strong>PEFT</strong></td>
+          <td>Low to medium</td>
+          <td>Fast training with small trainable state</td>
+          <td>Often close to full tuning on narrow tasks</td>
+          <td>LLMs on limited GPUs, rapid iteration, multiple adapters</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-mark">04</span>
+      <div class="callout-body"><strong>Default recommendation:</strong> if you are fine-tuning a modern LLM and do not already know you need full fine-tuning, start with LoRA or QLoRA. The cost-to-quality ratio is usually much better.</div>
+    </div>
+  </section>
+
+  <section id="peft">
+    <h2>LoRA, QLoRA, and Other Efficient Methods</h2>
+    <p>Parameter-efficient fine-tuning lets you adapt large models without paying the full memory cost of updating every weight. This is why consumer-GPU fine-tuning became practical.</p>
+
+    <div class="mode-card purple">
+      <div class="mode-header">
+        <span class="mode-name">LoRA - Low-Rank Adaptation</span>
+        <span class="mode-shortcut">Most common PEFT method</span>
+      </div>
+      <p class="mode-when"><strong>Concept:</strong> instead of rewriting a full weight matrix <code>W</code>, LoRA learns a low-rank update <code>Delta W = BA</code> and applies <code>W' = W + Delta W</code>. Only the small adapter matrices are trained.</p>
+      <p class="mode-when"><strong>Why it is efficient:</strong> trainable parameter count drops dramatically, optimizer state becomes much smaller, and you can store many task adapters on top of one base model.</p>
+      <p class="mode-when"><strong>When to use it:</strong> instruction tuning, domain adaptation, lightweight experiments, or multiple task-specific adapters.</p>
+    </div>
+
+    <pre><code>from peft import LoraConfig, get_peft_model
+
+config = LoraConfig(
+    r=8,
+    lora_alpha=16,
+    target_modules=["q_proj", "v_proj"],
+    lora_dropout=0.1
+)
+model = get_peft_model(model, config)</code></pre>
+
+    <p class="mini-note">Short intuition: <code>r</code> controls adapter capacity, <code>lora_alpha</code> scales the update, and <code>target_modules</code> decides where adapters are inserted.</p>
+
+    <div class="mode-card blue">
+      <div class="mode-header">
+        <span class="mode-name">QLoRA</span>
+        <span class="mode-shortcut">Quantization + LoRA</span>
+      </div>
+      <p class="mode-when"><strong>Concept:</strong> load the base model in low precision, typically 4-bit, and train LoRA adapters on top. The frozen base stays quantized while adapter weights remain trainable in higher precision.</p>
+      <p class="mode-when"><strong>Why it is memory efficient:</strong> the frozen base weights occupy far less VRAM, which makes 7B to 13B models accessible on much smaller GPUs.</p>
+      <p class="mode-when"><strong>When to prefer it over LoRA:</strong> when VRAM is your main constraint, especially for larger models or laptops and single-GPU systems.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Method</th>
+          <th>Approx VRAM for 7B training</th>
+          <th>Quality ceiling</th>
+          <th>Best use</th>
+        </tr>
+        <tr>
+          <td><strong>Full fine-tuning</strong></td>
+          <td>60 GB or more, depending on precision and optimizer</td>
+          <td>Highest</td>
+          <td>High-budget, high-stakes adaptation</td>
+        </tr>
+        <tr>
+          <td><strong>LoRA</strong></td>
+          <td>Roughly 16-24 GB</td>
+          <td>Very strong for many narrow tasks</td>
+          <td>Single-GPU adaptation with minimal performance loss</td>
+        </tr>
+        <tr>
+          <td><strong>QLoRA</strong></td>
+          <td>Roughly 10-16 GB</td>
+          <td>Slightly lower than LoRA in some setups, often close enough</td>
+          <td>Tight VRAM budgets and fast experimentation</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Other Techniques</h3>
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">Adapters</div>
+        <div class="card-body">Small trainable layers inserted between existing model layers. More parameters than prompt tuning, often easier to optimize than pure soft prompts.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Prefix tuning</div>
+        <div class="card-body">Train virtual prefix vectors that steer attention without changing most model weights. Useful when you want a very small trainable footprint.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Prompt tuning</div>
+        <div class="card-body">Train soft prompt embeddings only. Extremely lightweight, but can be weaker than LoRA for complex behavioral changes.</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Technique</th>
+          <th>Main tradeoff</th>
+          <th>Good fit</th>
+        </tr>
+        <tr>
+          <td><strong>LoRA</strong></td>
+          <td>Best balance of simplicity, quality, and memory</td>
+          <td>Default PEFT choice</td>
+        </tr>
+        <tr>
+          <td><strong>QLoRA</strong></td>
+          <td>Lowest memory, slightly more complexity around quantization support</td>
+          <td>Limited VRAM environments</td>
+        </tr>
+        <tr>
+          <td><strong>Adapters</strong></td>
+          <td>More parameters than prompt-based methods</td>
+          <td>Reusable modular adapters</td>
+        </tr>
+        <tr>
+          <td><strong>Prefix tuning</strong></td>
+          <td>Very compact but less expressive for some tasks</td>
+          <td>Controlling style or task framing</td>
+        </tr>
+        <tr>
+          <td><strong>Prompt tuning</strong></td>
+          <td>Smallest footprint, but often weakest adaptation power</td>
+          <td>Resource-constrained experiments</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="optimizers">
+    <h2>Optimizers With Focus on Adam</h2>
+    <p>An optimizer decides how parameter updates are applied. For transformer fine-tuning, <strong>Adam</strong> and especially <strong>AdamW</strong> are the common defaults because they adapt learning rates per parameter and handle noisy gradients well.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-kicker">Optimizer</div>
+        <div class="card-title">Adam</div>
+        <div class="card-body">Adam combines <strong>momentum</strong> and <strong>RMS scaling</strong>. Momentum tracks the average direction of gradients, while RMS scaling shrinks updates for parameters that repeatedly receive large gradients.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Intuition</div>
+        <div class="card-title">Why it works well</div>
+        <div class="card-body">Instead of one global step size behaving the same everywhere, Adam adapts update size parameter-by-parameter. That makes it much easier to fine-tune deep transformer stacks than plain SGD.</div>
+      </div>
+    </div>
+
+    <pre><code>import torch.optim as optim
+
+optimizer = optim.Adam(model.parameters(), lr=2e-5)</code></pre>
+
+    <h3>Simple Explanation of Adam</h3>
+    <ul class="bullet-list">
+      <li><strong>Momentum:</strong> smooths noisy gradients by remembering recent directions. This helps the optimizer keep moving in a useful direction instead of reacting too hard to every mini-batch.</li>
+      <li><strong>RMS scaling:</strong> uses a running estimate of squared gradients so parameters with consistently large gradients get smaller updates.</li>
+      <li><strong>Bias correction:</strong> early moving averages are corrected so the optimizer does not underestimate them at the start.</li>
+    </ul>
+
+    <pre><code>m_t = beta1 * m_(t-1) + (1 - beta1) * g_t
+v_t = beta2 * v_(t-1) + (1 - beta2) * g_t^2
+update ~ m_t / (sqrt(v_t) + eps)</code></pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Choice</th>
+          <th>Use it when</th>
+          <th>Why</th>
+        </tr>
+        <tr>
+          <td><strong>Adam</strong></td>
+          <td>You want a simple adaptive optimizer baseline</td>
+          <td>Works well on many deep learning tasks, especially transformers</td>
+        </tr>
+        <tr>
+          <td><strong>SGD</strong></td>
+          <td>You have a very large dataset, vision-style training, or well-tuned classical pipelines</td>
+          <td>Can generalize well, but usually needs more careful tuning for LLM fine-tuning</td>
+        </tr>
+        <tr>
+          <td><strong>AdamW</strong></td>
+          <td>You are fine-tuning transformers</td>
+          <td>Decouples weight decay from gradient updates, which usually makes regularization cleaner and more stable</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-mark">05</span>
+      <div class="callout-body"><strong>Adam vs AdamW:</strong> AdamW is usually the better default because weight decay is handled separately from the adaptive gradient update. In practice, most Hugging Face trainer runs use AdamW unless you override it.</div>
+    </div>
+  </section>
+
+  <section id="objectives">
+    <h2>Ranking and Training Objectives</h2>
+    <p>Your training objective defines what “better” means during optimization. If you choose the wrong objective, the model can improve on paper while failing the real task.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">Cross-entropy loss</div>
+        <div class="card-body">The default objective for classification and next-token prediction. It rewards assigning high probability to the correct label or token.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ranking loss</div>
+        <div class="card-body">Optimizes order, not just absolute prediction. Useful when the model must put better results above worse results.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">RLHF</div>
+        <div class="card-body">Uses preference feedback to move the model toward outputs humans prefer. Often used after supervised fine-tuning for assistant behavior.</div>
+      </div>
+    </div>
+
+    <h3>Cross-Entropy Loss</h3>
+    <p>Use this for supervised fine-tuning, text classification, sequence labeling, and next-token prediction. It is usually the first objective to try because it aligns directly with “predict the correct answer.”</p>
+
+    <h3>Ranking Loss</h3>
+    <p>Use ranking objectives when the order of results matters more than a single label. Common examples include search, recommendation, reranking, and preference learning.</p>
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Type</th>
+          <th>What it compares</th>
+          <th>Typical use</th>
+        </tr>
+        <tr>
+          <td><strong>Pairwise</strong></td>
+          <td>One positive item vs one negative item</td>
+          <td>Search ranking, reward modeling, binary preference comparison</td>
+        </tr>
+        <tr>
+          <td><strong>Listwise</strong></td>
+          <td>A full ranked list</td>
+          <td>Recommendation systems, search pages, complex ranking pipelines</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>RLHF - Reinforcement Learning from Human Feedback</h3>
+    <p>RLHF usually means: supervised fine-tune first, gather human preferences, train a reward model, then optimize the main model so it produces higher-reward responses. In practice, many teams now use simpler preference-optimization methods like DPO, but the high-level idea is the same: <strong>learn from what humans prefer, not only from fixed labels</strong>.</p>
+
+    <div class="callout warn">
+      <span class="callout-mark">06</span>
+      <div class="callout-body"><strong>When ranking matters:</strong> search, recommendations, ads, product results, candidate reranking, and helpfulness or safety preference learning. If the business outcome depends on order, classification loss alone is often not enough.</div>
+    </div>
+  </section>
+
+  <section id="pretraining">
+    <h2>Pretraining vs Fine-Tuning</h2>
+    <p>Fine-tuning is usually enough, but not always. The harder question is whether your problem needs <strong>continued pretraining</strong> or even training from scratch before fine-tuning.</p>
+
+    <div class="mode-card green">
+      <div class="mode-header">
+        <span class="mode-name">When pretraining is required</span>
+        <span class="mode-shortcut">Use rarely</span>
+      </div>
+      <p class="mode-when"><strong>Typical cases:</strong> very domain-specific data such as medical records, legal corpora, scientific literature, protein sequences, specialized codebases, or any setting where the base model repeatedly fails because the underlying vocabulary and distribution are too different.</p>
+    </div>
+
+    <div class="mode-card amber">
+      <div class="mode-header">
+        <span class="mode-name">When pretraining is not required</span>
+        <span class="mode-shortcut">Common case</span>
+      </div>
+      <p class="mode-when"><strong>Typical cases:</strong> general-purpose chat, classification, summarization, extraction, translation-like formatting, and many enterprise assistants where the base model already has the underlying capabilities.</p>
+    </div>
+
+    <h3>Decision Checklist</h3>
+    <ul class="bullet-list">
+      <li><strong>Does the base model already understand the task?</strong> If yes, start with fine-tuning or even prompting.</li>
+      <li><strong>Is your data highly domain-specific?</strong> If yes, continued pretraining may help before SFT.</li>
+      <li><strong>Do you have millions or billions of tokens?</strong> If no, full pretraining is probably not worth it.</li>
+      <li><strong>Do you mainly need style, format, or label adaptation?</strong> Fine-tuning is usually enough.</li>
+      <li><strong>Do facts change frequently?</strong> Prefer RAG or retrieval over baking transient facts into weights.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="callout-mark">07</span>
+      <div class="callout-body"><strong>Applied shortcut:</strong> use continued pretraining to teach the model the language of a domain, then use fine-tuning to teach the task behavior inside that domain.</div>
+    </div>
+  </section>
+
+  <section id="evaluation">
+    <h2>Evaluation of Models</h2>
+    <p>Evaluation is critical because training loss alone can lie. A model can memorize training data, look great on training metrics, and still fail on real users, new domains, or edge cases.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-kicker">Why it matters</div>
+        <div class="card-title">Avoid false confidence</div>
+        <div class="card-body">Without evaluation, you cannot tell whether the model learned the task, memorized examples, or simply improved on easy cases while getting worse on hard ones.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">What to check</div>
+        <div class="card-title">Offline and online quality</div>
+        <div class="card-body">Measure task metrics offline, inspect failures manually, and if the model ships to users, validate business outcomes in production.</div>
+      </div>
+    </div>
+
+    <h3>Common Evaluation Methods</h3>
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Metric</th>
+          <th>Best for</th>
+          <th>What to watch</th>
+        </tr>
+        <tr>
+          <td><strong>Accuracy / F1</strong></td>
+          <td>Classification, extraction, labeling</td>
+          <td>F1 is better than raw accuracy when classes are imbalanced</td>
+        </tr>
+        <tr>
+          <td><strong>Perplexity</strong></td>
+          <td>Language modeling, continued pretraining, causal LM tuning</td>
+          <td>Lower is better, but only meaningful when comparing on the same data distribution</td>
+        </tr>
+        <tr>
+          <td><strong>BLEU / ROUGE</strong></td>
+          <td>Translation, summarization</td>
+          <td>Helpful for automation, but can miss semantic quality and factuality</td>
+        </tr>
+        <tr>
+          <td><strong>Human evaluation</strong></td>
+          <td>Chat quality, safety, tone, helpfulness</td>
+          <td>Slow but often necessary for assistant behavior</td>
+        </tr>
+        <tr>
+          <td><strong>Benchmark datasets</strong></td>
+          <td>Standardized comparison</td>
+          <td>Useful for baselines, but make sure they match your real task</td>
+        </tr>
+      </table>
+    </div>
+
+    <pre><code>from datasets import load_metric
+
+metric = load_metric("accuracy")
+result = metric.compute(predictions=preds, references=labels)</code></pre>
+
+    <p class="mini-note">The newer <code>evaluate</code> package is now common, but the example above still shows the same core idea: compute task metrics from predictions and reference labels.</p>
+
+    <h3>Offline vs Online Evaluation</h3>
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Mode</th>
+          <th>What it answers</th>
+          <th>Example</th>
+        </tr>
+        <tr>
+          <td><strong>Offline</strong></td>
+          <td>Did the model improve on held-out data?</td>
+          <td>F1 on a validation split, perplexity on dev text, human review set</td>
+        </tr>
+        <tr>
+          <td><strong>Online</strong></td>
+          <td>Did the model improve real product outcomes?</td>
+          <td>CTR, resolution rate, conversion, user preference, latency, cost</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Overfitting Detection</h3>
+    <ul class="bullet-list">
+      <li><strong>Training loss keeps dropping</strong> while validation loss rises.</li>
+      <li><strong>Generated outputs repeat training phrasing</strong> too closely.</li>
+      <li><strong>Benchmark gains do not transfer</strong> to manual test prompts or business data.</li>
+      <li><strong>Edge cases degrade</strong> even though average metrics improve.</li>
+    </ul>
+  </section>
+
+  <section id="pitfalls">
+    <h2>Best Practices and Common Pitfalls</h2>
+    <p>Most practical wins come from disciplined data and monitoring, not from exotic algorithms. These are the habits that consistently improve fine-tuning quality.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Best practices</div>
+        <div class="card-body">
+          <strong>Data quality &gt; data quantity.</strong> Clean labels, consistent formatting, and realistic examples matter more than raw size.<br><br>
+          <strong>Monitor validation loss.</strong> It is your early warning system for overfitting and bad hyperparameters.<br><br>
+          <strong>Use early stopping.</strong> Stop when validation no longer improves.<br><br>
+          <strong>Tune one thing at a time.</strong> Change learning rate or epochs first before chasing harder explanations.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Common pitfalls</div>
+        <div class="card-body">
+          Fine-tuning on noisy or duplicated data, skipping a validation set, using too high a learning rate, training for too many epochs, and shipping a model without manual error analysis are the fastest ways to waste compute.</div>
+      </div>
+    </div>
+
+    <h3>Practical Tuning Tips</h3>
+    <ul class="bullet-list">
+      <li><strong>Start with a strong baseline.</strong> Compare prompt-only, RAG, and a simple fine-tune before scaling the project.</li>
+      <li><strong>Log everything.</strong> Save configs, seeds, metrics, model revisions, and dataset versions.</li>
+      <li><strong>Use early stopping and checkpointing.</strong> This saves compute and prevents losing a good run.</li>
+      <li><strong>Inspect actual outputs every run.</strong> Metrics alone do not reveal formatting mistakes, hallucinations, or tone issues.</li>
+      <li><strong>Keep a small gold set.</strong> Use a hand-curated evaluation set for fast regression checks.</li>
+    </ul>
+
+    <div class="callout danger">
+      <span class="callout-mark">08</span>
+      <div class="callout-body"><strong>Important:</strong> if your dataset contains sensitive or regulated information, do not assume fine-tuning is reversible. Model weights can absorb patterns from training data, so governance and privacy review should happen before training begins.</div>
+    </div>
+  </section>
+
+  <section id="hardware">
+    <h2>Hardware Considerations</h2>
+    <p>Compute planning matters because the same method can feel easy or impossible depending on model size, precision, and optimization choices.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr>
+          <th>Setup</th>
+          <th>Typical fit</th>
+          <th>Notes</th>
+        </tr>
+        <tr>
+          <td><strong>Single 12-16 GB GPU</strong></td>
+          <td>Small models, LoRA, QLoRA, short sequences</td>
+          <td>Use 4-bit loading, gradient accumulation, and possibly gradient checkpointing</td>
+        </tr>
+        <tr>
+          <td><strong>Single 24 GB GPU</strong></td>
+          <td>7B-scale LoRA or QLoRA, moderate sequence lengths</td>
+          <td>Good sweet spot for practical experimentation</td>
+        </tr>
+        <tr>
+          <td><strong>48 GB+ GPU</strong></td>
+          <td>Larger LoRA runs, faster batch sizes, some full tuning experiments</td>
+          <td>Much more room for sequence length and optimizer state</td>
+        </tr>
+        <tr>
+          <td><strong>Multi-GPU</strong></td>
+          <td>Large models, distributed training, full fine-tuning</td>
+          <td>Needed when model states and activations no longer fit on one device</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">Mixed precision</div>
+        <div class="card-body">Use <code>fp16</code> or <code>bf16</code> when supported. This usually reduces memory and speeds up training.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Gradient checkpointing</div>
+        <div class="card-body">Recomputes activations during backward pass to save VRAM. Training becomes slower, but much more memory efficient.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Sequence length</div>
+        <div class="card-body">Longer context quickly increases memory use. If you run out of VRAM, shorten sequence length before anything else.</div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-mark">09</span>
+      <div class="callout-body"><strong>Memory vs performance tradeoff:</strong> QLoRA, gradient checkpointing, and smaller batches make training possible on limited hardware, but they usually slow throughput. Decide whether your bottleneck is <strong>VRAM</strong>, <strong>time</strong>, or <strong>final model quality</strong>.</div>
+    </div>
+  </section>
+
+  <section id="use-cases">
+    <h2>Real-World Use Cases</h2>
+    <p>Fine-tuning is most useful when you need repeatable behavior that generic prompting cannot guarantee.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-kicker">Support</div>
+        <div class="card-title">Customer support assistants</div>
+        <div class="card-body">Train on high-quality support conversations to improve tone, resolution steps, and response structure while keeping retrieval for changing policies.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Search</div>
+        <div class="card-title">Domain rerankers</div>
+        <div class="card-body">Use pairwise or listwise ranking losses so relevant results appear higher for legal, medical, or enterprise search.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Analytics</div>
+        <div class="card-title">Classification and extraction</div>
+        <div class="card-body">Train smaller models for sentiment, routing, document labeling, or entity extraction with lower latency and lower cost than giant general-purpose models.</div>
+      </div>
+      <div class="card">
+        <div class="card-kicker">Domain adaptation</div>
+        <div class="card-title">Specialized copilots</div>
+        <div class="card-body">Adapt a base model to finance, law, healthcare, or internal company knowledge where vocabulary and expected output style differ from public internet text.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="example">
+    <h2>End-to-End Example</h2>
+    <p>The example below shows a compact Hugging Face <code>Trainer</code> workflow for instruction-style fine-tuning on a small causal language model. It covers data loading, prompt formatting, tokenization, training, and evaluation.</p>
+
+    <div class="callout info">
+      <span class="callout-mark">10</span>
+      <div class="callout-body"><strong>Why this example is practical:</strong> it is small enough to understand in one sitting, but it uses the same pipeline shape you will use for larger instruction-tuning projects.</div>
+    </div>
+
+    <pre><code>import math
+from datasets import Dataset
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    DataCollatorForLanguageModeling,
+    Trainer,
+    TrainingArguments,
+)
+
+samples = [
+    {
+        "instruction": "Summarize the sentence",
+        "input": "Fine-tuning adapts a pretrained model to a target task.",
+        "output": "Fine-tuning specializes a pretrained model."
+    },
+    {
+        "instruction": "Answer the question",
+        "input": "What does GPU stand for?",
+        "output": "GPU stands for Graphics Processing Unit."
+    },
+    {
+        "instruction": "Rewrite in a formal tone",
+        "input": "The launch failed because the config was wrong.",
+        "output": "The launch failed due to an incorrect configuration."
+    },
+    {
+        "instruction": "Extract the sentiment",
+        "input": "The onboarding experience was smooth and very helpful.",
+        "output": "positive"
+    }
+]
+
+dataset = Dataset.from_list(samples).train_test_split(test_size=0.25, seed=42)
+model_name = "distilgpt2"
+
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+model = AutoModelForCausalLM.from_pretrained(model_name)
+model.config.pad_token_id = tokenizer.pad_token_id
+
+def format_example(example):
+    instruction = example["instruction"].strip()
+    input_text = example["input"].strip()
+    output_text = example["output"].strip()
+    return (
+        f"### Instruction:\n{instruction}\n\n"
+        f"### Input:\n{input_text}\n\n"
+        f"### Response:\n{output_text}"
+    )
+
+def add_text(example):
+    example["text"] = format_example(example)
+    return example
+
+dataset = dataset.map(add_text)
+
+def tokenize(example):
+    tokens = tokenizer(
+        example["text"],
+        truncation=True,
+        max_length=256,
+        padding="max_length"
+    )
+    tokens["labels"] = tokens["input_ids"].copy()
+    return tokens
+
+tokenized = dataset.map(tokenize)
+tokenized = tokenized.remove_columns(["instruction", "input", "output", "text"])
+
+training_args = TrainingArguments(
+    output_dir="./ft-output",
+    learning_rate=2e-5,
+    per_device_train_batch_size=2,
+    per_device_eval_batch_size=2,
+    num_train_epochs=3,
+    weight_decay=0.01,
+    warmup_steps=20,
+    logging_steps=10,
+    evaluation_strategy="epoch",
+    save_strategy="epoch",
+    report_to="none"
+)
+
+data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=tokenized["train"],
+    eval_dataset=tokenized["test"],
+    data_collator=data_collator
+)
+
+trainer.train()
+
+metrics = trainer.evaluate()
+print(metrics)
+
+if "eval_loss" in metrics:
+    print("perplexity:", math.exp(metrics["eval_loss"]))</code></pre>
+
+    <h3>What each step is doing</h3>
+    <ul class="bullet-list">
+      <li><strong>Load dataset:</strong> build or read examples with instruction, input, and output fields.</li>
+      <li><strong>Format text:</strong> turn structured fields into the exact prompt style you want the model to learn.</li>
+      <li><strong>Tokenize:</strong> convert text to token IDs and create labels for next-token learning.</li>
+      <li><strong>Train with Trainer:</strong> use <code>TrainingArguments</code> to control learning rate, batch size, epochs, warmup, and logging.</li>
+      <li><strong>Evaluate:</strong> inspect metrics and sample outputs before calling the run successful.</li>
+    </ul>
+
+    <h3>How to convert this into a PEFT run</h3>
+    <pre><code>from peft import LoraConfig, get_peft_model
+
+lora_config = LoraConfig(
+    r=8,
+    lora_alpha=16,
+    lora_dropout=0.1,
+    target_modules=["c_attn"]
+)
+
+model = get_peft_model(model, lora_config)</code></pre>
+
+    <p>For larger instruction-tuning projects, many teams switch from raw <code>Trainer</code> to specialized trainers such as <code>SFTTrainer</code>, but the core workflow remains the same.</p>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+
+    <h3>Core Docs</h3>
+    <ul class="link-list">
+      <li><span class="ll-tag">HF</span> <a href="https://huggingface.co/docs/transformers/index">Hugging Face Transformers docs</a></li>
+      <li><span class="ll-tag">Trainer</span> <a href="https://huggingface.co/docs/transformers/main_classes/trainer">Trainer API reference</a></li>
+      <li><span class="ll-tag">Datasets</span> <a href="https://huggingface.co/docs/datasets/index">Hugging Face Datasets docs</a></li>
+      <li><span class="ll-tag">PEFT</span> <a href="https://huggingface.co/docs/peft/index">PEFT documentation</a></li>
+      <li><span class="ll-tag">PyTorch</span> <a href="https://pytorch.org/docs/stable/index.html">PyTorch docs</a></li>
+    </ul>
+
+    <h3>Applied Reading</h3>
+    <ul class="link-list">
+      <li><span class="ll-tag">LoRA</span> <a href="https://arxiv.org/abs/2106.09685">LoRA paper</a></li>
+      <li><span class="ll-tag">QLoRA</span> <a href="https://arxiv.org/abs/2305.14314">QLoRA paper</a></li>
+      <li><span class="ll-tag">TRL</span> <a href="https://huggingface.co/docs/trl/index">TRL documentation</a></li>
+      <li><span class="ll-tag">Eval</span> <a href="https://huggingface.co/docs/evaluate/index">Evaluate library docs</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-12% 0px -78% 0px' });
+
+sections.forEach((section) => {
+  if (section.id) {
+    observer.observe(section);
+  }
+});
+</script>
+</body>
+</html>

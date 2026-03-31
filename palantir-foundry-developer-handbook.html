@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Palantir Foundry Developer Handbook</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b27;
+    --bg3: #1e2536;
+    --bg4: #252d42;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0;
+    --muted: #8b93a7;
+    --accent: #6c8ef5;
+    --accent2: #4fd1a5;
+    --accent3: #f5c06c;
+    --accent4: #e27d76;
+    --accent5: #b47cf5;
+    --code-bg: #0d1117;
+    --tag-bg: rgba(108,142,245,0.12);
+    --tag-text: #8fadf7;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.7;
+    display: flex;
+    min-height: 100vh;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  .sidebar {
+    width: 256px;
+    min-width: 256px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    flex-shrink: 0;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .logo {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .logo-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .nav-section { margin-bottom: 4px; }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 10px 20px 4px;
+  }
+  .nav-link {
+    display: block;
+    padding: 6px 20px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.15s, background 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-link:hover { color: var(--text); background: var(--bg3); }
+  .nav-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(108,142,245,0.06); }
+
+  .main {
+    flex: 1;
+    max-width: 920px;
+    padding: 40px 48px 80px;
+    overflow-x: hidden;
+  }
+
+  section { margin-bottom: 60px; scroll-margin-top: 24px; }
+  h1 { font-size: 28px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 15px; font-weight: 600; color: var(--text); margin: 24px 0 10px; }
+  h4 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 8px; }
+  p { color: var(--muted); margin-bottom: 10px; line-height: 1.7; font-size: 14px; }
+  p strong { color: var(--text); font-weight: 500; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .hero {
+    background: linear-gradient(135deg, rgba(108,142,245,0.08) 0%, rgba(79,209,165,0.05) 100%);
+    border: 1px solid rgba(108,142,245,0.2);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(108,142,245,0.15), transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 { font-size: 22px; margin-bottom: 4px; }
+  .hero p { margin-bottom: 0; }
+  .hero-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+  .badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge-blue { background: rgba(108,142,245,0.15); color: #8fadf7; border: 1px solid rgba(108,142,245,0.25); }
+  .badge-green { background: rgba(79,209,165,0.12); color: #5dd1a0; border: 1px solid rgba(79,209,165,0.2); }
+  .badge-amber { background: rgba(245,192,108,0.12); color: #f5c06c; border: 1px solid rgba(245,192,108,0.2); }
+  .badge-purple { background: rgba(180,124,245,0.12); color: #b47cf5; border: 1px solid rgba(180,124,245,0.2); }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre;
+  }
+  pre::-webkit-scrollbar { height: 4px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+  pre code { background: none; padding: 0; border-radius: 0; color: inherit; font-size: 13px; }
+
+  .table-wrap { overflow-x: auto; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--bg3);
+    color: var(--text);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border2);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .card-grid { display: grid; gap: 14px; }
+  .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .module-card {
+    border-radius: 10px;
+    padding: 18px 20px;
+    border-left: 3px solid;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .module-card.blue { border-left-color: var(--accent); }
+  .module-card.green { border-left-color: var(--accent2); }
+  .module-card.amber { border-left-color: var(--accent3); }
+  .module-card.red { border-left-color: var(--accent4); }
+  .module-card.purple { border-left-color: var(--accent5); }
+  .module-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .module-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .module-shortcut {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg4);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--muted);
+    border: 1px solid var(--border2);
+  }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    border-radius: 12px;
+    border: 1px solid rgba(108,142,245,0.15);
+  }
+
+  .callout {
+    display: flex;
+    gap: 12px;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 14px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { color: var(--muted); }
+  .callout-body strong { color: var(--text); }
+  .callout.tip { background: rgba(79,209,165,0.07); border: 1px solid rgba(79,209,165,0.18); }
+  .callout.warn { background: rgba(245,192,108,0.07); border: 1px solid rgba(245,192,108,0.18); }
+  .callout.info { background: rgba(108,142,245,0.07); border: 1px solid rgba(108,142,245,0.18); }
+  .callout.danger { background: rgba(226,125,118,0.07); border: 1px solid rgba(226,125,118,0.18); }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .flow-step {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+  }
+  .flow-arrow { color: var(--muted); font-size: 14px; }
+
+  .bullet-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .bullet-list li {
+    padding-left: 16px;
+    position: relative;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .bullet-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 9px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .bullet-list strong { color: var(--text); }
+
+  .link-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+  .link-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 13px;
+    transition: border-color 0.15s;
+  }
+  .link-list li:hover { border-color: var(--border2); }
+  .link-list .ll-tag { font-size: 10px; color: var(--muted); background: var(--bg3); padding: 1px 6px; border-radius: 4px; flex-shrink: 0; }
+
+  .quote-line {
+    border-left: 3px solid var(--accent3);
+    padding-left: 14px;
+    margin: 14px 0;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { padding: 24px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Palantir Foundry</div>
+    <div class="logo-sub">Developer Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Start Here</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#toc">Table of Contents</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Core Modules</div>
+    <a class="nav-link" href="#module1">Module 1: Architecture</a>
+    <a class="nav-link" href="#module2">Module 2: Integration</a>
+    <a class="nav-link" href="#module3">Module 3: Transforms</a>
+    <a class="nav-link" href="#module4">Module 4: Ontology</a>
+    <a class="nav-link" href="#module5">Module 5: Applications</a>
+    <a class="nav-link" href="#module6">Module 6: Security</a>
+    <a class="nav-link" href="#module7">Module 7: Use Cases</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Reference</div>
+    <a class="nav-link" href="#patterns">Foundry Patterns</a>
+    <a class="nav-link" href="#refs">Official Docs</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Palantir Foundry Developer Handbook</h1>
+    <p>A production-oriented handbook for engineers, FDEs, analytics leads, and application builders working across Foundry's data integration, transforms, Ontology, and operational application stack.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">Official docs synthesis</span>
+      <span class="badge badge-green">Code Repositories + Ontology + Workshop</span>
+      <span class="badge badge-amber">Enterprise architecture focus</span>
+      <span class="badge badge-purple">March 2026</span>
+    </div>
+  </div>
+
+  <section id="toc">
+    <h2>Table of Contents</h2>
+    <p>This handbook follows the same mental model Palantir uses in the documentation: data first lands as datasets, is shaped into reliable pipelines, becomes business-native through the Ontology, and is then activated in analytics and operational applications.</p>
+
+    <div class="module-card blue">
+      <div class="module-header">
+        <span class="module-name">Module 1: Foundry Architecture and Core Concepts</span>
+        <span class="module-shortcut">Integration -&gt; Transformation -&gt; Ontology -&gt; Apps</span>
+      </div>
+      <p>Platform philosophy, Compass, Projects, folders, RIDs, data branching, and Data Lineage.</p>
+    </div>
+
+    <div class="module-card green">
+      <div class="module-header">
+        <span class="module-name">Module 2: Data Integration and Ingestion</span>
+        <span class="module-shortcut">Data Connection</span>
+      </div>
+      <p>How Foundry connects to JDBC systems, APIs, file stores, and operational systems, then lands raw data as governed datasets.</p>
+    </div>
+
+    <div class="module-card amber">
+      <div class="module-header">
+        <span class="module-name">Module 3: Data Transformation in Code Repositories</span>
+        <span class="module-shortcut">transforms.api</span>
+      </div>
+      <p>Foundry-native Python transforms, incremental pipelines, and when to choose Code Repositories over Pipeline Builder.</p>
+    </div>
+
+    <div class="module-card purple">
+      <div class="module-header">
+        <span class="module-name">Module 4: The Ontology</span>
+        <span class="module-shortcut">Objects + Links + Actions</span>
+      </div>
+      <p>Why Foundry models the business as an operational graph instead of leaving teams with raw tables and joins.</p>
+    </div>
+
+    <div class="module-card red">
+      <div class="module-header">
+        <span class="module-name">Module 5: Analytics and Operational Applications</span>
+        <span class="module-shortcut">Code Workspaces, Contour, Quiver, Workshop</span>
+      </div>
+      <p>How analysts, data scientists, and operational teams consume and act on data without breaking governance.</p>
+    </div>
+
+    <div class="module-card blue">
+      <div class="module-header">
+        <span class="module-name">Module 6: Security and Governance</span>
+        <span class="module-shortcut">Markings + Lineage</span>
+      </div>
+      <p>Mandatory controls, project roles, policy enforcement, and how security propagates with data rather than relying on ad hoc dashboards.</p>
+    </div>
+
+    <div class="module-card green">
+      <div class="module-header">
+        <span class="module-name">Module 7: Real-World Use Cases</span>
+        <span class="module-shortcut">Supply Chain + AML</span>
+      </div>
+      <p>End-to-end scenarios tying ingestion, transforms, Ontology, ML, analytics, and actions into operational systems.</p>
+    </div>
+  </section>
+
+  <section id="module1">
+    <h2>Module 1: Foundry Architecture and Core Concepts</h2>
+
+    <h3>The Platform Philosophy</h3>
+    <p><strong>Foundry is not trying to be a prettier data lake.</strong> It is trying to close the gap between data engineering and operations. The core journey is: <strong>Integration -&gt; Transformation -&gt; Ontology -&gt; Applications</strong>. Each step adds more structure, more accountability, and more operational usefulness.</p>
+
+    <div class="flow">
+      <div class="flow-step">External systems</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Raw datasets</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Curated pipelines</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Ontology objects</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Workshop / Quiver / APIs</div>
+    </div>
+
+    <p>A useful analogy is an industrial refinery. Raw crude oil is valuable, but nobody wants to run a logistics operation directly on crude oil. You refine it into diesel, jet fuel, and lubricants with known quality and governance. Foundry does the same for enterprise data: raw ERP extracts and API payloads are refined into reusable datasets, then elevated into business-native entities like <code>Factory</code>, <code>Part</code>, <code>Shipment</code>, or <code>Transaction</code>.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">i</span>
+      <div class="callout-body"><strong>Why Foundry feels different from a traditional data stack:</strong> in a warehouse-centric stack, the end state is often a table and a BI dashboard. In Foundry, the end state is meant to be an operational capability: a governed object model, reusable logic, and applications that can safely write decisions back into the system.</div>
+    </div>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Integration</div>
+        <div class="card-body">Foundry connects to source systems and lands data as datasets with transactions, permissions, lineage, and scheduling built in.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Transformation</div>
+        <div class="card-body">Pipelines in Code Repositories or Pipeline Builder convert raw data into curated, testable, governed datasets.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ontology</div>
+        <div class="card-body">The semantic and operational layer that maps datasets into objects, properties, links, actions, and functions.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Applications</div>
+        <div class="card-body">Workshop, Quiver, Contour, Code Workspaces, and the OSDK allow teams to analyze, decide, and act on the same governed substrate.</div>
+      </div>
+    </div>
+
+    <h3>Compass and the Filesystem</h3>
+    <p>Compass is the shared file-and-resource layer of Foundry. Public documentation describes <strong>Projects and resources</strong> as the basic building blocks of the platform. A Project is the collaboration boundary. A resource is the thing inside it: dataset, repository, analysis, application, report, or other artifact.</p>
+
+    <ul class="bullet-list">
+      <li><strong>Projects</strong> are the main collaboration and security boundary. They carry project-level roles, discovery settings, and inherited access controls.</li>
+      <li><strong>Folders</strong> are organizational structure inside a project. They keep a project navigable but do not replace the project as the primary governance boundary.</li>
+      <li><strong>Resources</strong> are the actual working assets. In Foundry terms, a dataset is a resource, a code repository is a resource, and a Workshop application is a resource.</li>
+      <li><strong>RIDs</strong> are globally unique resource identifiers. They matter because names and folder locations can change, while the RID remains the canonical machine identity.</li>
+    </ul>
+
+    <p>Think of a Project like a secured building, folders like rooms, and resources like the equipment in those rooms. The label on the door may change, but the serial number engraved on the machine stays fixed. That serial number is the RID.</p>
+
+    <div class="quote-line">Foundry uses the term resource instead of file because many resources, such as datasets and repositories, contain internal files of their own.</div>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Concept</th><th>What it is</th><th>Why it matters</th></tr>
+        <tr><td>Project</td><td>Primary collaboration and permission boundary</td><td>Standardizes access, ownership, and discoverability for related work</td></tr>
+        <tr><td>Folder</td><td>Organizational container inside a Project</td><td>Keeps complex delivery programs navigable</td></tr>
+        <tr><td>Resource</td><td>Dataset, repo, dashboard, app, report, or other asset</td><td>Common security, metadata, comments, sharing, and auditing model</td></tr>
+        <tr><td>RID</td><td>Stable unique identifier for a resource</td><td>Decouples references from fragile human-readable paths</td></tr>
+      </table>
+    </div>
+
+    <p>Datasets themselves are wrappers around files stored in a backing filesystem, often cloud object storage. The value of the dataset abstraction is not the bytes alone. It is the managed metadata around them: schema, transactions, branches, permissions, lineage, and build semantics.</p>
+
+    <h3>Branching and Data Lineage</h3>
+    <p>This is where Foundry usually clicks for engineering teams. Most platforms version code. Foundry versions <strong>code and data together</strong>. Public documentation explicitly describes dataset transactions and dataset branches as the basis of Foundry's "Git for data" behavior.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">+</span>
+      <div class="callout-body"><strong>Why this matters operationally:</strong> you are not only testing new transformation logic on a branch. You are testing the resulting data products on a branch too. That means you can inspect branch-specific outputs before they affect downstream consumers.</div>
+    </div>
+
+    <ul class="bullet-list">
+      <li><strong>Dataset transactions</strong> are atomic changes to a dataset's contents. Foundry supports <code>SNAPSHOT</code>, <code>APPEND</code>, <code>UPDATE</code>, and <code>DELETE</code> transactions.</li>
+      <li><strong>Dataset branches</strong> are pointers to transaction histories on a dataset. They are conceptually similar to Git branches, but the docs note that dataset branches themselves are not merged like Git branches.</li>
+      <li><strong>Build branches</strong> tie Git-like code branching to dataset branching. When you build on a feature branch, Foundry compiles the branch's JobSpecs and writes outputs only to that branch.</li>
+      <li><strong>Fallback chains</strong> let a branch read branch-local logic or data where present and fall back to <code>master</code> where nothing changed.</li>
+    </ul>
+
+    <p>Traditional data stacks usually force teams into one of two bad choices: either test against production-like data outside the main pipeline, or run risky changes directly in shared production tables. Foundry's branch-aware build system provides a third option: a safe rehearsal environment where both transformation logic and downstream datasets can evolve together.</p>
+
+    <pre><code>Code branch:        feature/late-shipments
+Dataset branches:   raw_orders@master, curated_orders@feature, alerts@feature
+Build fallback:     feature -&gt; master
+
+Result:
+- unchanged upstream inputs can still be read from master
+- changed transforms publish branch-specific JobSpecs
+- changed outputs materialize only on the feature branch
+- downstream users on master see no disruption</code></pre>
+
+    <p><strong>Data Lineage</strong> is the explainer surface for all of this. The docs describe it as an interactive tool for holistically viewing how data flows through the platform. In practice, it is the control tower for understanding:</p>
+
+    <ul class="bullet-list">
+      <li>where a dataset came from,</li>
+      <li>which transforms produced it,</li>
+      <li>which downstream datasets and applications depend on it,</li>
+      <li>what code generated it,</li>
+      <li>whether it is stale or out of date, and</li>
+      <li>what security requirements were inherited along the way.</li>
+    </ul>
+
+    <p>The best analogy is software dependency tracing plus change impact analysis, but for data products. Instead of asking "What services call this API?", you ask "If I change this transform or this upstream source, which datasets, object types, dashboards, and Workshop modules become affected?"</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Traditional stack problem</th><th>Foundry answer</th><th>Enterprise value</th></tr>
+        <tr><td>Opaque ETL jobs</td><td>Lineage graph across datasets, code, and builds</td><td>Faster root-cause analysis and safer change review</td></tr>
+        <tr><td>Shared production tables make experimentation risky</td><td>Code branches plus dataset branches</td><td>Parallel development without corrupting shared outputs</td></tr>
+        <tr><td>Security reviews happen after data is copied around</td><td>Lineage-aware security inheritance</td><td>Access control moves with the data automatically</td></tr>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Important nuance:</strong> dataset branches are not Git branches in every respect. The docs explicitly note that datasets do not support dataset-branch merging the way Git does. Foundry instead uses the build system and code review process to move tested logic into the main branch and then materialize new canonical data there.</div>
+    </div>
+  </section>
+
+  <section id="module2">
+    <h2>Module 2: Data Integration and Ingestion</h2>
+
+    <h3>Data Connection</h3>
+    <p>Foundry's public documentation frames ingestion around the <strong>Data Connection</strong> framework. That framework is designed to manage source connections over time using dataset transactions, branching, granular security, and synchronized metadata. In field language, practitioners often refer to the underlying connector and orchestration pattern as <strong>Magritte</strong> and <strong>source agents</strong>; in the product docs, the supported surface is the Data Connection application and its source-specific sync capabilities.</p>
+
+    <p>At a practical level, Data Connection gives Foundry a standard contract for pulling from very different sources:</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">JDBC / Warehouses</div>
+        <div class="card-body">ERP databases, SQL Server, PostgreSQL, Oracle, Snowflake, and similar sources are pulled into Foundry as datasets or virtualized for downstream use.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">REST APIs</div>
+        <div class="card-body">External systems can be synced or exported to using Data Connection and external transforms, especially for scheduled pull or push workflows.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Object Stores and Files</div>
+        <div class="card-body">S3 and other file-based sources map naturally onto dataset transactions such as snapshot mirrors or append-only mirrors.</div>
+      </div>
+    </div>
+
+    <p>A good analogy is a managed loading dock for the enterprise. The loading dock does not care whether the incoming goods arrived by truck, ship, or rail. It standardizes intake, manifests, timestamps, security checks, and hand-off into the warehouse. Data Connection plays that role for source systems.</p>
+
+    <h3>Syncs and Schedules</h3>
+    <p>Foundry distinguishes between getting data in once and getting data in reliably over time. That sounds obvious, but it is where many data platforms quietly fail. A one-off extract is not a data product. A repeatable sync with lineage, permissions, and clear transaction semantics is.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Pattern</th><th>How it works</th><th>When to use it</th></tr>
+        <tr><td>Direct or manual ingestion</td><td>Upload or one-time import into a dataset resource</td><td>Bootstrapping, prototypes, ad hoc investigations</td></tr>
+        <tr><td>Scheduled sync</td><td>Recurring ingestion that lands new dataset transactions over time</td><td>Operational production pipelines</td></tr>
+        <tr><td>Virtual access</td><td>Expose source data without full replication in some cases</td><td>Latency-sensitive or governance-constrained access patterns</td></tr>
+        <tr><td>External transforms</td><td>Code-driven scheduled API interaction using Code Repositories</td><td>Custom REST ingestion and outbound integration workflows</td></tr>
+      </table>
+    </div>
+
+    <p>What lands in the Foundry filesystem is usually a <strong>raw dataset</strong>. That raw dataset is intentionally close to source reality. You do not want business logic hidden in the loading step. The source system should remain auditable, and the refinement should happen downstream in transformations.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">i</span>
+      <div class="callout-body"><strong>Why Foundry insists on explicit landing zones:</strong> separating raw ingestion from curated transformation makes incident response, replay, backfills, and governance substantially easier. When a downstream KPI breaks, teams can verify whether the issue came from source extraction, transformation logic, or ontology mapping.</div>
+    </div>
+
+    <h3>Transaction-Aware Ingestion</h3>
+    <p>The public dataset documentation is explicit that ingestion style matters because it determines downstream pipeline behavior:</p>
+
+    <ul class="bullet-list">
+      <li><strong>SNAPSHOT</strong> means the sync replaces the full current view. Simple, but expensive at scale.</li>
+      <li><strong>APPEND</strong> means only new files are added. This is the foundation for performant incremental pipelines.</li>
+      <li><strong>UPDATE</strong> means new files may arrive and old files may be overwritten. Useful when the source mutates records, but it breaks append-only assumptions.</li>
+      <li><strong>DELETE</strong> supports retention and controlled removal from the current dataset view.</li>
+    </ul>
+
+    <p>If you are building a serious production pipeline, the ingestion mode is not just a connector setting. It is an architectural decision that determines cost profile, latency, and whether downstream pipelines can remain incremental.</p>
+  </section>
+
+  <section id="module3">
+    <h2>Module 3: Data Transformation in Code Repositories</h2>
+
+    <h3>The Python Transforms API</h3>
+    <p>Foundry's <code>transforms.api</code> is the contract between your Python code and Foundry's build system. This is what turns a PySpark function into a governed pipeline step with declared inputs, outputs, lineage, checks, preview support, branching, and scheduling.</p>
+
+    <p>That declaration step is the important difference from generic PySpark. In open Spark, you can read anything and write anywhere as long as the cluster permits it. In Foundry, you declare the data contract up front so the platform can reason about lineage, impact, permissions, and builds.</p>
+
+    <h3>Copy-Pasteable PySpark Transform</h3>
+    <pre><code>from pyspark.sql import functions as F
+from transforms.api import transform_df, Input, Output
+
+
+@transform_df(
+    Output("/Acme/SupplyChain/curated/factory_part_demand"),
+    shipments=Input("/Acme/SupplyChain/raw/erp_shipments"),
+    part_master=Input("/Acme/SupplyChain/master/parts"),
+)
+def compute(shipments, part_master):
+    return (
+        shipments
+        .join(part_master, on="part_id", how="left")
+        .withColumn("required_date", F.to_date("required_timestamp"))
+        .withColumn("late_flag", F.col("promised_timestamp") &gt; F.col("required_timestamp"))
+        .withColumn("open_value_usd", F.round(F.col("quantity") * F.col("unit_cost_usd"), 2))
+        .select(
+            "shipment_id",
+            "factory_id",
+            "part_id",
+            "part_description",
+            "required_date",
+            "quantity",
+            "open_value_usd",
+            "late_flag",
+        )
+    )</code></pre>
+
+    <p>This snippet uses the exact Foundry wrapper style requested: <code>from transforms.api import transform_df, Input, Output</code>. The platform knows:</p>
+
+    <ul class="bullet-list">
+      <li>which datasets are read,</li>
+      <li>which dataset is produced,</li>
+      <li>how to render the node in lineage,</li>
+      <li>what changes a pull request may impact, and</li>
+      <li>which branch-specific output should be built during development.</li>
+    </ul>
+
+    <h3>Why Incremental Processing Matters</h3>
+    <p>Official Foundry documentation is direct here: incremental pipelines avoid recomputing unchanged data and are often necessary when input scale is high. If your transaction logs are growing by millions of rows per day, full snapshots are a tax you will keep paying forever.</p>
+
+    <p>The analogy is simple. A nightly batch rebuild is like recalculating every bank account in the country because one customer made a deposit. Incremental processing instead says: process the new deposit, update the affected state, and move on.</p>
+
+    <h3>Incremental PySpark Transform</h3>
+    <pre><code>from pyspark.sql import functions as F
+from transforms.api import (
+    incremental,
+    transform,
+    Input,
+    Output,
+    IncrementalTransformInput,
+)
+
+
+@incremental()
+@transform(
+    risk_scores=Output("/Acme/AML/curated/transaction_risk_scores"),
+    transactions=Input("/Acme/AML/raw/daily_transactions"),
+    customers=Input("/Acme/AML/master/customers"),
+)
+def compute(ctx, risk_scores, transactions: IncrementalTransformInput, customers):
+    new_transactions = transactions.dataframe("added")
+
+    if ctx.is_incremental and new_transactions.rdd.isEmpty():
+        return
+
+    customer_df = customers.dataframe()
+
+    scored = (
+        new_transactions
+        .join(customer_df, on="customer_id", how="left")
+        .withColumn(
+            "risk_score",
+            F.when(F.col("amount_usd") &gt;= 10000, F.lit(0.60)).otherwise(F.lit(0.10))
+            + F.when(F.col("high_risk_country") == F.lit(True), F.lit(0.25)).otherwise(F.lit(0.00))
+            + F.when(F.col("pep_flag") == F.lit(True), F.lit(0.15)).otherwise(F.lit(0.00))
+        )
+        .withColumn(
+            "risk_bucket",
+            F.when(F.col("risk_score") &gt;= 0.75, F.lit("HIGH")).otherwise(F.lit("STANDARD"))
+        )
+        .select(
+            "transaction_id",
+            "customer_id",
+            "booking_date",
+            "amount_usd",
+            "risk_score",
+            "risk_bucket",
+        )
+    )
+
+    risk_scores.write_dataframe(scored)</code></pre>
+
+    <p>This example uses <code>IncrementalTransformInput</code> directly and reads only the <code>added</code> window from the transactions input, which is the exact capability documented in the API reference. That is what keeps the transform proportional to new data instead of proportional to total historical data.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Architectural warning:</strong> incremental pipelines are powerful but more fragile. Foundry's docs explicitly note that you must understand transaction behavior and be resilient to upstream <code>SNAPSHOT</code> or <code>UPDATE</code> events. Use incremental logic when the volume justifies the added complexity.</div>
+    </div>
+
+    <h3>Code Repositories vs Pipeline Builder</h3>
+    <p>Both are first-class. The wrong move is treating one as "for engineers" and the other as "for non-engineers." The real decision is about control, complexity, and maintainability.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Choose this</th><th>Best for</th><th>Trade-off</th></tr>
+        <tr><td>Code Repositories</td><td>Complex business logic, PySpark, custom libraries, tests, code review, reusable engineering standards</td><td>Higher engineering overhead, slower for simple mappings</td></tr>
+        <tr><td>Pipeline Builder</td><td>Fast delivery, visual composition, common joins/filters, streaming and batch patterns, lower-code delivery</td><td>Less expressive for specialized logic or heavy software-engineering workflows</td></tr>
+      </table>
+    </div>
+
+    <p>A useful heuristic:</p>
+
+    <ul class="bullet-list">
+      <li>Use <strong>Pipeline Builder</strong> when the data flow is legible as a pipeline diagram and your transformations are primarily declarative.</li>
+      <li>Use <strong>Code Repositories</strong> when you need software-engineering discipline: abstractions, libraries, advanced logic, unit tests, branch review, or specialized Spark behavior.</li>
+    </ul>
+
+    <div class="callout tip">
+      <span class="callout-icon">+</span>
+      <div class="callout-body"><strong>Foundry-specific value:</strong> whichever authoring surface you choose, the platform still gives you the same underlying benefits: builds, branch-aware execution, lineage, health checks, scheduling, and permission-aware data products.</div>
+    </div>
+  </section>
+
+  <section id="module4">
+    <h2>Module 4: The Ontology</h2>
+
+    <h3>Objects, Links, and Properties</h3>
+    <p>The Ontology is the heart of Foundry because it changes the question from "What tables do we have?" to "What parts of the business are we representing, and how do they relate?" Public documentation describes the Ontology as an operational layer sitting on top of datasets, models, and other digital assets, connecting them to their real-world counterparts.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">Object Type</div>
+        <div class="card-body">A business entity such as Factory, Part, Supplier, Customer, Case, or Transaction.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Property</div>
+        <div class="card-body">A field on that entity: status, amount, capacity, priority, owner, or date.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Link Type</div>
+        <div class="card-body">A typed relationship between objects: Factory consumes Part, Customer owns Account, Transaction belongs to Case.</div>
+      </div>
+    </div>
+
+    <p>The conceptual shift is from row-oriented thinking to domain-oriented thinking. In a warehouse, a user may need to remember that <code>fact_shipments.factory_id = dim_factory.id</code>. In the Ontology, a user works with a <code>Factory</code> object that already knows its related <code>Shipment</code>, <code>Supplier</code>, or <code>Part</code> objects. The join logic becomes part of the platform's semantic contract rather than tribal knowledge in SQL.</p>
+
+    <div class="quote-line">If datasets are the refined fuel, the Ontology is the engine block. It gives the business a machine-readable representation of how the organization actually works.</div>
+
+    <h3>Why Foundry Pushes the Ontology So Hard</h3>
+    <ul class="bullet-list">
+      <li><strong>Reuse:</strong> multiple applications can rely on the same semantic layer rather than each dashboard re-implementing business joins and definitions.</li>
+      <li><strong>Operational consistency:</strong> the same object and action definitions can be exposed in Workshop, Quiver, SDK-driven apps, and search.</li>
+      <li><strong>Governance:</strong> security and change control apply at the same layer where business users actually work.</li>
+      <li><strong>Decision capture:</strong> the platform does not stop at analytics. Actions and functions let users change operational state in a governed way.</li>
+    </ul>
+
+    <h3>Actions and Functions</h3>
+    <p>Foundry distinguishes between <strong>action types</strong> and <strong>functions</strong>. Action types are the user-facing, governed transaction surface. Functions are server-side logic units that can compute values, return object sets, or generate Ontology edits. When an edit function is wired into an action type, users can safely write decisions back into the Ontology.</p>
+
+    <p>That is why Foundry applications are more than dashboards. A planner can change the state of a shipment. An investigator can escalate a transaction. An operations lead can assign ownership. The logic is centralized, audited, and permissioned.</p>
+
+    <h3>Function-Backed Ontology Action Example</h3>
+    <pre><code>import { Shipment } from "@ontology/sdk";
+import { Client, Osdk } from "@osdk/client";
+import { createEditBatch, Edits } from "@osdk/functions";
+
+type ShipmentEdit = Edits.Object&lt;Shipment&gt;;
+
+export default function requestExpedite(
+    client: Client,
+    shipment: Osdk.Instance&lt;Shipment&gt;,
+    requestedBy: string,
+    reason: string,
+): ShipmentEdit[] {
+    const batch = createEditBatch&lt;ShipmentEdit&gt;(client);
+
+    batch.update(shipment, {
+        status: "EXPEDITE_REQUESTED",
+        expediteRequestedBy: requestedBy,
+        expediteReason: reason,
+        expediteRequestedAt: new Date().toISOString(),
+    });
+
+    return batch.getEdits();
+}</code></pre>
+
+    <p>This snippet follows the official TypeScript v2 functions pattern for Ontology edits: define an <code>Edits</code> type, create an edit batch with <code>createEditBatch</code>, update the object, and return the edits. Per the docs, the edits only take effect when the function is configured as a <strong>function-backed action</strong>.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">i</span>
+      <div class="callout-body"><strong>Where the security comes from:</strong> not from burying checks in frontend code. The action type can enforce who may run it, what parameters are required, what submission criteria apply, and what side effects or validations should happen. That is the enterprise advantage over hand-built CRUD screens.</div>
+    </div>
+
+    <h3>Read-Oriented Python Function Example</h3>
+    <pre><code>from functions.api import function
+from ontology_sdk import FoundryClient
+from ontology_sdk.ontology.objects import Transaction
+from ontology_sdk.ontology.object_sets import TransactionObjectSet
+
+
+@function
+def high_risk_transactions(min_score: float) -&gt; TransactionObjectSet:
+    client = FoundryClient()
+    return client.ontology.objects.Transaction.where(
+        Transaction.object_type.riskScore &gt;= min_score
+    )</code></pre>
+
+    <p>Use read-oriented functions like this when you need server-side logic for Workshop, Quiver, or other operational interfaces. Use edit-returning functions when the workflow needs governed writeback.</p>
+  </section>
+
+  <section id="module5">
+    <h2>Module 5: Analytics and Operational Applications</h2>
+
+    <h3>Code Workspaces</h3>
+    <p>Code Workspaces gives users managed JupyterLab, RStudio, and VS Code environments inside Foundry. The public docs emphasize that these workspaces inherit Foundry's security, permissions, branching, scheduling, and repository infrastructure.</p>
+
+    <p>For data scientists, the value is straightforward: work in a familiar notebook or IDE, but on the same governed datasets and object model as the rest of the platform. No shadow copy. No side channel. No unsecured export just to train a model.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">+</span>
+      <div class="callout-body"><strong>Why this matters:</strong> in many organizations, notebooks become a compliance escape hatch. Code Workspaces turns them into a first-class governed surface backed by Code Repositories and platform security.</div>
+    </div>
+
+    <ul class="bullet-list">
+      <li>Use Code Workspaces for model exploration, feature engineering, evaluation, and research workflows.</li>
+      <li>Use Code Repositories or Pipeline Builder for large-scale production transforms, because the docs explicitly note that Code Workspaces is single-node while the other tools leverage Spark-oriented infrastructure.</li>
+      <li>Use the same repository and branching discipline to move successful exploratory work into production pipelines.</li>
+    </ul>
+
+    <h3>Contour and Quiver</h3>
+    <p>Contour and Quiver are both analysis tools, but they sit on different mental models.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Tool</th><th>Best mental model</th><th>Best use case</th></tr>
+        <tr><td>Contour</td><td>Table-centric, point-and-click analysis at scale</td><td>Large tabular analysis, dataset derivation, low-code transformations, dashboards over tables</td></tr>
+        <tr><td>Quiver</td><td>Object-aware and time-series-aware analytics</td><td>Ontology-driven analysis, linked-object exploration, operational dashboards, time-series workflows</td></tr>
+      </table>
+    </div>
+
+    <p>A simple analogy: Contour is closer to a governed, scalable spreadsheet-plus-query environment for tables. Quiver is closer to an operational analytics canvas where objects and signals are native citizens.</p>
+
+    <ul class="bullet-list">
+      <li><strong>Use Contour</strong> when your data is still mostly tabular, some data is not yet mapped into the Ontology, or you need large joins and transformations without writing code.</li>
+      <li><strong>Use Quiver</strong> when your data is mapped in the Ontology, relationships matter, time series matters, and the result should plug directly into operational applications.</li>
+    </ul>
+
+    <h3>Workshop</h3>
+    <p>Workshop is Foundry's operational application builder. The docs describe it as a flexible, object-oriented application building tool that uses Ontology objects, links, actions, and functions as first-class building blocks. That is the key distinction: it is not merely a dashboard builder.</p>
+
+    <p>Think of Workshop as the last mile between a governed digital twin and the humans who need to operate the business. A CRM, an alert triage desk, a maintenance queue, a parts shortage cockpit, and a fraud review inbox are all natural Workshop workloads.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">What Workshop gives you</div>
+        <div class="card-body">Layouts, widgets, events, object-aware views, actions, and function-backed logic, all aligned to the Ontology and the platform design system.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">What it saves you from</div>
+        <div class="card-body">Rebuilding auth, access control, search, writeback rules, object joins, and frontend infrastructure for every operational app.</div>
+      </div>
+    </div>
+
+    <p><strong>Why Foundry does this differently:</strong> in a traditional stack, the BI layer is read-only and the operational app is a separate engineering program. Foundry tries to collapse that gap so that analytics and operations run on the same semantic and governance substrate.</p>
+  </section>
+
+  <section id="module6">
+    <h2>Module 6: Security and Governance</h2>
+
+    <h3>Markings and Mandatory Controls</h3>
+    <p>Foundry's security model is built around the idea that access control should travel with the data, not be bolted onto the final dashboard. The docs frame this as a combination of <strong>mandatory controls</strong> and <strong>discretionary controls</strong>.</p>
+
+    <ul class="bullet-list">
+      <li><strong>Mandatory controls</strong> include Organizations and Markings. If a user does not meet them, roles do not help.</li>
+      <li><strong>Discretionary controls</strong> are roles like Owner, Editor, Viewer, and Discoverer on Projects and resources.</li>
+      <li><strong>Markings</strong> are conjunctive. A user must satisfy all applied markings to access the resource.</li>
+      <li><strong>Project roles</strong> determine what a user can do once they are allowed through the mandatory gate.</li>
+    </ul>
+
+    <p>The public docs are especially clear that markings inherit both through the file hierarchy and through data dependencies. That means a sensitive upstream dataset can automatically impose additional data requirements on downstream derivatives.</p>
+
+    <div class="flow">
+      <div class="flow-step">Raw PII dataset</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Curated customer dataset</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Ontology object</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Workshop app</div>
+    </div>
+
+    <p>If the raw dataset carries a <code>PII</code> marking, that constraint propagates unless it is deliberately and correctly removed as part of an approved transformation stage. This is exactly why compliance teams like the platform. You do not have to hope every downstream analyst remembered the sensitivity level. The platform enforces it.</p>
+
+    <h3>CBAC and PBAC in Practice</h3>
+    <p>In customer conversations you will often hear <strong>CBAC</strong> and <strong>PBAC</strong>. Foundry's public docs emphasize markings, organizations, roles, restricted views, and additional data requirements more than those acronyms, but the enterprise interpretation is usually:</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Model</th><th>How to think about it in Foundry</th><th>Typical implementation surface</th></tr>
+        <tr><td>CBAC</td><td>Classification-based access control. Access depends on the sensitivity classification attached to data.</td><td>Markings, organizations, inherited data requirements, project boundaries</td></tr>
+        <tr><td>PBAC</td><td>Purpose-based access control. Access is constrained to approved workflows and legitimate business purpose.</td><td>Project roles, application-specific access, action permissions, functions, restricted views, policy-driven workflow design</td></tr>
+      </table>
+    </div>
+
+    <p>In other words, CBAC answers <strong>"What classification is this data?"</strong> PBAC answers <strong>"Even if I can see it, what am I allowed to do with it in this workflow?"</strong> Foundry's advantage is that both questions can be enforced inside the same lineage-aware platform.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">i</span>
+      <div class="callout-body"><strong>Enterprise value:</strong> most data platforms secure storage, then leave downstream applications to reinvent authorization. Foundry extends security into datasets, ontology objects, actions, functions, and applications so governance does not disappear at the exact moment humans start making decisions.</div>
+    </div>
+
+    <h3>Automatic Propagation Through Lineage</h3>
+    <p>The docs explicitly state that restricting access to a dataset restricts access to downstream derived data because markings inherit along data dependencies. That propagation is one of the most important reasons Foundry commands enterprise budget:</p>
+
+    <ul class="bullet-list">
+      <li>It reduces accidental oversharing of sensitive derivatives.</li>
+      <li>It makes data lineage a live control surface for security review.</li>
+      <li>It allows teams to reason about the impact of expanding or removing access.</li>
+      <li>It makes downstream application builders inherit governance rather than recreate it badly.</li>
+    </ul>
+
+    <p>Security review becomes much more legible too. The access checker and Data Lineage views let teams inspect not only whether a user has access to a resource, but whether they meet <strong>additional data requirements</strong> inherited from lineage.</p>
+  </section>
+
+  <section id="module7">
+    <h2>Module 7: Real-World Use Cases</h2>
+
+    <h3>Scenario 1: Supply Chain Command Center</h3>
+    <p><strong>Goal:</strong> ingest ERP and logistics data, produce operational <code>Factory</code> and <code>Part</code> objects, and let planners trigger an <code>Expedite Shipment</code> action from a Workshop application.</p>
+
+    <div class="flow">
+      <div class="flow-step">ERP / WMS / Supplier feeds</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Raw datasets</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">PySpark transforms</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Factory + Part objects</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Workshop command center</div>
+    </div>
+
+    <h4>How the pieces combine</h4>
+    <ul class="bullet-list">
+      <li><strong>Integration:</strong> Data Connection ingests ERP purchase orders, inventory balances, supplier confirmations, and shipment events from databases, S3 drops, or APIs.</li>
+      <li><strong>Transformation:</strong> Code Repositories standardize plant IDs, deduplicate part masters, calculate shortage risk, and produce curated datasets for supply planning.</li>
+      <li><strong>Ontology:</strong> Curated datasets are mapped into <code>Factory</code>, <code>Part</code>, <code>Supplier</code>, and <code>Shipment</code> objects with links like <code>Factory consumes Part</code> and <code>Supplier ships Shipment</code>.</li>
+      <li><strong>Applications:</strong> Workshop shows shortages, at-risk shipments, and planner work queues. Quiver charts lead-time deterioration over time. Actions capture interventions.</li>
+    </ul>
+
+    <h4>Why Foundry is strong here</h4>
+    <p>In a conventional stack, the command center is often a fragile front-end project sitting on top of replicated warehouse views and custom service endpoints. In Foundry, the app can directly use object-aware search, links, actions, and security on top of the Ontology.</p>
+
+    <h4>Representative action</h4>
+    <p>A Workshop button calls a function-backed action similar to the <code>requestExpedite</code> example above. That action can require planner permissions, enforce that only at-risk shipments are eligible, and write the decision into the shipment object's writeback dataset so the whole organization sees the new state.</p>
+
+    <h3>Scenario 2: Anti-Money Laundering Alerting</h3>
+    <p><strong>Goal:</strong> process daily transaction logs incrementally, score transactions in a model workflow, and surface high-risk <code>Transaction</code> objects in an investigator inbox.</p>
+
+    <div class="flow">
+      <div class="flow-step">Core banking logs</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Append-only raw transactions</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Incremental risk transform</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Model scoring</div>
+      <span class="flow-arrow">-&gt;</span>
+      <div class="flow-step">Transaction objects + inbox app</div>
+    </div>
+
+    <h4>How the pieces combine</h4>
+    <ul class="bullet-list">
+      <li><strong>Integration:</strong> daily or near-real-time transaction files land as append-oriented datasets so the pipeline can stay incremental.</li>
+      <li><strong>Transformation:</strong> Foundry incremental transforms process only new transactions, enrich them with customer and sanctions context, and calculate base risk features.</li>
+      <li><strong>Code Workspaces:</strong> investigators and data scientists use JupyterLab or RStudio in Code Workspaces to train and validate models on the same governed data foundation.</li>
+      <li><strong>Ontology:</strong> scored records become <code>Transaction</code>, <code>Account</code>, <code>Customer</code>, and <code>Case</code> objects, linked for search and triage.</li>
+      <li><strong>Applications:</strong> Workshop provides an inbox for high-risk transactions, Quiver provides trend and time-series views, and actions let investigators escalate, dismiss, or open cases.</li>
+    </ul>
+
+    <h4>Where governance matters most</h4>
+    <p>AML is a textbook case for lineage-aware security. Case data may require investigation-specific markings so one case team cannot casually inspect another case's evidence. The documentation's markings examples explicitly highlight case-based access control as a strong use case.</p>
+
+    <h4>Representative model workflow</h4>
+    <pre><code>1. Land daily transactions as APPEND dataset transactions.
+2. Run an incremental transform to derive features only for newly added records.
+3. Score the new feature set from Code Workspaces or a model integration workflow.
+4. Publish high-risk records to a curated dataset and map them into Transaction objects.
+5. Surface those objects in a Workshop inbox.
+6. Let investigators trigger actions such as Open Case, Escalate, or Dismiss with Reason.</code></pre>
+
+    <p>The result is not just "a fraud dashboard." It is a governed operational system that unifies ingestion, scoring, review, and decision capture.</p>
+  </section>
+
+  <section id="patterns">
+    <h2>Foundry Patterns to Remember</h2>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Raw first, semantics later</div>
+        <div class="card-body">Land data close to source truth, curate in transforms, then map to the Ontology. Do not hide business logic inside ingestion.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Branch both logic and outputs</div>
+        <div class="card-body">Use Foundry branching to test not only code changes, but the resulting data products and downstream impact safely.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Use the Ontology for reuse</div>
+        <div class="card-body">If three dashboards need the same business entity, model it once as an object type rather than re-implementing joins three times.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Security travels with data</div>
+        <div class="card-body">Markings and lineage inheritance are not bureaucracy. They are what make it possible to operationalize sensitive data without constant manual policing.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Official Docs Used</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">Overview</span> <a href="https://www.palantir.com/docs/foundry">Foundry documentation home</a></li>
+      <li><span class="ll-tag">Projects</span> <a href="https://www.palantir.com/docs/foundry/getting-started/projects-and-resources/">Projects and resources</a></li>
+      <li><span class="ll-tag">Datasets</span> <a href="https://www.palantir.com/docs/foundry/data-integration/datasets/">Datasets and transactions</a></li>
+      <li><span class="ll-tag">Branching</span> <a href="https://www.palantir.com/docs/foundry/data-integration/branching/">Branching</a></li>
+      <li><span class="ll-tag">Lineage</span> <a href="https://www.palantir.com/docs/foundry/data-lineage/overview/">Data Lineage</a></li>
+      <li><span class="ll-tag">Integration</span> <a href="https://www.palantir.com/docs/foundry/data-integration/overview/">Data connectivity and integration</a></li>
+      <li><span class="ll-tag">Connect</span> <a href="https://www.palantir.com/docs/foundry/data-integration/connecting-to-data/">Connecting to data</a></li>
+      <li><span class="ll-tag">Pipelines</span> <a href="https://www.palantir.com/docs/foundry/building-pipelines/overview/">Building pipelines</a></li>
+      <li><span class="ll-tag">Transforms</span> <a href="https://www.palantir.com/docs/foundry/transforms-python/transforms-python-api/">transforms.api</a></li>
+      <li><span class="ll-tag">Transforms</span> <a href="https://www.palantir.com/docs/foundry/transforms-python/getting-started/">Python transforms getting started</a></li>
+      <li><span class="ll-tag">Incremental</span> <a href="https://www.palantir.com/docs/foundry/transforms-python/incremental-overview/">Incremental transforms</a></li>
+      <li><span class="ll-tag">Ontology</span> <a href="https://www.palantir.com/docs/foundry/ontology/overview/">Ontology overview</a></li>
+      <li><span class="ll-tag">Actions</span> <a href="https://www.palantir.com/docs/foundry/action-types/overview/">Action types overview</a></li>
+      <li><span class="ll-tag">Functions</span> <a href="https://www.palantir.com/docs/foundry/functions/overview/">Functions overview</a></li>
+      <li><span class="ll-tag">TS edits</span> <a href="https://www.palantir.com/docs/foundry/functions/typescript-v2-ontology-edits/">TypeScript v2 ontology edits</a></li>
+      <li><span class="ll-tag">Py objects</span> <a href="https://www.palantir.com/docs/foundry/functions/python-functions-on-objects/">Python functions on objects</a></li>
+      <li><span class="ll-tag">Code WS</span> <a href="https://www.palantir.com/docs/foundry/code-workspaces/overview/">Code Workspaces</a></li>
+      <li><span class="ll-tag">Analytics</span> <a href="https://www.palantir.com/docs/foundry/analytics/overview/">Analytics overview</a></li>
+      <li><span class="ll-tag">Contour</span> <a href="https://www.palantir.com/docs/foundry/contour/overview/">Contour overview</a></li>
+      <li><span class="ll-tag">Quiver</span> <a href="https://www.palantir.com/docs/foundry/quiver/overview/">Quiver overview</a></li>
+      <li><span class="ll-tag">Workshop</span> <a href="https://www.palantir.com/docs/foundry/workshop/overview/">Workshop overview</a></li>
+      <li><span class="ll-tag">Security</span> <a href="https://www.palantir.com/docs/foundry/security/overview/">Security and governance</a></li>
+      <li><span class="ll-tag">Glossary</span> <a href="https://www.palantir.com/docs/foundry/security/security-glossary/">Security glossary</a></li>
+      <li><span class="ll-tag">Markings</span> <a href="https://www.palantir.com/docs/foundry/security/markings/">Markings</a></li>
+      <li><span class="ll-tag">Access</span> <a href="https://www.palantir.com/docs/foundry/security/checking-permissions/">Checking permissions</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach((section) => section.id && observer.observe(section));
+</script>
+</body>
+</html>
