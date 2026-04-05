@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Prompt Engineering Handbook</title>
+<link rel="stylesheet" href="styles/advanced-prompt-engineering-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Advanced Prompt Engineering</div>
+    <div class="logo-sub">Practitioner Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Start Here</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#toc">Table of Contents</a>
+    <a class="nav-link" href="#principles">Operating Principles</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 1</div>
+    <a class="nav-link" href="#messages">System, User, Assistant</a>
+    <a class="nav-link" href="#hyperparameters">Hyperparameters</a>
+    <a class="nav-link" href="#baseline-prompt">Baseline Prompt</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 2</div>
+    <a class="nav-link" href="#few-shot">Zero-Shot vs Few-Shot</a>
+    <a class="nav-link" href="#delimiters">Formatting &amp; Delimiters</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 3</div>
+    <a class="nav-link" href="#cot">Chain of Thought</a>
+    <a class="nav-link" href="#self-consistency">Self-Consistency</a>
+    <a class="nav-link" href="#tot">Tree of Thoughts / Step-back</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 4</div>
+    <a class="nav-link" href="#lost-middle">Lost in the Middle</a>
+    <a class="nav-link" href="#rag">RAG Prompt Design</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 5</div>
+    <a class="nav-link" href="#json-output">Enforcing JSON</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Advanced Prompt Engineering Handbook</h1>
+    <p class="u-hero-subtle">A production-focused guide to prompt design, reasoning strategies, retrieval prompts, and structured outputs for teams shipping LLM features in real systems.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">Chat APIs</span>
+      <span class="badge badge-cyan">RAG + Structured Output</span>
+      <span class="badge badge-green">OpenAI + Anthropic</span>
+      <span class="badge badge-amber">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">i</span>
+    <div class="callout-body"><strong>Prompt engineering is interface design, not spell casting.</strong> Strong prompts do not rely on magic words. They work because they set role, scope, evidence, format, and decision criteria so the model can navigate its latent space toward the answer shape you actually need.</div>
+  </div>
+
+  <section id="toc">
+    <h2>Table of Contents</h2>
+    <p>This handbook is organized around the core workflow prompt engineers use in production: define the message contract, pick the right prompting technique, improve reasoning reliability, inject external context safely, and force outputs into machine-readable structures.</p>
+
+    <div class="card-grid card-grid-2">
+      <article class="card">
+        <div class="card-title">Module 1: Anatomy of a Prompt</div>
+        <div class="card-body">Message roles, decoding controls, and a baseline prompt contract that turns vague requests into stable model behavior.</div>
+      </article>
+      <article class="card">
+        <div class="card-title">Module 2: Core Prompting Techniques</div>
+        <div class="card-body">Zero-shot, few-shot, and delimiter design for getting the model to parse your intent exactly once and correctly.</div>
+      </article>
+      <article class="card">
+        <div class="card-title">Module 3: Advanced Reasoning</div>
+        <div class="card-body">Chain of Thought, self-consistency, and decomposition strategies for problems that require multi-step reasoning.</div>
+      </article>
+      <article class="card">
+        <div class="card-title">Module 4: Context Injection &amp; RAG</div>
+        <div class="card-body">Prompt layouts that keep retrieval grounded, reduce hallucination, and defend against weak or missing evidence.</div>
+      </article>
+      <article class="card">
+        <div class="card-title">Module 5: Enforcing JSON</div>
+        <div class="card-body">Contracts, schemas, and API-level structure enforcement so downstream software can trust the response.</div>
+      </article>
+    </div>
+  </section>
+
+  <section id="principles">
+    <h2>Operating Principles</h2>
+    <p>The cleanest mental model is to treat prompt engineering like briefing a senior contractor. If you hand over a vague sentence, you get improvisation. If you provide scope, examples, evidence, constraints, and a required deliverable, you get a much better first draft.</p>
+
+    <div class="flow">
+      <span class="flow-step">Role</span>
+      <span class="flow-arrow">-&gt;</span>
+      <span class="flow-step">Context</span>
+      <span class="flow-arrow">-&gt;</span>
+      <span class="flow-step">Task</span>
+      <span class="flow-arrow">-&gt;</span>
+      <span class="flow-step">Constraints</span>
+      <span class="flow-arrow">-&gt;</span>
+      <span class="flow-step">Output Contract</span>
+    </div>
+
+    <ul class="bullet">
+      <li><strong>Be explicit about authority.</strong> The model should know which instructions outrank others.</li>
+      <li><strong>Separate data from instructions.</strong> Ambiguity grows when raw user input and policy text are blended together.</li>
+      <li><strong>Design for parsability.</strong> Your prompt should be easy for both humans and models to scan under token pressure.</li>
+      <li><strong>Prefer contracts over vibes.</strong> Ask for specific fields, steps, or decisions rather than “something good.”</li>
+    </ul>
+  </section>
+
+  <section id="messages">
+    <h2>Module 1: System vs. User vs. Assistant</h2>
+    <p>In the Chat Completions model, message roles are not cosmetic labels. They are part of the instruction hierarchy. A simple analogy is a film set: the <code>system</code> message is the director's brief, the <code>user</code> message is today's scene request, and prior <code>assistant</code> messages are continuity notes from earlier takes.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Role</th><th>Purpose</th><th>When to Use It</th></tr>
+        <tr><td><strong>System</strong></td><td>Sets durable behavior, persona, guardrails, and priorities.</td><td>Use for policies, tone, output rules, and non-negotiable constraints.</td></tr>
+        <tr><td><strong>User</strong></td><td>Provides the live task, inputs, and clarifying requirements.</td><td>Use for the actual work request and runtime context.</td></tr>
+        <tr><td><strong>Assistant</strong></td><td>Represents prior model responses or inserted exemplars.</td><td>Use in chat history or few-shot demonstrations when continuity matters.</td></tr>
+      </table>
+    </div>
+
+    <pre>System message template
+
+You are {{assistant_persona}}.
+Your job is to {{primary_responsibility}}.
+Always prioritize:
+1. {{priority_one}}
+2. {{priority_two}}
+3. {{priority_three}}
+
+Never do the following:
+- {{forbidden_action_one}}
+- {{forbidden_action_two}}
+
+When information is missing, ask for {{missing_information_policy}}.
+
+User message template
+
+Context:
+{{context}}
+
+Task:
+{{task}}
+
+Constraints:
+{{constraints}}
+
+Desired output:
+{{output_format}}</pre>
+
+    <pre>from typing import Any
+
+from openai import OpenAI
+
+
+client = OpenAI()
+
+
+def run_message_stack(system_prompt: str, user_prompt: str) -&gt; str:
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+    return response.choices[0].message.content or ""</pre>
+  </section>
+
+  <section id="hyperparameters">
+    <h2>Hyperparameters</h2>
+    <p>Hyperparameters control sampling behavior, not truthfulness. Think of them like steering sensitivity in a vehicle: lower values keep the model tightly on rails, higher values allow more variation. For code generation and extraction, stability usually wins. For ideation and copywriting, controlled variation helps.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">Temperature</div>
+        <div class="card-body">Lower for deterministic tasks like coding, classification, extraction, or policy answers. Higher for brainstorming and creative writing.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top-P</div>
+        <div class="card-body">Nucleus sampling cap. Usually leave it alone unless you are explicitly tuning generation diversity.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Frequency / Presence</div>
+        <div class="card-body">Useful when repetition is the problem, especially in creative tasks or long generations. Usually keep near default for code or structured outputs.</div>
+      </div>
+    </div>
+
+    <pre>Task tuning prompt header
+
+Task type: {{task_type}}
+Risk tolerance: {{risk_tolerance}}
+Need for novelty: {{novelty_level}}
+Need for exact wording: {{exactness_level}}</pre>
+
+    <pre>from openai import OpenAI
+
+
+client = OpenAI()
+
+
+def complete_task(task_prompt: str, creative: bool) -&gt; str:
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        temperature=0.8 if creative else 0.1,
+        top_p=1.0,
+        frequency_penalty=0.3 if creative else 0.0,
+        presence_penalty=0.2 if creative else 0.0,
+        messages=[{"role": "user", "content": task_prompt}],
+    )
+    return response.choices[0].message.content or ""</pre>
+  </section>
+
+  <section id="baseline-prompt">
+    <h2>The "Perfect" Baseline Prompt</h2>
+    <p>A strong baseline prompt is a reusable contract. It does not chase hidden incantations. It simply answers the five questions every model needs: who it is, what it knows, what it must do, what it must avoid, and what shape the output must take.</p>
+
+    <div class="mode-card blue">
+      <div class="mode-header">
+        <span class="mode-name">Baseline Template</span>
+        <span class="mode-shortcut">Persona + Context + Task + Constraints + Output</span>
+      </div>
+      <p class="u-muted-small">Use this when a prompt will be reused in code, tested in evals, or handed between engineers.</p>
+    </div>
+
+    <pre># Persona
+You are {{persona}}.
+
+# Context
+You are helping with {{business_context}}.
+Relevant background:
+{{background_context}}
+
+# Task
+Your task is to {{task_to_complete}}.
+
+# Constraints
+- Optimize for {{primary_goal}}.
+- Do not assume facts outside: {{allowed_sources}}.
+- If information is missing, {{fallback_behavior}}.
+- Keep the response within {{length_limit}}.
+
+# Output Format
+Return your answer as:
+1. Summary
+2. Key reasoning
+3. Recommended next action
+
+# Input
+{{runtime_input}}</pre>
+
+    <pre>from typing import Mapping
+
+from openai import OpenAI
+
+
+client = OpenAI()
+
+
+BASELINE_TEMPLATE = """# Persona
+You are {{persona}}.
+
+# Context
+You are helping with {{business_context}}.
+Relevant background:
+{{background_context}}
+
+# Task
+Your task is to {{task_to_complete}}.
+
+# Constraints
+- Optimize for {{primary_goal}}.
+- Do not assume facts outside: {{allowed_sources}}.
+- If information is missing, {{fallback_behavior}}.
+- Keep the response within {{length_limit}}.
+
+# Output Format
+Return your answer as:
+1. Summary
+2. Key reasoning
+3. Recommended next action
+
+# Input
+{{runtime_input}}"""
+
+
+def render_template(template: str, values: Mapping[str, str]) -&gt; str:
+    rendered = template
+    for key, value in values.items():
+        rendered = rendered.replace(f"{{{{{key}}}}}", value)
+    return rendered
+
+
+def run_baseline_prompt(values: Mapping[str, str]) -&gt; str:
+    prompt = render_template(BASELINE_TEMPLATE, values)
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        temperature=0.2,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""</pre>
+  </section>
+
+  <section id="few-shot">
+    <h2>Module 2: Zero-Shot vs. Few-Shot Prompting</h2>
+    <p>Zero-shot prompting asks the model to infer the pattern from instructions alone. Few-shot prompting shows the pattern explicitly. The analogy is onboarding a new analyst: zero-shot is handing over the assignment brief; few-shot is handing over the brief plus three finished examples.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#10003;</span>
+      <div class="callout-body"><strong>Few-shot works best when the format is the point.</strong> If you care about tone, label style, reasoning style, or classification boundaries, examples are usually more effective than more adjectives.</div>
+    </div>
+
+    <pre>Few-shot template
+
+Task: {{task_description}}
+
+Follow the pattern shown in the examples.
+
+Example 1
+Input: {{example_input_1}}
+Output: {{example_output_1}}
+
+Example 2
+Input: {{example_input_2}}
+Output: {{example_output_2}}
+
+Example 3
+Input: {{example_input_3}}
+Output: {{example_output_3}}
+
+Now complete the real task.
+Input: {{actual_input}}
+Output:</pre>
+
+    <pre>from anthropic import Anthropic
+
+
+client = Anthropic()
+
+
+def run_few_shot(prompt: str) -&gt; str:
+    response = client.messages.create(
+        model="claude-3-7-sonnet-latest",
+        max_tokens=700,
+        temperature=0.1,
+        messages=[
+            {"role": "user", "content": prompt},
+        ],
+    )
+    return "".join(block.text for block in response.content if block.type == "text")</pre>
+  </section>
+
+  <section id="delimiters">
+    <h2>Formatting &amp; Delimiters</h2>
+    <p>Delimiters reduce hallucination because they reduce ambiguity. They act like labeled folders in a filing cabinet. Instead of forcing the model to guess where the instructions end and the raw input begins, you separate them with explicit structure.</p>
+
+    <div class="mode-card green">
+      <div class="mode-header">
+        <span class="mode-name">XML-Tagged Prompt</span>
+        <span class="mode-shortcut">Best for complex prompts</span>
+      </div>
+      <p class="u-muted-small">XML-style sections are especially useful when a prompt contains instructions, data, examples, and output rules in the same request.</p>
+    </div>
+
+    <pre>&lt;instructions&gt;
+You are {{persona}}.
+Complete the task exactly as specified.
+Do not use knowledge outside &lt;input&gt; unless explicitly allowed.
+&lt;/instructions&gt;
+
+&lt;task&gt;
+{{task}}
+&lt;/task&gt;
+
+&lt;requirements&gt;
+- Audience: {{audience}}
+- Tone: {{tone}}
+- Maximum length: {{max_length}}
+- Must include: {{must_include}}
+&lt;/requirements&gt;
+
+&lt;input&gt;
+{{input_text}}
+&lt;/input&gt;
+
+&lt;output_format&gt;
+Return Markdown with these headings:
+## Summary
+## Evidence
+## Risks
+&lt;/output_format&gt;</pre>
+
+    <pre>from openai import OpenAI
+
+
+client = OpenAI()
+
+
+def run_xml_prompt(prompt: str) -&gt; str:
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": "Parse tagged sections carefully and follow the output format exactly."},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    return response.choices[0].message.content or ""</pre>
+  </section>
+
+  <section id="cot">
+    <h2>Module 3: Chain of Thought (CoT)</h2>
+    <p>The famous “let’s think step by step” effect works because it nudges the model to allocate tokens to intermediate reasoning instead of jumping directly to the answer. The analogy is asking someone to show their work on a whiteboard before committing to the final number.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Production caution:</strong> do not depend on hidden proprietary reasoning. If you need inspectable steps, request a visible reasoning or planning block explicitly and evaluate that format.</div>
+    </div>
+
+    <pre>You are {{persona}}.
+Solve the problem carefully.
+
+Problem:
+{{problem}}
+
+Rules:
+- First write a &lt;thinking&gt; block that breaks the problem into steps.
+- Then write a &lt;final_answer&gt; block with only the answer the user should see.
+- If the evidence is insufficient, say so in &lt;final_answer&gt;.
+
+Required output:
+&lt;thinking&gt;
+...
+&lt;/thinking&gt;
+&lt;final_answer&gt;
+...
+&lt;/final_answer&gt;</pre>
+
+    <pre>from openai import OpenAI
+
+
+client = OpenAI()
+
+
+def run_cot(problem: str) -&gt; str:
+    prompt = f"""You are a careful analyst.
+Solve the problem carefully.
+
+Problem:
+{problem}
+
+Rules:
+- First write a &lt;thinking&gt; block.
+- Then write a &lt;final_answer&gt; block.
+"""
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        temperature=0.2,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""</pre>
+  </section>
+
+  <section id="self-consistency">
+    <h2>Self-Consistency</h2>
+    <p>Self-consistency improves reliability by sampling multiple reasoning paths and selecting the most common final answer. Think of it like asking several analysts to solve the same logic puzzle independently, then trusting the convergent answer more than any single draft.</p>
+
+    <pre>Self-consistency base prompt
+
+Solve the following problem.
+Reason step by step.
+End your response with a single line in this exact format:
+FINAL_ANSWER: {{answer_format}}
+
+Problem:
+{{problem}}</pre>
+
+    <pre>from collections import Counter
+from typing import Iterable
+
+from openai import OpenAI
+
+
+client = OpenAI()
+
+
+def sample_answers(prompt: str, runs: int = 5) -&gt; str:
+    answers: list[str] = []
+
+    for _ in range(runs):
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            temperature=0.7,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.choices[0].message.content or ""
+        final_line = next((line for line in text.splitlines() if line.startswith("FINAL_ANSWER:")), "FINAL_ANSWER: UNKNOWN")
+        answers.append(final_line.replace("FINAL_ANSWER:", "").strip())
+
+    return Counter(answers).most_common(1)[0][0]</pre>
+
+    <ul class="bullet">
+      <li><strong>Best use case:</strong> arithmetic, logic, symbolic reasoning, and rubric-based analysis.</li>
+      <li><strong>Tradeoff:</strong> higher cost and latency because you are deliberately sampling more than once.</li>
+      <li><strong>Bad fit:</strong> deterministic extraction or strict JSON output, where multiple samples usually add noise.</li>
+    </ul>
+  </section>
+
+  <section id="tot">
+    <h2>Tree of Thoughts (ToT) / Step-back Prompting</h2>
+    <p>Tree of Thoughts asks the model to explore multiple candidate paths before committing. Step-back prompting is simpler: first ask the model for the governing principles, then solve the concrete case. This is useful when the task is too entangled for one-pass generation.</p>
+
+    <pre>Step-back template
+
+You are {{persona}}.
+
+Step 1: Abstract the problem.
+What general principles, frameworks, or decision rules apply to this type of problem?
+
+Step 2: Apply those principles.
+Using the principles above, solve the specific case below.
+
+Specific case:
+{{specific_problem}}
+
+Return:
+## General Principles
+## Candidate Approaches
+## Recommended Approach
+## Final Answer</pre>
+
+    <pre>from anthropic import Anthropic
+
+
+client = Anthropic()
+
+
+def run_step_back(prompt: str) -&gt; str:
+    response = client.messages.create(
+        model="claude-3-7-sonnet-latest",
+        max_tokens=900,
+        temperature=0.3,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return "".join(block.text for block in response.content if block.type == "text")</pre>
+
+    <div class="steps-list">
+      <li><strong>Use Tree of Thoughts</strong> when you need deliberate branching, candidate evaluation, and backtracking across possible solutions.</li>
+      <li><strong>Use step-back prompting</strong> when the model is solving the instance too literally and needs a principles-first frame.</li>
+      <li><strong>Use ordinary CoT</strong> when one linear reasoning path is enough and you do not need branch comparison.</li>
+    </div>
+  </section>
+
+  <section id="lost-middle">
+    <h2>Module 4: The "Lost in the Middle" Phenomenon</h2>
+    <p>LLMs often attend less effectively to information buried in the middle of a long prompt. The analogy is a long contract review: readers remember the opening instructions and the closing clause, but the critical sentence buried on page 47 is easier to miss.</p>
+
+    <div class="mode-card amber">
+      <div class="mode-header">
+        <span class="mode-name">Context Ordering Strategy</span>
+        <span class="mode-shortcut">Front-load and restate key evidence</span>
+      </div>
+      <p class="u-muted-small">Put the question up front, place the highest-value retrieved evidence early, and restate the decisive excerpts near the end if the prompt is long.</p>
+    </div>
+
+    <pre>Long-context layout template
+
+Question:
+{{user_question}}
+
+Critical evidence summary:
+{{high_signal_summary}}
+
+Retrieved context blocks:
+{{documents}}
+
+Reminder of decisive facts:
+{{decisive_facts}}
+
+Instructions:
+- Answer only from the provided context.
+- If the answer is not supported, say "Insufficient context".
+- Cite the relevant document ids.</pre>
+
+    <pre>from typing import Sequence
+
+  from openai import OpenAI
+
+
+  client = OpenAI()
+
+
+  def build_long_context_prompt(question: str, high_signal_summary: str, documents: Sequence[str], decisive_facts: str) -&gt; str:
+    ordered_documents = "\n\n".join(documents)
+    return f"""Question:
+  {question}
+
+  Critical evidence summary:
+  {high_signal_summary}
+
+  Retrieved context blocks:
+  {ordered_documents}
+
+  Reminder of decisive facts:
+  {decisive_facts}
+
+  Instructions:
+  - Answer only from the provided context.
+  - If the answer is not supported, say \"Insufficient context\".
+  - Cite the relevant document ids."""
+
+
+  def run_long_context_prompt(question: str, high_signal_summary: str, documents: Sequence[str], decisive_facts: str) -&gt; str:
+    prompt = build_long_context_prompt(question, high_signal_summary, documents, decisive_facts)
+    response = client.chat.completions.create(
+      model="gpt-4.1-mini",
+      temperature=0.1,
+      messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""</pre>
+  </section>
+
+  <section id="rag">
+    <h2>Structuring a RAG Prompt</h2>
+    <p>A RAG prompt should act like a disciplined research assistant: use only the retrieved evidence, cite it, and refuse to over-claim when the evidence is missing. The retrieval system fetches the books; the prompt tells the model how to read them.</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">&#9888;</span>
+      <div class="callout-body"><strong>Do not say “use the context” and stop there.</strong> You need a fallback contract for missing evidence, a citation rule, and a clear instruction to separate supported facts from assumptions.</div>
+    </div>
+
+    <pre>&lt;system&gt;
+You are {{assistant_role}}.
+Answer questions using only the provided documents.
+If the documents do not contain the answer, explicitly say: "I do not have enough context to answer that reliably."
+Do not invent citations.
+&lt;/system&gt;
+
+&lt;user_question&gt;
+{{question}}
+&lt;/user_question&gt;
+
+&lt;documents&gt;
+{{documents}}
+&lt;/documents&gt;
+
+&lt;instructions&gt;
+1. Read the question first.
+2. Identify the smallest set of relevant documents.
+3. Answer only with supported claims.
+4. Cite sources inline as [doc_id].
+5. If evidence is partial, say what is known and what is missing.
+&lt;/instructions&gt;
+
+&lt;output_format&gt;
+## Answer
+## Evidence
+## Gaps
+&lt;/output_format&gt;</pre>
+
+    <pre>from typing import Iterable
+
+from openai import OpenAI
+
+
+client = OpenAI()
+
+
+def format_documents(documents: Iterable[tuple[str, str]]) -&gt; str:
+    return "\n\n".join(
+        f"[doc_id={doc_id}]\n{content}" for doc_id, content in documents
+    )
+
+
+def run_rag(question: str, documents: Iterable[tuple[str, str]]) -&gt; str:
+    prompt = f"""&lt;system&gt;
+You are a grounded QA assistant.
+Answer questions using only the provided documents.
+If the documents do not contain the answer, explicitly say: \"I do not have enough context to answer that reliably.\"
+Do not invent citations.
+&lt;/system&gt;
+
+&lt;user_question&gt;
+{question}
+&lt;/user_question&gt;
+
+&lt;documents&gt;
+{format_documents(documents)}
+&lt;/documents&gt;
+
+&lt;instructions&gt;
+1. Use only supported claims.
+2. Cite sources inline as [doc_id].
+3. Call out missing evidence clearly.
+&lt;/instructions&gt;"""
+
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        temperature=0.1,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""</pre>
+  </section>
+
+  <section id="json-output">
+    <h2>Module 5: Enforcing Output Structures (JSON)</h2>
+    <p>Structured output is where prompt engineering becomes software engineering. If a response feeds a UI, workflow engine, or validator, prose is a liability. JSON is the equivalent of giving the model a tax form instead of a blank page.</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">Prompt-Level Contract</div>
+        <div class="card-body">Tell the model exactly which fields are required, which are optional, and what types they should contain.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">API-Level Enforcement</div>
+        <div class="card-body">Use response-format or schema features when the provider supports them. Prompting alone is weaker than transport-level guarantees.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Validation</div>
+        <div class="card-body">Always validate parsed JSON with application code before trusting it downstream.</div>
+      </div>
+    </div>
+
+    <pre>Strict JSON prompt template
+
+You are {{persona}}.
+Return a valid JSON object only.
+Do not wrap the JSON in markdown fences.
+Do not include commentary before or after the JSON.
+
+Schema:
+{
+  "answer": "string",
+  "confidence": "number from 0 to 1",
+  "citations": ["string"],
+  "needs_human_review": "boolean"
+}
+
+Task:
+{{task}}
+
+Input:
+{{input}}</pre>
+
+    <pre>import json
+  from typing import Any
+
+  from openai import OpenAI
+
+
+  client = OpenAI()
+
+
+  def run_json_prompt(task: str, input_text: str) -&gt; dict[str, Any]:
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        response_format={"type": "json_object"},
+        messages=[
+            {
+                "role": "user",
+                "content": f"""You are a structured extraction assistant.
+Return a valid JSON object only.
+
+Schema:
+{{
+  \"answer\": \"string\",
+  \"confidence\": \"number from 0 to 1\",
+  \"citations\": [\"string\"],
+  \"needs_human_review\": \"boolean\"
+}}
+
+Task:
+{task}
+
+Input:
+{input_text}""",
+            }
+        ],
+    )
+  content = response.choices[0].message.content or "{}"
+  return json.loads(content)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#10003;</span>
+      <div class="callout-body"><strong>Production pattern:</strong> combine prompt instructions, API-level JSON enforcement, and server-side schema validation. Any single layer can fail; all three together are much more robust.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">OpenAI</span> <a href="https://platform.openai.com/docs">OpenAI API documentation</a></li>
+      <li><span class="ll-tag">Anthropic</span> <a href="https://docs.anthropic.com/">Anthropic API documentation</a></li>
+      <li><span class="ll-tag">Prompting</span> <a href="https://www.promptingguide.ai/">Prompt Engineering Guide</a></li>
+      <li><span class="ll-tag">RAG</span> <a href="https://python.langchain.com/docs/concepts/rag/">LangChain RAG concepts</a></li>
+      <li><span class="ll-tag">Structured Output</span> <a href="https://platform.openai.com/docs/guides/structured-outputs">Structured outputs guide</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach(s => s.id && observer.observe(s));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>

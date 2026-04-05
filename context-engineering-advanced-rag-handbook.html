@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Engineering &amp; Advanced RAG Handbook</title>
+<link rel="stylesheet" href="styles/context-engineering-advanced-rag-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Context Engineering</div>
+    <div class="logo-sub">Advanced RAG Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Foundations</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#module-1">Foundations of Context</a>
+    <a class="nav-link" href="#prompt-vs-context">Prompt vs Context</a>
+    <a class="nav-link" href="#embeddings">Embeddings &amp; Vector Space</a>
+    <a class="nav-link" href="#context-window">Context Window</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Chunking</div>
+    <a class="nav-link" href="#module-2">Advanced Chunking</a>
+    <a class="nav-link" href="#naive-chunking">Naive Chunking</a>
+    <a class="nav-link" href="#semantic-chunking">Semantic Chunking</a>
+    <a class="nav-link" href="#parent-child">Parent-Child Retrieval</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Retrieval</div>
+    <a class="nav-link" href="#module-3">Vector DBs &amp; Hybrid Search</a>
+    <a class="nav-link" href="#dense-sparse">Dense vs Sparse</a>
+    <a class="nav-link" href="#hybrid-search">Hybrid Search</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Compression</div>
+    <a class="nav-link" href="#module-4">Re-ranking &amp; Compression</a>
+    <a class="nav-link" href="#retrieval-bottleneck">Retrieval Bottleneck</a>
+    <a class="nav-link" href="#reranking">Cross-Encoders</a>
+    <a class="nav-link" href="#compression">Context Compression</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Structured Context</div>
+    <a class="nav-link" href="#module-5">Graph RAG</a>
+    <a class="nav-link" href="#vector-limits">Limits of Vector RAG</a>
+    <a class="nav-link" href="#knowledge-graphs">Knowledge Graphs</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Evaluation</div>
+    <a class="nav-link" href="#module-6">Evaluation &amp; Optimization</a>
+    <a class="nav-link" href="#rag-triad">RAG Triad</a>
+    <a class="nav-link" href="#evaluation-frameworks">Evaluation Frameworks</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Pitfalls</div>
+    <a class="nav-link" href="#module-7">Common Pitfalls</a>
+    <a class="nav-link" href="#gigo">Garbage In, Garbage Out</a>
+    <a class="nav-link" href="#top-k">Top-K Anti-Pattern</a>
+    <a class="nav-link" href="#metadata">Ignoring Metadata</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Context Engineering &amp; Advanced RAG Handbook</h1>
+    <p class="u-hero-subtle">A systems-focused guide to embeddings, chunking, retrieval, re-ranking, graph-aware context, and evaluation patterns that maximize signal-to-noise ratio inside a finite LLM context window.</p>
+    <div class="hero-meta">
+      <span class="badge badge-cyan">Context Engineering</span>
+      <span class="badge badge-green">Hybrid Search + Re-ranking</span>
+      <span class="badge badge-amber">Graph RAG + Evaluation</span>
+      <span class="badge badge-purple">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">i</span>
+    <div class="callout-body"><strong>Core thesis:</strong> context engineering is not about stuffing more text into an LLM. It is about sending less, but more relevant, context so the model spends tokens on signal instead of noise.</div>
+  </div>
+
+  <section id="module-1">
+    <h2>Module 1: The Foundations of Context</h2>
+    <p>Prompt engineering tells the model how to behave. Context engineering decides what evidence the model sees at runtime. That is the shift. In practical systems, the quality of retrieval, chunking, ranking, and filtering often matters more than the exact phrasing of the instruction prompt.</p>
+  </section>
+
+  <section id="prompt-vs-context">
+    <h2>Prompt vs. Context</h2>
+    <p>A useful analogy is a courtroom. The prompt is the judge's instruction to the jury: follow the rules, use this format, answer this question. The context is the evidence presented during the case. If the evidence is noisy, incomplete, or irrelevant, even a well-worded instruction cannot rescue the answer.</p>
+
+    <div class="flow">
+      <span class="flow-step">Prompt = behavior contract</span>
+      <span class="flow-arrow">-&gt;</span>
+      <span class="flow-step">Context = runtime evidence payload</span>
+      <span class="flow-arrow">-&gt;</span>
+      <span class="flow-step">Answer quality = signal density</span>
+    </div>
+
+    <ul class="bullet">
+      <li><strong>Prompting</strong> defines tone, constraints, output shape, and safety behavior.</li>
+      <li><strong>Context</strong> provides the live documents, records, snippets, or graph facts needed for the task.</li>
+      <li><strong>Context engineering</strong> is the discipline of deciding what to retrieve, what to omit, and how to order it before it touches the model.</li>
+    </ul>
+  </section>
+
+  <section id="embeddings">
+    <h2>Embeddings &amp; Vector Space</h2>
+    <p>An embedding model maps text into a high-dimensional numeric vector such that semantically similar text lands closer together in vector space. The model is not storing dictionary definitions. It is learning a geometry of meaning. That is why “reset my password” and “I can't sign in” can end up near each other even if they share few exact keywords.</p>
+
+    <pre>from __future__ import annotations
+
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+
+def cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
+    numerator = float(np.dot(vec_a, vec_b))
+    denominator = float(np.linalg.norm(vec_a) * np.linalg.norm(vec_b))
+    return numerator / denominator
+
+
+model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+sentences = [
+    "The user cannot log into the dashboard.",
+    "A customer is unable to sign in to the portal.",
+]
+
+embeddings = model.encode(sentences, normalize_embeddings=True)
+similarity = cosine_similarity(embeddings[0], embeddings[1])
+
+print(f"Embedding dimension: {embeddings[0].shape[0]}")
+print(f"Cosine similarity: {similarity:.4f}")</pre>
+
+    <p>The operational consequence is that embeddings let you retrieve based on meaning, not just literal wording. That is powerful, but also lossy. Every embedding compresses information, which is why retrieval quality depends on more than just “store vectors and query top-k.”</p>
+  </section>
+
+  <section id="context-window">
+    <h2>The Context Window</h2>
+    <p>Tokens are the units the model actually processes, not words or characters. A context window is the maximum number of tokens the model can attend to at once. The danger is assuming that if the model can technically accept a long prompt, it will use every part of it equally well. In practice, long prompts suffer from dilution and the “lost in the middle” effect, where evidence buried in the center is easier for the model to ignore.</p>
+
+    <div class="mode-card amber">
+      <div class="mode-header">
+        <span class="mode-name">Signal-to-Noise Rule</span>
+        <span class="mode-shortcut">Less, but sharper, beats more</span>
+      </div>
+      <p class="u-muted-small">A larger context window increases capacity, but it does not eliminate ranking and relevance problems. Good systems still compress, filter, and order context aggressively.</p>
+    </div>
+  </section>
+
+  <section id="module-2">
+    <h2>Module 2: Advanced Chunking Strategies</h2>
+    <p>Chunking is the translation layer between raw documents and retrievable units. Poor chunking destroys coherence before retrieval even starts. Good chunking preserves semantic boundaries so each candidate chunk is small enough to retrieve precisely and rich enough to make sense on its own.</p>
+  </section>
+
+  <section id="naive-chunking">
+    <h2>The Naive Chunking Problem</h2>
+    <p>Fixed-size character chunking is easy, but it often splits tables, code blocks, lists, or sentences in arbitrary places. That is equivalent to tearing pages out of a manual with scissors and hoping retrieval can still reconstruct the meaning. It sometimes works, but it is a weak default for enterprise documents.</p>
+
+    <ul class="bullet">
+      <li><strong>Sentence break damage:</strong> a legal exception or numerical condition can be cut in half.</li>
+      <li><strong>Table break damage:</strong> headers and row values can land in separate chunks.</li>
+      <li><strong>Semantic drift:</strong> the chunk may no longer represent a coherent unit of meaning after splitting.</li>
+    </ul>
+  </section>
+
+  <section id="semantic-chunking">
+    <h2>Semantic Chunking</h2>
+    <p>Semantic chunking uses natural structure such as markdown headers, paragraphs, or sentence groups. In enterprise knowledge bases, this is usually the better starting point because users tend to ask questions about concepts that align with headings and section boundaries.</p>
+
+    <pre>from __future__ import annotations
+
+from langchain.text_splitter import MarkdownHeaderTextSplitter
+
+
+markdown_text = """
+# Incident Response
+
+The incident commander owns communication.
+
+## Severity Levels
+
+Severity 1 incidents require an executive update every 30 minutes.
+
+## Escalation Paths
+
+Security incidents must notify the on-call security engineer immediately.
+"""
+
+headers_to_split_on = [
+    ("#", "h1"),
+    ("##", "h2"),
+]
+
+splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+documents = splitter.split_text(markdown_text)
+
+for doc in documents:
+    # Each chunk retains section-level metadata so retrieval stays interpretable.
+    print(doc.metadata, doc.page_content)</pre>
+
+    <pre>from __future__ import annotations
+
+  from llama_index.core import Document
+  from llama_index.core.node_parser import SentenceSplitter
+
+
+  documents = [
+    Document(
+      text=(
+        "Context engineering starts with coherent segmentation. "
+        "This paragraph explains why semantic boundaries matter. "
+        "The next paragraph explains how chunk overlap preserves continuity. "
+        "The final paragraph explains how retrieval precision improves when chunks stay meaningful."
+      )
+    )
+  ]
+
+  splitter = SentenceSplitter(chunk_size=120, chunk_overlap=20)
+  nodes = splitter.get_nodes_from_documents(documents)
+
+  for node in nodes:
+    print(node.text)</pre>
+  </section>
+
+  <section id="parent-child">
+    <h2>Parent-Child Document Retrieval</h2>
+    <p>Parent-child retrieval solves a common tension: small chunks are better for precise retrieval, but larger chunks are better for answering. The pattern is to index children for retrieval accuracy, then send the larger parent section to the LLM once a child match wins. This improves precision without starving the model of surrounding context.</p>
+
+    <pre>from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass
+class ParentDocument:
+    parent_id: str
+    content: str
+
+
+@dataclass
+class ChildChunk:
+    chunk_id: str
+    parent_id: str
+    content: str
+
+
+parents = {
+    "policy-12": ParentDocument(
+        parent_id="policy-12",
+        content="Full parent section text for the incident response policy...",
+    )
+}
+
+children = [
+    ChildChunk(chunk_id="policy-12-chunk-1", parent_id="policy-12", content="Severity 1 incidents require an executive update every 30 minutes."),
+]
+
+# Retrieve the child chunk in the vector DB, then attach the parent document to the LLM context.
+matched_child = children[0]
+llm_context = parents[matched_child.parent_id].content
+print(llm_context)</pre>
+  </section>
+
+  <section id="module-3">
+    <h2>Module 3: Vector Databases &amp; Hybrid Search</h2>
+    <p>Vector search is powerful for semantic intent, but it is not the whole retrieval stack. Enterprise search often needs both dense semantic signals and sparse lexical signals. Hybrid search exists because users care about meaning and exact terms at the same time.</p>
+  </section>
+
+  <section id="dense-sparse">
+    <h2>Dense vs. Sparse Vectors</h2>
+    <p>Dense vectors come from embedding models and capture semantic similarity. Sparse methods like BM25 or TF-IDF preserve exact keyword evidence. A useful analogy is hiring both a domain expert and a keyword indexer: the expert knows what two phrases mean, while the indexer knows whether the exact compliance code appeared in the document.</p>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Dense Retrieval</div>
+        <div class="card-body">Good for paraphrases, synonyms, and concept-level similarity when the words differ but the intent matches.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Sparse Retrieval</div>
+        <div class="card-body">Good for exact terms, product codes, regulation IDs, function names, and queries where literal presence matters.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="hybrid-search">
+    <h2>Hybrid Search Implementation</h2>
+    <p>Hybrid search combines both signals with a weighting factor, usually called <code>alpha</code>. Lower alpha leans more on keyword match. Higher alpha leans more on semantic similarity. In practice, alpha is a business tuning knob that should be evaluated, not guessed.</p>
+
+    <pre>from __future__ import annotations
+
+from sentence_transformers import SentenceTransformer
+from weaviate import Client
+
+
+client = Client("http://localhost:8080")
+embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+query_text = "What is the retention policy for payroll records?"
+query_vector = embedder.encode(query_text).tolist()
+
+response = (
+    client.query
+    .get("PolicyChunk", ["content", "title", "department"])
+    .with_hybrid(query=query_text, vector=query_vector, alpha=0.65)
+    .with_limit(5)
+    .do()
+)
+
+print(response)</pre>
+  </section>
+
+  <section id="module-4">
+    <h2>Module 4: Re-Ranking &amp; Context Compression</h2>
+    <p>The first retrieval stage is often a broad filter, not the final decision. That is why advanced RAG stacks frequently use a second-stage re-ranker and, when needed, a compression layer before building the final prompt.</p>
+  </section>
+
+  <section id="retrieval-bottleneck">
+    <h2>The Retrieval Bottleneck</h2>
+    <p>Top-k vector retrieval is often inaccurate because embeddings compress many document details into a fixed-length representation. Important distinctions can get blurred. The result is a candidate set that is relevant in a vague sense but still not the best evidence for the user's specific question.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Operational reality:</strong> the model is only as good as the evidence you send. If top-k contains near-misses, the LLM can still hallucinate confidently over the wrong supporting material.</div>
+    </div>
+  </section>
+
+  <section id="reranking">
+    <h2>Cross-Encoders (Re-ranking)</h2>
+    <p>A cross-encoder or API re-ranker reads the query and each candidate document together and scores relevance more precisely than embedding-only retrieval. It is slower, but much sharper. The typical pattern is retrieve 20, re-rank them, and pass the top 3 to the LLM.</p>
+
+    <pre>from __future__ import annotations
+
+import cohere
+
+
+co = cohere.ClientV2(api_key="YOUR_COHERE_API_KEY")
+
+query = "Who approves security exceptions for production access?"
+retrieved_docs = [
+    "Security exceptions must be approved by the CISO and platform owner.",
+    "Vacation policy for full-time employees.",
+    "Production access requires manager approval and audit logging.",
+    # Add the rest of your top-20 retrieved chunks here.
+]
+
+rerank_response = co.rerank(
+    model="rerank-v3.5",
+    query=query,
+    documents=retrieved_docs,
+    top_n=3,
+)
+
+top_documents = [retrieved_docs[result.index] for result in rerank_response.results]
+
+for rank, doc in enumerate(top_documents, start=1):
+    print(rank, doc)</pre>
+
+    <pre>from __future__ import annotations
+
+from sentence_transformers import CrossEncoder
+
+
+cross_encoder = CrossEncoder("BAAI/bge-reranker-base")
+
+query = "Who approves security exceptions for production access?"
+retrieved_docs = [
+    "Security exceptions must be approved by the CISO and platform owner.",
+    "Vacation policy for full-time employees.",
+    "Production access requires manager approval and audit logging.",
+]
+
+pairs = [[query, doc] for doc in retrieved_docs]
+scores = cross_encoder.predict(pairs)
+
+ranked = sorted(zip(retrieved_docs, scores), key=lambda item: item[1], reverse=True)
+top_3 = ranked[:3]
+print(top_3)</pre>
+  </section>
+
+  <section id="compression">
+    <h2>Context Compression</h2>
+    <p>Compression tools such as LLMLingua or summary-based pruning remove low-value tokens before the prompt reaches the LLM. This is helpful when the retrieved context is mostly correct but still too verbose. The goal is not blind truncation. The goal is preserving meaning while deleting filler.</p>
+
+    <ul class="bullet">
+      <li><strong>Use compression after retrieval quality is decent.</strong> Compression cannot rescue irrelevant chunks.</li>
+      <li><strong>Compress for salience, not aesthetics.</strong> Preserve entities, numbers, tables, and qualifiers.</li>
+      <li><strong>Benchmark groundedness after compression.</strong> Smaller prompts are cheaper, but only if the answer quality holds.</li>
+    </ul>
+  </section>
+
+  <section id="module-5">
+    <h2>Module 5: Graph RAG &amp; Structured Context</h2>
+    <p>Standard vector RAG is excellent for local semantic similarity, but it can struggle with exact multi-hop relationship questions. That is where structured context and knowledge graphs become useful.</p>
+  </section>
+
+  <section id="vector-limits">
+    <h2>The Limits of Vector RAG</h2>
+    <p>Vector RAG often fails at multi-hop reasoning because the relevant facts may live in separate documents that are individually retrievable but not obviously connectable by similarity alone. A question like “Who is the CEO of the company that acquired the startup founded by John Doe?” requires relationship traversal, not just nearest-neighbor retrieval.</p>
+  </section>
+
+  <section id="knowledge-graphs">
+    <h2>Knowledge Graphs</h2>
+    <p>Graph RAG represents entities as nodes and relationships as edges. Instead of hoping semantic search retrieves all connected facts, the system can traverse exact relationships. That is powerful for org charts, compliance controls, supply chains, and acquisition histories.</p>
+
+    <pre>from __future__ import annotations
+
+from neo4j import GraphDatabase
+
+
+driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password"))
+
+query = """
+MATCH (founder:Person {name: $founder_name})-[:FOUNDED]->(startup:Company)
+MATCH (acquirer:Company)-[:ACQUIRED]->(startup)
+MATCH (ceo:Person)-[:CEO_OF]->(acquirer)
+RETURN founder.name AS founder, startup.name AS startup, acquirer.name AS acquirer, ceo.name AS ceo
+"""
+
+with driver.session() as session:
+    records = session.run(query, founder_name="John Doe")
+    for record in records:
+        print(record.data())</pre>
+
+    <p>The retrieval pattern changes here: the graph provides exact facts and relationships, while the LLM explains or synthesizes them. That separation is often more reliable than asking vector search to simulate structured reasoning.</p>
+  </section>
+
+  <section id="module-6">
+    <h2>Module 6: Evaluation &amp; Optimization</h2>
+    <p>RAG systems must be evaluated as systems, not just by final answer quality. You need to know whether the retrieved context was relevant, whether the answer was grounded in that context, and whether the answer actually addressed the user's question.</p>
+  </section>
+
+  <section id="rag-triad">
+    <h2>RAG Triad</h2>
+    <p>The three useful evaluation pillars are:</p>
+
+    <div class="card-grid card-grid-3">
+      <div class="card">
+        <div class="card-title">Context Relevance</div>
+        <div class="card-body">Did the system retrieve the right evidence for the question, or mostly near-miss noise?</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Groundedness</div>
+        <div class="card-body">Did the answer stay faithful to the retrieved context, or invent unsupported claims?</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Answer Relevance</div>
+        <div class="card-body">Did the final answer actually resolve the user's question clearly and completely?</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="evaluation-frameworks">
+    <h2>Evaluation Frameworks</h2>
+    <p>Libraries such as Ragas and TruLens formalize RAG evaluation with measurable scores. That matters because retrieval systems are too complex to tune by vibes alone. If you change chunking, ranking, or prompt assembly, you need metrics that show what improved and what regressed.</p>
+
+    <pre>from __future__ import annotations
+
+from datasets import Dataset
+from ragas import evaluate
+from ragas.metrics import answer_relevancy, context_precision, faithfulness
+
+
+evaluation_dataset = Dataset.from_dict(
+    {
+        "question": ["Who approves security exceptions for production access?"],
+        "answer": ["Security exceptions are approved by the CISO and platform owner."],
+        "contexts": [["Security exceptions must be approved by the CISO and platform owner."]],
+        "ground_truth": ["The CISO and platform owner approve security exceptions."],
+    }
+)
+
+results = evaluate(
+    dataset=evaluation_dataset,
+    metrics=[context_precision, faithfulness, answer_relevancy],
+)
+
+print(results)</pre>
+  </section>
+
+  <section id="module-7">
+    <h2>Module 7: Common Pitfalls &amp; Anti-Patterns</h2>
+    <p>Most context engineering failures happen before the prompt reaches the LLM. The model often gets blamed, but the actual issue is usually broken ingestion, bad ranking assumptions, or missing metadata filters.</p>
+  </section>
+
+  <section id="gigo">
+    <h2>1. Garbage In, Garbage Out (GIGO)</h2>
+    <p>If you embed messy PDFs with broken OCR, missing table structure, or merged columns, retrieval quality collapses. The vector database will faithfully store garbage representations of the content. Good retrieval starts with clean ingestion, normalized text, and preserved structure.</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Rule:</strong> do not embed raw enterprise documents blindly. Clean OCR, reconstruct tables, preserve headings, and attach metadata before vectorization.</div>
+    </div>
+  </section>
+
+  <section id="top-k">
+    <h2>2. Blindly Trusting Top-K = 5</h2>
+    <p>Hardcoding a fixed number of retrieved chunks is a classic anti-pattern. Too low, and you miss required evidence. Too high, and you inject noise that hurts groundedness. Retrieval depth should be tuned against the data distribution and often paired with re-ranking.</p>
+
+    <pre>from __future__ import annotations
+
+from typing import Iterable
+
+
+def dynamic_top_k(query_type: str) -> int:
+    # Simple example: broader questions often need more candidates before re-ranking.
+    if query_type == "factoid":
+        return 8
+    if query_type == "policy":
+        return 15
+    return 12
+
+
+print(dynamic_top_k("policy"))</pre>
+  </section>
+
+  <section id="metadata">
+    <h2>3. Ignoring Metadata</h2>
+    <p>Metadata is how you narrow the search space before expensive semantic similarity math. If the user asks for a 2025 HR policy, you should not retrieve engineering documents from 2022 and hope the vector model sorts it out. Metadata filters are high-signal constraints that improve precision cheaply.</p>
+
+    <pre>from __future__ import annotations
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+
+client = QdrantClient(url="http://localhost:6333")
+
+metadata_filter = Filter(
+    must=[
+        FieldCondition(key="department", match=MatchValue(value="HR")),
+        FieldCondition(key="year", match=MatchValue(value=2025)),
+    ]
+)
+
+results = client.search(
+    collection_name="policy_chunks",
+    query_vector=[0.1, 0.2, 0.3],  # Replace with a real embedding vector.
+    query_filter=metadata_filter,
+    limit=10,
+)
+
+print(results)</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">&#10003;</span>
+      <div class="callout-body"><strong>Best practice:</strong> always use the cheapest high-signal filters first, then let dense retrieval and re-ranking work inside that smaller candidate pool.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">LlamaIndex</span> <a href="https://docs.llamaindex.ai/">LlamaIndex documentation</a></li>
+      <li><span class="ll-tag">LangChain</span> <a href="https://python.langchain.com/docs/introduction/">LangChain documentation</a></li>
+      <li><span class="ll-tag">SentenceTransformers</span> <a href="https://www.sbert.net/">SentenceTransformers documentation</a></li>
+      <li><span class="ll-tag">Qdrant</span> <a href="https://qdrant.tech/documentation/">Qdrant documentation</a></li>
+      <li><span class="ll-tag">Weaviate</span> <a href="https://docs.weaviate.io/">Weaviate documentation</a></li>
+      <li><span class="ll-tag">Ragas</span> <a href="https://docs.ragas.io/">Ragas documentation</a></li>
+      <li><span class="ll-tag">Neo4j</span> <a href="https://neo4j.com/docs/">Neo4j documentation</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach(s => s.id && observer.observe(s));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
