@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSSQL — Intermediate to Advanced Developer Handbook</title>
+<link rel="stylesheet" href="styles/mssql-intermediate-to-advanced-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">SQL Server</div>
+    <div class="logo-sub">Intermediate to Advanced Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Advanced Querying</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#joins-set-operators">Joins &amp; Set Operators</a>
+    <a class="nav-link" href="#window-functions">Window Functions</a>
+    <a class="nav-link" href="#ctes">CTEs</a>
+    <a class="nav-link" href="#grouping-pivoting">Grouping &amp; Pivoting</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Programmability</div>
+    <a class="nav-link" href="#procedures-temp">Procedures &amp; Temp Structures</a>
+    <a class="nav-link" href="#udfs">UDFs</a>
+    <a class="nav-link" href="#errors-dynamic-sql">Error Handling &amp; Dynamic SQL</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Microsoft SQL Server: Intermediate to Advanced Developer Handbook</h1>
+    <p class="u-hero-subtle">A SQL Server engineering guide focused on APPLY operators, analytical windowing, recursive CTEs, native pivoting, stored procedures, function design, and safe dynamic SQL.</p>
+    <div class="hero-meta">
+      <span class="badge badge-red">SQL Server 2022+</span>
+      <span class="badge badge-blue">Inventory &amp; Sales</span>
+      <span class="badge badge-green">APPLY · PIVOT</span>
+      <span class="badge badge-purple">Stored Procedures · iTVFs</span>
+      <span class="badge badge-amber">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>Focus:</strong> this handbook assumes the basics are already comfortable. The goal here is to write higher-leverage T-SQL that works with the optimizer instead of against it.</div>
+  </div>
+
+  <section id="joins-set-operators">
+    <h2>Module 1: Advanced Joins &amp; Set Operators</h2>
+    <h3><code>CROSS JOIN</code></h3>
+    <p><strong>A cross join returns every combination.</strong> It is useful when you intentionally want a matrix, such as all warehouses crossed with all shipping priorities.</p>
+
+    <pre>SELECT
+    w.WarehouseName,
+    p.PriorityName
+FROM (VALUES (N'East Hub'), (N'Central Hub'), (N'West Hub')) AS w(WarehouseName)
+CROSS JOIN (VALUES (N'Standard'), (N'Expedited')) AS p(PriorityName)
+ORDER BY w.WarehouseName, p.PriorityName;</pre>
+
+    <h3><code>CROSS APPLY</code> and <code>OUTER APPLY</code></h3>
+    <p><strong>These are SQL Server's lateral join operators.</strong> They let the right side reference columns from the left side. <code>CROSS APPLY</code> keeps only matching results. <code>OUTER APPLY</code> preserves the left row even when the right side returns nothing.</p>
+
+    <pre>CREATE OR ALTER FUNCTION Sales.ufnTopOrderLines (@OrderID INT)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT TOP (3)
+        ol.OrderID,
+        ol.ProductID,
+        ol.LineTotal
+    FROM Sales.OrderLines AS ol
+    WHERE ol.OrderID = @OrderID
+    ORDER BY ol.LineTotal DESC
+);
+GO
+
+SELECT
+    o.OrderID,
+    top_lines.ProductID,
+    top_lines.LineTotal
+FROM Sales.Orders AS o
+CROSS APPLY Sales.ufnTopOrderLines(o.OrderID) AS top_lines;
+GO</pre>
+
+    <pre>SELECT
+    o.OrderID,
+    top_lines.ProductID,
+    top_lines.LineTotal
+FROM Sales.Orders AS o
+OUTER APPLY Sales.ufnTopOrderLines(o.OrderID) AS top_lines;
+GO</pre>
+
+    <h3>Set Operators</h3>
+    <pre>SELECT ProductID
+FROM Inventory.ActiveProducts
+UNION ALL
+SELECT ProductID
+FROM Inventory.FeaturedProducts;</pre>
+
+    <pre>SELECT ProductID
+FROM Inventory.ActiveProducts
+INTERSECT
+SELECT ProductID
+FROM Inventory.FeaturedProducts;</pre>
+
+    <pre>SELECT ProductID
+FROM Inventory.ActiveProducts
+EXCEPT
+SELECT ProductID
+FROM Inventory.DiscontinuedProducts;</pre>
+  </section>
+
+  <section id="window-functions">
+    <h2>Module 2: Window Functions &amp; Ranking</h2>
+    <p><strong><code>OVER (PARTITION BY ... ORDER BY ...)</code> defines how SQL Server slices and orders the analytical window.</strong> It lets you calculate running, ranking, or neighbor-aware values without collapsing the underlying detail rows.</p>
+
+    <h3>Ranking Functions</h3>
+    <pre>SELECT
+    CustomerID,
+    OrderID,
+    TotalAmount,
+    ROW_NUMBER() OVER (PARTITION BY CustomerID ORDER BY TotalAmount DESC) AS RowNumberRank,
+    RANK() OVER (PARTITION BY CustomerID ORDER BY TotalAmount DESC) AS RankValue,
+    DENSE_RANK() OVER (PARTITION BY CustomerID ORDER BY TotalAmount DESC) AS DenseRankValue,
+    NTILE(4) OVER (ORDER BY TotalAmount DESC) AS RevenueQuartile
+FROM Sales.Orders;</pre>
+
+    <p><strong><code>NTILE()</code> buckets rows into groups.</strong> That is useful for quartiles, deciles, or service-tier segmentation.</p>
+
+    <h3>Running Totals</h3>
+    <pre>SELECT
+    OrderDate,
+    TotalAmount,
+    SUM(TotalAmount) OVER (
+        ORDER BY OrderDate
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS RunningRevenue
+FROM Sales.Orders
+WHERE OrderStatus IN (N'Paid', N'Shipped', N'Delivered')
+ORDER BY OrderDate;</pre>
+  </section>
+
+  <section id="ctes">
+    <h2>Module 3: Common Table Expressions (CTEs)</h2>
+    <h3>Standard CTE</h3>
+    <p><strong>In SQL Server, CTEs are not materialized by default.</strong> They are mainly a readability feature, not a caching layer. Use them to structure logic cleanly, not as a performance promise.</p>
+
+    <pre>WITH HighValueOrders AS (
+    SELECT
+        CustomerID,
+        OrderID,
+        TotalAmount,
+        OrderDate
+    FROM Sales.Orders
+    WHERE TotalAmount &gt;= 1000.00
+)
+SELECT
+    CustomerID,
+    COUNT(*) AS HighValueOrderCount,
+    SUM(TotalAmount) AS HighValueRevenue
+FROM HighValueOrders
+GROUP BY CustomerID
+ORDER BY HighValueRevenue DESC;</pre>
+
+    <h3>Recursive CTE</h3>
+    <p><strong>Recursive CTEs walk hierarchies using an anchor member plus a recursive member joined with <code>UNION ALL</code>.</strong></p>
+
+    <pre>WITH EmployeeHierarchy AS (
+    SELECT
+        EmployeeID,
+        ManagerID,
+        EmployeeName,
+        0 AS HierarchyDepth,
+        CAST(EmployeeName AS NVARCHAR(MAX)) AS ReportingPath
+    FROM HR.Employees
+    WHERE ManagerID IS NULL
+
+    UNION ALL
+
+    SELECT
+        e.EmployeeID,
+        e.ManagerID,
+        e.EmployeeName,
+        eh.HierarchyDepth + 1 AS HierarchyDepth,
+        CAST(eh.ReportingPath + N' -> ' + e.EmployeeName AS NVARCHAR(MAX)) AS ReportingPath
+    FROM HR.Employees AS e
+    INNER JOIN EmployeeHierarchy AS eh
+        ON e.ManagerID = eh.EmployeeID
+)
+SELECT EmployeeID, ManagerID, EmployeeName, HierarchyDepth, ReportingPath
+FROM EmployeeHierarchy
+ORDER BY ReportingPath;
+OPTION (MAXRECURSION 100);</pre>
+  </section>
+
+  <section id="grouping-pivoting">
+    <h2>Module 4: Advanced Grouping &amp; Pivoting</h2>
+    <h3><code>ROLLUP</code> and <code>CUBE</code></h3>
+    <pre>SELECT
+    RegionName,
+    ProductCategory,
+    SUM(LineTotal) AS Revenue
+FROM Sales.FactSales
+GROUP BY ROLLUP (RegionName, ProductCategory)
+ORDER BY RegionName, ProductCategory;</pre>
+
+    <pre>SELECT
+    RegionName,
+    SalesChannel,
+    SUM(LineTotal) AS Revenue
+FROM Sales.FactSales
+GROUP BY CUBE (RegionName, SalesChannel)
+ORDER BY RegionName, SalesChannel;</pre>
+
+    <h3>The Native <code>PIVOT</code> Operator</h3>
+    <p><strong><code>PIVOT</code> rotates row values into columns.</strong> This is useful for cross-tab style reporting such as monthly revenue by month name.</p>
+
+    <pre>SELECT
+    SalesYear,
+    ISNULL([Jan], 0.00) AS Jan,
+    ISNULL([Feb], 0.00) AS Feb,
+    ISNULL([Mar], 0.00) AS Mar,
+    ISNULL([Apr], 0.00) AS Apr
+FROM
+(
+    SELECT
+        YEAR(OrderDate) AS SalesYear,
+        LEFT(DATENAME(MONTH, OrderDate), 3) AS SalesMonth,
+        TotalAmount
+    FROM Sales.Orders
+    WHERE YEAR(OrderDate) = 2026
+) AS source_data
+PIVOT
+(
+    SUM(TotalAmount)
+    FOR SalesMonth IN ([Jan], [Feb], [Mar], [Apr])
+) AS pivot_result
+ORDER BY SalesYear;</pre>
+
+    <h3><code>UNPIVOT</code></h3>
+    <p><strong><code>UNPIVOT</code> turns columns back into rows.</strong> It is useful when denormalized spreadsheets or staging tables need to be normalized before processing.</p>
+
+    <pre>SELECT SalesYear, SalesMonth, Revenue
+FROM
+(
+    SELECT 2026 AS SalesYear, 12000.00 AS Jan, 14100.00 AS Feb, 13850.00 AS Mar, 15040.00 AS Apr
+) AS monthly_summary
+UNPIVOT
+(
+    Revenue FOR SalesMonth IN (Jan, Feb, Mar, Apr)
+) AS unpivot_result;</pre>
+  </section>
+
+  <section id="procedures-temp">
+    <h2>Module 5: Stored Procedures &amp; Temporary Structures</h2>
+    <p><strong>Stored procedures are the workhorses of operational T-SQL.</strong> They package write-heavy or multi-step logic with parameters, transactions, and predictable behavior.</p>
+
+    <pre>CREATE OR ALTER PROCEDURE Sales.usp_ProcessOrderBatch
+    @BatchDate DATE,
+    @MinimumOrderTotal DECIMAL(12, 2) = 100.00,
+    @CreatedBy NVARCHAR(100) = N'system'
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    CREATE TABLE #EligibleOrders (
+        OrderID INT NOT NULL PRIMARY KEY,
+        CustomerID INT NOT NULL,
+        TotalAmount DECIMAL(12, 2) NOT NULL
+    );
+
+    INSERT INTO #EligibleOrders (OrderID, CustomerID, TotalAmount)
+    SELECT
+        o.OrderID,
+        o.CustomerID,
+        o.TotalAmount
+    FROM Sales.Orders AS o
+    WHERE CAST(o.OrderDate AS DATE) = @BatchDate
+      AND o.TotalAmount &gt;= @MinimumOrderTotal;
+
+    CREATE INDEX IX_EligibleOrders_CustomerID
+        ON #EligibleOrders (CustomerID);
+
+    UPDATE o
+    SET o.OrderStatus = N'ReadyForFulfillment',
+        o.ModifiedBy = @CreatedBy,
+        o.ModifiedAt = SYSUTCDATETIME()
+    FROM Sales.Orders AS o
+    INNER JOIN #EligibleOrders AS e
+        ON e.OrderID = o.OrderID;
+END;
+GO</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Use <code>#TempTables</code> when the intermediate result is large, reused multiple times, or benefits from indexes.</strong> Use <code>@TableVar</code> for small row counts where simplicity matters more than optimizer richness.</div>
+    </div>
+  </section>
+
+  <section id="udfs">
+    <h2>Module 6: User-Defined Functions (UDFs)</h2>
+    <h3>Scalar UDF</h3>
+    <p><strong>Scalar UDFs are easy to write but can hurt performance.</strong> Historically they often executed row by row and blocked optimization. Use them sparingly, especially inside large set-based queries.</p>
+
+    <pre>CREATE OR ALTER FUNCTION Sales.ufnFormatOrderCode (@OrderID INT)
+RETURNS NVARCHAR(30)
+AS
+BEGIN
+    RETURN N'ORD-' + RIGHT(N'000000' + CAST(@OrderID AS NVARCHAR(12)), 6);
+END;
+GO</pre>
+
+    <h3>Inline Table-Valued Function (iTVF)</h3>
+    <p><strong>iTVFs are the preferred high-performance function pattern in SQL Server.</strong> Because they are essentially parameterized views, the optimizer can reason about them much better than many scalar functions or multi-statement TVFs.</p>
+
+    <pre>CREATE OR ALTER FUNCTION Sales.ufnOrdersByCustomer (@CustomerID INT)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT
+        o.OrderID,
+        o.OrderDate,
+        o.OrderStatus,
+        o.TotalAmount
+    FROM Sales.Orders AS o
+    WHERE o.CustomerID = @CustomerID
+);
+GO
+
+SELECT *
+FROM Sales.ufnOrdersByCustomer(42);
+GO</pre>
+  </section>
+
+  <section id="errors-dynamic-sql">
+    <h2>Module 7: Bonus - Error Handling &amp; Dynamic SQL</h2>
+    <h3><code>TRY...CATCH</code> in Stored Procedures</h3>
+    <pre>BEGIN TRY
+    BEGIN TRANSACTION;
+
+    EXEC Sales.usp_ProcessOrderBatch
+        @BatchDate = '2026-04-01',
+        @MinimumOrderTotal = 250.00,
+        @CreatedBy = N'batch-runner';
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT &gt; 0
+    BEGIN
+        ROLLBACK TRANSACTION;
+    END;
+
+    THROW;
+END CATCH;</pre>
+
+    <h3>Safe Dynamic SQL with <code>sp_executesql</code></h3>
+    <p><strong>Dynamic SQL is sometimes necessary for flexible filtering, dynamic pivots, or metadata-driven admin scripts.</strong> The safe pattern is parameterized execution with <code>sp_executesql</code>, not string-concatenating user input directly into the query.</p>
+
+    <pre>DECLARE @Sql NVARCHAR(MAX);
+DECLARE @Status NVARCHAR(50);
+
+SET @Sql = N'
+    SELECT OrderID, CustomerID, OrderStatus, TotalAmount
+    FROM Sales.Orders
+    WHERE OrderStatus = @OrderStatus;';
+
+SET @Status = N'Paid';
+
+EXEC sp_executesql
+    @Sql,
+    N'@OrderStatus NVARCHAR(50)',
+    @OrderStatus = @Status;</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Security rule:</strong> never build a predicate like <code>... WHERE OrderStatus = ''' + @UserInput + '''</code>. Parameterization is what prevents SQL injection here.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">Docs</span> <a href="https://learn.microsoft.com/sql/t-sql/queries/from-transact-sql">FROM clause, joins, APPLY, and PIVOT</a></li>
+      <li><span class="ll-tag">Window</span> <a href="https://learn.microsoft.com/sql/t-sql/queries/select-over-clause-transact-sql">OVER clause reference</a></li>
+      <li><span class="ll-tag">CTE</span> <a href="https://learn.microsoft.com/sql/t-sql/queries/with-common-table-expression-transact-sql">CTE reference</a></li>
+      <li><span class="ll-tag">Dynamic SQL</span> <a href="https://learn.microsoft.com/sql/relational-databases/system-stored-procedures/sp-executesql-transact-sql">sp_executesql</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach((section) => section.id && observer.observe(section));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>

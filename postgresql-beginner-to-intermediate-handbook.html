@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostgreSQL — Beginner to Intermediate Handbook</title>
+<link rel="stylesheet" href="styles/postgresql-beginner-to-intermediate-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">PostgreSQL</div>
+    <div class="logo-sub">Beginner to Intermediate Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Foundations</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#hierarchy-basics">Hierarchy &amp; Basics</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Querying</div>
+    <a class="nav-link" href="#filtering-aggregation">Filtering &amp; Aggregation</a>
+    <a class="nav-link" href="#joins">Joins</a>
+    <a class="nav-link" href="#temp-views">Temp Tables &amp; Views</a>
+    <a class="nav-link" href="#cte-window">CTEs &amp; Window Functions</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Operations</div>
+    <a class="nav-link" href="#performance">Performance &amp; Maintenance</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>PostgreSQL: Beginner to Intermediate Handbook</h1>
+    <p class="u-hero-subtle">A production-oriented guide to PostgreSQL fundamentals, relational querying, reusable database objects, and the first layer of performance tuning for application engineers.</p>
+    <div class="hero-meta">
+      <span class="badge badge-red">PostgreSQL 16+</span>
+      <span class="badge badge-blue">E-commerce Schema</span>
+      <span class="badge badge-green">CRUD · Joins · CTEs</span>
+      <span class="badge badge-amber">Indexes · EXPLAIN ANALYZE</span>
+      <span class="badge badge-purple">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>Theme for every example:</strong> the handbook uses an e-commerce schema with <code>users</code>, <code>orders</code>, and <code>order_items</code> so each concept builds on the same mental model instead of resetting the context in every module.</div>
+  </div>
+
+  <section id="hierarchy-basics">
+    <h2>Module 1: The PostgreSQL Hierarchy &amp; Basics</h2>
+    <p><strong>Think in layers.</strong> A PostgreSQL cluster is the outer machine-level container. Inside it you create databases. Inside a database you use schemas to divide responsibility, and inside schemas you store tables, views, indexes, functions, and other objects. The hierarchy is <code>Cluster -&gt; Database -&gt; Schema -&gt; Table</code>.</p>
+    <p><strong>Schemas are organizational boundaries.</strong> The default <code>public</code> schema is convenient for prototypes, but production systems usually split objects into focused namespaces like <code>sales</code>, <code>hr</code>, or <code>reporting</code>. That makes permissions cleaner, reduces naming collisions, and helps teams reason about ownership. It is similar to putting finance, HR, and operations documents into separate cabinets instead of one shared drawer.</p>
+
+    <div class="flow">
+      <span class="flow-step">Cluster</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Database</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Schema</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Table</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Level</th><th>What it contains</th><th>E-commerce example</th></tr>
+        <tr><td><strong>Cluster</strong></td><td>One PostgreSQL server instance with system-wide configuration and multiple databases</td><td>Company database server</td></tr>
+        <tr><td><strong>Database</strong></td><td>A logical application container with its own catalogs and objects</td><td><code>commerce_app</code></td></tr>
+        <tr><td><strong>Schema</strong></td><td>A namespace inside the database</td><td><code>public</code>, <code>sales</code>, <code>reporting</code></td></tr>
+        <tr><td><strong>Table</strong></td><td>Actual row storage</td><td><code>sales.users</code>, <code>sales.orders</code></td></tr>
+      </table>
+    </div>
+
+    <pre>CREATE SCHEMA IF NOT EXISTS sales;
+CREATE SCHEMA IF NOT EXISTS reporting;
+
+CREATE TABLE sales.users (
+    user_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    full_name VARCHAR(150) NOT NULL,
+    loyalty_points INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);</pre>
+
+    <p><strong>Table design should make invalid states hard to insert.</strong> The table above uses a primary key, non-null columns for required fields, a unique email address, and timestamp defaults so application code does not need to keep recreating the same guardrails.</p>
+
+    <h3>Basic CRUD</h3>
+    <p><strong>Create</strong> uses <code>INSERT</code>. PostgreSQL's <code>RETURNING</code> clause is especially useful because it immediately returns generated values such as a new identity column. That removes the need for a follow-up query.</p>
+
+    <pre>INSERT INTO sales.users (email, full_name, loyalty_points)
+VALUES ('ava.chen@example.com', 'Ava Chen', 150)
+RETURNING user_id;</pre>
+
+    <p><strong>Read</strong> uses <code>SELECT</code>. Start simple and make the filter explicit.</p>
+
+    <pre>SELECT user_id, email, full_name, loyalty_points, is_active, created_at
+FROM sales.users
+WHERE is_active = TRUE
+ORDER BY created_at DESC;</pre>
+
+    <p><strong>Update</strong> should target the narrowest possible set of rows. Add a <code>WHERE</code> clause unless you intentionally mean to update everything.</p>
+
+    <pre>UPDATE sales.users
+SET loyalty_points = loyalty_points + 25,
+    updated_at = NOW()
+WHERE user_id = 1;</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Practical note:</strong> if you want to use the <code>updated_at</code> column shown in update examples, define it up front in your production table. A revised version is below so the schema stays internally consistent.</div>
+    </div>
+
+    <pre>DROP TABLE IF EXISTS sales.users;
+
+CREATE TABLE sales.users (
+    user_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    full_name VARCHAR(150) NOT NULL,
+    loyalty_points INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);</pre>
+
+    <p><strong>Delete</strong> removes data permanently. In production systems you often prefer soft deletes, but the basic syntax is still important.</p>
+
+    <pre>DELETE FROM sales.users
+WHERE user_id = 1;</pre>
+  </section>
+
+  <section id="filtering-aggregation">
+    <h2>Module 2: Filtering &amp; Aggregation</h2>
+    <p><strong>Filtering narrows the working set.</strong> The <code>WHERE</code> clause is the database equivalent of giving a warehouse picker a very specific list instead of asking them to inspect every shelf. The more precise the filter, the less work the database has to do.</p>
+
+    <pre>CREATE TABLE sales.orders (
+    order_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES sales.users(user_id),
+    order_status VARCHAR(30) NOT NULL,
+    total_amount NUMERIC(12, 2) NOT NULL,
+    order_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);</pre>
+
+    <h3>Filtering Patterns</h3>
+    <pre>SELECT order_id, user_id, order_status, total_amount, order_date
+FROM sales.orders
+WHERE order_status = 'paid';</pre>
+
+    <pre>SELECT order_id, user_id, order_status
+FROM sales.orders
+WHERE order_status IN ('paid', 'shipped', 'delivered');</pre>
+
+    <pre>SELECT order_id, total_amount, order_date
+FROM sales.orders
+WHERE order_date BETWEEN DATE '2026-01-01' AND DATE '2026-03-31';</pre>
+
+    <pre>SELECT user_id, email, full_name
+FROM sales.users
+WHERE full_name ILIKE '%chen%';</pre>
+
+    <p><strong><code>ILIKE</code> is PostgreSQL-specific and case-insensitive.</strong> Use it when a user-facing search should match <code>Chen</code>, <code>chen</code>, or <code>CHEN</code> without forcing you to call <code>LOWER()</code> on both sides of the comparison.</p>
+
+    <h3>Aggregation with <code>GROUP BY</code> and <code>HAVING</code></h3>
+    <p><strong><code>GROUP BY</code> collapses rows into summaries.</strong> If raw order rows are receipts, aggregation is the month-end rollup. <code>HAVING</code> filters those grouped results after the aggregation has been calculated.</p>
+
+    <pre>SELECT
+    o.user_id,
+    u.full_name,
+    COUNT(*) AS purchase_count,
+    SUM(o.total_amount) AS total_sales_amount
+FROM sales.orders AS o
+INNER JOIN sales.users AS u
+    ON u.user_id = o.user_id
+WHERE o.order_status IN ('paid', 'shipped', 'delivered')
+GROUP BY o.user_id, u.full_name
+HAVING COUNT(*) &gt; 5
+ORDER BY total_sales_amount DESC;</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Rule of thumb:</strong> use <code>WHERE</code> for row-level filters before grouping, and <code>HAVING</code> for group-level filters after grouping.</div>
+    </div>
+  </section>
+
+  <section id="joins">
+    <h2>Module 3: The Power of Joins</h2>
+    <p><strong>Primary keys uniquely identify a row.</strong> <strong>Foreign keys</strong> point from one table to another and enforce that the relationship actually exists. In an e-commerce system, <code>sales.users.user_id</code> is a primary key, and <code>sales.orders.user_id</code> is a foreign key that says every order must belong to a real user.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Concept</th><th>Purpose</th><th>Example</th></tr>
+        <tr><td><strong>Primary Key</strong></td><td>Uniquely identifies a row in its own table</td><td><code>sales.users.user_id</code></td></tr>
+        <tr><td><strong>Foreign Key</strong></td><td>Links one table to another and enforces referential integrity</td><td><code>sales.orders.user_id REFERENCES sales.users(user_id)</code></td></tr>
+      </table>
+    </div>
+
+    <h3><code>INNER JOIN</code>: The strict intersection</h3>
+    <p>Only rows with matching keys on both sides survive. If a user has never placed an order, that user disappears from the result.</p>
+    <pre>SELECT
+    u.user_id,
+    u.full_name,
+    o.order_id,
+    o.total_amount
+FROM sales.users AS u
+INNER JOIN sales.orders AS o
+    ON o.user_id = u.user_id
+ORDER BY o.order_date DESC;</pre>
+
+    <h3><code>LEFT JOIN</code>: Keep everything on the left</h3>
+    <p>The left table is preserved even when the right side has no match. This is one of the most useful join types for reporting because missing related data becomes visible instead of disappearing.</p>
+    <pre>SELECT
+    u.user_id,
+    u.full_name,
+    o.order_id,
+    o.order_status
+FROM sales.users AS u
+LEFT JOIN sales.orders AS o
+    ON o.user_id = u.user_id
+ORDER BY u.user_id;</pre>
+
+    <h3><code>FULL OUTER JOIN</code>: Keep everything from both sides</h3>
+    <p>This returns matched rows plus non-matching rows from either table. It is useful when reconciling two systems and you want to find records present on only one side.</p>
+    <pre>SELECT
+    u.user_id,
+    u.full_name,
+    o.order_id,
+    o.order_status
+FROM sales.users AS u
+FULL OUTER JOIN sales.orders AS o
+    ON o.user_id = u.user_id
+ORDER BY u.user_id NULLS LAST, o.order_id NULLS LAST;</pre>
+
+    <h3>Find Users Who Have Never Placed an Order</h3>
+    <p>This is a classic anti-join pattern. Start with all users, left join orders, and keep only the rows where the order side is missing.</p>
+    <pre>SELECT
+    u.user_id,
+    u.email,
+    u.full_name,
+    u.created_at
+FROM sales.users AS u
+LEFT JOIN sales.orders AS o
+    ON o.user_id = u.user_id
+WHERE o.order_id IS NULL
+ORDER BY u.created_at DESC;</pre>
+  </section>
+
+  <section id="temp-views">
+    <h2>Module 4: Temporary Structures &amp; Views</h2>
+    <h3>Temporary Tables</h3>
+    <p><strong><code>CREATE TEMP TABLE</code> creates session-scoped storage.</strong> A temp table behaves like a regular table for the current connection, but PostgreSQL drops it automatically when the session ends. It is useful for breaking a large transformation into steps without polluting the permanent schema.</p>
+
+    <pre>CREATE TEMP TABLE recent_high_value_orders AS
+SELECT order_id, user_id, total_amount, order_date
+FROM sales.orders
+WHERE order_date &gt;= NOW() - INTERVAL '30 days'
+  AND total_amount &gt;= 500.00;
+
+SELECT *
+FROM recent_high_value_orders
+ORDER BY order_date DESC;</pre>
+
+    <h3>Standard Views</h3>
+    <p><strong>A view is a saved query.</strong> It does not store the result itself. Instead, PostgreSQL runs the underlying query when you query the view. Views are useful when backend applications need a stable, readable interface over a more complex join.</p>
+
+    <pre>CREATE OR REPLACE VIEW reporting.user_order_summary AS
+SELECT
+    u.user_id,
+    u.full_name,
+    u.email,
+    COUNT(o.order_id) AS total_orders,
+    COALESCE(SUM(o.total_amount), 0.00) AS total_spent,
+    MAX(o.order_date) AS last_order_date
+FROM sales.users AS u
+LEFT JOIN sales.orders AS o
+    ON o.user_id = u.user_id
+GROUP BY u.user_id, u.full_name, u.email;</pre>
+
+    <pre>SELECT *
+FROM reporting.user_order_summary
+WHERE total_spent &gt;= 1000.00
+ORDER BY total_spent DESC;</pre>
+
+    <h3>Materialized Views</h3>
+    <p><strong>A materialized view stores data on disk.</strong> That makes reads faster for expensive reporting queries, but the result can become stale. You refresh it explicitly when you want current data. A normal view is like reading a live dashboard. A materialized view is like reading yesterday's generated report.</p>
+
+    <pre>CREATE MATERIALIZED VIEW reporting.daily_sales_totals AS
+SELECT
+    DATE(order_date) AS sales_day,
+    COUNT(*) AS order_count,
+    SUM(total_amount) AS gross_revenue
+FROM sales.orders
+WHERE order_status IN ('paid', 'shipped', 'delivered')
+GROUP BY DATE(order_date);
+
+REFRESH MATERIALIZED VIEW reporting.daily_sales_totals;</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Operational trade-off:</strong> materialized views speed up reads by shifting work into refresh time. That is often a good trade when dashboards are queried constantly but raw data changes in controlled batches.</div>
+    </div>
+  </section>
+
+  <section id="cte-window">
+    <h2>Module 5: Intermediate Querying (CTEs &amp; Window Functions)</h2>
+    <h3>Common Table Expressions</h3>
+    <p><strong>The <code>WITH</code> clause improves readability.</strong> A CTE lets you name intermediate results instead of burying logic inside nested subqueries. It reads more like a step-by-step plan, which matters when a query becomes part of production reporting or an analytics pipeline.</p>
+
+    <pre>WITH order_totals AS (
+    SELECT
+        user_id,
+        AVG(total_amount) AS average_order_value
+    FROM sales.orders
+    WHERE order_status IN ('paid', 'shipped', 'delivered')
+    GROUP BY user_id
+)
+SELECT
+    u.user_id,
+    u.full_name,
+    ot.average_order_value
+FROM order_totals AS ot
+INNER JOIN sales.users AS u
+    ON u.user_id = ot.user_id
+WHERE ot.average_order_value &gt; 150.00
+ORDER BY ot.average_order_value DESC;</pre>
+
+    <h3>Window Functions</h3>
+    <p><strong>Window functions calculate across related rows without collapsing them.</strong> That is the critical difference from <code>GROUP BY</code>. If <code>GROUP BY</code> turns many rows into one summary row, a window function leaves the detail rows intact and attaches the calculation beside each one.</p>
+
+    <div class="mode-card blue">
+      <div class="mode-header">
+        <span class="mode-name">Why window functions matter</span>
+        <span class="mode-shortcut">INTERMEDIATE</span>
+      </div>
+      <p class="u-muted-small">They solve ranking, running totals, gaps between events, and “latest row per group” queries cleanly without self-joins or procedural loops.</p>
+    </div>
+
+    <pre>SELECT
+    user_id,
+    order_id,
+    order_date,
+    total_amount,
+    ROW_NUMBER() OVER (
+        PARTITION BY user_id
+        ORDER BY order_date DESC
+    ) AS order_rank
+FROM sales.orders;</pre>
+
+    <p>To find the most recent order for every user, wrap the ranking logic and keep only rank 1.</p>
+
+    <pre>WITH ranked_orders AS (
+    SELECT
+        user_id,
+        order_id,
+        order_date,
+        total_amount,
+        ROW_NUMBER() OVER (
+            PARTITION BY user_id
+            ORDER BY order_date DESC
+        ) AS order_rank
+    FROM sales.orders
+)
+SELECT
+    user_id,
+    order_id,
+    order_date,
+    total_amount
+FROM ranked_orders
+WHERE order_rank = 1
+ORDER BY order_date DESC;</pre>
+  </section>
+
+  <section id="performance">
+    <h2>Module 6: Performance &amp; Maintenance Basics</h2>
+    <h3>Indexes</h3>
+    <p><strong>A B-Tree index is like a phonebook.</strong> Instead of scanning every person in a city to find one surname, you jump into a sorted structure that gets you close immediately and then narrow from there. PostgreSQL uses B-Tree indexes by default, and they are a good fit for equality and range filters on frequently searched columns.</p>
+
+    <pre>CREATE INDEX idx_users_email
+ON sales.users (email);</pre>
+
+    <p>That index is valuable if the application often looks up users by email during login, checkout, or account management workflows.</p>
+
+    <h3>Query Analysis with <code>EXPLAIN ANALYZE</code></h3>
+    <p><strong><code>EXPLAIN ANALYZE</code> shows the actual execution plan and timing.</strong> Use it to confirm whether PostgreSQL is scanning the whole table with a <code>Seq Scan</code> or using an index with an <code>Index Scan</code> or <code>Bitmap Index Scan</code>. For small tables a sequential scan can be fine. For large ones it often becomes the first sign of missing indexing.</p>
+
+    <pre>EXPLAIN ANALYZE
+SELECT user_id, email, full_name
+FROM sales.users
+WHERE email = 'ava.chen@example.com';</pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Plan shape</th><th>Typical meaning</th><th>What to ask</th></tr>
+        <tr><td><strong>Seq Scan</strong></td><td>PostgreSQL is reading rows in table order</td><td>Is the table small, or is an index missing?</td></tr>
+        <tr><td><strong>Index Scan</strong></td><td>PostgreSQL is navigating through an index</td><td>Is the predicate selective enough to benefit from the index?</td></tr>
+        <tr><td><strong>Bitmap Index Scan</strong></td><td>PostgreSQL uses an index, then fetches many matching heap pages efficiently</td><td>Is the query matching a moderate chunk of the table?</td></tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Performance habit:</strong> do not add indexes blindly. First identify slow queries, inspect the plan, then add the smallest useful index that matches the real access pattern.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">Docs</span> <a href="https://www.postgresql.org/docs/">PostgreSQL official documentation</a></li>
+      <li><span class="ll-tag">SQL</span> <a href="https://www.postgresql.org/docs/current/sql.html">PostgreSQL SQL command reference</a></li>
+      <li><span class="ll-tag">Explain</span> <a href="https://www.postgresql.org/docs/current/using-explain.html">Using EXPLAIN</a></li>
+      <li><span class="ll-tag">Tutorial</span> <a href="https://www.postgresql.org/docs/current/tutorial.html">PostgreSQL tutorial</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach((section) => section.id && observer.observe(section));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
