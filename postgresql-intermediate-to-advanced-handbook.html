@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostgreSQL — Intermediate to Advanced Developer Handbook</title>
+<link rel="stylesheet" href="styles/postgresql-intermediate-to-advanced-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">PostgreSQL</div>
+    <div class="logo-sub">Intermediate to Advanced Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Advanced Querying</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#joins-set-operators">Joins &amp; Set Operators</a>
+    <a class="nav-link" href="#window-ranking">Window Functions &amp; Ranking</a>
+    <a class="nav-link" href="#ctes">CTEs</a>
+    <a class="nav-link" href="#grouping-pivoting">Grouping &amp; Pivoting</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Programmability</div>
+    <a class="nav-link" href="#procedures-temp">Procedures &amp; Temp Tables</a>
+    <a class="nav-link" href="#udfs">User-Defined Functions</a>
+    <a class="nav-link" href="#jsonb">JSONB</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>PostgreSQL: Intermediate to Advanced Developer Handbook</h1>
+    <p class="u-hero-subtle">Production-focused PostgreSQL patterns for engineers moving beyond CRUD into advanced joins, ranking, recursive queries, stored procedures, PL/pgSQL functions, and JSONB-heavy workloads.</p>
+    <div class="hero-meta">
+      <span class="badge badge-red">PostgreSQL 16+</span>
+      <span class="badge badge-blue">Advanced SQL</span>
+      <span class="badge badge-green">Window Functions</span>
+      <span class="badge badge-purple">PL/pgSQL · JSONB</span>
+      <span class="badge badge-amber">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>Schema theme:</strong> the examples keep using an e-commerce platform, but at this level the focus is operational reporting, hierarchical data, programmable database logic, and semi-structured payloads.</div>
+  </div>
+
+  <section id="joins-set-operators">
+    <h2>Module 1: Advanced Joins &amp; Set Operators</h2>
+    <h3><code>CROSS JOIN</code></h3>
+    <p><strong>A cross join produces every combination.</strong> It is the Cartesian product of two sets. That sounds dangerous, and it can be, but it is useful when you intentionally want all combinations, such as generating a price grid across regions and shipping tiers.</p>
+
+    <pre>SELECT
+    region.region_name,
+    tier.tier_name
+FROM (VALUES ('North America'), ('Europe'), ('APAC')) AS region(region_name)
+CROSS JOIN (VALUES ('Standard'), ('Express')) AS tier(tier_name)
+ORDER BY region.region_name, tier.tier_name;</pre>
+
+    <h3><code>LATERAL</code></h3>
+    <p><strong><code>LATERAL</code> behaves like a for-each loop in SQL.</strong> For each row from the left side, PostgreSQL runs the lateral subquery using values from that row. It is perfect when you need the top related row, a derived slice, or a parameterized subquery without writing procedural code.</p>
+
+    <pre>SELECT
+    u.user_id,
+    u.full_name,
+    latest_order.order_id,
+    latest_order.order_date,
+    latest_order.total_amount
+FROM sales.users AS u
+LEFT JOIN LATERAL (
+    SELECT o.order_id, o.order_date, o.total_amount
+    FROM sales.orders AS o
+    WHERE o.user_id = u.user_id
+    ORDER BY o.order_date DESC
+    LIMIT 1
+) AS latest_order
+    ON TRUE
+ORDER BY u.user_id;</pre>
+
+    <h3>Set Operators</h3>
+    <p><strong>Set operators combine result sets.</strong> Use them when the question is about relationships between result groups instead of row-by-row joins.</p>
+
+    <pre>SELECT email
+FROM sales.marketing_subscribers
+UNION
+SELECT email
+FROM sales.users;</pre>
+
+    <p><strong><code>UNION</code> removes duplicates.</strong> That extra deduplication costs work. If duplicates are acceptable or desirable, <code>UNION ALL</code> is faster because PostgreSQL can concatenate results directly.</p>
+
+    <pre>SELECT email
+FROM sales.marketing_subscribers
+UNION ALL
+SELECT email
+FROM sales.users;</pre>
+
+    <pre>SELECT email
+FROM sales.marketing_subscribers
+INTERSECT
+SELECT email
+FROM sales.users;</pre>
+
+    <pre>SELECT email
+FROM sales.marketing_subscribers
+EXCEPT
+SELECT email
+FROM sales.users;</pre>
+  </section>
+
+  <section id="window-ranking">
+    <h2>Module 2: Window Functions &amp; Ranking</h2>
+    <p><strong>The <code>OVER()</code> clause defines the analytical window.</strong> Unlike <code>GROUP BY</code>, which collapses many rows into one summary row, a window function keeps each original row and adds a calculation beside it.</p>
+
+    <h3>Ranking Functions</h3>
+    <p><strong><code>ROW_NUMBER()</code> gives a unique sequence.</strong> <strong><code>RANK()</code></strong> leaves gaps after ties. <strong><code>DENSE_RANK()</code></strong> keeps ranking compact even when ties occur.</p>
+
+    <pre>SELECT
+    user_id,
+    order_id,
+    total_amount,
+    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY total_amount DESC) AS row_number_rank,
+    RANK() OVER (PARTITION BY user_id ORDER BY total_amount DESC) AS rank_value,
+    DENSE_RANK() OVER (PARTITION BY user_id ORDER BY total_amount DESC) AS dense_rank_value
+FROM sales.orders
+ORDER BY user_id, total_amount DESC;</pre>
+
+    <h3><code>LAG()</code> and <code>LEAD()</code></h3>
+    <p><strong>These functions let one row look at its neighbors.</strong> That is useful for change analysis such as week-over-week growth, trend detection, or comparing a shipment to the previous shipment for the same warehouse.</p>
+
+    <pre>WITH weekly_sales AS (
+    SELECT
+        DATE_TRUNC('week', order_date) AS sales_week,
+        SUM(total_amount) AS weekly_revenue
+    FROM sales.orders
+    WHERE order_status IN ('paid', 'shipped', 'delivered')
+    GROUP BY DATE_TRUNC('week', order_date)
+)
+SELECT
+    sales_week,
+    weekly_revenue,
+    LAG(weekly_revenue) OVER (ORDER BY sales_week) AS previous_week_revenue,
+    LEAD(weekly_revenue) OVER (ORDER BY sales_week) AS next_week_revenue,
+    weekly_revenue - LAG(weekly_revenue) OVER (ORDER BY sales_week) AS week_over_week_change
+FROM weekly_sales
+ORDER BY sales_week;</pre>
+  </section>
+
+  <section id="ctes">
+    <h2>Module 3: Common Table Expressions (CTEs)</h2>
+    <h3>Chaining Standard CTEs</h3>
+    <p><strong>Multiple CTEs let you break a large query into named steps.</strong> That makes logic review much easier than tracing through deeply nested subqueries.</p>
+
+    <pre>WITH paid_orders AS (
+    SELECT user_id, total_amount, order_date
+    FROM sales.orders
+    WHERE order_status IN ('paid', 'shipped', 'delivered')
+),
+user_order_totals AS (
+    SELECT
+        user_id,
+        COUNT(*) AS completed_order_count,
+        SUM(total_amount) AS lifetime_value,
+        MAX(order_date) AS last_order_date
+    FROM paid_orders
+    GROUP BY user_id
+),
+vip_users AS (
+    SELECT *
+    FROM user_order_totals
+    WHERE lifetime_value &gt;= 5000.00
+)
+SELECT
+    u.user_id,
+    u.full_name,
+    v.completed_order_count,
+    v.lifetime_value,
+    v.last_order_date
+FROM vip_users AS v
+INNER JOIN sales.users AS u
+    ON u.user_id = v.user_id
+ORDER BY v.lifetime_value DESC;</pre>
+
+    <h3>Recursive CTEs</h3>
+    <p><strong><code>WITH RECURSIVE</code> traverses hierarchical data.</strong> You define an anchor query for the starting rows and a recursive member that walks to the next level. This is ideal for org charts, category trees, or bills of materials.</p>
+
+    <pre>CREATE TABLE hr.employees (
+    employee_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    employee_name TEXT NOT NULL,
+    manager_id INTEGER REFERENCES hr.employees(employee_id)
+);</pre>
+
+    <pre>WITH RECURSIVE org_chart AS (
+    SELECT
+        employee_id,
+        employee_name,
+        manager_id,
+        0 AS depth,
+        employee_name::TEXT AS reporting_path
+    FROM hr.employees
+    WHERE manager_id IS NULL
+
+    UNION ALL
+
+    SELECT
+        e.employee_id,
+        e.employee_name,
+        e.manager_id,
+        oc.depth + 1 AS depth,
+        oc.reporting_path || ' -> ' || e.employee_name AS reporting_path
+    FROM hr.employees AS e
+    INNER JOIN org_chart AS oc
+        ON e.manager_id = oc.employee_id
+)
+SELECT employee_id, employee_name, manager_id, depth, reporting_path
+FROM org_chart
+ORDER BY reporting_path;</pre>
+  </section>
+
+  <section id="grouping-pivoting">
+    <h2>Module 4: Advanced Grouping &amp; Pivoting</h2>
+    <h3><code>ROLLUP</code>, <code>CUBE</code>, and <code>GROUPING SETS</code></h3>
+    <p><strong>Advanced grouping creates subtotals and grand totals in one pass.</strong> This is extremely useful in finance and operations reporting where multiple levels of aggregation are expected from the same dataset.</p>
+
+    <pre>SELECT
+    sales_region,
+    order_status,
+    SUM(total_amount) AS revenue
+FROM sales.orders
+GROUP BY ROLLUP (sales_region, order_status)
+ORDER BY sales_region, order_status;</pre>
+
+    <pre>SELECT
+    sales_region,
+    order_status,
+    SUM(total_amount) AS revenue
+FROM sales.orders
+GROUP BY CUBE (sales_region, order_status)
+ORDER BY sales_region, order_status;</pre>
+
+    <pre>SELECT
+    sales_region,
+    payment_method,
+    SUM(total_amount) AS revenue
+FROM sales.orders
+GROUP BY GROUPING SETS (
+    (sales_region, payment_method),
+    (sales_region),
+    (payment_method),
+    ()
+)
+ORDER BY sales_region, payment_method;</pre>
+
+    <h3>Pivoting the PostgreSQL Way</h3>
+    <p><strong>PostgreSQL does not have a native <code>PIVOT</code> keyword.</strong> The common pattern is conditional aggregation with the <code>FILTER</code> clause. It is readable, explicit, and easy to extend.</p>
+
+    <pre>SELECT
+    DATE_TRUNC('month', order_date) AS sales_month,
+    SUM(total_amount) FILTER (WHERE order_status = 'paid') AS paid_amount,
+    SUM(total_amount) FILTER (WHERE order_status = 'shipped') AS shipped_amount,
+    SUM(total_amount) FILTER (WHERE order_status = 'cancelled') AS cancelled_amount
+FROM sales.orders
+GROUP BY DATE_TRUNC('month', order_date)
+ORDER BY sales_month;</pre>
+  </section>
+
+  <section id="procedures-temp">
+    <h2>Module 5: Stored Procedures &amp; Temporary Tables</h2>
+    <p><strong>PostgreSQL procedures were introduced in version 11.</strong> Unlike functions, procedures can manage transactions with <code>COMMIT</code> and <code>ROLLBACK</code> when executed in an appropriate call context. That makes them useful for controlled batch workflows.</p>
+
+    <pre>CREATE OR REPLACE PROCEDURE billing.process_batch_payments(
+    IN p_batch_id BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    CREATE TEMP TABLE payment_worklist (
+        order_id BIGINT,
+        user_id BIGINT,
+        amount NUMERIC(12, 2)
+    ) ON COMMIT DROP;
+
+    INSERT INTO payment_worklist (order_id, user_id, amount)
+    SELECT order_id, user_id, total_amount
+    FROM sales.orders
+    WHERE payment_batch_id = p_batch_id
+      AND order_status = 'pending_payment';
+
+    UPDATE sales.orders AS o
+    SET order_status = 'paid',
+        paid_at = NOW()
+    FROM payment_worklist AS pw
+    WHERE o.order_id = pw.order_id;
+
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE;
+END;
+$$;</pre>
+
+    <p><strong><code>ON COMMIT DROP</code> guarantees cleanup.</strong> That is useful when temp data should never survive the transaction boundary, especially in batch-style procedures.</p>
+  </section>
+
+  <section id="udfs">
+    <h2>Module 6: User-Defined Functions (UDFs)</h2>
+    <h3>Scalar Function</h3>
+    <p><strong>A scalar function returns one value.</strong> Use it when the logic is small, deterministic, and genuinely reusable.</p>
+
+    <pre>CREATE OR REPLACE FUNCTION billing.calculate_order_tax(
+    p_subtotal NUMERIC,
+    p_tax_rate NUMERIC
+)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN ROUND(p_subtotal * p_tax_rate, 2);
+END;
+$$;</pre>
+
+    <pre>SELECT billing.calculate_order_tax(249.99, 0.0825) AS tax_amount;</pre>
+
+    <h3>Table-Returning Function</h3>
+    <p><strong>A table function returns a result set.</strong> It is useful when you want reusable parameterized query logic that behaves like a virtual table.</p>
+
+    <pre>CREATE OR REPLACE FUNCTION reporting.get_user_orders(
+    p_user_id BIGINT
+)
+RETURNS TABLE (
+    order_id BIGINT,
+    order_date TIMESTAMP WITH TIME ZONE,
+    order_status TEXT,
+    total_amount NUMERIC(12, 2)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        o.order_id,
+        o.order_date,
+        o.order_status,
+        o.total_amount
+    FROM sales.orders AS o
+    WHERE o.user_id = p_user_id
+    ORDER BY o.order_date DESC;
+END;
+$$;</pre>
+
+    <pre>SELECT *
+FROM reporting.get_user_orders(42);</pre>
+  </section>
+
+  <section id="jsonb">
+    <h2>Module 7: Bonus - Advanced Data Types (JSONB)</h2>
+    <p><strong>PostgreSQL is famous for JSON support because it lets you mix relational structure with flexible semi-structured payloads.</strong> That is useful when the core entity is stable but some attributes vary, such as marketplace-specific metadata, checkout payloads, or webhook responses.</p>
+
+    <pre>CREATE TABLE sales.order_events (
+    event_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    order_id BIGINT NOT NULL,
+    event_type TEXT NOT NULL,
+    event_payload JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);</pre>
+
+    <pre>SELECT
+    order_id,
+    event_payload -&gt;&gt; 'source' AS source_system,
+    event_payload -&gt; 'payment' -&gt;&gt; 'provider' AS payment_provider
+FROM sales.order_events
+WHERE event_type = 'checkout_completed';</pre>
+
+    <pre>SELECT order_id, event_payload
+FROM sales.order_events
+WHERE event_payload @&gt; '{"payment": {"provider": "stripe"}}'::jsonb;</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Design guideline:</strong> keep highly queried, strongly typed business fields in regular columns. Use JSONB for flexible attributes, payload snapshots, or edge-case metadata, not as an excuse to avoid data modeling.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">Docs</span> <a href="https://www.postgresql.org/docs/current/queries-table-expressions.html">Table expressions and LATERAL</a></li>
+      <li><span class="ll-tag">Window</span> <a href="https://www.postgresql.org/docs/current/tutorial-window.html">Window functions tutorial</a></li>
+      <li><span class="ll-tag">PL/pgSQL</span> <a href="https://www.postgresql.org/docs/current/plpgsql.html">PL/pgSQL reference</a></li>
+      <li><span class="ll-tag">JSONB</span> <a href="https://www.postgresql.org/docs/current/functions-json.html">JSON functions and operators</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach((section) => section.id && observer.observe(section));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
