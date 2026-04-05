@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Microsoft SQL Server — Beginner to Intermediate Handbook</title>
+<link rel="stylesheet" href="styles/mssql-beginner-to-intermediate-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">SQL Server</div>
+    <div class="logo-sub">Beginner to Intermediate Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Architecture</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#core-objects">Core Objects</a>
+    <a class="nav-link" href="#integrity-crud">Integrity &amp; CRUD</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Querying</div>
+    <a class="nav-link" href="#filtering-aggregation">Filtering &amp; Aggregation</a>
+    <a class="nav-link" href="#joins">Joins</a>
+    <a class="nav-link" href="#views">Views</a>
+    <a class="nav-link" href="#temp-structures">Temporary Structures</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Programming</div>
+    <a class="nav-link" href="#tsql-programming">T-SQL Programming</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Microsoft SQL Server (T-SQL): Beginner to Intermediate Handbook</h1>
+    <p class="u-hero-subtle">A standards-driven onboarding guide for SQL Server engineers covering schema design, CRUD, joins, views, temporary storage patterns, and the essential control-flow features of T-SQL.</p>
+    <div class="hero-meta">
+      <span class="badge badge-red">SQL Server 2022+</span>
+      <span class="badge badge-blue">Sales Schema</span>
+      <span class="badge badge-green">T-SQL Basics</span>
+      <span class="badge badge-amber">Temp Tables · TRY/CATCH</span>
+      <span class="badge badge-purple">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>Enterprise convention:</strong> every example uses two-part naming like <code>Sales.Orders</code>. Treat that as a standard, not an optional flourish. It makes ownership, security, and code readability much better in real systems.</div>
+  </div>
+
+  <section id="core-objects">
+    <h2>Module 1: Server Architecture &amp; Core Objects</h2>
+    <p><strong>SQL Server is layered from the instance down.</strong> The instance is the installed SQL Server engine. Inside it you host many databases. Inside each database you create schemas, and inside schemas you create tables, views, procedures, and functions. Think of the instance as the office building, databases as the individual companies renting floors, schemas as departments, and tables as the filing cabinets each department owns.</p>
+
+    <div class="flow">
+      <span class="flow-step">Instance</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Database</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Schema</span>
+      <span class="flow-arrow">&rarr;</span>
+      <span class="flow-step">Table</span>
+    </div>
+
+    <p><strong>Schemas create boundaries.</strong> Dumping every object into <code>dbo</code> works until the database grows and no one can tell which team owns which object. Custom schemas such as <code>Sales</code> and <code>HR</code> give you cleaner permissions, clearer intent, and fewer naming conflicts. Use two-part naming everywhere so the execution context is explicit.</p>
+
+    <pre>IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'Sales')
+BEGIN
+    EXEC ('CREATE SCHEMA Sales');
+END;
+GO
+
+CREATE TABLE Sales.Orders (
+    OrderID INT IDENTITY(1,1) NOT NULL,
+    CustomerEmail NVARCHAR(255) NOT NULL,
+    OrderStatus NVARCHAR(50) NOT NULL,
+    OrderDate DATETIME2 NOT NULL CONSTRAINT DF_Orders_OrderDate DEFAULT SYSUTCDATETIME(),
+    TotalAmount DECIMAL(12, 2) NOT NULL,
+    CreatedBy NVARCHAR(100) NOT NULL,
+    CONSTRAINT PK_Sales_Orders PRIMARY KEY (OrderID)
+);
+GO</pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Object</th><th>Purpose</th><th>Example</th></tr>
+        <tr><td><strong>Instance</strong></td><td>SQL Server engine hosting multiple databases</td><td>Company shared database server</td></tr>
+        <tr><td><strong>Database</strong></td><td>Application boundary with its own objects and security</td><td><code>CommerceOps</code></td></tr>
+        <tr><td><strong>Schema</strong></td><td>Namespace and ownership boundary inside a database</td><td><code>Sales</code></td></tr>
+        <tr><td><strong>Table</strong></td><td>Row storage for business records</td><td><code>Sales.Orders</code></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="integrity-crud">
+    <h2>Module 2: Data Integrity &amp; Basic CRUD</h2>
+    <p><strong>Constraints keep data trustworthy.</strong> Primary keys prevent duplicate row identity. Foreign keys ensure related rows actually exist. <code>NOT NULL</code> prevents missing required values. <code>DEFAULT</code> fills common values automatically. The database should reject bad data before your application has a chance to normalize it incorrectly.</p>
+
+    <pre>CREATE TABLE Sales.Customers (
+    CustomerID INT IDENTITY(1,1) NOT NULL,
+    CustomerName NVARCHAR(150) NOT NULL,
+    Email NVARCHAR(255) NOT NULL,
+    IsActive BIT NOT NULL CONSTRAINT DF_Customers_IsActive DEFAULT (1),
+    RegisteredAt DATETIME2 NOT NULL CONSTRAINT DF_Customers_RegisteredAt DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_Sales_Customers PRIMARY KEY (CustomerID),
+    CONSTRAINT UQ_Sales_Customers_Email UNIQUE (Email)
+);
+GO
+
+CREATE TABLE Sales.CustomerOrders (
+    OrderID INT IDENTITY(1,1) NOT NULL,
+    CustomerID INT NOT NULL,
+    OrderStatus NVARCHAR(50) NOT NULL,
+    TotalAmount DECIMAL(12, 2) NOT NULL,
+    OrderDate DATETIME2 NOT NULL CONSTRAINT DF_CustomerOrders_OrderDate DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_Sales_CustomerOrders PRIMARY KEY (OrderID),
+    CONSTRAINT FK_Sales_CustomerOrders_Customers FOREIGN KEY (CustomerID)
+        REFERENCES Sales.Customers (CustomerID)
+);
+GO</pre>
+
+    <h3>CRUD Operations</h3>
+    <p><strong>Insert and capture the new identity value with <code>SCOPE_IDENTITY()</code>.</strong> That returns the last identity value generated in the current scope, which is what you usually need immediately after creating a row.</p>
+
+    <pre>INSERT INTO Sales.Customers (CustomerName, Email)
+VALUES (N'Ava Chen', N'ava.chen@example.com');
+
+DECLARE @NewCustomerID INT;
+SET @NewCustomerID = CAST(SCOPE_IDENTITY() AS INT);
+
+SELECT @NewCustomerID AS NewCustomerID;</pre>
+
+    <pre>SELECT CustomerID, CustomerName, Email, IsActive, RegisteredAt
+FROM Sales.Customers
+WHERE IsActive = 1
+ORDER BY RegisteredAt DESC;</pre>
+
+    <pre>UPDATE Sales.Customers
+SET CustomerName = N'Ava Chen-Singh'
+WHERE CustomerID = 1;</pre>
+
+    <pre>DELETE FROM Sales.Customers
+WHERE CustomerID = 1;</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Delete safely:</strong> in production, delete statements should usually be wrapped in a transaction and preceded by a matching select so you can verify the target set before removing data.</div>
+    </div>
+  </section>
+
+  <section id="filtering-aggregation">
+    <h2>Module 3: Filtering &amp; Aggregation</h2>
+    <p><strong>Filtering defines the business slice you care about.</strong> If finance asks for Q1 orders over a threshold, the filter is the contract. SQL Server then narrows the rows before any aggregation or reporting logic runs.</p>
+
+    <pre>SELECT OrderID, CustomerID, OrderStatus, TotalAmount, OrderDate
+FROM Sales.CustomerOrders
+WHERE OrderStatus = N'Paid';</pre>
+
+    <pre>SELECT OrderID, CustomerID, OrderStatus
+FROM Sales.CustomerOrders
+WHERE OrderStatus IN (N'Paid', N'Shipped', N'Delivered');</pre>
+
+    <pre>SELECT OrderID, TotalAmount, OrderDate
+FROM Sales.CustomerOrders
+WHERE OrderDate BETWEEN '2026-01-01' AND '2026-03-31';</pre>
+
+    <pre>SELECT CustomerID, CustomerName, Email
+FROM Sales.Customers
+WHERE CustomerName LIKE N'%Chen%';</pre>
+
+    <p><strong>Aggregate queries roll detailed rows into business summaries.</strong> <code>GROUP BY</code> tells SQL Server the level of the summary, and <code>HAVING</code> filters the grouped result.</p>
+
+    <pre>SELECT
+    c.CustomerID,
+    c.CustomerName,
+    SUM(o.TotalAmount) AS TotalSalesAmount,
+    COUNT(*) AS OrderCount
+FROM Sales.Customers AS c
+INNER JOIN Sales.CustomerOrders AS o
+    ON o.CustomerID = c.CustomerID
+WHERE o.OrderStatus IN (N'Paid', N'Shipped', N'Delivered')
+GROUP BY c.CustomerID, c.CustomerName
+HAVING SUM(o.TotalAmount) &gt; 1000.00
+ORDER BY TotalSalesAmount DESC;</pre>
+  </section>
+
+  <section id="joins">
+    <h2>Module 4: The Power of Joins</h2>
+    <p><strong>Normalization splits business facts into separate tables.</strong> Customers, orders, and products are stored independently so each fact is maintained in one place. Joins reconstruct the business picture when you query it.</p>
+
+    <h3><code>INNER JOIN</code></h3>
+    <pre>SELECT
+    c.CustomerID,
+    c.CustomerName,
+    o.OrderID,
+    o.TotalAmount
+FROM Sales.Customers AS c
+INNER JOIN Sales.CustomerOrders AS o
+    ON o.CustomerID = c.CustomerID;</pre>
+
+    <h3><code>LEFT JOIN</code></h3>
+    <pre>SELECT
+    c.CustomerID,
+    c.CustomerName,
+    o.OrderID,
+    o.OrderStatus
+FROM Sales.Customers AS c
+LEFT JOIN Sales.CustomerOrders AS o
+    ON o.CustomerID = c.CustomerID;</pre>
+
+    <h3><code>RIGHT JOIN</code> and <code>FULL OUTER JOIN</code></h3>
+    <p><strong>These are valid but less common.</strong> Most teams prefer <code>LEFT JOIN</code> because it reads naturally from the preserved table. <code>FULL OUTER JOIN</code> is useful for reconciliation work where you need unmatched rows from both sides.</p>
+
+    <pre>SELECT
+    c.CustomerID,
+    c.CustomerName,
+    o.OrderID
+FROM Sales.Customers AS c
+RIGHT JOIN Sales.CustomerOrders AS o
+    ON o.CustomerID = c.CustomerID;</pre>
+
+    <pre>SELECT
+    c.CustomerID,
+    c.CustomerName,
+    o.OrderID
+FROM Sales.Customers AS c
+FULL OUTER JOIN Sales.CustomerOrders AS o
+    ON o.CustomerID = c.CustomerID;</pre>
+
+    <h3>Find Registered Customers Who Never Placed an Order</h3>
+    <pre>SELECT
+    c.CustomerID,
+    c.CustomerName,
+    c.Email,
+    c.RegisteredAt
+FROM Sales.Customers AS c
+LEFT JOIN Sales.CustomerOrders AS o
+    ON o.CustomerID = c.CustomerID
+WHERE o.OrderID IS NULL
+ORDER BY c.RegisteredAt DESC;</pre>
+  </section>
+
+  <section id="views">
+    <h2>Module 5: Views for Abstraction</h2>
+    <p><strong>A view is a virtual table.</strong> It packages a query behind a stable object name, so your API or reporting layer can consume one clean object instead of rewriting joins everywhere.</p>
+
+    <pre>CREATE OR ALTER VIEW Sales.vCustomerOrderSummary
+AS
+SELECT
+    c.CustomerID,
+    c.CustomerName,
+    c.Email,
+    COUNT(o.OrderID) AS OrderCount,
+    ISNULL(SUM(o.TotalAmount), 0.00) AS LifetimeValue,
+    MAX(o.OrderDate) AS LastOrderDate
+FROM Sales.Customers AS c
+LEFT JOIN Sales.CustomerOrders AS o
+    ON o.CustomerID = c.CustomerID
+GROUP BY c.CustomerID, c.CustomerName, c.Email;
+GO
+
+SELECT *
+FROM Sales.vCustomerOrderSummary
+WHERE LifetimeValue &gt;= 500.00;
+GO</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Best practice:</strong> avoid <code>SELECT *</code> inside a view definition. Explicit column lists make downstream contracts stable and prevent silent breakage when base tables change.</div>
+    </div>
+  </section>
+
+  <section id="temp-structures">
+    <h2>Module 6: Temporary Structures (Crucial T-SQL)</h2>
+    <h3>Local Temp Tables (<code>#TempTable</code>)</h3>
+    <p><strong>Use local temp tables when the intermediate dataset is sizeable or needs indexes.</strong> They are scoped to the current session and are usually the best default for non-trivial temporary work.</p>
+
+    <pre>CREATE TABLE #RecentOrders (
+    OrderID INT NOT NULL,
+    CustomerID INT NOT NULL,
+    TotalAmount DECIMAL(12, 2) NOT NULL,
+    OrderDate DATETIME2 NOT NULL
+);
+
+INSERT INTO #RecentOrders (OrderID, CustomerID, TotalAmount, OrderDate)
+SELECT OrderID, CustomerID, TotalAmount, OrderDate
+FROM Sales.CustomerOrders
+WHERE OrderDate &gt;= DATEADD(DAY, -30, SYSUTCDATETIME());
+
+SELECT *
+FROM #RecentOrders;
+
+DROP TABLE #RecentOrders;</pre>
+
+    <h3>Global Temp Tables (<code>##TempTable</code>)</h3>
+    <p><strong>Global temp tables are visible beyond the current session.</strong> They are rarely appropriate in modern applications because names can collide and different sessions can interfere with each other. Reserve them for controlled administrative scenarios.</p>
+
+    <pre>CREATE TABLE ##SharedImportBuffer (
+    RowID INT IDENTITY(1,1) PRIMARY KEY,
+    Payload NVARCHAR(4000) NOT NULL
+);
+
+DROP TABLE ##SharedImportBuffer;</pre>
+
+    <h3>Table Variables (<code>@TableVar</code>)</h3>
+    <p><strong>Table variables are lightweight but not magic.</strong> They are best for very small datasets. For larger intermediate results, especially those that benefit from indexing or accurate row estimates, prefer <code>#TempTables</code>.</p>
+
+    <pre>DECLARE @TopCustomers TABLE (
+    CustomerID INT NOT NULL,
+    CustomerName NVARCHAR(150) NOT NULL,
+    LifetimeValue DECIMAL(12, 2) NOT NULL
+);
+
+INSERT INTO @TopCustomers (CustomerID, CustomerName, LifetimeValue)
+SELECT TOP (5)
+    c.CustomerID,
+    c.CustomerName,
+    SUM(o.TotalAmount) AS LifetimeValue
+FROM Sales.Customers AS c
+INNER JOIN Sales.CustomerOrders AS o
+    ON o.CustomerID = c.CustomerID
+GROUP BY c.CustomerID, c.CustomerName
+ORDER BY LifetimeValue DESC;
+
+SELECT *
+FROM @TopCustomers;</pre>
+  </section>
+
+  <section id="tsql-programming">
+    <h2>Module 7: Basic T-SQL Programming Constructs</h2>
+    <h3>Variables and Flow Control</h3>
+    <p><strong>T-SQL is procedural when needed.</strong> You can declare variables, branch with <code>IF...ELSE</code>, and group statements with <code>BEGIN...END</code>. This is useful in scripts, stored procedures, and controlled maintenance logic.</p>
+
+    <pre>DECLARE @CustomerID INT;
+DECLARE @OrderCount INT;
+
+SET @CustomerID = 42;
+
+SELECT @OrderCount = COUNT(*)
+FROM Sales.CustomerOrders
+WHERE CustomerID = @CustomerID;
+
+IF @OrderCount = 0
+BEGIN
+    PRINT N'Customer has not placed any orders yet.';
+END
+ELSE
+BEGIN
+    PRINT N'Customer already has order history.';
+END;</pre>
+
+    <h3>Error Handling with <code>TRY...CATCH</code></h3>
+    <p><strong>Wrap risky operations in a <code>TRY...CATCH</code> block.</strong> That gives you a controlled failure path instead of letting the batch die without context.</p>
+
+    <pre>BEGIN TRY
+    BEGIN TRANSACTION;
+
+    INSERT INTO Sales.CustomerOrders (CustomerID, OrderStatus, TotalAmount)
+    VALUES (42, N'Paid', 129.99);
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT &gt; 0
+    BEGIN
+        ROLLBACK TRANSACTION;
+    END;
+
+    SELECT
+        ERROR_NUMBER() AS ErrorNumber,
+        ERROR_MESSAGE() AS ErrorMessage,
+        ERROR_PROCEDURE() AS ErrorProcedure,
+        ERROR_LINE() AS ErrorLine;
+END CATCH;</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Engineering standard:</strong> if a script changes data and might run across multiple statements, use an explicit transaction so success and failure are both predictable.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul class="link-list">
+      <li><span class="ll-tag">Docs</span> <a href="https://learn.microsoft.com/sql/sql-server/">SQL Server documentation</a></li>
+      <li><span class="ll-tag">T-SQL</span> <a href="https://learn.microsoft.com/sql/t-sql/language-reference">T-SQL language reference</a></li>
+      <li><span class="ll-tag">TempDB</span> <a href="https://learn.microsoft.com/sql/relational-databases/databases/tempdb-database">tempdb reference</a></li>
+      <li><span class="ll-tag">Errors</span> <a href="https://learn.microsoft.com/sql/t-sql/language-elements/try-catch-transact-sql">TRY...CATCH</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section, .hero');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      links.forEach((link) => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+sections.forEach((section) => section.id && observer.observe(section));
+</script>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
