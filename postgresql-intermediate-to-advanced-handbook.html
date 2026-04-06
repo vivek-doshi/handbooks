@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PostgreSQL — Intermediate to Advanced Developer Handbook</title>
+<title>PostgreSQL ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Intermediate to Advanced Developer Handbook</title>
 <link rel="stylesheet" href="styles/postgresql-intermediate-to-advanced-handbook.css">
 <link rel="stylesheet" href="styles/shared-ui.css">
 <link rel="stylesheet" href="styles/content-utilities.css">
@@ -62,102 +62,374 @@
       <span class="badge badge-red">PostgreSQL 16+</span>
       <span class="badge badge-blue">Advanced SQL</span>
       <span class="badge badge-green">Window Functions</span>
-      <span class="badge badge-purple">PL/pgSQL · JSONB</span>
+      <span class="badge badge-purple">PL/pgSQL ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· JSONB</span>
       <span class="badge badge-amber">April 2026</span>
     </div>
   </div>
 
   <div class="callout info">
-    <span class="callout-icon">ℹ</span>
+    <span class="callout-icon">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹</span>
     <div class="callout-body"><strong>Schema theme:</strong> the examples keep using an e-commerce platform, but at this level the focus is operational reporting, hierarchical data, programmable database logic, and semi-structured payloads.</div>
   </div>
 
   <section id="joins-set-operators">
     <h2>Module 1: Advanced Joins &amp; Set Operators</h2>
-    <h3><code>CROSS JOIN</code></h3>
-    <p><strong>A cross join produces every combination.</strong> It is the Cartesian product of two sets. That sounds dangerous, and it can be, but it is useful when you intentionally want all combinations, such as generating a price grid across regions and shipping tiers.</p>
+    <p>At the intermediate-to-advanced level, joins go beyond simple <code>INNER</code> and <code>LEFT</code>. This module covers join patterns that solve real operational problems &mdash; hierarchical data, parameterized subqueries, combinatorial grids, and result-set algebra.</p>
+
+    <h3><code>SELF JOIN</code> &mdash; Hierarchical &amp; Intra-Table Relationships</h3>
+    <p><strong>A self join connects a table to itself using two aliases.</strong> It is the natural pattern for any data that has a parent-child relationship stored in the same table &mdash; org charts, category trees, referral chains, or bill-of-materials structures.</p>
+
+    <pre>-- Employee hierarchy: who reports to whom?
+SELECT
+    e.employee_id,
+    e.employee_name  AS employee,
+    e.department,
+    m.employee_name  AS direct_manager,
+    m.department     AS manager_department
+FROM hr.employees AS e
+LEFT JOIN hr.employees AS m
+    ON e.manager_id = m.employee_id
+ORDER BY m.employee_name NULLS FIRST, e.employee_name;</pre>
+
+    <p><strong>Finding peers</strong> &mdash; employees who share the same manager:</p>
 
     <pre>SELECT
+    a.employee_name AS peer_a,
+    b.employee_name AS peer_b,
+    m.employee_name AS shared_manager
+FROM hr.employees AS a
+INNER JOIN hr.employees AS b
+    ON a.manager_id = b.manager_id
+    AND a.employee_id &lt; b.employee_id          -- avoid duplicates &amp; self-pairs
+INNER JOIN hr.employees AS m
+    ON m.employee_id = a.manager_id
+ORDER BY shared_manager, peer_a;</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡</span>
+      <div class="callout-body"><strong>The <code>a.employee_id &lt; b.employee_id</code> trick</strong> eliminates both self-pairs (Alice&ndash;Alice) and mirror duplicates (Alice&ndash;Bob / Bob&ndash;Alice). Without it, the result is cluttered and misleading.</div>
+    </div>
+
+    <p><strong>Detecting referral chains</strong> in an e-commerce context:</p>
+
+    <pre>-- Users who referred other users (single level)
+SELECT
+    referrer.user_id   AS referrer_id,
+    referrer.full_name AS referrer_name,
+    referred.user_id   AS referred_id,
+    referred.full_name AS referred_name,
+    referred.created_at AS signup_date
+FROM sales.users AS referred
+INNER JOIN sales.users AS referrer
+    ON referred.referred_by_user_id = referrer.user_id
+ORDER BY referrer.full_name, referred.created_at;</pre>
+
+    <h3><code>CROSS JOIN</code> &mdash; Intentional Cartesian Products</h3>
+    <p><strong>A cross join produces every combination of rows from two sources.</strong> It is dangerous on large tables (M &times; N rows), but deliberately powerful for generating grids, scaffolds, and gap-detection frameworks from small reference data.</p>
+
+    <pre>-- Shipping price grid: every region ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â every tier
+SELECT
     region.region_name,
-    tier.tier_name
-FROM (VALUES ('North America'), ('Europe'), ('APAC')) AS region(region_name)
-CROSS JOIN (VALUES ('Standard'), ('Express')) AS tier(tier_name)
-ORDER BY region.region_name, tier.tier_name;</pre>
+    tier.tier_name,
+    region.base_rate + tier.surcharge AS estimated_rate
+FROM (VALUES
+    ('North America', 5.00), ('Europe', 8.50), ('APAC', 12.00)
+) AS region(region_name, base_rate)
+CROSS JOIN (VALUES
+    ('Standard', 0.00), ('Express', 4.50), ('Overnight', 9.00)
+) AS tier(tier_name, surcharge)
+ORDER BY region.region_name, estimated_rate;</pre>
 
-    <h3><code>LATERAL</code></h3>
-    <p><strong><code>LATERAL</code> behaves like a for-each loop in SQL.</strong> For each row from the left side, PostgreSQL runs the lateral subquery using values from that row. It is perfect when you need the top related row, a derived slice, or a parameterized subquery without writing procedural code.</p>
+    <p><strong>Gap detection scaffold</strong> &mdash; cross join a user list with a month series, then left join actual data to find zeros:</p>
 
+    <pre>WITH months AS (
+    SELECT generate_series(
+        DATE '2026-01-01',
+        DATE '2026-06-01',
+        INTERVAL '1 month'
+    )::DATE AS month_start
+),
+active_users AS (
+    SELECT user_id, full_name
+    FROM sales.users
+    WHERE is_active = TRUE
+)
+SELECT
+    au.user_id,
+    au.full_name,
+    m.month_start,
+    COUNT(o.order_id)              AS order_count,
+    COALESCE(SUM(o.total_amount), 0) AS month_revenue
+FROM active_users AS au
+CROSS JOIN months AS m
+LEFT JOIN sales.orders AS o
+    ON  o.user_id = au.user_id
+    AND DATE_TRUNC('month', o.order_date) = m.month_start
+    AND o.order_status IN ('paid', 'shipped', 'delivered')
+GROUP BY au.user_id, au.full_name, m.month_start
+ORDER BY au.user_id, m.month_start;</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â </span>
+      <div class="callout-body"><strong>Guard rail:</strong> never cross join two production tables without thinking about cardinality. 10K &times; 10K = 100 million rows. Use <code>CROSS JOIN</code> only with small reference sets, <code>VALUES</code> lists, or <code>generate_series</code> output.</div>
+    </div>
+
+    <h3><code>LATERAL</code> &mdash; The Parameterized Subquery Join</h3>
+    <p><strong><code>LATERAL</code> lets a subquery reference columns from the outer query row.</strong> PostgreSQL evaluates the subquery once per outer row, making it the SQL equivalent of a correlated for-each loop. This is the cleanest pattern for "top-N per group," derived slices, and parameterized lookups.</p>
+
+    <h4>Pattern 1 &mdash; Latest N Orders Per User</h4>
     <pre>SELECT
     u.user_id,
     u.full_name,
-    latest_order.order_id,
-    latest_order.order_date,
-    latest_order.total_amount
+    recent.order_id,
+    recent.order_date,
+    recent.total_amount
 FROM sales.users AS u
 LEFT JOIN LATERAL (
     SELECT o.order_id, o.order_date, o.total_amount
     FROM sales.orders AS o
     WHERE o.user_id = u.user_id
     ORDER BY o.order_date DESC
-    LIMIT 1
-) AS latest_order
+    LIMIT 3
+) AS recent
     ON TRUE
-ORDER BY u.user_id;</pre>
+ORDER BY u.user_id, recent.order_date DESC;</pre>
 
-    <h3>Set Operators</h3>
-    <p><strong>Set operators combine result sets.</strong> Use them when the question is about relationships between result groups instead of row-by-row joins.</p>
+    <p><strong><code>ON TRUE</code></strong> is required because the filtering already happened inside the lateral subquery. With <code>LEFT JOIN LATERAL</code>, users who have zero orders still appear (with <code>NULL</code> columns from <code>recent</code>).</p>
 
-    <pre>SELECT email
-FROM sales.marketing_subscribers
+    <h4>Pattern 2 &mdash; Inline Aggregation Per Row</h4>
+    <pre>-- For each product category, get aggregated order stats
+SELECT
+    c.category_id,
+    c.category_name,
+    stats.total_orders,
+    stats.total_revenue,
+    stats.avg_order_value
+FROM catalog.categories AS c
+LEFT JOIN LATERAL (
+    SELECT
+        COUNT(*)                    AS total_orders,
+        COALESCE(SUM(oi.line_total), 0) AS total_revenue,
+        ROUND(AVG(oi.line_total), 2)    AS avg_order_value
+    FROM sales.order_items AS oi
+    INNER JOIN catalog.products AS p
+        ON p.product_id = oi.product_id
+    WHERE p.category_id = c.category_id
+) AS stats
+    ON TRUE
+ORDER BY stats.total_revenue DESC NULLS LAST;</pre>
+
+    <h4>Pattern 3 &mdash; <code>LATERAL</code> with <code>unnest</code> for Array Expansion</h4>
+    <pre>-- Expand a JSONB array of tags stored on each product
+SELECT
+    p.product_id,
+    p.product_name,
+    tag.value AS tag
+FROM catalog.products AS p
+LEFT JOIN LATERAL jsonb_array_elements_text(p.tags) AS tag(value)
+    ON TRUE
+ORDER BY p.product_id, tag;</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹</span>
+      <div class="callout-body"><strong>LATERAL vs. correlated subquery in SELECT:</strong> a correlated subquery in the <code>SELECT</code> list can return only one value. <code>LATERAL</code> can return multiple rows and multiple columns, making it far more flexible for set-returning operations.</div>
+    </div>
+
+    <h3>Set Operators &mdash; Result-Set Algebra</h3>
+    <p><strong>Set operators combine or compare entire result sets vertically.</strong> Both queries must produce the same number of columns with compatible data types. Column names come from the first query.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Operator</th><th>Returns</th><th>Duplicates</th><th>Performance Note</th></tr>
+        <tr><td><strong><code>UNION</code></strong></td><td>All unique rows from both queries</td><td>Removed</td><td>Implicit sort or hash &mdash; extra work</td></tr>
+        <tr><td><strong><code>UNION ALL</code></strong></td><td>All rows from both queries</td><td>Kept</td><td>No dedup &mdash; fastest</td></tr>
+        <tr><td><strong><code>INTERSECT</code></strong></td><td>Rows common to both queries</td><td>Removed</td><td>Hash or sort join</td></tr>
+        <tr><td><strong><code>INTERSECT ALL</code></strong></td><td>Common rows, preserving duplicate count</td><td>Kept (min count)</td><td>Less common but useful</td></tr>
+        <tr><td><strong><code>EXCEPT</code></strong></td><td>Rows in query 1 not in query 2</td><td>Removed</td><td>Directional &mdash; order matters</td></tr>
+        <tr><td><strong><code>EXCEPT ALL</code></strong></td><td>Rows in query 1 not in query 2, preserving counts</td><td>Kept (subtracted)</td><td>Useful for audit diffs</td></tr>
+      </table>
+    </div>
+
+    <h4><code>UNION</code> vs. <code>UNION ALL</code></h4>
+    <pre>-- Deduplicated email list across two sources
+SELECT email FROM sales.users
 UNION
-SELECT email
-FROM sales.users;</pre>
+SELECT email FROM sales.marketing_subscribers
+ORDER BY email;</pre>
 
-    <p><strong><code>UNION</code> removes duplicates.</strong> That extra deduplication costs work. If duplicates are acceptable or desirable, <code>UNION ALL</code> is faster because PostgreSQL can concatenate results directly.</p>
-
-    <pre>SELECT email
-FROM sales.marketing_subscribers
+    <pre>-- Keep all rows (e.g., event log merge from regional shards)
+SELECT order_id, event_type, created_at FROM sales.order_events_na
 UNION ALL
-SELECT email
-FROM sales.users;</pre>
+SELECT order_id, event_type, created_at FROM sales.order_events_eu
+ORDER BY created_at DESC;</pre>
 
-    <pre>SELECT email
-FROM sales.marketing_subscribers
+    <h4><code>INTERSECT</code> &mdash; Finding Overlap</h4>
+    <pre>-- Customers who are also newsletter subscribers
+SELECT email FROM sales.users
 INTERSECT
-SELECT email
-FROM sales.users;</pre>
+SELECT email FROM sales.marketing_subscribers;</pre>
 
-    <pre>SELECT email
-FROM sales.marketing_subscribers
+    <h4><code>EXCEPT</code> &mdash; Finding Differences</h4>
+    <pre>-- Subscribers who have NOT created an account
+SELECT email FROM sales.marketing_subscribers
 EXCEPT
-SELECT email
-FROM sales.users;</pre>
+SELECT email FROM sales.users;</pre>
+
+    <h4>Advanced: Combining Set Operators</h4>
+    <p><strong>You can chain set operators and control precedence with parentheses.</strong> <code>INTERSECT</code> binds tighter than <code>UNION</code> by default, but explicit grouping is always clearer:</p>
+
+    <pre>-- Users who bought in Q1 but NOT in Q2
+(
+    SELECT DISTINCT user_id
+    FROM sales.orders
+    WHERE order_date BETWEEN '2026-01-01' AND '2026-03-31'
+)
+EXCEPT
+(
+    SELECT DISTINCT user_id
+    FROM sales.orders
+    WHERE order_date BETWEEN '2026-04-01' AND '2026-06-30'
+);</pre>
+
+    <pre>-- Users who bought in BOTH Q1 AND Q2
+(
+    SELECT DISTINCT user_id
+    FROM sales.orders
+    WHERE order_date BETWEEN '2026-01-01' AND '2026-03-31'
+)
+INTERSECT
+(
+    SELECT DISTINCT user_id
+    FROM sales.orders
+    WHERE order_date BETWEEN '2026-04-01' AND '2026-06-30'
+);</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡</span>
+      <div class="callout-body"><strong>Performance:</strong> <code>UNION ALL</code> is always cheaper than <code>UNION</code>. Prefer <code>UNION ALL</code> when you know the sources are already distinct, or when duplicates are semantically correct (e.g., event logs). Use <code>EXCEPT</code> over anti-joins when readability matters more than fine-tuned index usage.</div>
+    </div>
   </section>
 
   <section id="window-ranking">
     <h2>Module 2: Window Functions &amp; Ranking</h2>
-    <p><strong>The <code>OVER()</code> clause defines the analytical window.</strong> Unlike <code>GROUP BY</code>, which collapses many rows into one summary row, a window function keeps each original row and adds a calculation beside it.</p>
+    <p><strong>The <code>OVER()</code> clause defines an analytical window.</strong> Unlike <code>GROUP BY</code>, which collapses many rows into one summary row, a window function keeps each original row and attaches a calculation beside it. This module covers the ranking family, offset navigation, running aggregates, and distribution functions.</p>
 
-    <h3>Ranking Functions</h3>
-    <p><strong><code>ROW_NUMBER()</code> gives a unique sequence.</strong> <strong><code>RANK()</code></strong> leaves gaps after ties. <strong><code>DENSE_RANK()</code></strong> keeps ranking compact even when ties occur.</p>
+    <h3>The Anatomy of <code>OVER()</code></h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Clause</th><th>Purpose</th><th>Example</th></tr>
+        <tr><td><strong><code>PARTITION BY</code></strong></td><td>Splits rows into groups (like <code>GROUP BY</code>, but without collapsing)</td><td><code>PARTITION BY user_id</code></td></tr>
+        <tr><td><strong><code>ORDER BY</code></strong></td><td>Determines sequence within each partition</td><td><code>ORDER BY total_amount DESC</code></td></tr>
+        <tr><td><strong>Frame clause</strong></td><td>Defines the sliding window of rows for aggregate functions</td><td><code>ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</code></td></tr>
+      </table>
+    </div>
+
+    <h3>Ranking Functions &mdash; Deep Dive</h3>
+
+    <h4><code>ROW_NUMBER()</code> &mdash; Unique Sequence</h4>
+    <p><strong><code>ROW_NUMBER()</code> assigns a unique integer per row within its partition, even when ties exist.</strong> This is the go-to for "pick exactly one row per group" (deduplication, latest record per entity).</p>
+
+    <pre>-- Most recent order per user (dedup pattern)
+WITH ranked AS (
+    SELECT
+        user_id,
+        order_id,
+        order_date,
+        total_amount,
+        ROW_NUMBER() OVER (
+            PARTITION BY user_id
+            ORDER BY order_date DESC
+        ) AS rn
+    FROM sales.orders
+)
+SELECT user_id, order_id, order_date, total_amount
+FROM ranked
+WHERE rn = 1
+ORDER BY order_date DESC;</pre>
+
+    <h4><code>RANK()</code> &mdash; Gaps After Ties</h4>
+    <p><strong><code>RANK()</code> gives tied rows the same number, then skips.</strong> Two rows tied for rank 1 means the next row gets rank 3. Use this when the competitive gap matters (leaderboards, contest standings).</p>
 
     <pre>SELECT
     user_id,
     order_id,
     total_amount,
-    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY total_amount DESC) AS row_number_rank,
-    RANK() OVER (PARTITION BY user_id ORDER BY total_amount DESC) AS rank_value,
-    DENSE_RANK() OVER (PARTITION BY user_id ORDER BY total_amount DESC) AS dense_rank_value
+    RANK() OVER (
+        PARTITION BY user_id
+        ORDER BY total_amount DESC
+    ) AS spending_rank
 FROM sales.orders
+ORDER BY user_id, spending_rank;</pre>
+
+    <h4><code>DENSE_RANK()</code> &mdash; No Gaps</h4>
+    <p><strong><code>DENSE_RANK()</code> keeps consecutive numbers even with ties.</strong> Two rows tied for rank 1 means the next row gets rank 2. Best when you need &ldquo;how many distinct tiers exist&rdquo; rather than absolute position.</p>
+
+    <pre>SELECT
+    user_id,
+    order_id,
+    total_amount,
+    DENSE_RANK() OVER (
+        PARTITION BY user_id
+        ORDER BY total_amount DESC
+    ) AS dense_rank_val
+FROM sales.orders
+ORDER BY user_id, dense_rank_val;</pre>
+
+    <h4>Side-by-Side Comparison</h4>
+    <pre>SELECT
+    user_id,
+    order_id,
+    total_amount,
+    ROW_NUMBER() OVER w AS row_num,
+    RANK()       OVER w AS rank_val,
+    DENSE_RANK() OVER w AS d_rank_val
+FROM sales.orders
+WINDOW w AS (PARTITION BY user_id ORDER BY total_amount DESC)
 ORDER BY user_id, total_amount DESC;</pre>
 
-    <h3><code>LAG()</code> and <code>LEAD()</code></h3>
-    <p><strong>These functions let one row look at its neighbors.</strong> That is useful for change analysis such as week-over-week growth, trend detection, or comparing a shipment to the previous shipment for the same warehouse.</p>
+    <div class="table-wrap">
+      <table>
+        <tr><th>total_amount</th><th>ROW_NUMBER</th><th>RANK</th><th>DENSE_RANK</th></tr>
+        <tr><td>500.00</td><td>1</td><td>1</td><td>1</td></tr>
+        <tr><td>500.00</td><td>2</td><td>1</td><td>1</td></tr>
+        <tr><td>300.00</td><td>3</td><td>3</td><td>2</td></tr>
+        <tr><td>150.00</td><td>4</td><td>4</td><td>3</td></tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡</span>
+      <div class="callout-body"><strong>Named WINDOW clause:</strong> <code>WINDOW w AS (...)</code> defines the window once and reuses it across multiple functions &mdash; eliminating repetition and keeping the query DRY.</div>
+    </div>
+
+    <h4><code>NTILE(n)</code> &mdash; Percentile Buckets</h4>
+    <p><strong><code>NTILE(n)</code> divides a partition into <em>n</em> roughly equal buckets.</strong> Use it for percentile segmentation &mdash; customer quartiles, order deciles, or performance tiers.</p>
+
+    <pre>-- Customer spending quartiles
+SELECT
+    u.user_id,
+    u.full_name,
+    totals.lifetime_spent,
+    NTILE(4) OVER (ORDER BY totals.lifetime_spent DESC) AS quartile
+FROM sales.users AS u
+INNER JOIN (
+    SELECT user_id, SUM(total_amount) AS lifetime_spent
+    FROM sales.orders
+    WHERE order_status IN ('paid', 'shipped', 'delivered')
+    GROUP BY user_id
+) AS totals
+    ON totals.user_id = u.user_id
+ORDER BY quartile, totals.lifetime_spent DESC;</pre>
+
+    <h3>Offset Functions &mdash; <code>LAG()</code>, <code>LEAD()</code>, <code>FIRST_VALUE()</code>, <code>LAST_VALUE()</code></h3>
+
+    <h4><code>LAG()</code> and <code>LEAD()</code></h4>
+    <p><strong>These functions peek at neighboring rows without a self-join.</strong> <code>LAG</code> looks backward, <code>LEAD</code> looks forward. They are essential for change analysis &mdash; week-over-week growth, time gaps between events, or trend detection.</p>
 
     <pre>WITH weekly_sales AS (
     SELECT
         DATE_TRUNC('week', order_date) AS sales_week,
-        SUM(total_amount) AS weekly_revenue
+        SUM(total_amount)              AS weekly_revenue
     FROM sales.orders
     WHERE order_status IN ('paid', 'shipped', 'delivered')
     GROUP BY DATE_TRUNC('week', order_date)
@@ -165,17 +437,97 @@ ORDER BY user_id, total_amount DESC;</pre>
 SELECT
     sales_week,
     weekly_revenue,
-    LAG(weekly_revenue) OVER (ORDER BY sales_week) AS previous_week_revenue,
-    LEAD(weekly_revenue) OVER (ORDER BY sales_week) AS next_week_revenue,
-    weekly_revenue - LAG(weekly_revenue) OVER (ORDER BY sales_week) AS week_over_week_change
+    LAG(weekly_revenue)  OVER w AS prev_week,
+    LEAD(weekly_revenue) OVER w AS next_week,
+    weekly_revenue - LAG(weekly_revenue) OVER w AS wow_change,
+    ROUND(
+        (weekly_revenue - LAG(weekly_revenue) OVER w)
+        / NULLIF(LAG(weekly_revenue) OVER w, 0) * 100, 1
+    ) AS wow_growth_pct
 FROM weekly_sales
+WINDOW w AS (ORDER BY sales_week)
 ORDER BY sales_week;</pre>
+
+    <p><strong>Time gap between consecutive orders per user:</strong></p>
+
+    <pre>SELECT
+    user_id,
+    order_id,
+    order_date,
+    LAG(order_date) OVER (PARTITION BY user_id ORDER BY order_date) AS prev_order_date,
+    order_date - LAG(order_date) OVER (PARTITION BY user_id ORDER BY order_date) AS days_since_last_order
+FROM sales.orders
+ORDER BY user_id, order_date;</pre>
+
+    <h4><code>FIRST_VALUE()</code> and <code>LAST_VALUE()</code></h4>
+    <p><strong>These functions return the first or last value in the window frame.</strong> Useful for comparing each row against a baseline (e.g., every order vs. the customer's first order).</p>
+
+    <pre>SELECT
+    user_id,
+    order_id,
+    order_date,
+    total_amount,
+    FIRST_VALUE(total_amount) OVER (
+        PARTITION BY user_id
+        ORDER BY order_date
+        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+    ) AS first_order_amount,
+    total_amount - FIRST_VALUE(total_amount) OVER (
+        PARTITION BY user_id
+        ORDER BY order_date
+        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+    ) AS diff_from_first
+FROM sales.orders
+ORDER BY user_id, order_date;</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â </span>
+      <div class="callout-body"><strong><code>LAST_VALUE</code> trap:</strong> the default frame is <code>RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</code>, which means <code>LAST_VALUE</code> returns the current row &mdash; not the actual last row. Always specify <code>ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</code> when you want the true last value.</div>
+    </div>
+
+    <h3>Running Aggregates</h3>
+    <p><strong>An aggregate inside <code>OVER()</code> creates a running calculation.</strong> Cumulative revenue, running counts, and moving averages &mdash; all without self-joins.</p>
+
+    <pre>SELECT
+    order_id,
+    order_date,
+    total_amount,
+    SUM(total_amount) OVER (
+        ORDER BY order_date
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS cumulative_revenue,
+    AVG(total_amount) OVER (
+        ORDER BY order_date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS moving_avg_7_orders
+FROM sales.orders
+WHERE order_status IN ('paid', 'shipped', 'delivered')
+ORDER BY order_date;</pre>
+
+    <h3>Distribution Functions</h3>
+    <p><strong><code>PERCENT_RANK()</code> and <code>CUME_DIST()</code></strong> tell you where a row falls relative to the entire partition &mdash; useful for percentile-based reporting and outlier detection.</p>
+
+    <pre>SELECT
+    user_id,
+    total_amount,
+    ROUND(PERCENT_RANK() OVER (ORDER BY total_amount)::NUMERIC, 3) AS pct_rank,
+    ROUND(CUME_DIST()    OVER (ORDER BY total_amount)::NUMERIC, 3) AS cumulative_dist
+FROM sales.orders
+WHERE order_status IN ('paid', 'shipped', 'delivered')
+ORDER BY total_amount DESC;</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¹</span>
+      <div class="callout-body"><strong><code>PERCENT_RANK</code></strong> returns 0 for the first row and scales to 1. <strong><code>CUME_DIST</code></strong> returns the fraction of rows with values &le; the current row. Use <code>PERCENT_RANK</code> for "what percentile am I in?" and <code>CUME_DIST</code> for "what fraction of records are at or below me?"</div>
+    </div>
   </section>
 
   <section id="ctes">
     <h2>Module 3: Common Table Expressions (CTEs)</h2>
+    <p>CTEs name intermediate result sets inside a single statement. At the advanced level, they become powerful tools for hierarchical traversal, data pipelines, and even multi-table mutations.</p>
+
     <h3>Chaining Standard CTEs</h3>
-    <p><strong>Multiple CTEs let you break a large query into named steps.</strong> That makes logic review much easier than tracing through deeply nested subqueries.</p>
+    <p><strong>Multiple CTEs let you break a large query into named steps.</strong> Each CTE can reference the ones defined before it, creating a readable data pipeline.</p>
 
     <pre>WITH paid_orders AS (
     SELECT user_id, total_amount, order_date
@@ -185,9 +537,9 @@ ORDER BY sales_week;</pre>
 user_order_totals AS (
     SELECT
         user_id,
-        COUNT(*) AS completed_order_count,
-        SUM(total_amount) AS lifetime_value,
-        MAX(order_date) AS last_order_date
+        COUNT(*)           AS completed_order_count,
+        SUM(total_amount)  AS lifetime_value,
+        MAX(order_date)    AS last_order_date
     FROM paid_orders
     GROUP BY user_id
 ),
@@ -207,16 +559,56 @@ INNER JOIN sales.users AS u
     ON u.user_id = v.user_id
 ORDER BY v.lifetime_value DESC;</pre>
 
-    <h3>Recursive CTEs</h3>
-    <p><strong><code>WITH RECURSIVE</code> traverses hierarchical data.</strong> You define an anchor query for the starting rows and a recursive member that walks to the next level. This is ideal for org charts, category trees, or bills of materials.</p>
+    <h3>CTE Materialization Hints</h3>
+    <p><strong>By default, PostgreSQL may inline a CTE or materialize it.</strong> In PostgreSQL 12+, you can control this explicitly. <code>MATERIALIZED</code> forces the CTE to be evaluated once and stored as a temp result. <code>NOT MATERIALIZED</code> allows the optimizer to inline it into the outer query.</p>
 
-    <pre>CREATE TABLE hr.employees (
-    employee_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    employee_name TEXT NOT NULL,
-    manager_id INTEGER REFERENCES hr.employees(employee_id)
-);</pre>
+    <pre>-- Force materialization when the CTE is referenced multiple times
+WITH active_users AS MATERIALIZED (
+    SELECT user_id, full_name, email
+    FROM sales.users
+    WHERE is_active = TRUE
+)
+SELECT au.full_name, COUNT(o.order_id) AS order_count
+FROM active_users AS au
+LEFT JOIN sales.orders AS o
+    ON o.user_id = au.user_id
+GROUP BY au.full_name
+ORDER BY order_count DESC;</pre>
 
+    <div class="callout tip">
+      <span class="callout-icon">ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â¡</span>
+      <div class="callout-body"><strong>When to use <code>MATERIALIZED</code>:</strong> when the CTE is referenced multiple times, or when it acts as an optimization fence (preventing the planner from pushing filters into the CTE). Use <code>NOT MATERIALIZED</code> when the CTE is used once and you want the planner to optimize it as part of the outer query.</div>
+    </div>
+
+    <h3>Writable CTEs (DML inside <code>WITH</code>)</h3>
+    <p><strong>PostgreSQL allows <code>INSERT</code>, <code>UPDATE</code>, and <code>DELETE</code> inside CTEs.</strong> This creates powerful single-statement pipelines that archive, transform, and report in one atomic operation.</p>
+
+    <pre>-- Archive old orders and return a summary in one statement
+WITH archived AS (
+    DELETE FROM sales.orders
+    WHERE order_date &lt; NOW() - INTERVAL '2 years'
+      AND order_status = 'delivered'
+    RETURNING order_id, user_id, total_amount, order_date
+),
+inserted AS (
+    INSERT INTO archive.orders (order_id, user_id, total_amount, order_date)
+    SELECT order_id, user_id, total_amount, order_date
+    FROM archived
+    RETURNING order_id
+)
+SELECT COUNT(*) AS archived_count FROM inserted;</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">ÃƒÂ¢Ã…Â¡Ã‚Â </span>
+      <div class="callout-body"><strong>Writable CTEs execute regardless of whether the outer query reads them.</strong> If you define a CTE with <code>DELETE</code>, it <em>will</em> delete rows even if the outer <code>SELECT</code> is never reached due to an error in another CTE. Test carefully.</div>
+    </div>
+
+    <h3>Recursive CTEs &mdash; Hierarchical Traversal</h3>
+    <p><strong><code>WITH RECURSIVE</code> has two parts:</strong> the <em>anchor</em> (base case) and the <em>recursive member</em> (step). PostgreSQL repeatedly executes the recursive member until it returns no new rows.</p>
+
+    <h4>Org Chart with Depth and Path</h4>
     <pre>WITH RECURSIVE org_chart AS (
+    -- Anchor: top-level managers (no manager)
     SELECT
         employee_id,
         employee_name,
@@ -228,33 +620,102 @@ ORDER BY v.lifetime_value DESC;</pre>
 
     UNION ALL
 
+    -- Recursive member: walk down the tree
     SELECT
         e.employee_id,
         e.employee_name,
         e.manager_id,
-        oc.depth + 1 AS depth,
-        oc.reporting_path || ' -> ' || e.employee_name AS reporting_path
+        oc.depth + 1,
+        oc.reporting_path || ' &rarr; ' || e.employee_name
     FROM hr.employees AS e
     INNER JOIN org_chart AS oc
         ON e.manager_id = oc.employee_id
 )
-SELECT employee_id, employee_name, manager_id, depth, reporting_path
+SELECT employee_id, employee_name, depth, reporting_path
 FROM org_chart
 ORDER BY reporting_path;</pre>
-  </section>
 
+    <h4>Category Breadcrumb Trail</h4>
+    <pre>-- Build "Electronics &rarr; Phones &rarr; Smartphones" breadcrumbs
+WITH RECURSIVE cat_path AS (
+    SELECT
+        category_id,
+        category_name,
+        parent_category_id,
+        category_name::TEXT AS breadcrumb
+    FROM catalog.categories
+    WHERE parent_category_id IS NULL
+
+    UNION ALL
+
+    SELECT
+        c.category_id,
+        c.category_name,
+        c.parent_category_id,
+        cp.breadcrumb || ' &rarr; ' || c.category_name
+    FROM catalog.categories AS c
+    INNER JOIN cat_path AS cp
+        ON c.parent_category_id = cp.category_id
+)
+SELECT category_id, category_name, breadcrumb
+FROM cat_path
+ORDER BY breadcrumb;</pre>
+
+    <h4>Generating a Number Series</h4>
+    <pre>-- Recursive CTE as a substitute for generate_series
+WITH RECURSIVE nums AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM nums WHERE n &lt; 100
+)
+SELECT n FROM nums;</pre>
+
+    <h3>Cycle Detection (PostgreSQL 14+)</h3>
+    <p><strong>The <code>CYCLE</code> clause prevents infinite loops</strong> when data has circular references (e.g., an employee who is their own indirect manager). Before PostgreSQL 14, you had to track visited nodes manually with arrays.</p>
+
+    <pre>WITH RECURSIVE org_chart AS (
+    SELECT employee_id, employee_name, manager_id, 0 AS depth
+    FROM hr.employees
+    WHERE manager_id IS NULL
+
+    UNION ALL
+
+    SELECT e.employee_id, e.employee_name, e.manager_id, oc.depth + 1
+    FROM hr.employees AS e
+    INNER JOIN org_chart AS oc
+        ON e.manager_id = oc.employee_id
+)
+CYCLE employee_id SET is_cycle USING path
+SELECT employee_id, employee_name, depth
+FROM org_chart
+WHERE NOT is_cycle
+ORDER BY depth, employee_name;</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¹</span>
+      <div class="callout-body"><strong>CTE performance tip:</strong> recursive CTEs can be slow on large hierarchies. Always include a depth limit (<code>WHERE depth &lt; 20</code>) or use <code>CYCLE</code> to prevent runaway recursion. Index the join column (<code>manager_id</code>, <code>parent_category_id</code>) for best performance.</div>
+    </div>
+  </section>
   <section id="grouping-pivoting">
     <h2>Module 4: Advanced Grouping &amp; Pivoting</h2>
-    <h3><code>ROLLUP</code>, <code>CUBE</code>, and <code>GROUPING SETS</code></h3>
-    <p><strong>Advanced grouping creates subtotals and grand totals in one pass.</strong> This is extremely useful in finance and operations reporting where multiple levels of aggregation are expected from the same dataset.</p>
+    <p>Standard <code>GROUP BY</code> produces one level of aggregation. Advanced grouping (<code>ROLLUP</code>, <code>CUBE</code>, <code>GROUPING SETS</code>) produces multiple levels in a single pass &mdash; subtotals, cross-totals, and grand totals without <code>UNION ALL</code> gymnastics.</p>
+
+    <h3><code>ROLLUP</code> &mdash; Hierarchical Subtotals</h3>
+    <p><strong><code>ROLLUP</code> creates subtotals that roll up from right to left.</strong> <code>ROLLUP(a, b)</code> produces groups: <code>(a, b)</code>, <code>(a)</code>, <code>()</code>. Think of it as progressively removing the rightmost column.</p>
 
     <pre>SELECT
     sales_region,
     order_status,
-    SUM(total_amount) AS revenue
+    COUNT(*)           AS order_count,
+    SUM(total_amount)  AS revenue
 FROM sales.orders
 GROUP BY ROLLUP (sales_region, order_status)
-ORDER BY sales_region, order_status;</pre>
+ORDER BY sales_region NULLS LAST, order_status NULLS LAST;</pre>
+
+    <p>Result rows where <code>order_status IS NULL</code> are region subtotals. The row where <em>both</em> are <code>NULL</code> is the grand total.</p>
+
+    <h3><code>CUBE</code> &mdash; All Dimension Combinations</h3>
+    <p><strong><code>CUBE</code> generates subtotals for every possible combination.</strong> <code>CUBE(a, b)</code> produces: <code>(a, b)</code>, <code>(a)</code>, <code>(b)</code>, <code>()</code>. Use it when you need cross-dimensional summaries (e.g., revenue by region, by status, and by both).</p>
 
     <pre>SELECT
     sales_region,
@@ -262,61 +723,253 @@ ORDER BY sales_region, order_status;</pre>
     SUM(total_amount) AS revenue
 FROM sales.orders
 GROUP BY CUBE (sales_region, order_status)
-ORDER BY sales_region, order_status;</pre>
+ORDER BY sales_region NULLS LAST, order_status NULLS LAST;</pre>
+
+    <h3><code>GROUPING SETS</code> &mdash; Explicit Control</h3>
+    <p><strong><code>GROUPING SETS</code> lets you specify exactly which groupings to compute.</strong> This is the most flexible option &mdash; <code>ROLLUP</code> and <code>CUBE</code> are syntactic shortcuts for common <code>GROUPING SETS</code> patterns.</p>
 
     <pre>SELECT
     sales_region,
     payment_method,
-    SUM(total_amount) AS revenue
+    SUM(total_amount)  AS revenue,
+    COUNT(*)           AS order_count
 FROM sales.orders
 GROUP BY GROUPING SETS (
-    (sales_region, payment_method),
-    (sales_region),
-    (payment_method),
-    ()
+    (sales_region, payment_method),   -- detail
+    (sales_region),                   -- subtotal by region
+    (payment_method),                 -- subtotal by payment
+    ()                                -- grand total
 )
-ORDER BY sales_region, payment_method;</pre>
+ORDER BY sales_region NULLS LAST, payment_method NULLS LAST;</pre>
 
-    <h3>Pivoting the PostgreSQL Way</h3>
-    <p><strong>PostgreSQL does not have a native <code>PIVOT</code> keyword.</strong> The common pattern is conditional aggregation with the <code>FILTER</code> clause. It is readable, explicit, and easy to extend.</p>
+    <h3>The <code>GROUPING()</code> Function &mdash; Disambiguating NULLs</h3>
+    <p><strong>Subtotal rows have <code>NULL</code> in the grouped column, but real data can also be <code>NULL</code>.</strong> The <code>GROUPING()</code> function returns <code>1</code> when the <code>NULL</code> comes from the grouping operation (subtotal), and <code>0</code> when it is a real data <code>NULL</code>.</p>
 
     <pre>SELECT
-    DATE_TRUNC('month', order_date) AS sales_month,
-    SUM(total_amount) FILTER (WHERE order_status = 'paid') AS paid_amount,
-    SUM(total_amount) FILTER (WHERE order_status = 'shipped') AS shipped_amount,
-    SUM(total_amount) FILTER (WHERE order_status = 'cancelled') AS cancelled_amount
+    CASE WHEN GROUPING(sales_region) = 1 THEN '** ALL REGIONS **'
+         ELSE COALESCE(sales_region, '(unknown)')
+    END AS region_label,
+    CASE WHEN GROUPING(order_status) = 1 THEN '** ALL STATUSES **'
+         ELSE order_status
+    END AS status_label,
+    SUM(total_amount) AS revenue
+FROM sales.orders
+GROUP BY ROLLUP (sales_region, order_status)
+ORDER BY GROUPING(sales_region), sales_region NULLS LAST,
+         GROUPING(order_status), order_status NULLS LAST;</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">Ã°Å¸â€™Â¡</span>
+      <div class="callout-body"><strong>Sorting subtotals last:</strong> <code>ORDER BY GROUPING(col), col</code> puts detail rows before subtotals and subtotals before the grand total &mdash; the natural report layout.</div>
+    </div>
+
+    <h3>Pivoting with <code>FILTER</code></h3>
+    <p><strong>PostgreSQL does not have a native <code>PIVOT</code> keyword.</strong> The idiomatic replacement is conditional aggregation using the <code>FILTER</code> clause, which is both readable and performant.</p>
+
+    <pre>SELECT
+    DATE_TRUNC('month', order_date)  AS sales_month,
+    COUNT(*)                                           AS total_orders,
+    SUM(total_amount) FILTER (WHERE order_status = 'paid')      AS paid,
+    SUM(total_amount) FILTER (WHERE order_status = 'shipped')   AS shipped,
+    SUM(total_amount) FILTER (WHERE order_status = 'delivered') AS delivered,
+    SUM(total_amount) FILTER (WHERE order_status = 'cancelled') AS cancelled
 FROM sales.orders
 GROUP BY DATE_TRUNC('month', order_date)
 ORDER BY sales_month;</pre>
-  </section>
 
+    <h3>Pivoting with <code>CASE</code> (Portable Alternative)</h3>
+    <p><strong><code>CASE</code>-based pivoting works on all SQL databases.</strong> It is slightly more verbose than <code>FILTER</code> but useful when you need cross-database compatibility.</p>
+
+    <pre>SELECT
+    sales_region,
+    SUM(CASE WHEN payment_method = 'credit_card' THEN total_amount ELSE 0 END) AS credit_card,
+    SUM(CASE WHEN payment_method = 'paypal'      THEN total_amount ELSE 0 END) AS paypal,
+    SUM(CASE WHEN payment_method = 'bank_transfer' THEN total_amount ELSE 0 END) AS bank_transfer
+FROM sales.orders
+WHERE order_status IN ('paid', 'shipped', 'delivered')
+GROUP BY sales_region
+ORDER BY sales_region;</pre>
+
+    <h3>Dynamic Pivoting with <code>crosstab()</code></h3>
+    <p><strong>The <code>tablefunc</code> extension provides <code>crosstab()</code></strong> for cases where the pivot categories are not known at write time.</p>
+
+    <pre>CREATE EXTENSION IF NOT EXISTS tablefunc;
+
+SELECT *
+FROM crosstab(
+    $$
+    SELECT
+        sales_region,
+        order_status,
+        SUM(total_amount)::NUMERIC
+    FROM sales.orders
+    GROUP BY sales_region, order_status
+    ORDER BY 1, 2
+    $$,
+    $$ VALUES ('cancelled'), ('delivered'), ('paid'), ('shipped') $$
+) AS pivot_table (
+    sales_region TEXT,
+    cancelled    NUMERIC,
+    delivered    NUMERIC,
+    paid         NUMERIC,
+    shipped      NUMERIC
+);</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">Ã¢â€žÂ¹</span>
+      <div class="callout-body"><strong><code>FILTER</code> vs. <code>CASE</code> vs. <code>crosstab()</code>:</strong> use <code>FILTER</code> when categories are known and fixed &mdash; it is the cleanest PostgreSQL idiom. Use <code>CASE</code> for portability. Use <code>crosstab()</code> only when categories are dynamic or unknown at design time.</div>
+    </div>
+  </section>
   <section id="procedures-temp">
     <h2>Module 5: Stored Procedures &amp; Temporary Tables</h2>
-    <p><strong>PostgreSQL procedures were introduced in version 11.</strong> Unlike functions, procedures can manage transactions with <code>COMMIT</code> and <code>ROLLBACK</code> when executed in an appropriate call context. That makes them useful for controlled batch workflows.</p>
+    <p><strong>PostgreSQL procedures were introduced in version 11.</strong> Unlike functions, procedures can manage transactions with <code>COMMIT</code> and <code>ROLLBACK</code> when executed in an appropriate call context. That makes them the right tool for multi-step batch workflows, data migrations, and any operation that needs explicit transaction control within a single callable unit.</p>
 
+    <div class="table-wrap">
+      <table>
+        <tr><th>Feature</th><th>Function (<code>CREATE FUNCTION</code>)</th><th>Procedure (<code>CREATE PROCEDURE</code>)</th></tr>
+        <tr><td><strong>Returns a value</strong></td><td>Yes &mdash; scalar, composite, or table</td><td>No &mdash; uses <code>OUT</code> / <code>INOUT</code> parameters</td></tr>
+        <tr><td><strong>Called with</strong></td><td><code>SELECT func()</code></td><td><code>CALL proc()</code></td></tr>
+        <tr><td><strong>Usable in queries</strong></td><td>Yes &mdash; in <code>SELECT</code>, <code>WHERE</code>, <code>JOIN</code></td><td>No</td></tr>
+        <tr><td><strong>Transaction control</strong></td><td>No</td><td>Yes &mdash; <code>COMMIT</code> / <code>ROLLBACK</code></td></tr>
+        <tr><td><strong>Best for</strong></td><td>Computed values, reusable query logic</td><td>Batch workflows, data migrations, multi-step mutations</td></tr>
+      </table>
+    </div>
+
+    <h3>Basic Procedure with <code>IN</code> / <code>OUT</code> / <code>INOUT</code> Parameters</h3>
+    <p><strong><code>IN</code> passes values in. <code>OUT</code> returns values. <code>INOUT</code> does both.</strong></p>
+
+    <pre>CREATE OR REPLACE PROCEDURE sales.apply_discount(
+    IN  p_user_id        INTEGER,
+    IN  p_discount_pct   NUMERIC,
+    INOUT p_orders_updated INTEGER DEFAULT 0
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE sales.orders
+    SET total_amount = total_amount * (1 - p_discount_pct / 100)
+    WHERE user_id = p_user_id
+      AND order_status = 'pending_payment';
+
+    GET DIAGNOSTICS p_orders_updated = ROW_COUNT;
+END;
+$$;</pre>
+
+    <pre>CALL sales.apply_discount(42, 15.0, NULL);
+-- Returns count of updated orders via the INOUT parameter</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢Ãƒâ€šÃ‚Â¡</span>
+      <div class="callout-body"><strong><code>GET DIAGNOSTICS</code></strong> captures metadata from the last SQL statement. <code>ROW_COUNT</code> returns the number of affected rows &mdash; essential for logging and conditional logic inside procedures.</div>
+    </div>
+
+    <h3>Control Flow &amp; Variables</h3>
+    <p><strong>PL/pgSQL supports <code>DECLARE</code> blocks, <code>IF</code> / <code>ELSIF</code> / <code>ELSE</code>, <code>CASE</code>, and loops.</strong> Use them to build conditional business logic directly in the database.</p>
+
+    <pre>CREATE OR REPLACE PROCEDURE sales.upgrade_user_tier(
+    IN p_user_id INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_total_spent NUMERIC;
+    v_new_tier    TEXT;
+BEGIN
+    SELECT COALESCE(SUM(total_amount), 0)
+    INTO v_total_spent
+    FROM sales.orders
+    WHERE user_id = p_user_id
+      AND order_status IN ('paid', 'shipped', 'delivered');
+
+    IF v_total_spent >= 10000 THEN
+        v_new_tier := 'platinum';
+    ELSIF v_total_spent >= 5000 THEN
+        v_new_tier := 'gold';
+    ELSIF v_total_spent >= 1000 THEN
+        v_new_tier := 'silver';
+    ELSE
+        v_new_tier := 'bronze';
+    END IF;
+
+    UPDATE sales.users
+    SET loyalty_tier = v_new_tier,
+        updated_at   = NOW()
+    WHERE user_id = p_user_id;
+
+    RAISE NOTICE 'User % upgraded to % (lifetime: %)',
+        p_user_id, v_new_tier, v_total_spent;
+END;
+$$;</pre>
+
+    <h3>Cursor-Based Iteration</h3>
+    <p><strong>Cursors let a procedure walk through a result set row by row.</strong> Use them when each row requires individual processing that cannot be expressed as a single set-based statement.</p>
+
+    <pre>CREATE OR REPLACE PROCEDURE sales.recalculate_all_tiers()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    r_user RECORD;
+    cur_users CURSOR FOR
+        SELECT user_id FROM sales.users WHERE is_active = TRUE;
+BEGIN
+    OPEN cur_users;
+    LOOP
+        FETCH cur_users INTO r_user;
+        EXIT WHEN NOT FOUND;
+
+        CALL sales.upgrade_user_tier(r_user.user_id);
+    END LOOP;
+    CLOSE cur_users;
+
+    RAISE NOTICE 'All active user tiers recalculated.';
+END;
+$$;</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â </span>
+      <div class="callout-body"><strong>Prefer set-based operations over cursors.</strong> A single <code>UPDATE ... FROM ...</code> is almost always faster than a cursor loop. Use cursors only when per-row logic is genuinely different (e.g., calling another procedure per row, or complex branching that varies by row).</div>
+    </div>
+
+    <h3>Temporary Tables Inside Procedures</h3>
+    <p><strong>Temp tables are powerful staging areas for multi-step logic.</strong> They exist only for the session (or the transaction, with <code>ON COMMIT DROP</code>). Use them to collect intermediate results, then process those results in subsequent steps.</p>
+
+    <h4><code>ON COMMIT DROP</code> &mdash; Transaction-Scoped Temp Tables</h4>
     <pre>CREATE OR REPLACE PROCEDURE billing.process_batch_payments(
     IN p_batch_id BIGINT
 )
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    CREATE TEMP TABLE payment_worklist (
+    -- Step 1: Create a transaction-scoped staging table
+    CREATE TEMP TABLE IF NOT EXISTS payment_worklist (
         order_id BIGINT,
-        user_id BIGINT,
-        amount NUMERIC(12, 2)
+        user_id  BIGINT,
+        amount   NUMERIC(12, 2)
     ) ON COMMIT DROP;
 
+    -- Step 2: Load pending payments
     INSERT INTO payment_worklist (order_id, user_id, amount)
     SELECT order_id, user_id, total_amount
     FROM sales.orders
     WHERE payment_batch_id = p_batch_id
       AND order_status = 'pending_payment';
 
+    -- Step 3: Mark orders as paid
     UPDATE sales.orders AS o
     SET order_status = 'paid',
-        paid_at = NOW()
+        paid_at      = NOW()
     FROM payment_worklist AS pw
     WHERE o.order_id = pw.order_id;
+
+    -- Step 4: Award loyalty points
+    UPDATE sales.users AS u
+    SET loyalty_points = u.loyalty_points + 10
+    FROM payment_worklist AS pw
+    WHERE u.user_id = pw.user_id;
+
+    -- Step 5: Log batch completion
+    INSERT INTO billing.batch_log (batch_id, processed_at, order_count)
+    SELECT p_batch_id, NOW(), COUNT(*) FROM payment_worklist;
 
     COMMIT;
 EXCEPTION
@@ -326,13 +979,99 @@ EXCEPTION
 END;
 $$;</pre>
 
-    <p><strong><code>ON COMMIT DROP</code> guarantees cleanup.</strong> That is useful when temp data should never survive the transaction boundary, especially in batch-style procedures.</p>
+    <h4><code>ON COMMIT PRESERVE ROWS</code> &mdash; Session-Scoped Temp Tables</h4>
+    <p><strong>When the temp table needs to survive across multiple transactions</strong> within the same session (e.g., a multi-step data import), use <code>ON COMMIT PRESERVE ROWS</code> (the default) or simply <code>CREATE TEMP TABLE</code>.</p>
+
+    <pre>-- Session-scoped: survives COMMIT, dropped when session ends
+CREATE TEMP TABLE import_staging (
+    raw_email   TEXT,
+    raw_name    TEXT,
+    is_valid    BOOLEAN DEFAULT FALSE
+);
+
+-- Use TRUNCATE to reuse the same temp table across calls
+TRUNCATE import_staging;</pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Temp Table Lifecycle</th><th>Created With</th><th>Dropped When</th><th>Use Case</th></tr>
+        <tr><td><strong>Transaction-scoped</strong></td><td><code>ON COMMIT DROP</code></td><td>Transaction ends</td><td>Single-batch procedures</td></tr>
+        <tr><td><strong>Session-scoped</strong></td><td><code>ON COMMIT PRESERVE ROWS</code></td><td>Session ends</td><td>Multi-step imports, interactive workflows</td></tr>
+        <tr><td><strong>Reusable pattern</strong></td><td><code>CREATE TEMP TABLE IF NOT EXISTS</code> + <code>TRUNCATE</code></td><td>Manually or session end</td><td>Repeated procedure calls</td></tr>
+      </table>
+    </div>
+
+    <h3>Error Handling with <code>EXCEPTION</code></h3>
+    <p><strong>The <code>EXCEPTION</code> block catches errors inside PL/pgSQL.</strong> You can handle specific error conditions or use <code>WHEN OTHERS</code> as a catch-all. This lets you log failures, clean up resources, or provide meaningful error messages.</p>
+
+    <pre>CREATE OR REPLACE PROCEDURE sales.safe_transfer_order(
+    IN p_order_id  BIGINT,
+    IN p_new_user  INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_old_user INTEGER;
+BEGIN
+    SELECT user_id INTO STRICT v_old_user
+    FROM sales.orders
+    WHERE order_id = p_order_id;
+
+    UPDATE sales.orders
+    SET user_id = p_new_user
+    WHERE order_id = p_order_id;
+
+    RAISE NOTICE 'Order % transferred from user % to user %.',
+        p_order_id, v_old_user, p_new_user;
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RAISE EXCEPTION 'Order % does not exist.', p_order_id;
+    WHEN foreign_key_violation THEN
+        RAISE EXCEPTION 'User % does not exist.', p_new_user;
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'Unexpected error: % [%]', SQLERRM, SQLSTATE;
+END;
+$$;</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¹</span>
+      <div class="callout-body"><strong>When to use procedures vs. application code:</strong> put logic in a procedure when it involves multiple tables in a single transaction, needs to stay close to the data for performance, or must be consistent across all callers (APIs, batch jobs, reports). Keep business rules in application code when they need unit testing, frequent iteration, or integration with external services.</div>
+    </div>
   </section>
 
   <section id="udfs">
     <h2>Module 6: User-Defined Functions (UDFs)</h2>
-    <h3>Scalar Function</h3>
-    <p><strong>A scalar function returns one value.</strong> Use it when the logic is small, deterministic, and genuinely reusable.</p>
+    <p>Functions encapsulate reusable logic that <em>returns</em> a value. Unlike procedures, functions can be called inside <code>SELECT</code>, <code>WHERE</code>, and <code>JOIN</code> clauses, making them composable building blocks for queries.</p>
+
+    <h3>Language Choice: SQL vs. PL/pgSQL</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Language</th><th>Use When</th><th>Performance</th></tr>
+        <tr><td><strong><code>LANGUAGE sql</code></strong></td><td>The body is a single SQL statement or simple expression</td><td>Can be inlined by the planner &mdash; fastest</td></tr>
+        <tr><td><strong><code>LANGUAGE plpgsql</code></strong></td><td>You need variables, control flow, or multiple statements</td><td>Slightly more overhead; not inlined</td></tr>
+      </table>
+    </div>
+
+    <h3>Volatility Categories</h3>
+    <p><strong>Volatility tells PostgreSQL how aggressively it can optimize calls.</strong></p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Category</th><th>Meaning</th><th>Example</th></tr>
+        <tr><td><strong><code>IMMUTABLE</code></strong></td><td>Same inputs always produce same output, no side effects</td><td>Math, string formatting</td></tr>
+        <tr><td><strong><code>STABLE</code></strong></td><td>Same within a single statement, reads DB but no writes</td><td>Lookups against config tables</td></tr>
+        <tr><td><strong><code>VOLATILE</code></strong></td><td>Can return different results even within the same statement</td><td><code>NOW()</code>, <code>random()</code>, writes</td></tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">ðŸ’¡</span>
+      <div class="callout-body"><strong>Rule of thumb:</strong> mark functions <code>IMMUTABLE</code> when possible &mdash; PostgreSQL can cache results, use them in index expressions, and fold constant calls at plan time. Mislabeling a volatile function as immutable can cause silent data bugs.</div>
+    </div>
+
+    <h3>Scalar Function (PL/pgSQL)</h3>
+    <p><strong>Returns a single value.</strong> Great for business-rule calculations that are reused across multiple queries.</p>
 
     <pre>CREATE OR REPLACE FUNCTION billing.calculate_order_tax(
     p_subtotal NUMERIC,
@@ -340,27 +1079,48 @@ $$;</pre>
 )
 RETURNS NUMERIC
 LANGUAGE plpgsql
+IMMUTABLE
 AS $$
 BEGIN
     RETURN ROUND(p_subtotal * p_tax_rate, 2);
 END;
 $$;</pre>
 
-    <pre>SELECT billing.calculate_order_tax(249.99, 0.0825) AS tax_amount;</pre>
+    <pre>SELECT
+    order_id,
+    total_amount,
+    billing.calculate_order_tax(total_amount, 0.0825) AS tax
+FROM sales.orders
+LIMIT 10;</pre>
+
+    <h3>Scalar Function (Pure SQL &mdash; Inlineable)</h3>
+    <p><strong>A pure SQL function can be inlined by the planner</strong> &mdash; it is effectively copy-pasted into the calling query, avoiding function-call overhead entirely.</p>
+
+    <pre>CREATE OR REPLACE FUNCTION billing.net_amount(
+    p_gross NUMERIC,
+    p_tax   NUMERIC
+)
+RETURNS NUMERIC
+LANGUAGE sql
+IMMUTABLE
+AS $$
+    SELECT ROUND(p_gross - p_tax, 2);
+$$;</pre>
 
     <h3>Table-Returning Function</h3>
-    <p><strong>A table function returns a result set.</strong> It is useful when you want reusable parameterized query logic that behaves like a virtual table.</p>
+    <p><strong>A table function returns a result set</strong> that callers can use like a virtual table in <code>FROM</code>. This is powerful for parameterized views.</p>
 
     <pre>CREATE OR REPLACE FUNCTION reporting.get_user_orders(
     p_user_id BIGINT
 )
 RETURNS TABLE (
-    order_id BIGINT,
-    order_date TIMESTAMP WITH TIME ZONE,
+    order_id     BIGINT,
+    order_date   TIMESTAMP WITH TIME ZONE,
     order_status TEXT,
     total_amount NUMERIC(12, 2)
 )
 LANGUAGE plpgsql
+STABLE
 AS $$
 BEGIN
     RETURN QUERY
@@ -375,10 +1135,102 @@ BEGIN
 END;
 $$;</pre>
 
-    <pre>SELECT *
-FROM reporting.get_user_orders(42);</pre>
-  </section>
+    <pre>-- Use like a table
+SELECT * FROM reporting.get_user_orders(42);
 
+-- Join with other tables
+SELECT
+    uo.order_id,
+    uo.total_amount,
+    u.full_name
+FROM reporting.get_user_orders(42) AS uo
+INNER JOIN sales.users AS u
+    ON u.user_id = 42;</pre>
+
+    <h3>Function with Default Parameters</h3>
+    <p><strong>Defaults make functions flexible without breaking existing callers.</strong></p>
+
+    <pre>CREATE OR REPLACE FUNCTION reporting.recent_orders(
+    p_days   INTEGER DEFAULT 30,
+    p_status TEXT    DEFAULT 'paid'
+)
+RETURNS TABLE (
+    order_id     BIGINT,
+    user_id      BIGINT,
+    total_amount NUMERIC(12, 2),
+    order_date   TIMESTAMP WITH TIME ZONE
+)
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT order_id, user_id, total_amount, order_date
+    FROM sales.orders
+    WHERE order_date >= NOW() - (p_days || ' days')::INTERVAL
+      AND order_status = p_status
+    ORDER BY order_date DESC;
+$$;</pre>
+
+    <pre>-- Uses defaults: last 30 days, status = 'paid'
+SELECT * FROM reporting.recent_orders();
+
+-- Override days only
+SELECT * FROM reporting.recent_orders(p_days := 7);
+
+-- Override both
+SELECT * FROM reporting.recent_orders(90, 'shipped');</pre>
+
+    <h3>Trigger Function</h3>
+    <p><strong>Trigger functions automate side effects</strong> when rows are inserted, updated, or deleted. They return <code>TRIGGER</code> and have access to special variables <code>NEW</code> (incoming row) and <code>OLD</code> (previous row).</p>
+
+    <pre>CREATE OR REPLACE FUNCTION sales.set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at := NOW();
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_users_updated_at
+    BEFORE UPDATE ON sales.users
+    FOR EACH ROW
+    EXECUTE FUNCTION sales.set_updated_at();</pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">âš </span>
+      <div class="callout-body"><strong>Trigger performance:</strong> triggers fire per row by default. On bulk updates (10K+ rows), they can become a bottleneck. Consider <code>FOR EACH STATEMENT</code> triggers or batch processing inside procedures for high-volume operations.</div>
+    </div>
+
+    <h3><code>SECURITY DEFINER</code> Functions</h3>
+    <p><strong><code>SECURITY DEFINER</code> runs the function with the permissions of the function owner</strong>, not the caller. This is useful for controlled access &mdash; letting application users call a function that reads from tables they cannot access directly.</p>
+
+    <pre>CREATE OR REPLACE FUNCTION reporting.get_order_summary(
+    p_user_id BIGINT
+)
+RETURNS TABLE (
+    total_orders  BIGINT,
+    total_spent   NUMERIC,
+    avg_order_val NUMERIC
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+    SELECT
+        COUNT(*)                        AS total_orders,
+        COALESCE(SUM(total_amount), 0)  AS total_spent,
+        ROUND(AVG(total_amount), 2)     AS avg_order_val
+    FROM sales.orders
+    WHERE user_id = p_user_id
+      AND order_status IN ('paid', 'shipped', 'delivered');
+$$;</pre>
+
+    <div class="callout info">
+      <span class="callout-icon">â„¹</span>
+      <div class="callout-body"><strong>Functions vs. Procedures recap:</strong> use functions when you need a return value composable in queries. Use procedures when you need transaction control (<code>COMMIT</code>/<code>ROLLBACK</code>). If the logic is purely a calculation with no side effects, a <code>LANGUAGE sql IMMUTABLE</code> function gives the best performance.</div>
+    </div>
+  </section>
   <section id="jsonb">
     <h2>Module 7: Bonus - Advanced Data Types (JSONB)</h2>
     <p><strong>PostgreSQL is famous for JSON support because it lets you mix relational structure with flexible semi-structured payloads.</strong> That is useful when the core entity is stable but some attributes vary, such as marketplace-specific metadata, checkout payloads, or webhook responses.</p>
@@ -403,7 +1255,7 @@ FROM sales.order_events
 WHERE event_payload @&gt; '{"payment": {"provider": "stripe"}}'::jsonb;</pre>
 
     <div class="callout tip">
-      <span class="callout-icon">💡</span>
+      <span class="callout-icon">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡</span>
       <div class="callout-body"><strong>Design guideline:</strong> keep highly queried, strongly typed business fields in regular columns. Use JSONB for flexible attributes, payload snapshots, or edge-case metadata, not as an excuse to avoid data modeling.</div>
     </div>
   </section>
