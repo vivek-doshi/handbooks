@@ -28,6 +28,102 @@
     applyTheme(nextTheme);
   }
 
+  function setupSectionNavigation() {
+    const links = Array.from(document.querySelectorAll('.nav-link[href^="#"], .sidebar-link[href^="#"]'));
+
+    if (links.length === 0) {
+      return;
+    }
+
+    const sectionMap = new Map();
+
+    links.forEach(function (link) {
+      const href = link.getAttribute('href') || '';
+      const id = href.slice(1);
+
+      if (!id) {
+        return;
+      }
+
+      const section = document.getElementById(id);
+
+      if (section) {
+        sectionMap.set(id, section);
+      }
+    });
+
+    if (sectionMap.size === 0) {
+      return;
+    }
+
+    function setActiveLink(id) {
+      links.forEach(function (link) {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+
+    function resolveInitialSection() {
+      const hashId = window.location.hash ? window.location.hash.slice(1) : '';
+
+      if (hashId && sectionMap.has(hashId)) {
+        return hashId;
+      }
+
+      return sectionMap.keys().next().value;
+    }
+
+    let activeId = resolveInitialSection();
+
+    if (activeId) {
+      setActiveLink(activeId);
+    }
+
+    links.forEach(function (link) {
+      link.addEventListener('click', function () {
+        const href = link.getAttribute('href') || '';
+        const id = href.slice(1);
+
+        if (!id) {
+          return;
+        }
+
+        activeId = id;
+        setActiveLink(id);
+      });
+    });
+
+    window.addEventListener('hashchange', function () {
+      const hashId = window.location.hash ? window.location.hash.slice(1) : '';
+
+      if (hashId && sectionMap.has(hashId)) {
+        activeId = hashId;
+        setActiveLink(hashId);
+      }
+    });
+
+    const observer = new IntersectionObserver(function (entries) {
+      let nextActiveId = activeId;
+
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          nextActiveId = entry.target.id;
+        }
+      });
+
+      if (nextActiveId && nextActiveId !== activeId) {
+        activeId = nextActiveId;
+        setActiveLink(activeId);
+      }
+    }, {
+      rootMargin: '-12% 0px -70% 0px',
+      threshold: [0.1, 0.25, 0.5],
+    });
+
+    sectionMap.forEach(function (section) {
+      observer.observe(section);
+    });
+  }
+
   function setupTopicFilters() {
     const filterHost = document.querySelector('[data-topic-filters]');
     const filterCount = document.querySelector('[data-topic-filter-count]');
@@ -196,6 +292,7 @@
       toggle.addEventListener('click', toggleTheme);
     });
 
+    setupSectionNavigation();
     setupTopicFilters();
   });
 
