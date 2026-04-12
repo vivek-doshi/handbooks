@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Unsloth Fine-Tuning Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Sora:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  /* ═══════════════════════════════════════
+     TOKENS & RESET
+  ═══════════════════════════════════════ */
+  :root{
+    --bg-base:#07080d;
+    --bg-card:#0f1117;
+    --bg-card2:#13161f;
+    --bg-sidebar:#0b0d14;
+    --border:#1e2233;
+    --border-accent:#2a3060;
+
+    --accent-orange:#ff6b35;
+    --accent-orange-dim:#ff6b3530;
+    --accent-teal:#00d4aa;
+    --accent-teal-dim:#00d4aa20;
+    --accent-violet:#9b7cff;
+    --accent-violet-dim:#9b7cff20;
+    --accent-amber:#ffb830;
+    --accent-amber-dim:#ffb83020;
+    --accent-red:#ff4560;
+    --accent-green:#00e396;
+
+    --text-primary:#e8eaf4;
+    --text-secondary:#8892b0;
+    --text-muted:#4a5272;
+    --text-code:#64ffda;
+
+    --sidebar-w:280px;
+    --header-h:64px;
+    --radius:8px;
+    --radius-lg:14px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg-base);
+    color:var(--text-primary);
+    font-family:'Space Grotesk',sans-serif;
+    font-size:15px;
+    line-height:1.7;
+    display:flex;
+    flex-direction:column;
+    min-height:100vh;
+  }
+
+  /* ═══════════════════════════════════════
+     HEADER
+  ═══════════════════════════════════════ */
+  .topbar{
+    position:fixed;top:0;left:0;right:0;height:var(--header-h);
+    background:rgba(7,8,13,0.92);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;
+    padding:0 24px;
+    z-index:100;
+    gap:16px;
+  }
+  .topbar-logo{
+    display:flex;align-items:center;gap:10px;
+    font-family:'Sora',sans-serif;font-weight:700;font-size:1.1rem;
+    color:var(--text-primary);text-decoration:none;letter-spacing:-.02em;
+  }
+  .logo-icon{
+    width:32px;height:32px;border-radius:8px;
+    background:linear-gradient(135deg,var(--accent-orange),var(--accent-amber));
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:800;color:#07080d;
+    font-family:'Sora',sans-serif;
+  }
+  .topbar-badge{
+    background:var(--accent-orange-dim);color:var(--accent-orange);
+    border:1px solid var(--accent-orange);
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    padding:2px 8px;border-radius:20px;letter-spacing:.06em;
+  }
+  .topbar-right{
+    margin-left:auto;display:flex;align-items:center;gap:12px;
+  }
+  .chip{
+    font-size:11px;padding:4px 10px;border-radius:20px;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.04em;font-weight:600;
+    border:1px solid;
+  }
+  .chip-orange{background:var(--accent-orange-dim);color:var(--accent-orange);border-color:var(--accent-orange);}
+  .chip-teal{background:var(--accent-teal-dim);color:var(--accent-teal);border-color:var(--accent-teal);}
+  .chip-violet{background:var(--accent-violet-dim);color:var(--accent-violet);border-color:var(--accent-violet);}
+  .chip-amber{background:var(--accent-amber-dim);color:var(--accent-amber);border-color:var(--accent-amber);}
+  .chip-green{background:#00e39620;color:var(--accent-green);border-color:var(--accent-green);}
+
+  /* ═══════════════════════════════════════
+     LAYOUT
+  ═══════════════════════════════════════ */
+  .layout{display:flex;padding-top:var(--header-h);}
+
+  /* ═══════════════════════════════════════
+     SIDEBAR
+  ═══════════════════════════════════════ */
+  .sidebar{
+    width:var(--sidebar-w);min-width:var(--sidebar-w);
+    background:var(--bg-sidebar);
+    border-right:1px solid var(--border);
+    height:calc(100vh - var(--header-h));
+    position:sticky;top:var(--header-h);
+    overflow-y:auto;
+    padding:24px 0;
+  }
+  .sidebar::-webkit-scrollbar{width:4px}
+  .sidebar::-webkit-scrollbar-track{background:transparent}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .nav-section-title{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;
+    padding:16px 20px 6px;
+  }
+  .nav-link{
+    display:flex;align-items:center;gap:10px;
+    padding:7px 20px;
+    color:var(--text-secondary);text-decoration:none;
+    font-size:13.5px;font-weight:400;
+    transition:all .15s;border-left:2px solid transparent;
+    border-radius:0;
+  }
+  .nav-link:hover{color:var(--text-primary);background:var(--accent-orange-dim);border-left-color:var(--accent-orange);}
+  .nav-link.active{color:var(--accent-orange);background:var(--accent-orange-dim);border-left-color:var(--accent-orange);font-weight:600;}
+  .nav-dot{width:5px;height:5px;border-radius:50%;background:var(--text-muted);flex-shrink:0;}
+  .nav-link.active .nav-dot,.nav-link:hover .nav-dot{background:var(--accent-orange);}
+
+  /* ═══════════════════════════════════════
+     MAIN CONTENT
+  ═══════════════════════════════════════ */
+  .main{flex:1;max-width:calc(100vw - var(--sidebar-w));padding:48px 56px;overflow-x:hidden;}
+
+  /* ═══════════════════════════════════════
+     HERO
+  ═══════════════════════════════════════ */
+  .hero{
+    background:linear-gradient(135deg,#0f1117 0%,#131828 60%,#0f1117 100%);
+    border:1px solid var(--border);border-radius:var(--radius-lg);
+    padding:52px 48px;margin-bottom:48px;
+    position:relative;overflow:hidden;
+  }
+  .hero::before{
+    content:'';position:absolute;top:-60px;right:-60px;
+    width:360px;height:360px;border-radius:50%;
+    background:radial-gradient(circle,var(--accent-orange)18,transparent 70%);
+    opacity:.12;pointer-events:none;
+  }
+  .hero::after{
+    content:'';position:absolute;bottom:-80px;left:30%;
+    width:280px;height:280px;border-radius:50%;
+    background:radial-gradient(circle,var(--accent-teal)18,transparent 70%);
+    opacity:.08;pointer-events:none;
+  }
+  .hero-eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+    color:var(--accent-orange);letter-spacing:.14em;text-transform:uppercase;
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:'Sora',sans-serif;font-weight:800;font-size:2.6rem;
+    line-height:1.15;letter-spacing:-.03em;
+    color:var(--text-primary);margin-bottom:16px;
+  }
+  .hero h1 span{color:var(--accent-orange);}
+  .hero-sub{
+    font-size:1.05rem;color:var(--text-secondary);max-width:620px;
+    font-weight:300;margin-bottom:28px;line-height:1.75;
+  }
+  .hero-chips{display:flex;flex-wrap:wrap;gap:8px;}
+
+  /* ═══════════════════════════════════════
+     SECTION HEADINGS
+  ═══════════════════════════════════════ */
+  .section{margin-bottom:56px;scroll-margin-top:80px;}
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--accent-orange);letter-spacing:.14em;text-transform:uppercase;
+    margin-bottom:10px;
+  }
+  h2{
+    font-family:'Sora',sans-serif;font-weight:700;font-size:1.75rem;
+    letter-spacing:-.025em;color:var(--text-primary);
+    margin-bottom:6px;padding-bottom:14px;
+    border-bottom:1px solid var(--border);
+  }
+  h2 .accent{color:var(--accent-orange);}
+  h3{
+    font-family:'Sora',sans-serif;font-weight:600;font-size:1.2rem;
+    color:var(--text-primary);margin:28px 0 12px;letter-spacing:-.015em;
+  }
+  h4{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:1rem;
+    color:var(--accent-amber);margin:20px 0 8px;
+  }
+  p{color:var(--text-secondary);margin-bottom:14px;line-height:1.8;}
+  strong{color:var(--text-primary);font-weight:600;}
+  em{color:var(--accent-teal);font-style:normal;font-weight:500;}
+
+  /* ═══════════════════════════════════════
+     CARDS
+  ═══════════════════════════════════════ */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:20px 0;}
+  .card{
+    background:var(--bg-card);border:1px solid var(--border);
+    border-radius:var(--radius-lg);padding:22px;
+    transition:border-color .2s,transform .2s;
+    position:relative;overflow:hidden;
+  }
+  .card:hover{border-color:var(--accent-orange);transform:translateY(-2px);}
+  .card-icon{font-size:1.6rem;margin-bottom:10px;}
+  .card-title{font-family:'Sora',sans-serif;font-weight:700;font-size:1rem;color:var(--text-primary);margin-bottom:6px;}
+  .card-body{font-size:13px;color:var(--text-secondary);line-height:1.65;}
+  .card-accent{position:absolute;top:0;right:0;width:60px;height:60px;border-radius:0 12px 0 60px;opacity:.08;}
+  .card-accent-orange{background:var(--accent-orange);}
+  .card-accent-teal{background:var(--accent-teal);}
+  .card-accent-violet{background:var(--accent-violet);}
+  .card-accent-amber{background:var(--accent-amber);}
+
+  /* ═══════════════════════════════════════
+     CODE BLOCKS
+  ═══════════════════════════════════════ */
+  .code-block{
+    background:#080b12;border:1px solid var(--border);
+    border-radius:var(--radius);overflow:hidden;margin:16px 0;
+  }
+  .code-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:8px 16px;background:#0c0f18;border-bottom:1px solid var(--border);
+  }
+  .code-lang{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--accent-teal);letter-spacing:.1em;text-transform:uppercase;
+  }
+  .code-file{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);}
+  pre{
+    padding:18px 20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;
+    font-size:12.5px;line-height:1.75;color:#cdd6f4;
+  }
+  pre::-webkit-scrollbar{height:4px}
+  pre::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .kw{color:#cba6f7;}
+  .fn{color:#89b4fa;}
+  .str{color:#a6e3a1;}
+  .num{color:#fab387;}
+  .cm{color:var(--text-muted);font-style:italic;}
+  .var{color:#f38ba8;}
+  .op{color:#89dceb;}
+  code{
+    font-family:'JetBrains Mono',monospace;font-size:12px;
+    background:#0c0f1a;color:var(--text-code);
+    padding:2px 6px;border-radius:4px;border:1px solid var(--border);
+  }
+
+  /* ═══════════════════════════════════════
+     CALLOUT / ALERT BOXES
+  ═══════════════════════════════════════ */
+  .callout{
+    border-left:3px solid;border-radius:0 var(--radius) var(--radius) 0;
+    padding:14px 18px;margin:16px 0;
+    font-size:14px;
+  }
+  .callout-orange{background:var(--accent-orange-dim);border-color:var(--accent-orange);}
+  .callout-teal{background:var(--accent-teal-dim);border-color:var(--accent-teal);}
+  .callout-violet{background:var(--accent-violet-dim);border-color:var(--accent-violet);}
+  .callout-amber{background:var(--accent-amber-dim);border-color:var(--accent-amber);}
+  .callout-title{font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;font-family:'JetBrains Mono',monospace;}
+  .callout-orange .callout-title{color:var(--accent-orange);}
+  .callout-teal .callout-title{color:var(--accent-teal);}
+  .callout-violet .callout-title{color:var(--accent-violet);}
+  .callout-amber .callout-title{color:var(--accent-amber);}
+  .callout p{color:var(--text-primary);margin:0;font-size:13.5px;}
+
+  /* ═══════════════════════════════════════
+     TABLES
+  ═══════════════════════════════════════ */
+  .table-wrap{overflow-x:auto;margin:16px 0;border-radius:var(--radius);border:1px solid var(--border);}
+  table{width:100%;border-collapse:collapse;}
+  thead tr{background:#0c0f18;}
+  th{
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+    color:var(--accent-orange);letter-spacing:.08em;text-transform:uppercase;
+    padding:10px 16px;text-align:left;border-bottom:1px solid var(--border);
+  }
+  td{padding:10px 16px;border-bottom:1px solid var(--border-accent);font-size:13.5px;color:var(--text-secondary);}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:#ffffff04;}
+  td strong{color:var(--text-primary);}
+  td code{font-size:11.5px;}
+
+  /* ═══════════════════════════════════════
+     STAT CARDS
+  ═══════════════════════════════════════ */
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:20px 0;}
+  .stat-card{
+    background:var(--bg-card);border:1px solid var(--border);
+    border-radius:var(--radius);padding:16px;text-align:center;
+    transition:border-color .2s;
+  }
+  .stat-card:hover{border-color:var(--accent-teal);}
+  .stat-num{font-family:'Sora',sans-serif;font-weight:800;font-size:1.8rem;color:var(--accent-teal);}
+  .stat-label{font-size:11px;color:var(--text-muted);margin-top:2px;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;}
+
+  /* ═══════════════════════════════════════
+     STEPS / PROCESS
+  ═══════════════════════════════════════ */
+  .steps{display:flex;flex-direction:column;gap:16px;margin:20px 0;}
+  .step{display:flex;gap:16px;align-items:flex-start;}
+  .step-num{
+    width:32px;height:32px;border-radius:50%;
+    background:linear-gradient(135deg,var(--accent-orange),var(--accent-amber));
+    color:#07080d;font-weight:800;font-size:14px;font-family:'Sora',sans-serif;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;
+  }
+  .step-content{flex:1;}
+  .step-title{font-weight:600;color:var(--text-primary);font-size:1rem;margin-bottom:4px;}
+  .step-body{font-size:13.5px;color:var(--text-secondary);}
+
+  /* ═══════════════════════════════════════
+     GPU COMPARISON CARD
+  ═══════════════════════════════════════ */
+  .gpu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:20px 0;}
+  .gpu-card{
+    background:var(--bg-card);border:1px solid var(--border);
+    border-radius:var(--radius-lg);padding:18px;
+    transition:all .2s;
+  }
+  .gpu-card:hover{border-color:var(--accent-violet);transform:translateY(-2px);}
+  .gpu-name{font-family:'Sora',sans-serif;font-weight:700;font-size:.95rem;color:var(--text-primary);margin-bottom:4px;}
+  .gpu-vram{color:var(--accent-violet);font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:700;}
+  .gpu-vram-label{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px;}
+  .gpu-spec{font-size:12px;color:var(--text-secondary);display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);}
+  .gpu-spec:last-child{border-bottom:none;}
+  .gpu-spec span:last-child{color:var(--text-primary);font-weight:500;}
+
+  /* ═══════════════════════════════════════
+     DIVIDER
+  ═══════════════════════════════════════ */
+  .divider{border:none;border-top:1px solid var(--border);margin:32px 0;}
+
+  /* ═══════════════════════════════════════
+     INLINE TAGS
+  ═══════════════════════════════════════ */
+  .tag{
+    display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;
+    font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.05em;
+    margin:0 2px;
+  }
+  .tag-orange{background:var(--accent-orange-dim);color:var(--accent-orange);}
+  .tag-teal{background:var(--accent-teal-dim);color:var(--accent-teal);}
+  .tag-violet{background:var(--accent-violet-dim);color:var(--accent-violet);}
+
+  /* ═══════════════════════════════════════
+     FOOTER
+  ═══════════════════════════════════════ */
+  .footer{
+    border-top:1px solid var(--border);
+    padding:24px 56px;
+    color:var(--text-muted);font-size:12px;
+    display:flex;align-items:center;justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  /* ═══════════════════════════════════════
+     SCROLLBAR
+  ═══════════════════════════════════════ */
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:var(--bg-base)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--border-accent)}
+
+  /* highlight row */
+  .hl-row td{background:#ffffff05;}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  @media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+
+  .pill-list{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <a class="topbar-logo" href="#">
+    <div class="logo-icon">U</div>
+    Unsloth Handbook
+  </a>
+  <span class="topbar-badge">v2025</span>
+  <div class="topbar-right">
+    <span class="chip chip-violet">Local GPU</span>
+    <span class="chip chip-teal">12–16 GB VRAM</span>
+    <span class="chip chip-orange">Arthavidya Stack</span>
+  </div>
+</header>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="layout">
+
+  <!-- ══ SIDEBAR ══ -->
+  <nav class="sidebar">
+    <div class="nav-section-title">Introduction</div>
+    <a class="nav-link active" href="#what-is-unsloth"><span class="nav-dot"></span>What is Unsloth?</a>
+    <a class="nav-link" href="#why-unsloth"><span class="nav-dot"></span>Why Unsloth?</a>
+
+    <div class="nav-section-title">Foundations</div>
+    <a class="nav-link" href="#gguf"><span class="nav-dot"></span>GGUF Explained</a>
+    <a class="nav-link" href="#quant-formats"><span class="nav-dot"></span>Quantization Formats</a>
+    <a class="nav-link" href="#lora-qlora"><span class="nav-dot"></span>LoRA & QLoRA</a>
+
+    <div class="nav-section-title">Local GPU Setup</div>
+    <a class="nav-link" href="#gpu-guide"><span class="nav-dot"></span>GPU Selection Guide</a>
+    <a class="nav-link" href="#env-setup"><span class="nav-dot"></span>Environment Setup</a>
+    <a class="nav-link" href="#wsl2-tips"><span class="nav-dot"></span>WSL2 Tips</a>
+
+    <div class="nav-section-title">Fine-Tuning</div>
+    <a class="nav-link" href="#dataset-prep"><span class="nav-dot"></span>Dataset Preparation</a>
+    <a class="nav-link" href="#config-reference"><span class="nav-dot"></span>Config Reference</a>
+    <a class="nav-link" href="#training-loop"><span class="nav-dot"></span>Training Loop</a>
+    <a class="nav-link" href="#curriculum"><span class="nav-dot"></span>Curriculum Training</a>
+    <a class="nav-link" href="#kd"><span class="nav-dot"></span>Knowledge Distillation</a>
+
+    <div class="nav-section-title">Unsloth Studio</div>
+    <a class="nav-link" href="#studio-overview"><span class="nav-dot"></span>Studio Overview</a>
+    <a class="nav-link" href="#studio-workflow"><span class="nav-dot"></span>No-Code Workflow</a>
+
+    <div class="nav-section-title">Export & Serve</div>
+    <a class="nav-link" href="#export-gguf"><span class="nav-dot"></span>Export to GGUF</a>
+    <a class="nav-link" href="#local-inference"><span class="nav-dot"></span>Local Inference</a>
+    <a class="nav-link" href="#ollama"><span class="nav-dot"></span>Ollama Integration</a>
+
+    <div class="nav-section-title">Reference</div>
+    <a class="nav-link" href="#troubleshooting"><span class="nav-dot"></span>Troubleshooting</a>
+    <a class="nav-link" href="#cheatsheet"><span class="nav-dot"></span>Cheat Sheet</a>
+  </nav>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+
+    <!-- ══ HERO ══ -->
+    <div class="hero">
+      <div class="hero-eyebrow">🦥 The Practitioner's Guide</div>
+      <h1>Unsloth <span>Fine-Tuning</span><br/>Handbook</h1>
+      <p class="hero-sub">
+        A complete reference for fine-tuning, quantizing, and running LLMs locally on consumer GPUs (12–16 GB VRAM). Covers Unsloth, Unsloth Studio, LoRA/QLoRA, GGUF export, and serving with Ollama — optimized for RTX 5070, 5060 Ti, and 4060 Ti.
+      </p>
+      <div class="hero-chips">
+        <span class="chip chip-orange">Unsloth 2025</span>
+        <span class="chip chip-teal">GGUF / llama.cpp</span>
+        <span class="chip chip-violet">QLoRA / LoRA</span>
+        <span class="chip chip-amber">RTX 50 / 40 Series</span>
+        <span class="chip chip-green">Ollama + llama-server</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         SECTION 1: WHAT IS UNSLOTH
+    ═══════════════════════════════ -->
+    <section class="section" id="what-is-unsloth">
+      <div class="section-label">Introduction</div>
+      <h2>What is <span class="accent">Unsloth</span>?</h2>
+
+      <p>
+        <strong>Unsloth</strong> is an open-source library built specifically to make LLM fine-tuning radically faster and more memory-efficient on consumer hardware — without sacrificing accuracy. Created by Daniel and Michael Han, it achieves <em>2–5× speedups</em> over baseline HuggingFace + PEFT training while using <em>up to 80% less VRAM</em>.
+      </p>
+      <p>
+        Under the hood, Unsloth rewrites the critical CUDA kernels (attention, cross-entropy loss, RoPE embeddings, weight updates) in Triton and C++, patching them directly into HuggingFace Transformers — so you keep the familiar <code>Trainer</code> API while getting dramatically better hardware utilization.
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-accent card-accent-orange"></div>
+          <div class="card-icon">🚀</div>
+          <div class="card-title">2–5× Faster Training</div>
+          <div class="card-body">Custom Triton kernels replace bottleneck ops. Llama 3 fine-tuning can drop from hours to 30–40 minutes on a single RTX 4060 Ti.</div>
+        </div>
+        <div class="card">
+          <div class="card-accent card-accent-teal"></div>
+          <div class="card-icon">💾</div>
+          <div class="card-title">80% Less VRAM</div>
+          <div class="card-body">QLoRA integration + gradient checkpointing rewriting means 7–13B models fit comfortably in 12 GB VRAM during training.</div>
+        </div>
+        <div class="card">
+          <div class="card-accent card-accent-violet"></div>
+          <div class="card-icon">🎯</div>
+          <div class="card-title">Zero Accuracy Loss</div>
+          <div class="card-body">Math is numerically equivalent to standard training. No approximations that affect gradient quality or final model performance.</div>
+        </div>
+        <div class="card">
+          <div class="card-accent card-accent-amber"></div>
+          <div class="card-icon">🔌</div>
+          <div class="card-title">HuggingFace Native</div>
+          <div class="card-body">Works with Trainer, TRL's SFTTrainer, DPO, ORPO, GRPO. Swap in <code>FastLanguageModel</code> and existing code runs faster automatically.</div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-num">2–5×</div><div class="stat-label">Speed vs Baseline</div></div>
+        <div class="stat-card"><div class="stat-num">80%</div><div class="stat-label">VRAM Reduction</div></div>
+        <div class="stat-card"><div class="stat-num">0%</div><div class="stat-label">Accuracy Loss</div></div>
+        <div class="stat-card"><div class="stat-num">13B</div><div class="stat-label">Max on 12GB VRAM</div></div>
+        <div class="stat-card"><div class="stat-num">70+</div><div class="stat-label">Supported Models</div></div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 2: WHY UNSLOTH ══ -->
+    <section class="section" id="why-unsloth">
+      <div class="section-label">Introduction</div>
+      <h2>Why Unsloth <span class="accent">vs Alternatives</span>?</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Feature</th><th>Unsloth</th><th>HF + PEFT</th><th>Axolotl</th><th>LLaMA Factory</th></tr></thead>
+          <tbody>
+            <tr><td><strong>VRAM Efficiency</strong></td><td><span class="chip chip-green" style="font-size:10px">Best</span></td><td>Baseline</td><td>Good</td><td>Good</td></tr>
+            <tr class="hl-row"><td><strong>Speed</strong></td><td><span class="chip chip-green" style="font-size:10px">2–5×</span></td><td>1×</td><td>~1.2×</td><td>~1.3×</td></tr>
+            <tr><td><strong>Consumer GPU Support</strong></td><td>✅ Excellent</td><td>Limited</td><td>Good</td><td>Good</td></tr>
+            <tr class="hl-row"><td><strong>GGUF Export</strong></td><td>✅ Native</td><td>Manual</td><td>Manual</td><td>✅</td></tr>
+            <tr><td><strong>Unsloth Studio (no-code)</strong></td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+            <tr class="hl-row"><td><strong>DPO / ORPO / GRPO</strong></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+            <tr><td><strong>Multi-GPU</strong></td><td>⚠️ Limited</td><td>✅</td><td>✅</td><td>✅</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-teal">
+        <div class="callout-title">💡 When to choose Unsloth</div>
+        <p>Unsloth is the obvious pick for single-GPU consumer setups (RTX 40/50 series, 12–24 GB VRAM). For multi-GPU cloud training, HF + PEFT or Axolotl remain competitive, but Unsloth's VRAM savings still help.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 3: GGUF ══ -->
+    <section class="section" id="gguf">
+      <div class="section-label">Foundations</div>
+      <h2>GGUF <span class="accent">Explained</span></h2>
+
+      <p>
+        <strong>GGUF</strong> (GPT-Generated Unified Format) is a binary file format designed by Georgi Gerganov (creator of llama.cpp) as a replacement for the older GGML format. It stores model weights plus all metadata needed to run inference in a single self-contained file — no Python, no HuggingFace Hub required.
+      </p>
+
+      <div class="two-col">
+        <div>
+          <h3>Why GGUF matters</h3>
+          <p>GGUF models run via <strong>llama.cpp</strong>, which is a pure C++ inference engine with CUDA/Metal acceleration. This means:</p>
+          <ul style="color:var(--text-secondary);padding-left:20px;line-height:2;">
+            <li>Single binary, no Python dependency</li>
+            <li>CPU + GPU hybrid inference (great for VRAM-limited setups)</li>
+            <li>Quantized models (Q4_K_M, Q5_K_M, etc.) that are tiny but high quality</li>
+            <li>Works with Ollama, LM Studio, llama-server, Jan, AnythingLLM</li>
+          </ul>
+        </div>
+        <div>
+          <h3>GGUF vs SafeTensors</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Property</th><th>SafeTensors</th><th>GGUF</th></tr></thead>
+              <tbody>
+                <tr><td>Python req?</td><td>✅ Yes</td><td>❌ No</td></tr>
+                <tr><td>Quantization</td><td>Via PEFT</td><td>Native</td></tr>
+                <tr><td>Metadata</td><td>Separate</td><td>Embedded</td></tr>
+                <tr><td>CPU inference</td><td>Slow</td><td>Fast</td></tr>
+                <tr><td>Ollama compat</td><td>❌</td><td>✅</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <h3>The GGUF Quantization Ladder</h3>
+      <p>Quantization compresses model weights to lower bit-widths. GGUF supports many formats — here's what matters for 12–16 GB GPUs:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Format</th><th>Bits</th><th>7B Size</th><th>13B Size</th><th>Quality</th><th>Recommended?</th></tr></thead>
+          <tbody>
+            <tr><td><code>Q2_K</code></td><td>2-bit</td><td>~2.7 GB</td><td>~5.0 GB</td><td>⭐⭐</td><td>Last resort</td></tr>
+            <tr class="hl-row"><td><code>Q4_0</code></td><td>4-bit</td><td>~3.8 GB</td><td>~7.3 GB</td><td>⭐⭐⭐</td><td>Fast, okay quality</td></tr>
+            <tr><td><code>Q4_K_M</code></td><td>4-bit</td><td>~4.1 GB</td><td>~7.9 GB</td><td>⭐⭐⭐⭐</td><td><span class="chip chip-green" style="font-size:10px">Best Value</span></td></tr>
+            <tr class="hl-row"><td><code>Q5_K_M</code></td><td>5-bit</td><td>~4.8 GB</td><td>~9.1 GB</td><td>⭐⭐⭐⭐½</td><td>Quality sweet spot</td></tr>
+            <tr><td><code>Q6_K</code></td><td>6-bit</td><td>~5.6 GB</td><td>~10.7 GB</td><td>⭐⭐⭐⭐⭐</td><td>Near-lossless</td></tr>
+            <tr class="hl-row"><td><code>Q8_0</code></td><td>8-bit</td><td>~7.2 GB</td><td>~13.8 GB</td><td>⭐⭐⭐⭐⭐</td><td>Near fp16 quality</td></tr>
+            <tr><td><code>F16</code></td><td>16-bit</td><td>~14.0 GB</td><td>~26 GB</td><td>Perfect</td><td>12GB: 7B only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-orange">
+        <div class="callout-title">⚡ For 12 GB VRAM</div>
+        <p>Use <strong>Q4_K_M</strong> for 13B models (fits with room for KV cache) or <strong>Q5_K_M</strong> for 7B models for near-lossless quality. For the Arthavidya 4B student model, even <strong>Q6_K or Q8_0</strong> fits comfortably.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 4: QUANT FORMATS ══ -->
+    <section class="section" id="quant-formats">
+      <div class="section-label">Foundations</div>
+      <h2>Quantization <span class="accent">Formats</span></h2>
+
+      <p>Unsloth supports multiple quantization strategies during training — these are distinct from GGUF formats, which apply at inference time.</p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-accent card-accent-orange"></div>
+          <div class="card-title">4-bit NF4 (QLoRA)</div>
+          <div class="card-body">NormalFloat4 — stores base model weights in 4-bit with a Normal distribution mapping. The LoRA adapters themselves remain in float16/bfloat16. Best VRAM/quality ratio for training.</div>
+        </div>
+        <div class="card">
+          <div class="card-accent card-accent-teal"></div>
+          <div class="card-title">4-bit Int4</div>
+          <div class="card-body">Integer 4-bit quantization. Slightly more VRAM-efficient than NF4 but marginally lower quality. Useful for very tight VRAM budgets.</div>
+        </div>
+        <div class="card">
+          <div class="card-accent card-accent-violet"></div>
+          <div class="card-title">8-bit (LLM.int8)</div>
+          <div class="card-body">Mixed-precision 8-bit. Good quality but uses more VRAM than NF4. Rarely needed with Unsloth — NF4 is usually better.</div>
+        </div>
+        <div class="card">
+          <div class="card-accent card-accent-amber"></div>
+          <div class="card-title">bfloat16 (bf16)</div>
+          <div class="card-body">Full precision training on Ampere+ GPUs (RTX 30/40/50). Best quality, requires ~2× VRAM of NF4. Use for small models (≤4B) that fit.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 5: LORA ══ -->
+    <section class="section" id="lora-qlora">
+      <div class="section-label">Foundations</div>
+      <h2>LoRA <span class="accent">& QLoRA</span></h2>
+
+      <p>
+        <strong>LoRA</strong> (Low-Rank Adaptation) freezes the original model weights and injects small trainable matrices into specific layers. Instead of updating billions of parameters, you train only millions — typically 0.1–3% of total parameters.
+      </p>
+      <p>
+        <strong>QLoRA</strong> = LoRA applied to a 4-bit quantized base model. The frozen weights live in NF4; the adapters are bf16/fp16. Unsloth's innovation is making this combination dramatically faster than the original bitsandbytes QLoRA implementation.
+      </p>
+
+      <h3>Key LoRA Hyperparameters</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Parameter</th><th>What it does</th><th>12GB Recommendation</th></tr></thead>
+          <tbody>
+            <tr><td><code>r</code> (rank)</td><td>Size of LoRA adapter matrices. Higher = more capacity.</td><td><strong>16–64</strong></td></tr>
+            <tr class="hl-row"><td><code>lora_alpha</code></td><td>Scaling factor. Often set to 2× rank.</td><td><strong>32–128</strong></td></tr>
+            <tr><td><code>lora_dropout</code></td><td>Regularization dropout on adapters.</td><td><strong>0.05–0.1</strong></td></tr>
+            <tr class="hl-row"><td><code>target_modules</code></td><td>Which weight matrices to adapt.</td><td><strong>All linear layers</strong></td></tr>
+            <tr><td><code>use_dora</code></td><td>DoRA variant — better quality, slightly more VRAM.</td><td><strong>True if fits</strong></td></tr>
+            <tr class="hl-row"><td><code>use_rslora</code></td><td>Rank-stabilized LoRA — better than vanilla for high rank.</td><td><strong>True</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-violet">
+        <div class="callout-title">🔬 Target Modules — What to Include</div>
+        <p>For best results, target all attention + MLP projections: <code>q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj</code>. Unsloth defaults to this automatically when you set <code>target_modules="all-linear"</code>.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 6: GPU GUIDE ══ -->
+    <section class="section" id="gpu-guide">
+      <div class="section-label">Local GPU Setup</div>
+      <h2>GPU Selection <span class="accent">Guide</span></h2>
+
+      <p>All three GPUs below are excellent for Unsloth fine-tuning of 7–13B models in QLoRA mode. Here's what you need to know:</p>
+
+      <div class="gpu-grid">
+        <div class="gpu-card">
+          <div class="gpu-name">RTX 5070</div>
+          <div class="gpu-vram">12 GB</div>
+          <div class="gpu-vram-label">GDDR7 VRAM</div>
+          <div class="gpu-spec"><span>Arch</span><span>Blackwell (GB205)</span></div>
+          <div class="gpu-spec"><span>CUDA Cores</span><span>6,144</span></div>
+          <div class="gpu-spec"><span>FP16 TFLOPS</span><span>~120</span></div>
+          <div class="gpu-spec"><span>Bandwidth</span><span>672 GB/s</span></div>
+          <div class="gpu-spec"><span>Best for</span><span>7–13B QLoRA</span></div>
+          <div style="margin-top:10px"><span class="chip chip-green">Recommended</span></div>
+        </div>
+        <div class="gpu-card">
+          <div class="gpu-name">RTX 5060 Ti</div>
+          <div class="gpu-vram">16 GB</div>
+          <div class="gpu-vram-label">GDDR7 VRAM</div>
+          <div class="gpu-spec"><span>Arch</span><span>Blackwell (GB206)</span></div>
+          <div class="gpu-spec"><span>CUDA Cores</span><span>4,608</span></div>
+          <div class="gpu-spec"><span>FP16 TFLOPS</span><span>~89</span></div>
+          <div class="gpu-spec"><span>Bandwidth</span><span>448 GB/s</span></div>
+          <div class="gpu-spec"><span>Best for</span><span>13B QLoRA, 7B bf16</span></div>
+          <div style="margin-top:10px"><span class="chip chip-teal">Best VRAM</span></div>
+        </div>
+        <div class="gpu-card">
+          <div class="gpu-name">RTX 4060 Ti</div>
+          <div class="gpu-vram">16 GB</div>
+          <div class="gpu-vram-label">GDDR6 VRAM</div>
+          <div class="gpu-spec"><span>Arch</span><span>Ada Lovelace (AD106)</span></div>
+          <div class="gpu-spec"><span>CUDA Cores</span><span>4,352</span></div>
+          <div class="gpu-spec"><span>FP16 TFLOPS</span><span>~79</span></div>
+          <div class="gpu-spec"><span>Bandwidth</span><span>288 GB/s</span></div>
+          <div class="gpu-spec"><span>Best for</span><span>13B QLoRA, 7B bf16</span></div>
+          <div style="margin-top:10px"><span class="chip chip-violet">Still Excellent</span></div>
+        </div>
+      </div>
+
+      <h3>VRAM Budget by Model Size</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Model Params</th><th>Training (NF4 QLoRA)</th><th>Inference (GGUF Q4_K_M)</th><th>12 GB Fits?</th><th>16 GB Fits?</th></tr></thead>
+          <tbody>
+            <tr><td><strong>1–3B</strong></td><td>~3–5 GB</td><td>~1.5–2 GB</td><td>✅ Comfortable</td><td>✅</td></tr>
+            <tr class="hl-row"><td><strong>4–7B</strong></td><td>~6–9 GB</td><td>~3–5 GB</td><td>✅</td><td>✅ With room</td></tr>
+            <tr><td><strong>8–13B</strong></td><td>~10–12 GB</td><td>~6–9 GB</td><td>⚠️ Tight (seq≤2048)</td><td>✅</td></tr>
+            <tr class="hl-row"><td><strong>14–30B</strong></td><td>~16–28 GB</td><td>~10–20 GB</td><td>❌</td><td>⚠️ 14B only</td></tr>
+            <tr><td><strong>70B+</strong></td><td>&gt;40 GB</td><td>&gt;35 GB</td><td>❌</td><td>❌</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-amber">
+        <div class="callout-title">⚠️ 12 GB VRAM Tips for 13B Models</div>
+        <p>Keep <code>max_seq_length ≤ 2048</code>, use <code>gradient_checkpointing=True</code>, reduce <code>per_device_train_batch_size=1</code>, and enable <code>optim="adamw_8bit"</code>. With Unsloth these settings allow 13B models to train on 12 GB with reasonable throughput.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 7: ENV SETUP ══ -->
+    <section class="section" id="env-setup">
+      <div class="section-label">Local GPU Setup</div>
+      <h2>Environment <span class="accent">Setup</span></h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Install CUDA Toolkit (12.1+ recommended)</div>
+            <div class="step-body">Unsloth requires CUDA 12.1+. For RTX 50 series, use CUDA 12.8 for Blackwell support.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Create a Python 3.10/3.11 environment</div>
+            <div class="step-body">Unsloth works best with Python 3.10 or 3.11. Use conda or venv.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Install PyTorch with CUDA</div>
+            <div class="step-body">Install the nightly build for RTX 50 series, or stable 2.3+ for RTX 40 series.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">Install Unsloth</div>
+            <div class="step-body">Use the pip install command with the correct CUDA suffix for your PyTorch version.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">setup.sh — RTX 40 Series (CUDA 12.1)</span>
+        </div>
+        <pre><span class="cm"># Step 1: Create and activate environment</span>
+conda create -n unsloth_env python=3.11 -y
+conda activate unsloth_env
+
+<span class="cm"># Step 2: Install PyTorch 2.3+ with CUDA 12.1</span>
+pip install torch==2.3.1 torchvision torchaudio --index-url \
+  https://download.pytorch.org/whl/cu121
+
+<span class="cm"># Step 3: Install Unsloth (stable, CUDA 12.1, PyTorch 2.3)</span>
+pip install "unsloth[cu121-torch230] @ git+https://github.com/unslothai/unsloth.git"
+
+<span class="cm"># Step 4: Install supporting libraries</span>
+pip install transformers datasets trl peft accelerate bitsandbytes
+pip install wandb sentencepiece protobuf</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">setup.sh — RTX 50 Series (CUDA 12.8, Blackwell)</span>
+        </div>
+        <pre><span class="cm"># RTX 5060 Ti / 5070 need PyTorch nightly + CUDA 12.8</span>
+conda create -n unsloth_env python=3.11 -y
+conda activate unsloth_env
+
+<span class="cm"># Install PyTorch nightly (sm_120 Blackwell support)</span>
+pip install --pre torch torchvision torchaudio --index-url \
+  https://download.pytorch.org/whl/nightly/cu128
+
+<span class="cm"># Install Unsloth from source (latest main)</span>
+pip install "unsloth @ git+https://github.com/unslothai/unsloth.git"
+
+<span class="cm"># Verify GPU is detected correctly</span>
+python -c "import torch; print(torch.cuda.get_device_name(0))"</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">verify_install.py</span>
+        </div>
+        <pre><span class="kw">import</span> torch
+<span class="kw">import</span> unsloth
+
+<span class="fn">print</span>(<span class="str">f"PyTorch: {torch.__version__}"</span>)
+<span class="fn">print</span>(<span class="str">f"CUDA available: {torch.cuda.is_available()}"</span>)
+<span class="fn">print</span>(<span class="str">f"GPU: {torch.cuda.get_device_name(0)}"</span>)
+<span class="fn">print</span>(<span class="str">f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB"</span>)
+<span class="fn">print</span>(<span class="str">f"Unsloth: {unsloth.__version__}"</span>)</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 8: WSL2 TIPS ══ -->
+    <section class="section" id="wsl2-tips">
+      <div class="section-label">Local GPU Setup</div>
+      <h2>WSL2 <span class="accent">Tips</span></h2>
+
+      <p>Training on WSL2 (Windows Subsystem for Linux) works well with Unsloth. A few key configuration points to maximize performance:</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">ini</span>
+          <span class="code-file">%USERPROFILE%\.wslconfig</span>
+        </div>
+        <pre>[wsl2]
+<span class="cm"># Give WSL2 enough RAM (leave 4GB for Windows)</span>
+memory=28GB
+
+<span class="cm"># CPUs for data loading workers</span>
+processors=12
+
+<span class="cm"># Important: disable page reporting for GPU training stability</span>
+pageReporting=false
+
+<span class="cm"># Use default kernel for CUDA compatibility</span>
+kernel=<span class="cm"># leave blank for default</span>
+
+[experimental]
+<span class="cm"># Enable GPU memory management improvements</span>
+bestEffortDnsCaching=true</pre>
+      </div>
+
+      <div class="callout callout-teal">
+        <div class="callout-title">💡 WSL2 Dataset Storage</div>
+        <p>Store your training datasets on the Linux filesystem (<code>/home/username/</code>) not on the Windows mount (<code>/mnt/c/</code>). I/O to Windows mounts is dramatically slower and will bottleneck your DataLoader, leaving your GPU starved.</p>
+      </div>
+
+      <div class="callout callout-orange">
+        <div class="callout-title">🔥 RTX 5070 on WSL2</div>
+        <p>Blackwell GPUs on WSL2 require the latest NVIDIA preview driver (560.76+) and the CUDA 12.8 WSL2 package. Ensure <code>nvidia-smi</code> works inside WSL2 before installing PyTorch. Check with <code>nvidia-smi -L</code> from your Linux shell.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 9: DATASET PREP ══ -->
+    <section class="section" id="dataset-prep">
+      <div class="section-label">Fine-Tuning</div>
+      <h2>Dataset <span class="accent">Preparation</span></h2>
+
+      <p>Unsloth's <code>SFTTrainer</code> expects data in a specific chat format. The cleanest approach is to convert everything to ShareGPT or ChatML conversation format and use Unsloth's built-in formatting utilities.</p>
+
+      <h3>Recommended Format: ShareGPT</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">json</span>
+          <span class="code-file">dataset_sample.jsonl</span>
+        </div>
+        <pre>{
+  <span class="str">"conversations"</span>: [
+    {<span class="str">"role"</span>: <span class="str">"system"</span>,  <span class="str">"content"</span>: <span class="str">"You are an expert in Indian taxation..."</span>},
+    {<span class="str">"role"</span>: <span class="str">"user"</span>,    <span class="str">"content"</span>: <span class="str">"What is Section 80C deduction limit?"</span>},
+    {<span class="str">"role"</span>: <span class="str">"assistant"</span>,<span class="str">"content"</span>: <span class="str">"Under Section 80C of the Income Tax Act..."</span>}
+  ]
+}</pre>
+      </div>
+
+      <h3>Loading and Formatting</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">prepare_dataset.py</span>
+        </div>
+        <pre><span class="kw">from</span> datasets <span class="kw">import</span> load_dataset
+<span class="kw">from</span> unsloth.chat_templates <span class="kw">import</span> get_chat_template
+
+<span class="cm"># Apply chat template to tokenizer</span>
+tokenizer = get_chat_template(
+    tokenizer,
+    chat_template=<span class="str">"qwen-2.5"</span>,  <span class="cm"># or "llama-3", "mistral", etc.</span>
+    mapping={<span class="str">"role"</span>: <span class="str">"role"</span>, <span class="str">"content"</span>: <span class="str">"content"</span>},
+)
+
+<span class="kw">def</span> <span class="fn">formatting_func</span>(examples):
+    convos = examples[<span class="str">"conversations"</span>]
+    texts = [
+        tokenizer.apply_chat_template(
+            convo, tokenize=<span class="kw">False</span>, add_generation_prompt=<span class="kw">False</span>
+        )
+        <span class="kw">for</span> convo <span class="kw">in</span> convos
+    ]
+    <span class="kw">return</span> {<span class="str">"text"</span>: texts}
+
+dataset = load_dataset(<span class="str">"json"</span>, data_files=<span class="str">"data/train.jsonl"</span>, split=<span class="str">"train"</span>)
+dataset = dataset.map(formatting_func, batched=<span class="kw">True</span>)
+
+<span class="fn">print</span>(<span class="str">f"Dataset size: {len(dataset):,} examples"</span>)
+<span class="fn">print</span>(dataset[<span class="num">0</span>][<span class="str">"text"</span>][:<span class="num">500</span>])</pre>
+      </div>
+
+      <div class="callout callout-violet">
+        <div class="callout-title">🗂️ Data Quality > Data Quantity</div>
+        <p>For domain adaptation (like Arthavidya's finance focus), 2,000–5,000 high-quality curated examples outperforms 50,000 noisy ones. Use a <strong>reserved gold eval set</strong> (~500–1,000 examples) that never touches training to measure true domain performance.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 10: CONFIG REFERENCE ══ -->
+    <section class="section" id="config-reference">
+      <div class="section-label">Fine-Tuning</div>
+      <h2>Config <span class="accent">Reference</span></h2>
+
+      <h3>FastLanguageModel — Model Loading</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">load_model.py</span>
+        </div>
+        <pre><span class="kw">from</span> unsloth <span class="kw">import</span> FastLanguageModel
+<span class="kw">import</span> torch
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name=<span class="str">"unsloth/Qwen2.5-7B-Instruct-bnb-4bit"</span>,  <span class="cm"># Pre-quantized</span>
+    max_seq_length=<span class="num">4096</span>,          <span class="cm"># Reduce to 2048 for 12GB tight</span>
+    dtype=<span class="kw">None</span>,                    <span class="cm"># Auto-detect (bf16 on RTX 40/50)</span>
+    load_in_4bit=<span class="kw">True</span>,             <span class="cm"># QLoRA mode — essential for 12GB</span>
+    token=<span class="kw">None</span>,                    <span class="cm"># HF token if using gated models</span>
+    device_map=<span class="str">"sequential"</span>,       <span class="cm"># Unsloth-preferred over "auto"</span>
+)
+
+<span class="cm"># Apply LoRA adapters</span>
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=<span class="num">32</span>,                        <span class="cm"># Rank — 16 for memory-tight, 64 for best</span>
+    lora_alpha=<span class="num">64</span>,               <span class="cm"># Usually 2× rank</span>
+    lora_dropout=<span class="num">0.05</span>,           <span class="cm"># Small dropout for regularisation</span>
+    target_modules=<span class="str">"all-linear"</span>,  <span class="cm"># All q/k/v/o + gate/up/down</span>
+    use_gradient_checkpointing=<span class="str">"unsloth"</span>,  <span class="cm"># Unsloth's optimised version</span>
+    random_state=<span class="num">42</span>,
+    use_rslora=<span class="kw">True</span>,             <span class="cm"># Rank-stabilised LoRA</span>
+    use_dora=<span class="kw">False</span>,              <span class="cm"># Set True if you have spare VRAM</span>
+    loftq_config=<span class="kw">None</span>,
+)</pre>
+      </div>
+
+      <h3>SFTTrainer Arguments — 12 GB Optimized</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">trainer_config.py</span>
+        </div>
+        <pre><span class="kw">from</span> trl <span class="kw">import</span> SFTTrainer
+<span class="kw">from</span> transformers <span class="kw">import</span> TrainingArguments
+
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=dataset,
+    dataset_text_field=<span class="str">"text"</span>,
+    max_seq_length=<span class="num">2048</span>,
+    dataset_num_proc=<span class="num">4</span>,
+    packing=<span class="kw">True</span>,                 <span class="cm"># Pack short sequences — boosts GPU util</span>
+
+    args=TrainingArguments(
+        <span class="cm"># Batch + gradient accumulation</span>
+        per_device_train_batch_size=<span class="num">2</span>,
+        gradient_accumulation_steps=<span class="num">8</span>,  <span class="cm"># Effective batch = 16</span>
+
+        <span class="cm"># Learning rate schedule</span>
+        warmup_steps=<span class="num">50</span>,
+        num_train_epochs=<span class="num">3</span>,
+        learning_rate=<span class="num">2e-4</span>,
+        lr_scheduler_type=<span class="str">"cosine"</span>,
+
+        <span class="cm"># Precision</span>
+        fp16=<span class="kw">not</span> torch.cuda.is_bf16_supported(),
+        bf16=torch.cuda.is_bf16_supported(),     <span class="cm"># bf16 on RTX 40/50</span>
+
+        <span class="cm"># Memory optimisations</span>
+        optim=<span class="str">"adamw_8bit"</span>,         <span class="cm"># 8-bit Adam — saves ~1GB VRAM</span>
+        gradient_checkpointing=<span class="kw">True</span>,
+
+        <span class="cm"># Logging</span>
+        logging_steps=<span class="num">10</span>,
+        output_dir=<span class="str">"./outputs"</span>,
+        save_strategy=<span class="str">"epoch"</span>,
+        report_to=<span class="str">"wandb"</span>,          <span class="cm"># or "tensorboard" / "none"</span>
+        run_name=<span class="str">"arthavidya-qwen25-7b-sft"</span>,
+
+        <span class="cm"># Stability</span>
+        weight_decay=<span class="num">0.01</span>,
+        max_grad_norm=<span class="num">1.0</span>,
+        seed=<span class="num">42</span>,
+    ),
+)
+
+trainer_stats = trainer.train()</pre>
+      </div>
+
+      <h3>Key Hyperparameters Cheatsheet</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Param</th><th>Memory-Tight (12GB)</th><th>Comfortable (16GB)</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td><code>per_device_train_batch_size</code></td><td>1–2</td><td>2–4</td><td>VRAM directly</td></tr>
+            <tr class="hl-row"><td><code>gradient_accumulation_steps</code></td><td>8–16</td><td>4–8</td><td>Effective batch size</td></tr>
+            <tr><td><code>max_seq_length</code></td><td>1024–2048</td><td>2048–4096</td><td>VRAM quadratically</td></tr>
+            <tr class="hl-row"><td><code>LoRA r (rank)</code></td><td>16–32</td><td>32–64</td><td>Adapter capacity</td></tr>
+            <tr><td><code>learning_rate</code></td><td>1e-4 to 3e-4</td><td>1e-4 to 2e-4</td><td>Convergence speed</td></tr>
+            <tr class="hl-row"><td><code>packing</code></td><td>True</td><td>True</td><td>GPU utilization</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 11: TRAINING LOOP ══ -->
+    <section class="section" id="training-loop">
+      <div class="section-label">Fine-Tuning</div>
+      <h2>Full Training <span class="accent">Loop</span></h2>
+
+      <p>A complete, runnable training script combining all the above components. Copy-paste ready for a 7B QLoRA fine-tune on 12 GB VRAM.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">train.py — Complete SFT Script</span>
+        </div>
+        <pre><span class="cm">#!/usr/bin/env python3
+"""
+Unsloth SFT Training Script
+Optimised for 12–16 GB VRAM (RTX 5070, 5060 Ti, 4060 Ti)
+"""</span>
+
+<span class="kw">import</span> torch
+<span class="kw">from</span> unsloth <span class="kw">import</span> FastLanguageModel
+<span class="kw">from</span> unsloth.chat_templates <span class="kw">import</span> get_chat_template
+<span class="kw">from</span> datasets <span class="kw">import</span> load_dataset
+<span class="kw">from</span> trl <span class="kw">import</span> SFTTrainer
+<span class="kw">from</span> transformers <span class="kw">import</span> TrainingArguments
+<span class="kw">import</span> wandb
+
+<span class="cm"># ─── CONFIG ──────────────────────────────</span>
+MODEL_NAME    = <span class="str">"unsloth/Qwen2.5-7B-Instruct-bnb-4bit"</span>
+MAX_SEQ_LEN   = <span class="num">2048</span>
+OUTPUT_DIR    = <span class="str">"./outputs/arthavidya-v1"</span>
+DATASET_PATH  = <span class="str">"data/train.jsonl"</span>
+WANDB_PROJECT = <span class="str">"arthavidya"</span>
+
+<span class="cm"># ─── LOAD MODEL ──────────────────────────</span>
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name=MODEL_NAME,
+    max_seq_length=MAX_SEQ_LEN,
+    dtype=<span class="kw">None</span>,
+    load_in_4bit=<span class="kw">True</span>,
+)
+
+tokenizer = get_chat_template(tokenizer, chat_template=<span class="str">"qwen-2.5"</span>)
+
+<span class="cm"># ─── APPLY LORA ──────────────────────────</span>
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=<span class="num">32</span>,
+    lora_alpha=<span class="num">64</span>,
+    lora_dropout=<span class="num">0.05</span>,
+    target_modules=<span class="str">"all-linear"</span>,
+    use_gradient_checkpointing=<span class="str">"unsloth"</span>,
+    use_rslora=<span class="kw">True</span>,
+    random_state=<span class="num">42</span>,
+)
+
+<span class="fn">print</span>(model.print_trainable_parameters())
+
+<span class="cm"># ─── DATASET ─────────────────────────────</span>
+dataset = load_dataset(<span class="str">"json"</span>, data_files=DATASET_PATH, split=<span class="str">"train"</span>)
+
+<span class="kw">def</span> <span class="fn">format_examples</span>(examples):
+    <span class="kw">return</span> {<span class="str">"text"</span>: [
+        tokenizer.apply_chat_template(c, tokenize=<span class="kw">False</span>, add_generation_prompt=<span class="kw">False</span>)
+        <span class="kw">for</span> c <span class="kw">in</span> examples[<span class="str">"conversations"</span>]
+    ]}
+
+dataset = dataset.map(format_examples, batched=<span class="kw">True</span>)
+
+<span class="cm"># ─── TRAINER ─────────────────────────────</span>
+wandb.init(project=WANDB_PROJECT, name=<span class="str">"qwen25-7b-sft-r32"</span>)
+
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=dataset,
+    dataset_text_field=<span class="str">"text"</span>,
+    max_seq_length=MAX_SEQ_LEN,
+    dataset_num_proc=<span class="num">4</span>,
+    packing=<span class="kw">True</span>,
+    args=TrainingArguments(
+        per_device_train_batch_size=<span class="num">2</span>,
+        gradient_accumulation_steps=<span class="num">8</span>,
+        warmup_steps=<span class="num">50</span>,
+        num_train_epochs=<span class="num">3</span>,
+        learning_rate=<span class="num">2e-4</span>,
+        lr_scheduler_type=<span class="str">"cosine"</span>,
+        fp16=<span class="kw">not</span> torch.cuda.is_bf16_supported(),
+        bf16=torch.cuda.is_bf16_supported(),
+        optim=<span class="str">"adamw_8bit"</span>,
+        weight_decay=<span class="num">0.01</span>,
+        max_grad_norm=<span class="num">1.0</span>,
+        logging_steps=<span class="num">10</span>,
+        save_strategy=<span class="str">"epoch"</span>,
+        output_dir=OUTPUT_DIR,
+        report_to=<span class="str">"wandb"</span>,
+        seed=<span class="num">42</span>,
+    ),
+)
+
+<span class="cm"># ─── TRAIN ───────────────────────────────</span>
+stats = trainer.train()
+<span class="fn">print</span>(<span class="str">f"Training complete. Loss: {stats.training_loss:.4f}"</span>)
+
+<span class="cm"># ─── SAVE LORA ADAPTERS ──────────────────</span>
+model.save_pretrained(<span class="str">f"{OUTPUT_DIR}/lora-adapter"</span>)
+tokenizer.save_pretrained(<span class="str">f"{OUTPUT_DIR}/lora-adapter"</span>)
+<span class="fn">print</span>(<span class="str">"LoRA adapter saved."</span>)</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 12: CURRICULUM ══ -->
+    <section class="section" id="curriculum">
+      <div class="section-label">Fine-Tuning</div>
+      <h2>Curriculum <span class="accent">Training</span></h2>
+
+      <p>
+        Curriculum training exposes the model to data in a deliberate difficulty progression — starting with easy, well-structured examples and advancing to complex, nuanced ones. This mirrors how humans learn: foundational concepts first, edge cases later.
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-icon">🌱</div>
+          <div class="card-title">Tier 1 — Easy</div>
+          <div class="card-body">Clear factual Q&A. Short, unambiguous responses. High-confidence data. Example: basic tax definitions, fund categories.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📚</div>
+          <div class="card-title">Tier 2 — Medium</div>
+          <div class="card-body">Multi-step reasoning. Moderate context. Example: comparing mutual fund categories, SEBI regulation summaries.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🧠</div>
+          <div class="card-title">Tier 3 — Difficult</div>
+          <div class="card-body">Complex financial scenarios with caveats and calculations. Nuanced regulatory interpretations. Requires domain expertise.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🎯</div>
+          <div class="card-title">Tier 4 — Tricky</div>
+          <div class="card-body">Edge cases, adversarial questions, ambiguous situations requiring careful hedging. Reserved gold eval examples.</div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">curriculum_train.py</span>
+        </div>
+        <pre><span class="kw">from</span> datasets <span class="kw">import</span> load_dataset, concatenate_datasets
+
+TIERS = {
+    <span class="str">"easy"</span>:      (<span class="str">"data/tier1_easy.jsonl"</span>,     <span class="num">1</span>,   <span class="num">2e-4</span>),
+    <span class="str">"medium"</span>:    (<span class="str">"data/tier2_medium.jsonl"</span>,   <span class="num">1</span>,   <span class="num">1.5e-4</span>),
+    <span class="str">"difficult"</span>: (<span class="str">"data/tier3_difficult.jsonl"</span>,<span class="num">2</span>,   <span class="num">1e-4</span>),
+    <span class="str">"tricky"</span>:   (<span class="str">"data/tier4_tricky.jsonl"</span>,   <span class="num">2</span>,   <span class="num">5e-5</span>),
+}
+
+<span class="kw">for</span> tier_name, (data_path, epochs, lr) <span class="kw">in</span> TIERS.items():
+    <span class="fn">print</span>(<span class="str">f"\n{'='*50}"</span>)
+    <span class="fn">print</span>(<span class="str">f"Training Tier: {tier_name.upper()}"</span>)
+    <span class="fn">print</span>(<span class="str">f"LR: {lr}, Epochs: {epochs}"</span>)
+
+    dataset = load_dataset(<span class="str">"json"</span>, data_files=data_path, split=<span class="str">"train"</span>)
+    dataset = dataset.map(format_examples, batched=<span class="kw">True</span>)
+
+    trainer.args.learning_rate = lr
+    trainer.args.num_train_epochs = epochs
+    trainer.train_dataset = dataset
+    trainer.train()
+
+    <span class="cm"># Save checkpoint after each tier</span>
+    model.save_pretrained(<span class="str">f"checkpoints/after_{tier_name}"</span>)
+    <span class="fn">print</span>(<span class="str">f"Tier {tier_name} complete."</span>)</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 13: KD ══ -->
+    <section class="section" id="kd">
+      <div class="section-label">Fine-Tuning</div>
+      <h2>Knowledge <span class="accent">Distillation</span></h2>
+
+      <p>
+        Knowledge Distillation (KD) trains a smaller <em>student model</em> to mimic a larger, more capable <em>teacher model</em>. Instead of only training on hard labels (correct answers), the student learns from the teacher's soft output distribution — capturing nuance and uncertainty.
+      </p>
+
+      <div class="two-col">
+        <div>
+          <h4>Standard SFT (Hard Labels)</h4>
+          <p style="font-size:13px">Loss = Cross-entropy(student_logits, ground_truth_token)<br/>Student only sees "right answer" — no information about near-misses.</p>
+        </div>
+        <div>
+          <h4>KD with Soft Labels</h4>
+          <p style="font-size:13px">Loss = α × CE(student, truth) + (1-α) × KL(student_softmax, teacher_softmax / T)<br/>Student learns the teacher's confidence distribution — richer signal.</p>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">kd_training.py — Soft-Label Distillation with Unsloth</span>
+        </div>
+        <pre><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn.functional <span class="kw">as</span> F
+<span class="kw">from</span> unsloth <span class="kw">import</span> FastLanguageModel
+
+<span class="cm"># Load teacher (e.g. Qwen2.5-9B or via llama-server API)</span>
+<span class="cm"># Load student (e.g. Qwen2.5-4B with LoRA)</span>
+
+TEMPERATURE = <span class="num">2.0</span>     <span class="cm"># Soften teacher distribution</span>
+ALPHA       = <span class="num">0.7</span>     <span class="cm"># Weight for KD loss vs CE loss</span>
+
+<span class="kw">def</span> <span class="fn">kd_loss</span>(student_logits, teacher_logits, labels):
+    <span class="cm"># Standard CE loss (hard labels)</span>
+    ce_loss = F.cross_entropy(
+        student_logits.view(<span class="num">-1</span>, student_logits.size(<span class="num">-1</span>)),
+        labels.view(<span class="num">-1</span>),
+        ignore_index=<span class="num">-100</span>
+    )
+
+    <span class="cm"># KL divergence with temperature scaling</span>
+    student_soft = F.log_softmax(student_logits / TEMPERATURE, dim=<span class="num">-1</span>)
+    teacher_soft = F.softmax(teacher_logits / TEMPERATURE, dim=<span class="num">-1</span>)
+    kl_loss = F.kl_div(
+        student_soft, teacher_soft,
+        reduction=<span class="str">"batchmean"</span>
+    ) * (TEMPERATURE ** <span class="num">2</span>)
+
+    <span class="kw">return</span> ALPHA * kl_loss + (<span class="num">1</span> - ALPHA) * ce_loss
+
+<span class="cm"># Use with a custom Trainer that overrides compute_loss()</span>
+<span class="kw">class</span> <span class="fn">KDTrainer</span>(SFTTrainer):
+    <span class="kw">def</span> <span class="fn">compute_loss</span>(self, model, inputs, return_outputs=<span class="kw">False</span>):
+        <span class="kw">with</span> torch.no_grad():
+            teacher_out = teacher_model(**inputs)
+        student_out = model(**inputs)
+        loss = kd_loss(
+            student_out.logits,
+            teacher_out.logits,
+            inputs[<span class="str">"labels"</span>]
+        )
+        <span class="kw">return</span> (loss, student_out) <span class="kw">if</span> return_outputs <span class="kw">else</span> loss</pre>
+      </div>
+
+      <div class="callout callout-amber">
+        <div class="callout-title">🌡️ Temperature Tuning</div>
+        <p>T=1.0 = hard teacher. T=2.0–4.0 = soft, more generalisable. For finance domain KD, T=2.0 is a good starting point. Higher T can help when the teacher is very confident (low entropy output).</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 14: STUDIO OVERVIEW ══ -->
+    <section class="section" id="studio-overview">
+      <div class="section-label">Unsloth Studio</div>
+      <h2>Unsloth Studio <span class="accent">Overview</span></h2>
+
+      <p>
+        <strong>Unsloth Studio</strong> is a web-based no-code/low-code interface for fine-tuning models using Unsloth, launched in 2025. It runs locally in your browser (backed by a local server) or can connect to a remote GPU instance. Think of it as a visual front-end for everything in this handbook.
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-accent card-accent-orange"></div>
+          <div class="card-icon">🖥️</div>
+          <div class="card-title">Visual Config Builder</div>
+          <div class="card-body">Build your LoRA config, training arguments, and dataset pipeline through a form UI. Generates the equivalent Python script for reproducibility.</div>
+        </div>
+        <div class="card">
+          <div class="card-accent card-accent-teal"></div>
+          <div class="card-icon">📊</div>
+          <div class="card-title">Live Training Dashboard</div>
+          <div class="card-body">Real-time loss curves, VRAM usage, tokens/sec, GPU temperature — all in the browser without needing Weights & Biases.</div>
+        </div>
+        <div class="card">
+          <div class="card-accent card-accent-violet"></div>
+          <div class="card-icon">🗃️</div>
+          <div class="card-title">Dataset Manager</div>
+          <div class="card-body">Upload JSONL files, preview formatting, validate conversation structure, and split train/eval without code.</div>
+        </div>
+        <div class="card">
+          <div class="card-accent card-accent-amber"></div>
+          <div class="card-icon">📦</div>
+          <div class="card-title">One-Click GGUF Export</div>
+          <div class="card-body">Select quantization format (Q4_K_M, Q5_K_M, etc.) and export your merged model to GGUF directly from the Studio UI.</div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">Launch Unsloth Studio</span>
+        </div>
+        <pre><span class="cm"># Install Unsloth Studio (included with unsloth 2025.x)</span>
+pip install "unsloth[studio]"
+
+<span class="cm"># Launch the Studio server on localhost:7860</span>
+unsloth-studio
+
+<span class="cm"># Or specify a port and host</span>
+unsloth-studio --port 7860 --host 0.0.0.0
+
+<span class="cm"># Then open http://localhost:7860 in your browser</span></pre>
+      </div>
+
+      <div class="callout callout-teal">
+        <div class="callout-title">💡 Studio vs Script — When to use which</div>
+        <p>Use <strong>Studio</strong> for exploratory fine-tuning, quick experiments, and GGUF export. Use <strong>Python scripts</strong> for production pipelines, curriculum training, KD, DVC tracking, and W&B integration. Studio's "Export Script" button gives you the Python equivalent of any Studio config.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 15: STUDIO WORKFLOW ══ -->
+    <section class="section" id="studio-workflow">
+      <div class="section-label">Unsloth Studio</div>
+      <h2>Studio <span class="accent">Workflow</span></h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Select Model</div>
+            <div class="step-body">Choose from the built-in model catalogue (Llama 3.2, Qwen 2.5, Mistral, Phi-4, Gemma 3, etc.) or paste any HuggingFace model ID. Studio auto-selects the correct chat template.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Upload Dataset</div>
+            <div class="step-body">Drag-drop your JSONL file or paste a HuggingFace dataset path. Studio validates the format and shows a live preview of formatted training examples.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Configure LoRA & Training</div>
+            <div class="step-body">Set rank, alpha, target modules via sliders. Set learning rate, epochs, batch size. Studio estimates VRAM usage dynamically as you adjust settings — great for 12 GB budgets.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">Start Training</div>
+            <div class="step-body">Click Train. Watch loss curves, VRAM, and speed in real-time. Training is interruptible — checkpoints are saved per epoch so you can resume.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-title">Chat & Evaluate</div>
+            <div class="step-body">After training, test your model directly in Studio's built-in chat interface. Compare responses side-by-side with the base model.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <div class="step-title">Export to GGUF</div>
+            <div class="step-body">Select quantization type, click Export. Studio merges LoRA into base, converts to GGUF, and saves locally. Ready for Ollama or llama-server.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 16: EXPORT GGUF ══ -->
+    <section class="section" id="export-gguf">
+      <div class="section-label">Export & Serve</div>
+      <h2>Export to <span class="accent">GGUF</span></h2>
+
+      <p>Unsloth has a native GGUF export pipeline — no manual llama.cpp compilation required. It merges your LoRA adapter into the base model, converts to GGUF, and applies your chosen quantization, all in one call.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">export_gguf.py</span>
+        </div>
+        <pre><span class="cm"># After training is complete, export to GGUF</span>
+
+<span class="cm"># Option 1: Save as GGUF directly (multiple quant types at once)</span>
+model.save_pretrained_gguf(
+    <span class="str">"arthavidya-qwen25-7b"</span>,     <span class="cm"># Output folder name</span>
+    tokenizer,
+    quantization_method=[
+        <span class="str">"q4_k_m"</span>,               <span class="cm"># Best balance — use for Ollama</span>
+        <span class="str">"q5_k_m"</span>,               <span class="cm"># Higher quality</span>
+        <span class="str">"q8_0"</span>,                 <span class="cm"># Near-lossless — for eval</span>
+    ]
+)
+<span class="cm"># Produces: arthavidya-qwen25-7b-Q4_K_M.gguf, etc.</span>
+
+<span class="cm"># Option 2: Push merged model to HuggingFace Hub</span>
+model.push_to_hub_gguf(
+    <span class="str">"vivek-doshi/arthavidya-qwen25-7b-gguf"</span>,
+    tokenizer,
+    quantization_method=<span class="str">"q4_k_m"</span>,
+    token=<span class="str">"hf_..."</span>,
+)
+
+<span class="cm"># Option 3: Save merged safetensors (for HF Hub without GGUF)</span>
+model.save_pretrained_merged(
+    <span class="str">"arthavidya-merged"</span>,
+    tokenizer,
+    save_method=<span class="str">"merged_16bit"</span>,  <span class="cm"># or "merged_4bit", "lora"</span>
+)</pre>
+      </div>
+
+      <div class="callout callout-violet">
+        <div class="callout-title">📁 What Gets Saved</div>
+        <p>Each GGUF export creates: <code>model.gguf</code> (weights), <code>tokenizer.gguf</code> (vocab), and a <code>Modelfile</code> template for Ollama. The Modelfile includes your system prompt and chat template automatically.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 17: LOCAL INFERENCE ══ -->
+    <section class="section" id="local-inference">
+      <div class="section-label">Export & Serve</div>
+      <h2>Local <span class="accent">Inference</span></h2>
+
+      <h3>Option A: llama-server (Direct, No Overhead)</h3>
+      <p>llama-server is the HTTP API mode of llama.cpp. It provides an OpenAI-compatible REST endpoint — the same API format as the OpenAI SDK, making it a drop-in for your applications.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">llama-server launch</span>
+        </div>
+        <pre><span class="cm"># Download llama.cpp release binary (or build from source)</span>
+wget https://github.com/ggerganov/llama.cpp/releases/latest/download/llama-b3xxx-bin-ubuntu-x64.zip
+
+<span class="cm"># Launch server with CUDA offload</span>
+./llama-server \
+  -m ./arthavidya-qwen25-7b-Q4_K_M.gguf \
+  -ngl 40 \               <span class="cm"># GPU layers — set to 99 to fully GPU-offload</span>
+  -c 4096 \               <span class="cm"># Context window</span>
+  --host 0.0.0.0 \
+  --port 8080 \
+  -np 4 \                 <span class="cm"># Parallel slots (concurrent requests)</span>
+  --flash-attn            <span class="cm"># Enable Flash Attention — faster, less VRAM</span>
+
+<span class="cm"># Server now running at http://localhost:8080
+# OpenAI-compatible endpoint: http://localhost:8080/v1/chat/completions</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">query_llama_server.py</span>
+        </div>
+        <pre><span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+
+client = OpenAI(base_url=<span class="str">"http://localhost:8080/v1"</span>, api_key=<span class="str">"local"</span>)
+
+response = client.chat.completions.create(
+    model=<span class="str">"arthavidya"</span>,
+    messages=[
+        {<span class="str">"role"</span>: <span class="str">"system"</span>,  <span class="str">"content"</span>: <span class="str">"You are Arthavidya, an Indian finance expert."</span>},
+        {<span class="str">"role"</span>: <span class="str">"user"</span>,    <span class="str">"content"</span>: <span class="str">"Explain ELSS tax saving funds."</span>},
+    ],
+    temperature=<span class="num">0.7</span>,
+    max_tokens=<span class="num">512</span>,
+)
+<span class="fn">print</span>(response.choices[<span class="num">0</span>].message.content)</pre>
+      </div>
+
+      <h3>GPU Layer Recommendations for 12–16 GB</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Model + Quant</th><th>GPU</th><th>-ngl (GPU layers)</th><th>RAM fallback</th></tr></thead>
+          <tbody>
+            <tr><td>7B Q4_K_M</td><td>12 GB</td><td>-ngl 99</td><td>None (fully GPU)</td></tr>
+            <tr class="hl-row"><td>7B Q8_0</td><td>12 GB</td><td>-ngl 32</td><td>~2 GB RAM</td></tr>
+            <tr><td>13B Q4_K_M</td><td>12 GB</td><td>-ngl 30</td><td>~3 GB RAM</td></tr>
+            <tr class="hl-row"><td>13B Q4_K_M</td><td>16 GB</td><td>-ngl 99</td><td>None</td></tr>
+            <tr><td>4B Q6_K</td><td>12 GB</td><td>-ngl 99</td><td>None (much room)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 18: OLLAMA ══ -->
+    <section class="section" id="ollama">
+      <div class="section-label">Export & Serve</div>
+      <h2>Ollama <span class="accent">Integration</span></h2>
+
+      <p>
+        Ollama is the easiest way to manage and run GGUF models locally. It handles model storage, automatic GPU offloading, and exposes the same OpenAI-compatible API. Ideal for running your Arthavidya model alongside other models with hot-swap.
+      </p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">Modelfile — Custom Ollama Model</span>
+        </div>
+        <pre><span class="cm"># Create a Modelfile for your fine-tuned model</span>
+<span class="kw">FROM</span> ./arthavidya-qwen25-7b-Q4_K_M.gguf
+
+<span class="cm"># Set system prompt</span>
+<span class="kw">SYSTEM</span> """
+You are Arthavidya, a knowledgeable Indian financial assistant.
+You provide accurate, clear guidance on Indian taxation, mutual funds,
+insurance, and personal finance. Always cite relevant sections
+(e.g. Section 80C, SEBI regulations) where applicable.
+"""
+
+<span class="cm"># Parameters</span>
+<span class="kw">PARAMETER</span> temperature 0.7
+<span class="kw">PARAMETER</span> top_p 0.9
+<span class="kw">PARAMETER</span> num_ctx 4096
+<span class="kw">PARAMETER</span> num_gpu 99        <span class="cm"># Max GPU layers</span>
+<span class="kw">PARAMETER</span> num_thread 8</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">ollama_commands.sh</span>
+        </div>
+        <pre><span class="cm"># Install Ollama</span>
+curl -fsSL https://ollama.com/install.sh | sh
+
+<span class="cm"># Create your custom model from Modelfile</span>
+ollama create arthavidya -f ./Modelfile
+
+<span class="cm"># Run interactively</span>
+ollama run arthavidya
+
+<span class="cm"># List all local models</span>
+ollama list
+
+<span class="cm"># Pull a base model (for comparison)</span>
+ollama pull qwen2.5:7b-instruct-q4_K_M
+
+<span class="cm"># Query via REST API (OpenAI-compatible)</span>
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "arthavidya",
+    "messages": [{"role":"user","content":"What is a SIP?"}]
+  }'</pre>
+      </div>
+
+      <h3>llama-server vs Ollama — When to Use Which</h3>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">🔧 llama-server</div>
+          <div class="card-body" style="margin-top:8px">
+            <strong>Use when:</strong> maximum control over context, batch size, threading; running in production pipeline; need consistent version pinning; want to manage manually (as in Arthavidya pipeline).
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🐳 Ollama</div>
+          <div class="card-body" style="margin-top:8px">
+            <strong>Use when:</strong> managing multiple models, hot-swapping between base and fine-tuned, easy integration with LangChain/LlamaIndex, or sharing with teammates via simple API.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 19: TROUBLESHOOTING ══ -->
+    <section class="section" id="troubleshooting">
+      <div class="section-label">Reference</div>
+      <h2><span class="accent">Troubleshooting</span></h2>
+
+      <h3>Common Errors & Fixes</h3>
+
+      <h4>CUDA Out of Memory (OOM)</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">fix</span></div>
+        <pre><span class="cm"># Try these in order until OOM resolves:</span>
+<span class="num">1.</span> Reduce max_seq_length:    <span class="num">4096</span> → <span class="num">2048</span> → <span class="num">1024</span>
+<span class="num">2.</span> Reduce batch size:        per_device_train_batch_size=<span class="num">1</span>
+<span class="num">3.</span> Increase grad accum:     gradient_accumulation_steps=<span class="num">16</span>
+<span class="num">4.</span> Use 8-bit Adam:           optim=<span class="str">"adamw_8bit"</span>
+<span class="num">5.</span> Enable grad checkpointing: use_gradient_checkpointing=<span class="str">"unsloth"</span>
+<span class="num">6.</span> Reduce LoRA rank:         r=<span class="num">32</span> → r=<span class="num">16</span>
+<span class="num">7.</span> Disable packing temporarily and check GPU util with nvidia-smi</pre>
+      </div>
+
+      <h4>Triton / CUDA Kernel Errors on RTX 50 Series</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">fix</span></div>
+        <pre><span class="cm"># Blackwell (sm_120) needs PyTorch nightly and Triton from source</span>
+pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128
+pip install triton==3.2.0  <span class="cm"># or latest nightly</span>
+
+<span class="cm"># Also ensure your NVIDIA driver is 560.76+</span>
+nvidia-smi  <span class="cm"># Check driver version</span></pre>
+      </div>
+
+      <h4>Slow Training — Tokens/sec Too Low</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">diagnose</span></div>
+        <pre><span class="cm"># Check GPU utilization during training</span>
+watch -n 1 nvidia-smi
+
+<span class="cm"># If GPU util < 80%, your DataLoader is bottlenecking:</span>
+<span class="cm"># - Increase dataset_num_proc (e.g., 4 → 8)</span>
+<span class="cm"># - Enable packing=True to densify batches</span>
+<span class="cm"># - Move dataset to Linux FS (not /mnt/c/ in WSL2)</span>
+<span class="cm"># - Pre-tokenize and cache dataset before training</span></pre>
+      </div>
+
+      <h4>NaN / Inf Loss</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">fix</span></div>
+        <pre><span class="cm"># NaN loss usually means LR too high or bad data</span>
+<span class="num">1.</span> Lower LR: 2e-4 → 5e-5
+<span class="num">2.</span> Add max_grad_norm=1.0 to clip gradients
+<span class="num">3.</span> Inspect dataset for empty or malformed examples
+<span class="num">4.</span> Try bf16=False, fp16=True (or vice versa)
+<span class="num">5.</span> Increase warmup_steps to 100+</pre>
+      </div>
+
+      <h4>Unsloth vs PEFT Version Mismatch</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span></div>
+        <pre><span class="cm"># Always pin compatible versions together</span>
+pip install "peft==0.11.1" "trl==0.9.4" "transformers==4.44.0"
+pip install "unsloth @ git+https://github.com/unslothai/unsloth.git"
+
+<span class="cm"># Check what's installed</span>
+pip show unsloth peft trl transformers | grep -E "Name|Version"</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 20: CHEATSHEET ══ -->
+    <section class="section" id="cheatsheet">
+      <div class="section-label">Reference</div>
+      <h2>Quick <span class="accent">Cheat Sheet</span></h2>
+
+      <h3>Model Names (Unsloth Hub)</h3>
+      <div class="pill-list">
+        <span class="tag tag-orange">unsloth/Qwen2.5-7B-Instruct-bnb-4bit</span>
+        <span class="tag tag-orange">unsloth/Qwen2.5-14B-Instruct-bnb-4bit</span>
+        <span class="tag tag-teal">unsloth/Llama-3.2-3B-Instruct-bnb-4bit</span>
+        <span class="tag tag-teal">unsloth/Llama-3.1-8B-Instruct-bnb-4bit</span>
+        <span class="tag tag-violet">unsloth/mistral-7b-instruct-v0.3-bnb-4bit</span>
+        <span class="tag tag-violet">unsloth/Phi-4-bnb-4bit</span>
+        <span class="tag tag-orange">unsloth/gemma-3-12b-it-bnb-4bit</span>
+      </div>
+
+      <h3>Key CLI Commands</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span></div>
+        <pre><span class="cm"># Monitor VRAM during training</span>
+watch -n 1 nvidia-smi --query-gpu=memory.used,memory.free,utilization.gpu --format=csv
+
+<span class="cm"># Count tokens in dataset</span>
+python -c "from datasets import load_dataset; d=load_dataset('json',data_files='train.jsonl',split='train'); print(sum(len(x.split()) for x in d['text']))"
+
+<span class="cm"># Test GGUF model with llama.cpp CLI</span>
+./llama-cli -m model.gguf -p "What is ELSS?" --temp 0.7 -n 256
+
+<span class="cm"># Check Ollama GPU usage</span>
+ollama ps
+
+<span class="cm"># Export LoRA adapter to merged safetensors</span>
+python -c "
+from unsloth import FastLanguageModel
+m,t = FastLanguageModel.from_pretrained('./lora-adapter')
+m.save_pretrained_merged('./merged', t, save_method='merged_16bit')
+"</pre>
+      </div>
+
+      <h3>Hyperparameter Quick-Reference</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Goal</th><th>Key Levers</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Reduce VRAM</strong></td><td>↓ seq_len, ↓ batch_size, ↑ grad_accum, ↓ rank, enable grad_checkpoint</td></tr>
+            <tr class="hl-row"><td><strong>Faster training</strong></td><td>↑ batch_size, packing=True, ↑ dataset_num_proc, bf16=True</td></tr>
+            <tr><td><strong>Better quality</strong></td><td>↑ rank, use_rslora, ↑ epochs, better data curation</td></tr>
+            <tr class="hl-row"><td><strong>Prevent overfitting</strong></td><td>↑ dropout, ↓ epochs, weight_decay=0.01, eval set monitoring</td></tr>
+            <tr><td><strong>Stable training</strong></td><td>↓ LR, warmup_steps=100+, max_grad_norm=1.0, cosine schedule</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Useful Links</h3>
+      <div class="pill-list">
+        <span class="tag tag-orange">github.com/unslothai/unsloth</span>
+        <span class="tag tag-teal">huggingface.co/unsloth</span>
+        <span class="tag tag-violet">github.com/ggerganov/llama.cpp</span>
+        <span class="tag tag-orange">ollama.com</span>
+        <span class="tag tag-teal">docs.unsloth.ai</span>
+        <span class="tag tag-violet">wandb.ai</span>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <span>🦥 Unsloth Fine-Tuning Handbook · v2025 · Arthavidya Stack</span>
+  <span>Optimized for RTX 5070 · 5060 Ti · 4060 Ti · 12–16 GB VRAM</span>
+</footer>
+
+<script>
+  // Active nav link on scroll
+  const sections = document.querySelectorAll('.section');
+  const navLinks = document.querySelectorAll('.nav-link');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => link.classList.remove('active'));
+        const id = entry.target.id;
+        const activeLink = document.querySelector(`.nav-link[href="#${id}"]`);
+        if (activeLink) activeLink.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
