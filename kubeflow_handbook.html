@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kubeflow Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  /* ═══════════════════════════════════════
+     TOKENS
+  ═══════════════════════════════════════ */
+  :root{
+    --bg-base:#060810;
+    --bg-card:#0d1018;
+    --bg-card2:#111420;
+    --bg-sidebar:#08091240;
+    --border:#181d2e;
+    --border-accent:#1e2640;
+
+    --accent-blue:#3b82f6;
+    --accent-blue-dim:#3b82f615;
+    --accent-blue-glow:#3b82f630;
+    --accent-cyan:#06b6d4;
+    --accent-cyan-dim:#06b6d418;
+    --accent-indigo:#6366f1;
+    --accent-indigo-dim:#6366f118;
+    --accent-emerald:#10b981;
+    --accent-emerald-dim:#10b98118;
+    --accent-amber:#f59e0b;
+    --accent-amber-dim:#f59e0b18;
+    --accent-rose:#f43f5e;
+    --accent-rose-dim:#f43f5e15;
+
+    --text-primary:#dde4f5;
+    --text-secondary:#7a89ad;
+    --text-muted:#3d4a6a;
+    --text-code:#7dd3fc;
+
+    --sidebar-w:284px;
+    --header-h:62px;
+    --radius:8px;
+    --radius-lg:14px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg-base);
+    color:var(--text-primary);
+    font-family:'DM Sans',sans-serif;
+    font-size:15px;
+    line-height:1.75;
+    display:flex;flex-direction:column;min-height:100vh;
+  }
+
+  /* subtle grid bg */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:48px 48px;
+    opacity:.35;
+  }
+
+  /* ═══════════════════════════════════════
+     TOPBAR
+  ═══════════════════════════════════════ */
+  .topbar{
+    position:fixed;top:0;left:0;right:0;height:var(--header-h);
+    background:rgba(6,8,16,0.92);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;
+    padding:0 28px;z-index:100;gap:14px;
+  }
+  .topbar-logo{
+    display:flex;align-items:center;gap:10px;
+    font-family:'Sora',sans-serif;font-weight:700;font-size:1.05rem;
+    color:var(--text-primary);text-decoration:none;letter-spacing:-.02em;
+  }
+  .logo-icon{
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(135deg,var(--accent-blue),var(--accent-cyan));
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:800;color:#fff;
+    font-family:'Sora',sans-serif;box-shadow:0 0 16px var(--accent-blue-glow);
+  }
+  .topbar-badge{
+    background:var(--accent-blue-dim);color:var(--accent-blue);
+    border:1px solid var(--accent-blue);
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    padding:2px 8px;border-radius:20px;letter-spacing:.06em;
+  }
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+  .chip{
+    font-size:11px;padding:3px 10px;border-radius:20px;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.04em;font-weight:700;
+    border:1px solid;
+  }
+  .chip-blue{background:var(--accent-blue-dim);color:var(--accent-blue);border-color:var(--accent-blue);}
+  .chip-cyan{background:var(--accent-cyan-dim);color:var(--accent-cyan);border-color:var(--accent-cyan);}
+  .chip-indigo{background:var(--accent-indigo-dim);color:var(--accent-indigo);border-color:var(--accent-indigo);}
+  .chip-emerald{background:var(--accent-emerald-dim);color:var(--accent-emerald);border-color:var(--accent-emerald);}
+  .chip-amber{background:var(--accent-amber-dim);color:var(--accent-amber);border-color:var(--accent-amber);}
+  .chip-rose{background:var(--accent-rose-dim);color:var(--accent-rose);border-color:var(--accent-rose);}
+
+  /* ═══════════════════════════════════════
+     LAYOUT
+  ═══════════════════════════════════════ */
+  .layout{display:flex;padding-top:var(--header-h);position:relative;z-index:1;}
+
+  /* ═══════════════════════════════════════
+     SIDEBAR
+  ═══════════════════════════════════════ */
+  .sidebar{
+    width:var(--sidebar-w);min-width:var(--sidebar-w);
+    background:rgba(8,9,18,0.85);
+    backdrop-filter:blur(12px);
+    border-right:1px solid var(--border);
+    height:calc(100vh - var(--header-h));
+    position:sticky;top:var(--header-h);
+    overflow-y:auto;padding:20px 0;
+  }
+  .sidebar::-webkit-scrollbar{width:3px}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+  .nav-section-title{
+    font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;
+    color:var(--text-muted);letter-spacing:.14em;text-transform:uppercase;
+    padding:18px 20px 5px;
+  }
+  .nav-link{
+    display:flex;align-items:center;gap:10px;
+    padding:6px 20px;color:var(--text-secondary);text-decoration:none;
+    font-size:13px;font-weight:400;
+    transition:all .15s;border-left:2px solid transparent;
+  }
+  .nav-link:hover{color:var(--text-primary);background:var(--accent-blue-dim);border-left-color:var(--accent-blue);}
+  .nav-link.active{color:var(--accent-cyan);background:var(--accent-cyan-dim);border-left-color:var(--accent-cyan);font-weight:600;}
+  .nav-dot{width:4px;height:4px;border-radius:50%;background:var(--text-muted);flex-shrink:0;transition:background .15s;}
+  .nav-link.active .nav-dot{background:var(--accent-cyan);}
+  .nav-link:hover .nav-dot{background:var(--accent-blue);}
+
+  /* ═══════════════════════════════════════
+     MAIN
+  ═══════════════════════════════════════ */
+  .main{flex:1;max-width:calc(100vw - var(--sidebar-w));padding:48px 60px;overflow-x:hidden;}
+
+  /* ═══════════════════════════════════════
+     HERO
+  ═══════════════════════════════════════ */
+  .hero{
+    position:relative;overflow:hidden;
+    background:linear-gradient(160deg,#0d1118 0%,#0a0f1e 55%,#08101a 100%);
+    border:1px solid var(--border-accent);border-radius:16px;
+    padding:56px 52px;margin-bottom:52px;
+  }
+  .hero::before{
+    content:'';position:absolute;top:-80px;right:-80px;width:420px;height:420px;
+    border-radius:50%;
+    background:radial-gradient(circle,var(--accent-blue) 0%,transparent 70%);
+    opacity:.1;pointer-events:none;
+  }
+  .hero::after{
+    content:'';position:absolute;bottom:-60px;left:20%;width:320px;height:320px;
+    border-radius:50%;
+    background:radial-gradient(circle,var(--accent-cyan) 0%,transparent 70%);
+    opacity:.07;pointer-events:none;
+  }
+  /* corner decoration */
+  .hero-corner{
+    position:absolute;top:0;right:0;
+    width:200px;height:200px;
+    background:conic-gradient(from 180deg at 100% 0%,var(--accent-blue-dim),transparent 60%);
+    pointer-events:none;
+  }
+  .hero-eyebrow{
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+    color:var(--accent-cyan);letter-spacing:.16em;text-transform:uppercase;
+    margin-bottom:18px;display:flex;align-items:center;gap:8px;
+  }
+  .hero-eyebrow::before{content:'';width:24px;height:1px;background:var(--accent-cyan);}
+  .hero h1{
+    font-family:'Sora',sans-serif;font-weight:800;font-size:2.75rem;
+    line-height:1.1;letter-spacing:-.035em;
+    color:var(--text-primary);margin-bottom:18px;
+  }
+  .hero h1 span{
+    background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .hero-sub{font-size:1.05rem;color:var(--text-secondary);max-width:640px;font-weight:300;margin-bottom:30px;line-height:1.8;}
+  .hero-chips{display:flex;flex-wrap:wrap;gap:8px;}
+
+  /* ═══════════════════════════════════════
+     SECTION HEADINGS
+  ═══════════════════════════════════════ */
+  .section{margin-bottom:60px;scroll-margin-top:80px;}
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--accent-blue);letter-spacing:.14em;text-transform:uppercase;
+    margin-bottom:10px;display:flex;align-items:center;gap:8px;
+  }
+  .section-label::before{content:'';width:16px;height:1px;background:var(--accent-blue);}
+  h2{
+    font-family:'Sora',sans-serif;font-weight:700;font-size:1.7rem;
+    letter-spacing:-.025em;color:var(--text-primary);
+    margin-bottom:6px;padding-bottom:14px;
+    border-bottom:1px solid var(--border);
+  }
+  h2 .accent{
+    background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  h3{
+    font-family:'Sora',sans-serif;font-weight:600;font-size:1.15rem;
+    color:var(--text-primary);margin:28px 0 12px;letter-spacing:-.015em;
+  }
+  h4{
+    font-family:'DM Sans',sans-serif;font-weight:600;font-size:.95rem;
+    color:var(--accent-cyan);margin:20px 0 8px;
+  }
+  p{color:var(--text-secondary);margin-bottom:14px;line-height:1.85;}
+  strong{color:var(--text-primary);font-weight:600;}
+  em{color:var(--accent-cyan);font-style:normal;font-weight:500;}
+  ul,ol{color:var(--text-secondary);padding-left:22px;margin-bottom:14px;}
+  li{margin-bottom:6px;line-height:1.75;}
+  li strong{color:var(--text-primary);}
+
+  /* ═══════════════════════════════════════
+     CARDS
+  ═══════════════════════════════════════ */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin:20px 0;}
+  .card{
+    background:var(--bg-card);border:1px solid var(--border);
+    border-radius:var(--radius-lg);padding:22px;
+    transition:border-color .2s,transform .2s,box-shadow .2s;
+    position:relative;overflow:hidden;
+  }
+  .card:hover{border-color:var(--accent-blue);transform:translateY(-2px);box-shadow:0 8px 32px var(--accent-blue-glow);}
+  .card-glow{position:absolute;top:-40px;right:-40px;width:100px;height:100px;border-radius:50%;opacity:.06;pointer-events:none;}
+  .card-glow-blue{background:var(--accent-blue);}
+  .card-glow-cyan{background:var(--accent-cyan);}
+  .card-glow-indigo{background:var(--accent-indigo);}
+  .card-glow-emerald{background:var(--accent-emerald);}
+  .card-icon{font-size:1.5rem;margin-bottom:10px;}
+  .card-title{font-family:'Sora',sans-serif;font-weight:700;font-size:.95rem;color:var(--text-primary);margin-bottom:6px;}
+  .card-body{font-size:13px;color:var(--text-secondary);line-height:1.65;}
+
+  /* ═══════════════════════════════════════
+     CODE BLOCKS
+  ═══════════════════════════════════════ */
+  .code-block{
+    background:#050710;border:1px solid var(--border-accent);
+    border-radius:var(--radius);overflow:hidden;margin:16px 0;
+  }
+  .code-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:8px 16px;background:#080a14;border-bottom:1px solid var(--border);
+  }
+  .code-lang{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--accent-cyan);letter-spacing:.1em;text-transform:uppercase;
+  }
+  .code-file{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);}
+  pre{
+    padding:18px 20px;overflow-x:auto;
+    font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.8;color:#c8d3f5;
+  }
+  pre::-webkit-scrollbar{height:3px}
+  pre::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+  .kw{color:#82aaff;}
+  .fn{color:#86e1fc;}
+  .str{color:#c3e88d;}
+  .num{color:#f78c6c;}
+  .cm{color:var(--text-muted);font-style:italic;}
+  .var{color:#ff9d8a;}
+  .op{color:#89ddff;}
+  .key{color:#c792ea;}
+  code{
+    font-family:'JetBrains Mono',monospace;font-size:12px;
+    background:#0a0d1a;color:var(--text-code);
+    padding:2px 6px;border-radius:4px;border:1px solid var(--border-accent);
+  }
+
+  /* ═══════════════════════════════════════
+     CALLOUTS
+  ═══════════════════════════════════════ */
+  .callout{
+    border-left:3px solid;border-radius:0 var(--radius) var(--radius) 0;
+    padding:14px 18px;margin:18px 0;font-size:14px;
+  }
+  .callout-blue{background:var(--accent-blue-dim);border-color:var(--accent-blue);}
+  .callout-cyan{background:var(--accent-cyan-dim);border-color:var(--accent-cyan);}
+  .callout-indigo{background:var(--accent-indigo-dim);border-color:var(--accent-indigo);}
+  .callout-amber{background:var(--accent-amber-dim);border-color:var(--accent-amber);}
+  .callout-emerald{background:var(--accent-emerald-dim);border-color:var(--accent-emerald);}
+  .callout-rose{background:var(--accent-rose-dim);border-color:var(--accent-rose);}
+  .callout-title{
+    font-weight:700;font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;margin-bottom:5px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .callout-blue .callout-title{color:var(--accent-blue);}
+  .callout-cyan .callout-title{color:var(--accent-cyan);}
+  .callout-indigo .callout-title{color:var(--accent-indigo);}
+  .callout-amber .callout-title{color:var(--accent-amber);}
+  .callout-emerald .callout-title{color:var(--accent-emerald);}
+  .callout-rose .callout-title{color:var(--accent-rose);}
+  .callout p{color:var(--text-primary);margin:0;font-size:13.5px;}
+
+  /* ═══════════════════════════════════════
+     TABLES
+  ═══════════════════════════════════════ */
+  .table-wrap{overflow-x:auto;margin:16px 0;border-radius:var(--radius);border:1px solid var(--border);}
+  table{width:100%;border-collapse:collapse;}
+  thead tr{background:#080a14;}
+  th{
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;
+    color:var(--accent-blue);letter-spacing:.08em;text-transform:uppercase;
+    padding:10px 16px;text-align:left;border-bottom:1px solid var(--border);
+  }
+  td{padding:10px 16px;border-bottom:1px solid var(--border-accent);font-size:13.5px;color:var(--text-secondary);}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:#ffffff03;}
+  td strong{color:var(--text-primary);}
+  td code{font-size:11.5px;}
+  .hl-row td{background:#0d1020;}
+
+  /* ═══════════════════════════════════════
+     STAT CARDS
+  ═══════════════════════════════════════ */
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:20px 0;}
+  .stat-card{
+    background:var(--bg-card);border:1px solid var(--border);
+    border-radius:var(--radius);padding:16px;text-align:center;
+    transition:border-color .2s;
+  }
+  .stat-card:hover{border-color:var(--accent-cyan);}
+  .stat-num{font-family:'Sora',sans-serif;font-weight:800;font-size:1.7rem;
+    background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .stat-label{font-size:10.5px;color:var(--text-muted);margin-top:2px;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;}
+
+  /* ═══════════════════════════════════════
+     STEPS
+  ═══════════════════════════════════════ */
+  .steps{display:flex;flex-direction:column;gap:14px;margin:20px 0;}
+  .step{display:flex;gap:16px;align-items:flex-start;position:relative;}
+  .step::before{
+    content:'';position:absolute;left:15px;top:36px;bottom:-14px;width:1px;
+    background:linear-gradient(to bottom,var(--accent-blue),transparent);
+    opacity:.3;
+  }
+  .step:last-child::before{display:none;}
+  .step-num{
+    width:32px;height:32px;border-radius:50%;flex-shrink:0;margin-top:2px;
+    background:linear-gradient(135deg,var(--accent-blue),var(--accent-cyan));
+    color:#fff;font-weight:800;font-size:13px;font-family:'Sora',sans-serif;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 12px var(--accent-blue-glow);
+  }
+  .step-content{flex:1;}
+  .step-title{font-weight:600;color:var(--text-primary);font-size:.95rem;margin-bottom:4px;}
+  .step-body{font-size:13.5px;color:var(--text-secondary);}
+
+  /* ═══════════════════════════════════════
+     ARCH DIAGRAM TEXT
+  ═══════════════════════════════════════ */
+  .arch-box{
+    background:var(--bg-card);border:1px solid var(--border-accent);
+    border-radius:var(--radius);padding:20px;margin:16px 0;
+    font-family:'JetBrains Mono',monospace;font-size:12px;
+    color:var(--text-secondary);line-height:2;
+  }
+  .arch-box .hl{color:var(--accent-cyan);}
+  .arch-box .dim{color:var(--text-muted);}
+
+  /* ═══════════════════════════════════════
+     COMPONENT BADGE LIST
+  ═══════════════════════════════════════ */
+  .badge-grid{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+  .badge{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+    padding:5px 12px;border-radius:6px;border:1px solid;letter-spacing:.04em;
+  }
+  .badge-blue{background:var(--accent-blue-dim);color:var(--accent-blue);border-color:var(--accent-blue);}
+  .badge-cyan{background:var(--accent-cyan-dim);color:var(--accent-cyan);border-color:var(--accent-cyan);}
+  .badge-indigo{background:var(--accent-indigo-dim);color:var(--accent-indigo);border-color:var(--accent-indigo);}
+  .badge-emerald{background:var(--accent-emerald-dim);color:var(--accent-emerald);border-color:var(--accent-emerald);}
+  .badge-amber{background:var(--accent-amber-dim);color:var(--accent-amber);border-color:var(--accent-amber);}
+
+  /* ═══════════════════════════════════════
+     TWO-COL
+  ═══════════════════════════════════════ */
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  @media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+
+  /* ═══════════════════════════════════════
+     PIPELINE FLOW
+  ═══════════════════════════════════════ */
+  .pipeline{
+    display:flex;align-items:center;flex-wrap:wrap;gap:0;
+    margin:18px 0;
+  }
+  .pipe-node{
+    background:var(--bg-card2);border:1px solid var(--border-accent);
+    border-radius:var(--radius);padding:10px 16px;font-size:12.5px;
+    font-family:'JetBrains Mono',monospace;color:var(--text-primary);
+    font-weight:600;white-space:nowrap;
+  }
+  .pipe-node.active{border-color:var(--accent-blue);color:var(--accent-blue);background:var(--accent-blue-dim);}
+  .pipe-arrow{color:var(--text-muted);padding:0 6px;font-size:14px;}
+
+  /* ═══════════════════════════════════════
+     FOOTER
+  ═══════════════════════════════════════ */
+  .footer{
+    position:relative;z-index:1;
+    border-top:1px solid var(--border);
+    padding:22px 60px;
+    color:var(--text-muted);font-size:11.5px;
+    display:flex;align-items:center;justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:var(--bg-base)}
+  ::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <a class="topbar-logo" href="#">
+    <div class="logo-icon">K</div>
+    Kubeflow Handbook
+  </a>
+  <span class="topbar-badge">v1.8 · 2025</span>
+  <div class="topbar-right">
+    <span class="chip chip-blue">MLOps</span>
+    <span class="chip chip-cyan">GKE Native</span>
+    <span class="chip chip-indigo">Pipelines v2</span>
+    <span class="chip chip-emerald">Production</span>
+  </div>
+</header>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="layout">
+
+  <!-- ══ SIDEBAR ══ -->
+  <nav class="sidebar">
+    <div class="nav-section-title">Overview</div>
+    <a class="nav-link active" href="#what-is-kubeflow"><span class="nav-dot"></span>What is Kubeflow?</a>
+    <a class="nav-link" href="#architecture"><span class="nav-dot"></span>Architecture</a>
+    <a class="nav-link" href="#components"><span class="nav-dot"></span>Core Components</a>
+    <a class="nav-link" href="#vs-alternatives"><span class="nav-dot"></span>vs Alternatives</a>
+
+    <div class="nav-section-title">Installation</div>
+    <a class="nav-link" href="#prerequisites"><span class="nav-dot"></span>Prerequisites</a>
+    <a class="nav-link" href="#gke-install"><span class="nav-dot"></span>GKE Installation</a>
+    <a class="nav-link" href="#local-install"><span class="nav-dot"></span>Local (Kind/Minikube)</a>
+
+    <div class="nav-section-title">Pipelines v2</div>
+    <a class="nav-link" href="#pipelines-intro"><span class="nav-dot"></span>Pipeline Concepts</a>
+    <a class="nav-link" href="#components-sdk"><span class="nav-dot"></span>Component SDK</a>
+    <a class="nav-link" href="#pipeline-authoring"><span class="nav-dot"></span>Authoring Pipelines</a>
+    <a class="nav-link" href="#artifacts"><span class="nav-dot"></span>Artifacts & Metadata</a>
+    <a class="nav-link" href="#caching"><span class="nav-dot"></span>Caching & Reuse</a>
+
+    <div class="nav-section-title">Training</div>
+    <a class="nav-link" href="#training-operator"><span class="nav-dot"></span>Training Operator</a>
+    <a class="nav-link" href="#pytorch-job"><span class="nav-dot"></span>PyTorchJob</a>
+    <a class="nav-link" href="#distributed"><span class="nav-dot"></span>Distributed Training</a>
+
+    <div class="nav-section-title">Model Serving</div>
+    <a class="nav-link" href="#kserve"><span class="nav-dot"></span>KServe</a>
+    <a class="nav-link" href="#inference-service"><span class="nav-dot"></span>InferenceService</a>
+    <a class="nav-link" href="#canary"><span class="nav-dot"></span>Canary Deployments</a>
+
+    <div class="nav-section-title">MLOps Patterns</div>
+    <a class="nav-link" href="#experiment-tracking"><span class="nav-dot"></span>Experiment Tracking</a>
+    <a class="nav-link" href="#model-registry"><span class="nav-dot"></span>Model Registry</a>
+    <a class="nav-link" href="#cicd"><span class="nav-dot"></span>CI/CD Integration</a>
+    <a class="nav-link" href="#multi-env"><span class="nav-dot"></span>Multi-Environment</a>
+
+    <div class="nav-section-title">Reference</div>
+    <a class="nav-link" href="#gke-iam"><span class="nav-dot"></span>GKE IAM & Auth</a>
+    <a class="nav-link" href="#troubleshooting"><span class="nav-dot"></span>Troubleshooting</a>
+    <a class="nav-link" href="#cheatsheet"><span class="nav-dot"></span>Cheat Sheet</a>
+  </nav>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+
+    <!-- ══ HERO ══ -->
+    <div class="hero">
+      <div class="hero-corner"></div>
+      <div class="hero-eyebrow">Platform Engineering Reference</div>
+      <h1>Kubeflow <span>MLOps</span><br/>Handbook</h1>
+      <p class="hero-sub">
+        End-to-end reference for building, training, and serving ML models on Kubernetes using Kubeflow Pipelines v2, Training Operator, and KServe. Optimized for GKE production environments with AlloyDB, BigQuery, and PubSub integrations.
+      </p>
+      <div class="hero-chips">
+        <span class="chip chip-blue">Kubeflow 1.8</span>
+        <span class="chip chip-cyan">Pipelines SDK v2</span>
+        <span class="chip chip-indigo">KServe 0.13</span>
+        <span class="chip chip-emerald">GKE Autopilot</span>
+        <span class="chip chip-amber">PyTorchJob</span>
+        <span class="chip chip-rose">AlloyDB + BigQuery</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SECTION 1: WHAT IS KUBEFLOW
+    ════════════════════════════════════ -->
+    <section class="section" id="what-is-kubeflow">
+      <div class="section-label">Overview</div>
+      <h2>What is <span class="accent">Kubeflow</span>?</h2>
+
+      <p>
+        <strong>Kubeflow</strong> is the open-source MLOps platform for Kubernetes — it makes running ML workflows on Kubernetes simple, portable, and scalable. Originally developed by Google, it is now a CNCF incubating project with contributions from Google, IBM, AWS, RedHat, and the broader community.
+      </p>
+      <p>
+        Kubeflow is not a single tool — it is a <em>collection of components</em> that compose into a full ML platform: pipeline orchestration, distributed training, model serving, experiment tracking, and a unified web UI. Each component can be deployed independently or as a full stack.
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-glow card-glow-blue"></div>
+          <div class="card-icon">⚙️</div>
+          <div class="card-title">Pipeline Orchestration</div>
+          <div class="card-body">Define ML workflows as Python DAGs. Run them reproducibly with containerized steps, caching, and full artifact lineage tracking.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-cyan"></div>
+          <div class="card-icon">🏋️</div>
+          <div class="card-title">Distributed Training</div>
+          <div class="card-body">Scale PyTorch, TensorFlow, JAX, and MXNet training across multiple nodes with first-class Kubernetes operator support.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-indigo"></div>
+          <div class="card-icon">🚀</div>
+          <div class="card-title">Model Serving</div>
+          <div class="card-body">KServe provides serverless inference with autoscaling, canary deployments, model explainability, and multi-framework support.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-emerald"></div>
+          <div class="card-icon">🔬</div>
+          <div class="card-title">Experiment Tracking</div>
+          <div class="card-body">ML Metadata (MLMD) stores all artifact lineage, model metrics, and pipeline execution metadata in a queryable store.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-blue"></div>
+          <div class="card-icon">📓</div>
+          <div class="card-title">Notebooks</div>
+          <div class="card-body">Managed JupyterLab environments with GPU support, customizable images, and persistent volumes — directly on your cluster.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-cyan"></div>
+          <div class="card-icon">🎛️</div>
+          <div class="card-title">Central Dashboard</div>
+          <div class="card-body">Unified web UI for all components — runs, experiments, pipelines, models, and notebook servers — with namespace-level multi-tenancy.</div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-num">v2</div><div class="stat-label">Pipelines SDK</div></div>
+        <div class="stat-card"><div class="stat-num">KServe</div><div class="stat-label">Serving Engine</div></div>
+        <div class="stat-card"><div class="stat-num">MLMD</div><div class="stat-label">Metadata Store</div></div>
+        <div class="stat-card"><div class="stat-num">Argo</div><div class="stat-label">Workflow Backend</div></div>
+        <div class="stat-card"><div class="stat-num">CNCF</div><div class="stat-label">Governance</div></div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 2: ARCHITECTURE ══ -->
+    <section class="section" id="architecture">
+      <div class="section-label">Overview</div>
+      <h2>Platform <span class="accent">Architecture</span></h2>
+
+      <p>Kubeflow's architecture layers Kubernetes-native components into a cohesive ML platform. Understanding these layers is key to operating it effectively in production.</p>
+
+      <div class="arch-box">
+        <pre style="padding:0;background:transparent;border:none;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2.1;color:inherit;">
+┌─────────────────────────────────────────────────────────────────┐
+│                    <span class="hl">KUBEFLOW CENTRAL DASHBOARD</span>                     │
+│              (Istio Gateway + Dex OIDC Auth)                    │
+├──────────────┬──────────────┬──────────────┬────────────────────┤
+│  <span class="hl">PIPELINES v2</span>│  <span class="hl">NOTEBOOKS</span>   │  <span class="hl">KATIB</span>       │  <span class="hl">TRAINING OP</span>   │
+│  (Argo WF)  │  (JupyterHub)│  (AutoML)   │  (PyTorch/TF)    │
+├──────────────┴──────────────┴──────────────┴────────────────────┤
+│                     <span class="hl">KSERVE</span> (Model Serving)                      │
+│         (Knative Serving + Istio + Cert-Manager)                │
+├─────────────────────────────────────────────────────────────────┤
+│              <span class="hl">ML METADATA (MLMD)</span> — MySQL / Cloud SQL             │
+├─────────────────────────────────────────────────────────────────┤
+│              <span class="dim">KUBERNETES</span> (GKE / EKS / AKS / Kind)                │
+└─────────────────────────────────────────────────────────────────┘</pre>
+      </div>
+
+      <h3>Request Flow: Pipeline Execution</h3>
+      <div class="pipeline">
+        <div class="pipe-node active">SDK Submit</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">Pipeline API Server</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">Argo Workflow</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">Container Steps</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node">MLMD Store</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-node active">Artifacts / Model</div>
+      </div>
+
+      <h3>Key Infrastructure Dependencies</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Dependency</th><th>Purpose</th><th>GKE Production Recommendation</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Istio</strong></td><td>Service mesh, traffic management, mTLS</td><td>Istio 1.17+ via ASM (Anthos Service Mesh)</td></tr>
+            <tr class="hl-row"><td><strong>Argo Workflows</strong></td><td>Pipeline step execution engine</td><td>Bundled with KFP — do not install separately</td></tr>
+            <tr><td><strong>Dex</strong></td><td>OIDC identity provider for Dashboard auth</td><td>Replace with GCP IAP for production</td></tr>
+            <tr class="hl-row"><td><strong>Knative</strong></td><td>Serverless framework for KServe</td><td>Knative 1.10+ on GKE</td></tr>
+            <tr><td><strong>Cert-Manager</strong></td><td>TLS certificate automation</td><td>v1.12+ with GCP-managed certs preferred</td></tr>
+            <tr class="hl-row"><td><strong>MySQL / Cloud SQL</strong></td><td>MLMD metadata backend, pipeline store</td><td>Cloud SQL (Postgres) for production HA</td></tr>
+            <tr><td><strong>MinIO / GCS</strong></td><td>Artifact storage</td><td>GCS bucket (no MinIO needed on GKE)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 3: COMPONENTS ══ -->
+    <section class="section" id="components">
+      <div class="section-label">Overview</div>
+      <h2>Core <span class="accent">Components</span></h2>
+
+      <h3>Kubeflow Pipelines (KFP) v2</h3>
+      <p>The heart of Kubeflow. Define ML workflows as Python functions decorated with <code>@component</code> and <code>@pipeline</code>. KFP compiles them to Argo Workflow YAML and submits to the cluster.</p>
+
+      <h3>Training Operator</h3>
+      <p>Provides Kubernetes CRDs for distributed ML training: <code>PyTorchJob</code>, <code>TFJob</code>, <code>MXJob</code>, <code>PaddleJob</code>, <code>XGBoostJob</code>, and <code>MPIJob</code>. Handles pod lifecycle, failure recovery, and gang scheduling.</p>
+
+      <h3>KServe (Model Serving)</h3>
+      <p>Formerly KFServing. Provides serverless model serving via Knative with support for TorchServe, Triton, MLflow, SKLearn, XGBoost, and custom runtimes. Supports canary, shadow, and A/B deployments natively.</p>
+
+      <h3>Katib (AutoML / HPO)</h3>
+      <p>Hyperparameter tuning and Neural Architecture Search (NAS) as Kubernetes CRDs. Supports Bayesian optimization, grid search, random search, and Hyperband. Integrates directly with Pipelines.</p>
+
+      <h3>ML Metadata (MLMD)</h3>
+      <p>Google's ML Metadata library stores artifact lineage — every dataset, model, metric, and execution is recorded with parent-child relationships. Enables full reproducibility audits.</p>
+
+      <div class="badge-grid">
+        <span class="badge badge-blue">kfp.v2 SDK</span>
+        <span class="badge badge-cyan">Training Operator</span>
+        <span class="badge badge-indigo">KServe</span>
+        <span class="badge badge-emerald">Katib</span>
+        <span class="badge badge-amber">MLMD</span>
+        <span class="badge badge-blue">Argo Workflows</span>
+        <span class="badge badge-cyan">Istio</span>
+        <span class="badge badge-indigo">Knative</span>
+        <span class="badge badge-emerald">JupyterHub</span>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 4: VS ALTERNATIVES ══ -->
+    <section class="section" id="vs-alternatives">
+      <div class="section-label">Overview</div>
+      <h2>vs <span class="accent">Alternatives</span></h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Feature</th><th>Kubeflow</th><th>MLflow</th><th>Vertex AI</th><th>Airflow + MLflow</th><th>ZenML</th></tr></thead>
+          <tbody>
+            <tr><td><strong>K8s Native</strong></td><td>✅ First-class</td><td>⚠️ Via plugins</td><td>✅ (managed)</td><td>⚠️ Partial</td><td>✅</td></tr>
+            <tr class="hl-row"><td><strong>Pipeline DAGs</strong></td><td>✅ KFP v2</td><td>Limited</td><td>✅</td><td>✅ Airflow</td><td>✅</td></tr>
+            <tr><td><strong>Distributed Training</strong></td><td>✅ Native CRDs</td><td>⚠️ Manual</td><td>✅</td><td>❌</td><td>⚠️</td></tr>
+            <tr class="hl-row"><td><strong>Model Serving</strong></td><td>✅ KServe</td><td>✅ MLflow Server</td><td>✅</td><td>❌</td><td>⚠️</td></tr>
+            <tr><td><strong>Experiment Tracking</strong></td><td>✅ MLMD</td><td>✅ Best-in-class</td><td>✅</td><td>✅ MLflow</td><td>✅</td></tr>
+            <tr class="hl-row"><td><strong>Self-Hosted</strong></td><td>✅</td><td>✅</td><td>❌ GCP only</td><td>✅</td><td>✅</td></tr>
+            <tr><td><strong>Complexity</strong></td><td>High</td><td>Low</td><td>Low (managed)</td><td>Medium</td><td>Medium</td></tr>
+            <tr class="hl-row"><td><strong>GKE Integration</strong></td><td><span class="chip chip-emerald" style="font-size:10px">Best</span></td><td>Good</td><td>Native</td><td>Good</td><td>Good</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-blue">
+        <div class="callout-title">📌 When to choose Kubeflow</div>
+        <p>Kubeflow is ideal when you already operate Kubernetes (especially GKE), need full infrastructure control, require distributed training at scale, or want to keep all ML tooling in your own cluster. For simpler use cases or teams new to Kubernetes, MLflow + Vertex AI Pipelines may be more productive.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 5: PREREQUISITES ══ -->
+    <section class="section" id="prerequisites">
+      <div class="section-label">Installation</div>
+      <h2><span class="accent">Prerequisites</span></h2>
+
+      <div class="two-col">
+        <div>
+          <h3>Kubernetes Requirements</h3>
+          <ul>
+            <li><strong>Kubernetes</strong> 1.26–1.29</li>
+            <li><strong>kubectl</strong> matching cluster version</li>
+            <li><strong>kustomize</strong> 5.0+</li>
+            <li><strong>Istio</strong> 1.17+ or ASM</li>
+            <li><strong>Cert-Manager</strong> 1.12+</li>
+            <li><strong>Minimum cluster:</strong> 3 nodes × 4 vCPU / 16 GB RAM</li>
+          </ul>
+        </div>
+        <div>
+          <h3>GKE Specifics</h3>
+          <ul>
+            <li><strong>GKE Standard</strong> (not Autopilot — Istio complications)</li>
+            <li><strong>Workload Identity</strong> enabled</li>
+            <li><strong>GCS bucket</strong> for artifact storage</li>
+            <li><strong>Cloud SQL</strong> (PostgreSQL) for metadata</li>
+            <li><strong>Artifact Registry</strong> for pipeline images</li>
+            <li><strong>GPU node pool</strong> if running training jobs</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">verify_prereqs.sh</span>
+        </div>
+        <pre><span class="cm"># Check Kubernetes version</span>
+kubectl version --short
+
+<span class="cm"># Check kustomize</span>
+kustomize version  <span class="cm"># Must be 5.0+</span>
+
+<span class="cm"># Check Istio (if pre-installed)</span>
+istioctl version
+
+<span class="cm"># Check cert-manager</span>
+kubectl get pods -n cert-manager
+
+<span class="cm"># Check available resources</span>
+kubectl describe nodes | grep -A5 "Allocatable"</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 6: GKE INSTALL ══ -->
+    <section class="section" id="gke-install">
+      <div class="section-label">Installation</div>
+      <h2>GKE <span class="accent">Installation</span></h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">Create GKE Standard Cluster</div>
+            <div class="step-body">Standard mode gives you control over node pools needed for GPU training. Autopilot restricts some Kubeflow capabilities.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">Install Istio / ASM</div>
+            <div class="step-body">Kubeflow uses Istio for service mesh, auth, and traffic management. On GKE, Anthos Service Mesh is the production-grade option.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">Install Cert-Manager</div>
+            <div class="step-body">Required for TLS certificate provisioning for all Kubeflow service endpoints.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">Deploy Kubeflow via kustomize</div>
+            <div class="step-body">Use the official kubeflow/manifests repository. Apply the full manifest or select individual components.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-title">Configure GCS as Artifact Store</div>
+            <div class="step-body">Create a GCS bucket and configure Workload Identity so pipeline pods can write artifacts without service account keys.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-content">
+            <div class="step-title">Configure Cloud SQL for MLMD</div>
+            <div class="step-body">Replace the default in-cluster MySQL with Cloud SQL (PostgreSQL) for production durability and HA.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">gke_cluster.sh — Create Cluster</span>
+        </div>
+        <pre><span class="cm"># Create GKE Standard cluster with Workload Identity</span>
+gcloud container clusters create kubeflow-prod \
+  --zone us-central1-a \
+  --num-nodes 3 \
+  --machine-type n2-standard-8 \
+  --workload-pool=$(gcloud config get-value project).svc.id.goog \
+  --addons HorizontalPodAutoscaling,HttpLoadBalancing \
+  --release-channel regular \
+  --disk-size 100GB
+
+<span class="cm"># Add GPU node pool (optional — for training)</span>
+gcloud container node-pools create gpu-pool \
+  --cluster kubeflow-prod \
+  --zone us-central1-a \
+  --num-nodes 1 \
+  --machine-type n1-standard-8 \
+  --accelerator type=nvidia-tesla-t4,count=1 \
+  --disk-size 200GB
+
+<span class="cm"># Get kubeconfig</span>
+gcloud container clusters get-credentials kubeflow-prod \
+  --zone us-central1-a</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">install_kubeflow.sh — Kustomize Deployment</span>
+        </div>
+        <pre><span class="cm"># Clone official manifests</span>
+git clone https://github.com/kubeflow/manifests.git
+cd manifests
+git checkout v1.8.0  <span class="cm"># Pin to stable release</span>
+
+<span class="cm"># Install cert-manager first</span>
+kustomize build common/cert-manager/cert-manager/base | kubectl apply -f -
+kubectl wait --for=condition=ready pod -l app=cert-manager \
+  -n cert-manager --timeout=180s
+
+<span class="cm"># Install Istio</span>
+kustomize build common/istio-1-17/istio-crds/base | kubectl apply -f -
+kustomize build common/istio-1-17/istio-namespace/base | kubectl apply -f -
+kustomize build common/istio-1-17/istio-install/base | kubectl apply -f -
+
+<span class="cm"># Install Dex (identity provider)</span>
+kustomize build common/dex/overlays/istio | kubectl apply -f -
+
+<span class="cm"># Install OIDC AuthService</span>
+kustomize build common/oidc-client/oidc-authservice/base | kubectl apply -f -
+
+<span class="cm"># Install Knative (for KServe)</span>
+kustomize build common/knative/knative-serving/overlays/gateways | kubectl apply -f -
+
+<span class="cm"># Install full Kubeflow (takes ~5 minutes)</span>
+while ! kustomize build example | kubectl apply -f -; do
+  echo "Retrying..."; sleep 20
+done
+
+<span class="cm"># Watch all pods come up</span>
+kubectl get pods -n kubeflow --watch</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">gcs_artifact_store.sh — Workload Identity Setup</span>
+        </div>
+        <pre>PROJECT=$(gcloud config get-value project)
+BUCKET="gs://${PROJECT}-kubeflow-artifacts"
+
+<span class="cm"># Create GCS bucket</span>
+gsutil mb -l us-central1 $BUCKET
+
+<span class="cm"># Create GCP Service Account</span>
+gcloud iam service-accounts create kubeflow-pipelines-sa \
+  --display-name "Kubeflow Pipelines SA"
+
+<span class="cm"># Grant GCS access</span>
+gsutil iam ch serviceAccount:kubeflow-pipelines-sa@${PROJECT}.iam.gserviceaccount.com:roles/storage.admin $BUCKET
+
+<span class="cm"># Bind Kubernetes SA to GCP SA (Workload Identity)</span>
+gcloud iam service-accounts add-iam-policy-binding \
+  kubeflow-pipelines-sa@${PROJECT}.iam.gserviceaccount.com \
+  --role roles/iam.workloadIdentityUser \
+  --member "serviceAccount:${PROJECT}.svc.id.goog[kubeflow/pipeline-runner]"
+
+<span class="cm"># Annotate the Kubernetes service account</span>
+kubectl annotate serviceaccount -n kubeflow pipeline-runner \
+  iam.gke.io/gcp-service-account=kubeflow-pipelines-sa@${PROJECT}.iam.gserviceaccount.com</pre>
+      </div>
+
+      <div class="callout callout-amber">
+        <div class="callout-title">⚠️ Idempotency on First Install</div>
+        <p>The <code>kustomize build ... | kubectl apply -f -</code> pattern may fail on first run due to CRD timing. The <code>while ! ... do ... done</code> retry loop handles this. Typically requires 2–3 attempts before all CRDs register and resources apply cleanly.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 7: LOCAL INSTALL ══ -->
+    <section class="section" id="local-install">
+      <div class="section-label">Installation</div>
+      <h2>Local Install <span class="accent">(Kind / Minikube)</span></h2>
+
+      <p>For local development and testing, Kind (Kubernetes in Docker) is the fastest path to a Kubeflow environment. Not recommended for training jobs — use for pipeline authoring and testing only.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">kind_kubeflow.sh</span>
+        </div>
+        <pre><span class="cm"># Install Kind</span>
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-amd64
+chmod +x ./kind && sudo mv ./kind /usr/local/bin/
+
+<span class="cm"># Create Kind cluster with enough resources</span>
+cat > kind-config.yaml &lt;&lt;EOF
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 8080
+  - containerPort: 443
+    hostPort: 8443
+EOF
+
+kind create cluster --config kind-config.yaml --name kubeflow-local
+
+<span class="cm"># Deploy Kubeflow (same kustomize method)</span>
+<span class="cm"># Tip: use --validate=false to skip some admission webhooks on local</span>
+kustomize build example | kubectl apply --validate=false -f -
+
+<span class="cm"># Port-forward Dashboard</span>
+kubectl port-forward svc/istio-ingressgateway -n istio-system 8080:80</pre>
+      </div>
+
+      <div class="callout callout-cyan">
+        <div class="callout-title">💡 Lightweight Alternative: KFP Standalone</div>
+        <p>If you only need Pipelines (not the full Kubeflow stack), deploy KFP standalone: <code>kustomize build apps/pipeline/upstream/env/platform-agnostic-multi-user | kubectl apply -f -</code>. This skips Notebooks, KServe, and Katib — much faster to stand up and suitable for pipeline development.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 8: PIPELINE CONCEPTS ══ -->
+    <section class="section" id="pipelines-intro">
+      <div class="section-label">Pipelines v2</div>
+      <h2>Pipeline <span class="accent">Concepts</span></h2>
+
+      <p>KFP v2 represents a significant rearchitecting from v1. Pipelines are defined entirely in Python using the <code>kfp</code> SDK, compiled to <strong>PipelineSpec</strong> (IR YAML), and executed via Argo Workflows on the cluster.</p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-glow card-glow-blue"></div>
+          <div class="card-title">Component</div>
+          <div class="card-body">A single containerized step. Defined as a Python function with <code>@component</code>. Gets its own Docker image, resource requests, and I/O specification.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-cyan"></div>
+          <div class="card-title">Pipeline</div>
+          <div class="card-body">A DAG of components defined with <code>@pipeline</code>. Describes how data flows between components via typed inputs/outputs.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-indigo"></div>
+          <div class="card-title">Artifact</div>
+          <div class="card-body">Typed outputs (Dataset, Model, Metrics, ClassificationMetrics) that are tracked in MLMD with lineage. Passed between components by URI reference.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-emerald"></div>
+          <div class="card-title">Run</div>
+          <div class="card-body">A single execution of a pipeline with specific parameters. Stored in the pipeline backend with logs, artifacts, and step durations.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-blue"></div>
+          <div class="card-title">Experiment</div>
+          <div class="card-body">A logical grouping of runs for comparison. All runs belong to an experiment — default "Default" exists if none specified.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-cyan"></div>
+          <div class="card-title">Recurring Run</div>
+          <div class="card-body">Scheduled pipeline execution via cron or interval. Supports enable/disable without deleting the schedule definition.</div>
+        </div>
+      </div>
+
+      <h3>v1 vs v2 Key Differences</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Feature</th><th>KFP v1</th><th>KFP v2</th></tr></thead>
+          <tbody>
+            <tr><td><strong>IR Format</strong></td><td>Argo YAML directly</td><td>PipelineSpec JSON/YAML (IR)</td></tr>
+            <tr class="hl-row"><td><strong>Artifacts</strong></td><td>Untyped strings</td><td>Typed (Dataset, Model, Metrics…)</td></tr>
+            <tr><td><strong>Component Base Image</strong></td><td>packages_to_install</td><td>base_image + pip_packages</td></tr>
+            <tr class="hl-row"><td><strong>Parallelism</strong></td><td>Manual with ExitHandler</td><td>Native parallel_for + Condition</td></tr>
+            <tr><td><strong>SDK Import</strong></td><td>kfp.v2 or kfp</td><td>kfp (v2 is default from 2.x)</td></tr>
+            <tr class="hl-row"><td><strong>Caching</strong></td><td>Fingerprint-based</td><td>Improved with task.set_caching_options()</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 9: COMPONENT SDK ══ -->
+    <section class="section" id="components-sdk">
+      <div class="section-label">Pipelines v2</div>
+      <h2>Component <span class="accent">SDK</span></h2>
+
+      <h3>Lightweight Python Components</h3>
+      <p>The simplest component type — Python function decorated with <code>@component</code>. KFP builds a minimal container image automatically. Best for quick utility steps.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">components/data_ingest.py</span>
+        </div>
+        <pre><span class="kw">from</span> kfp <span class="kw">import</span> dsl
+<span class="kw">from</span> kfp.dsl <span class="kw">import</span> Dataset, Output, component
+
+<span class="fn">@component</span>(
+    base_image=<span class="str">"python:3.11-slim"</span>,
+    packages_to_install=[<span class="str">"pandas==2.1.0"</span>, <span class="str">"google-cloud-bigquery==3.13.0"</span>],
+)
+<span class="kw">def</span> <span class="fn">ingest_from_bigquery</span>(
+    project_id: str,
+    dataset_id: str,
+    table_id: str,
+    output_dataset: Output[Dataset],
+    row_limit: int = <span class="num">100000</span>,
+):
+    <span class="str">"""Fetch training data from BigQuery and save as CSV."""</span>
+    <span class="kw">from</span> google.cloud <span class="kw">import</span> bigquery
+    <span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+    client = bigquery.Client(project=project_id)
+    query = <span class="str">f"""
+        SELECT * FROM `{project_id}.{dataset_id}.{table_id}`
+        LIMIT {row_limit}
+    """</span>
+    df = client.query(query).to_dataframe()
+    df.to_csv(output_dataset.path, index=<span class="kw">False</span>)
+
+    output_dataset.metadata[<span class="str">"rows"</span>] = <span class="fn">len</span>(df)
+    output_dataset.metadata[<span class="str">"source"</span>] = <span class="str">f"{project_id}.{dataset_id}.{table_id}"</span>
+    <span class="fn">print</span>(<span class="str">f"Ingested {len(df):,} rows from BigQuery"</span>)</pre>
+      </div>
+
+      <h3>Container Components (Custom Images)</h3>
+      <p>For heavy dependencies (PyTorch, scikit-learn), use <code>@component</code> with a pre-built image from Artifact Registry. This keeps compile times fast and images reproducible.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">components/train_model.py</span>
+        </div>
+        <pre><span class="kw">from</span> kfp.dsl <span class="kw">import</span> Dataset, Input, Model, Output, Metrics, component
+
+<span class="fn">@component</span>(
+    base_image=<span class="str">"us-central1-docker.pkg.dev/my-project/ml-images/trainer:latest"</span>,
+)
+<span class="kw">def</span> <span class="fn">train_sklearn_model</span>(
+    train_data: Input[Dataset],
+    model_output: Output[Model],
+    metrics_output: Output[Metrics],
+    n_estimators: int = <span class="num">100</span>,
+    max_depth: int = <span class="num">6</span>,
+    learning_rate: <span class="fn">float</span> = <span class="num">0.1</span>,
+):
+    <span class="kw">import</span> pandas <span class="kw">as</span> pd
+    <span class="kw">import</span> joblib
+    <span class="kw">from</span> sklearn.ensemble <span class="kw">import</span> GradientBoostingClassifier
+    <span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> train_test_split
+    <span class="kw">from</span> sklearn.metrics <span class="kw">import</span> accuracy_score, roc_auc_score
+
+    df = pd.read_csv(train_data.path)
+    X, y = df.drop(<span class="str">"target"</span>, axis=<span class="num">1</span>), df[<span class="str">"target"</span>]
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=<span class="num">0.2</span>, random_state=<span class="num">42</span>)
+
+    clf = GradientBoostingClassifier(
+        n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate
+    )
+    clf.fit(X_train, y_train)
+
+    accuracy = accuracy_score(y_val, clf.predict(X_val))
+    auc = roc_auc_score(y_val, clf.predict_proba(X_val)[:, <span class="num">1</span>])
+
+    joblib.dump(clf, model_output.path)
+    model_output.metadata[<span class="str">"framework"</span>] = <span class="str">"sklearn"</span>
+    model_output.metadata[<span class="str">"accuracy"</span>] = accuracy
+
+    metrics_output.log_metric(<span class="str">"accuracy"</span>, accuracy)
+    metrics_output.log_metric(<span class="str">"roc_auc"</span>, auc)
+    <span class="fn">print</span>(<span class="str">f"Accuracy: {accuracy:.4f} | AUC: {auc:.4f}"</span>)</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 10: PIPELINE AUTHORING ══ -->
+    <section class="section" id="pipeline-authoring">
+      <div class="section-label">Pipelines v2</div>
+      <h2>Authoring <span class="accent">Pipelines</span></h2>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">pipeline.py — Full ML Training Pipeline</span>
+        </div>
+        <pre><span class="kw">import</span> kfp
+<span class="kw">from</span> kfp <span class="kw">import</span> dsl, compiler
+<span class="kw">from</span> kfp.dsl <span class="kw">import</span> Condition, ParallelFor
+<span class="kw">from</span> components.data_ingest <span class="kw">import</span> ingest_from_bigquery
+<span class="kw">from</span> components.train_model <span class="kw">import</span> train_sklearn_model
+<span class="kw">from</span> components.evaluate <span class="kw">import</span> evaluate_model
+<span class="kw">from</span> components.register <span class="kw">import</span> register_model
+
+<span class="fn">@dsl.pipeline</span>(
+    name=<span class="str">"ml-training-pipeline"</span>,
+    description=<span class="str">"End-to-end ML training pipeline with conditional registration"</span>,
+)
+<span class="kw">def</span> <span class="fn">ml_pipeline</span>(
+    project_id: str = <span class="str">"my-gcp-project"</span>,
+    dataset_id: str = <span class="str">"ml_features"</span>,
+    table_id: str = <span class="str">"training_data_v2"</span>,
+    accuracy_threshold: <span class="fn">float</span> = <span class="num">0.85</span>,
+    n_estimators: int = <span class="num">200</span>,
+):
+    <span class="cm"># Step 1: Ingest from BigQuery</span>
+    ingest_task = ingest_from_bigquery(
+        project_id=project_id,
+        dataset_id=dataset_id,
+        table_id=table_id,
+    )
+    ingest_task.set_display_name(<span class="str">"Ingest Training Data"</span>)
+
+    <span class="cm"># Step 2: Train model</span>
+    train_task = train_sklearn_model(
+        train_data=ingest_task.outputs[<span class="str">"output_dataset"</span>],
+        n_estimators=n_estimators,
+    )
+    train_task.set_display_name(<span class="str">"Train GBM Model"</span>)
+    train_task.set_cpu_request(<span class="str">"2"</span>).set_memory_request(<span class="str">"8G"</span>)
+
+    <span class="cm"># Step 3: Evaluate</span>
+    eval_task = evaluate_model(
+        model=train_task.outputs[<span class="str">"model_output"</span>],
+        test_data=ingest_task.outputs[<span class="str">"output_dataset"</span>],
+    )
+
+    <span class="cm"># Step 4: Conditional registration — only if accuracy threshold met</span>
+    <span class="kw">with</span> Condition(
+        eval_task.outputs[<span class="str">"accuracy"</span>] >= accuracy_threshold,
+        name=<span class="str">"accuracy-gate"</span>,
+    ):
+        register_task = register_model(
+            model=train_task.outputs[<span class="str">"model_output"</span>],
+            metrics=eval_task.outputs[<span class="str">"metrics_output"</span>],
+            model_name=<span class="str">"gbm-classifier"</span>,
+        )
+        register_task.set_display_name(<span class="str">"Register to Model Registry"</span>)
+
+
+<span class="cm"># Compile pipeline to YAML</span>
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    compiler.Compiler().compile(
+        pipeline_func=ml_pipeline,
+        package_path=<span class="str">"ml_pipeline.yaml"</span>,
+    )
+
+    <span class="cm"># Submit to Kubeflow</span>
+    client = kfp.Client(host=<span class="str">"http://localhost:8080"</span>)
+    run = client.create_run_from_pipeline_func(
+        ml_pipeline,
+        arguments={<span class="str">"project_id"</span>: <span class="str">"my-gcp-project"</span>, <span class="str">"n_estimators"</span>: <span class="num">300</span>},
+        run_name=<span class="str">"training-run-v2"</span>,
+        experiment_name=<span class="str">"gbm-experiments"</span>,
+    )
+    <span class="fn">print</span>(<span class="str">f"Run URL: {run.run_url}"</span>)</pre>
+      </div>
+
+      <h3>Resource Requests & Node Selectors</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">resource_configuration.py</span>
+        </div>
+        <pre><span class="cm"># CPU/Memory requests and limits</span>
+task.set_cpu_request(<span class="str">"4"</span>).set_cpu_limit(<span class="str">"8"</span>)
+task.set_memory_request(<span class="str">"16G"</span>).set_memory_limit(<span class="str">"32G"</span>)
+
+<span class="cm"># GPU — attach to specific node pool</span>
+task.set_accelerator_type(<span class="str">"nvidia.com/gpu"</span>).set_accelerator_limit(<span class="str">"1"</span>)
+
+<span class="cm"># Node selector — target GPU node pool</span>
+task.add_node_selector_constraint(
+    <span class="str">"cloud.google.com/gke-nodepool"</span>, <span class="str">"gpu-pool"</span>
+)
+
+<span class="cm"># Toleration for tainted GPU nodes</span>
+<span class="kw">from</span> kubernetes.client.models <span class="kw">import</span> V1Toleration
+task.add_toleration(V1Toleration(
+    key=<span class="str">"nvidia.com/gpu"</span>, operator=<span class="str">"Exists"</span>, effect=<span class="str">"NoSchedule"</span>
+))
+
+<span class="cm"># Environment variables</span>
+task.set_env_variable(<span class="str">"GOOGLE_CLOUD_PROJECT"</span>, <span class="str">"my-project"</span>)
+
+<span class="cm"># Retry policy</span>
+task.set_retry(num_retries=<span class="num">2</span>, backoff_duration=<span class="str">"30s"</span>, backoff_max_duration=<span class="str">"5m"</span>)</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 11: ARTIFACTS ══ -->
+    <section class="section" id="artifacts">
+      <div class="section-label">Pipelines v2</div>
+      <h2>Artifacts <span class="accent">& Metadata</span></h2>
+
+      <p>KFP v2 has a first-class artifact system. All inter-component data larger than a simple value should be passed as a typed artifact — this enables MLMD lineage tracking, caching, and the visual artifact comparison in the UI.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Artifact Type</th><th>Use Case</th><th>Stored In</th></tr></thead>
+          <tbody>
+            <tr><td><code>Dataset</code></td><td>CSV, Parquet, TFRecord files</td><td>GCS path</td></tr>
+            <tr class="hl-row"><td><code>Model</code></td><td>Saved model weights (pkl, pt, savedmodel)</td><td>GCS path</td></tr>
+            <tr><td><code>Metrics</code></td><td>Scalar metrics (accuracy, loss, AUC)</td><td>MLMD + GCS</td></tr>
+            <tr class="hl-row"><td><code>ClassificationMetrics</code></td><td>Confusion matrix, ROC curves</td><td>MLMD + GCS</td></tr>
+            <tr><td><code>HTML</code></td><td>Visualizations rendered in UI</td><td>GCS path</td></tr>
+            <tr class="hl-row"><td><code>Markdown</code></td><td>Reports rendered in UI</td><td>GCS path</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">artifact_usage.py</span>
+        </div>
+        <pre><span class="kw">from</span> kfp.dsl <span class="kw">import</span> ClassificationMetrics, Output, component
+
+<span class="fn">@component</span>(base_image=<span class="str">"python:3.11-slim"</span>, packages_to_install=[<span class="str">"scikit-learn"</span>])
+<span class="kw">def</span> <span class="fn">evaluate_with_confusion_matrix</span>(
+    model_path: str,
+    test_data_path: str,
+    metrics: Output[ClassificationMetrics],
+):
+    <span class="kw">import</span> joblib, pandas <span class="kw">as</span> pd
+    <span class="kw">from</span> sklearn.metrics <span class="kw">import</span> confusion_matrix
+
+    clf = joblib.load(model_path)
+    df = pd.read_csv(test_data_path)
+    X, y = df.drop(<span class="str">"target"</span>, axis=<span class="num">1</span>), df[<span class="str">"target"</span>]
+    y_pred = clf.predict(X)
+
+    cm = confusion_matrix(y, y_pred)
+    metrics.log_confusion_matrix(
+        categories=[<span class="str">"Class-0"</span>, <span class="str">"Class-1"</span>],
+        matrix=cm.tolist()
+    )
+    metrics.log_roc_curve(
+        fpr=[<span class="num">0.0</span>, <span class="num">0.1</span>, <span class="num">1.0</span>],
+        tpr=[<span class="num">0.0</span>, <span class="num">0.9</span>, <span class="num">1.0</span>],
+        threshold=[<span class="num">1.0</span>, <span class="num">0.5</span>, <span class="num">0.0</span>]
+    )</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 12: CACHING ══ -->
+    <section class="section" id="caching">
+      <div class="section-label">Pipelines v2</div>
+      <h2>Caching <span class="accent">& Reuse</span></h2>
+
+      <p>KFP caches step outputs based on a fingerprint of: component image, command, arguments, and input artifact URIs. If a cache hit is found, the step is skipped and previous outputs are reused — critical for iterative development on expensive data steps.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">caching_config.py</span>
+        </div>
+        <pre><span class="cm"># Enable caching per task (default: enabled)</span>
+ingest_task.set_caching_options(enable_caching=<span class="kw">True</span>)
+
+<span class="cm"># Disable caching — force re-execution always</span>
+train_task.set_caching_options(enable_caching=<span class="kw">False</span>)
+
+<span class="cm"># Disable caching for entire run at submission time</span>
+client.create_run_from_pipeline_func(
+    ml_pipeline,
+    arguments={},
+    enable_caching=<span class="kw">False</span>,  <span class="cm"># Override all component settings</span>
+)
+
+<span class="cm"># Force cache invalidation — bump a dummy parameter
+# Useful when you update the component code but inputs haven't changed</span>
+ingest_task.set_caching_options(enable_caching=<span class="kw">True</span>)
+ingest_task.set_env_variable(<span class="str">"CACHE_BUST"</span>, <span class="str">"v2"</span>)  <span class="cm"># Changes fingerprint</span></pre>
+      </div>
+
+      <div class="callout callout-indigo">
+        <div class="callout-title">💡 Caching Strategy for Data Pipelines</div>
+        <p>Enable caching on slow, stable steps (BigQuery ingest, feature engineering). Disable on steps that must always run fresh (model registration, notification steps). This pattern cuts iteration time from hours to minutes when debugging downstream steps.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 13: TRAINING OPERATOR ══ -->
+    <section class="section" id="training-operator">
+      <div class="section-label">Training</div>
+      <h2>Training <span class="accent">Operator</span></h2>
+
+      <p>
+        The <strong>Kubeflow Training Operator</strong> provides Kubernetes CRDs for running distributed ML training jobs. It manages pod lifecycle, handles failures, supports gang scheduling, and integrates with Kubernetes-native features like resource quotas and node selectors.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>CRD</th><th>Framework</th><th>Distribution Strategy</th></tr></thead>
+          <tbody>
+            <tr><td><code>PyTorchJob</code></td><td>PyTorch</td><td>DDP, RPC, Gloo, NCCL</td></tr>
+            <tr class="hl-row"><td><code>TFJob</code></td><td>TensorFlow</td><td>ParameterServer, MultiWorkerMirroredStrategy</td></tr>
+            <tr><td><code>MPIJob</code></td><td>Horovod / MPI</td><td>AllReduce via MPI</td></tr>
+            <tr class="hl-row"><td><code>PaddleJob</code></td><td>PaddlePaddle</td><td>Collective, Parameter Server</td></tr>
+            <tr><td><code>XGBoostJob</code></td><td>XGBoost</td><td>Rabit AllReduce</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">install_training_operator.sh</span>
+        </div>
+        <pre><span class="cm"># Install Training Operator (standalone)</span>
+kubectl apply -k "github.com/kubeflow/training-operator/manifests/overlays/standalone?ref=v1.7.0"
+
+<span class="cm"># Verify</span>
+kubectl get pods -n kubeflow | grep training-operator</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 14: PYTORCHJOB ══ -->
+    <section class="section" id="pytorch-job">
+      <div class="section-label">Training</div>
+      <h2>PyTorchJob <span class="accent">Reference</span></h2>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">yaml</span>
+          <span class="code-file">pytorch_job.yaml — Multi-Node DDP Training</span>
+        </div>
+        <pre><span class="key">apiVersion</span>: kubeflow.org/v1
+<span class="key">kind</span>: PyTorchJob
+<span class="key">metadata</span>:
+  <span class="key">name</span>: arthavidya-finetune
+  <span class="key">namespace</span>: kubeflow
+<span class="key">spec</span>:
+  <span class="key">pytorchReplicaSpecs</span>:
+    <span class="key">Master</span>:
+      <span class="key">replicas</span>: <span class="num">1</span>
+      <span class="key">restartPolicy</span>: OnFailure
+      <span class="key">template</span>:
+        <span class="key">spec</span>:
+          <span class="key">containers</span>:
+          - <span class="key">name</span>: pytorch
+            <span class="key">image</span>: us-central1-docker.pkg.dev/my-project/ml/trainer:latest
+            <span class="key">command</span>:
+            - python
+            - -m
+            - torch.distributed.launch
+            - --nproc_per_node=1
+            - train.py
+            <span class="key">resources</span>:
+              <span class="key">requests</span>:
+                <span class="key">memory</span>: <span class="str">"16Gi"</span>
+                <span class="key">cpu</span>: <span class="str">"4"</span>
+                <span class="key">nvidia.com/gpu</span>: <span class="num">1</span>
+              <span class="key">limits</span>:
+                <span class="key">nvidia.com/gpu</span>: <span class="num">1</span>
+            <span class="key">env</span>:
+            - <span class="key">name</span>: WANDB_PROJECT
+              <span class="key">value</span>: arthavidya
+            - <span class="key">name</span>: GOOGLE_CLOUD_PROJECT
+              <span class="key">valueFrom</span>:
+                <span class="key">fieldRef</span>:
+                  <span class="key">fieldPath</span>: metadata.namespace
+          <span class="key">nodeSelector</span>:
+            <span class="key">cloud.google.com/gke-nodepool</span>: gpu-pool
+          <span class="key">tolerations</span>:
+          - <span class="key">key</span>: nvidia.com/gpu
+            <span class="key">operator</span>: Exists
+            <span class="key">effect</span>: NoSchedule
+    <span class="key">Worker</span>:
+      <span class="key">replicas</span>: <span class="num">2</span>          <span class="cm"># 2 additional worker nodes</span>
+      <span class="key">restartPolicy</span>: OnFailure
+      <span class="key">template</span>:
+        <span class="key">spec</span>:  <span class="cm"># same as Master spec above</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">manage_pytorchjob.sh</span>
+        </div>
+        <pre><span class="cm"># Submit job</span>
+kubectl apply -f pytorch_job.yaml
+
+<span class="cm"># Check status</span>
+kubectl get pytorchjob arthavidya-finetune -n kubeflow
+
+<span class="cm"># Watch pod logs (master node)</span>
+kubectl logs -f arthavidya-finetune-master-0 -n kubeflow
+
+<span class="cm"># Wait for completion</span>
+kubectl wait pytorchjob/arthavidya-finetune \
+  --for=condition=Succeeded -n kubeflow --timeout=7200s
+
+<span class="cm"># Delete after completion</span>
+kubectl delete pytorchjob arthavidya-finetune -n kubeflow</pre>
+      </div>
+
+      <h3>PyTorchJob inside a KFP Pipeline</h3>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">pipeline_with_training_job.py</span>
+        </div>
+        <pre><span class="kw">from</span> kubeflow.training <span class="kw">import</span> PyTorchJobOp
+<span class="kw">from</span> kubernetes.client.models <span class="kw">import</span> (
+    V1Container, V1ResourceRequirements, V1PodSpec, V1PodTemplateSpec
+)
+<span class="kw">from</span> kubeflow.training <span class="kw">import</span> V1ReplicaSpec
+
+<span class="fn">@dsl.pipeline</span>(name=<span class="str">"fine-tuning-pipeline"</span>)
+<span class="kw">def</span> <span class="fn">finetuning_pipeline</span>(model_name: str = <span class="str">"qwen2.5-7b"</span>):
+    pytorch_job_op = PyTorchJobOp(
+        name=<span class="str">"finetune-job"</span>,
+        namespace=<span class="str">"kubeflow"</span>,
+        worker_replicas=<span class="num">2</span>,
+        master_spec=V1ReplicaSpec(
+            replicas=<span class="num">1</span>,
+            restart_policy=<span class="str">"OnFailure"</span>,
+            template=V1PodTemplateSpec(
+                spec=V1PodSpec(containers=[
+                    V1Container(
+                        name=<span class="str">"pytorch"</span>,
+                        image=<span class="str">"gcr.io/my-project/trainer:latest"</span>,
+                        command=[<span class="str">"python"</span>, <span class="str">"train.py"</span>],
+                        args=[<span class="str">f"--model={model_name}"</span>],
+                    )
+                ])
+            )
+        )
+    )</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 15: DISTRIBUTED ══ -->
+    <section class="section" id="distributed">
+      <div class="section-label">Training</div>
+      <h2>Distributed <span class="accent">Training Patterns</span></h2>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-glow card-glow-blue"></div>
+          <div class="card-title">Data Parallelism (DDP)</div>
+          <div class="card-body">Each GPU gets the full model and a shard of data. Gradients are synchronized via AllReduce. Works for models that fit in single GPU VRAM. Best for fine-tuning.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-cyan"></div>
+          <div class="card-title">Model Parallelism</div>
+          <div class="card-body">Split model layers across GPUs. Required for very large models that don't fit on one device. Used with FSDP or DeepSpeed ZeRO stages 2–3.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-indigo"></div>
+          <div class="card-title">Pipeline Parallelism</div>
+          <div class="card-body">Different pipeline stages on different GPUs. Best for large transformer inference pipelines. Higher complexity, lower idle time.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-emerald"></div>
+          <div class="card-title">ZeRO (DeepSpeed)</div>
+          <div class="card-body">Shards optimizer states (Z1), gradients (Z2), and parameters (Z3) across GPUs. ZeRO-3 enables training models 10× larger than single-GPU VRAM.</div>
+        </div>
+      </div>
+
+      <div class="callout callout-emerald">
+        <div class="callout-title">✅ GKE Multi-Node DDP Setup</div>
+        <p>For DDP across multiple nodes on GKE, ensure all Training Operator pods are on the same VPC subnet, set <code>NCCL_SOCKET_IFNAME=eth0</code>, and use <code>torch.distributed.launch</code> with the master address injected as <code>MASTER_ADDR</code> env var by the Training Operator automatically.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 16: KSERVE ══ -->
+    <section class="section" id="kserve">
+      <div class="section-label">Model Serving</div>
+      <h2>KServe <span class="accent">Overview</span></h2>
+
+      <p>
+        <strong>KServe</strong> is Kubeflow's model serving solution, built on Knative and Istio. It abstracts model deployment into a simple <code>InferenceService</code> CRD and handles autoscaling (including scale-to-zero), traffic routing, multi-model serving, and model explainability.
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-glow card-glow-blue"></div>
+          <div class="card-title">Serverless Autoscaling</div>
+          <div class="card-body">Scales from 0 to N based on request volume via Knative Pod Autoscaler (KPA). No idle compute costs — scales to zero when unused.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-cyan"></div>
+          <div class="card-title">Multi-Framework</div>
+          <div class="card-body">TorchServe, Triton, TF Serving, MLflow, SKLearn, XGBoost, ONNX — each gets a purpose-built serving runtime. Bring your own custom runtime via Docker.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-indigo"></div>
+          <div class="card-title">Traffic Routing</div>
+          <div class="card-body">Canary, shadow, and A/B deployments are first-class. Split traffic between model versions as percentages with Istio VirtualService rules.</div>
+        </div>
+        <div class="card">
+          <div class="card-glow card-glow-emerald"></div>
+          <div class="card-title">ModelMesh</div>
+          <div class="card-body">For high-density serving of many smaller models, KServe ModelMesh packs multiple models into shared serving runtimes — much more efficient than one pod per model.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 17: INFERENCE SERVICE ══ -->
+    <section class="section" id="inference-service">
+      <div class="section-label">Model Serving</div>
+      <h2>InferenceService <span class="accent">Deployment</span></h2>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">yaml</span>
+          <span class="code-file">inference_service_sklearn.yaml</span>
+        </div>
+        <pre><span class="key">apiVersion</span>: serving.kserve.io/v1beta1
+<span class="key">kind</span>: InferenceService
+<span class="key">metadata</span>:
+  <span class="key">name</span>: gbm-classifier
+  <span class="key">namespace</span>: kubeflow
+  <span class="key">annotations</span>:
+    <span class="key">sidecar.istio.io/inject</span>: <span class="str">"true"</span>
+<span class="key">spec</span>:
+  <span class="key">predictor</span>:
+    <span class="key">minReplicas</span>: <span class="num">1</span>
+    <span class="key">maxReplicas</span>: <span class="num">5</span>
+    <span class="key">scaleTarget</span>: <span class="num">50</span>               <span class="cm"># Requests per pod before scaling</span>
+    <span class="key">scaleMetric</span>: rps
+    <span class="key">sklearn</span>:
+      <span class="key">storageUri</span>: <span class="str">"gs://my-project-kubeflow/models/gbm-classifier/v1"</span>
+      <span class="key">runtimeVersion</span>: <span class="str">"1.3.0"</span>
+      <span class="key">resources</span>:
+        <span class="key">requests</span>:
+          <span class="key">cpu</span>: <span class="str">"500m"</span>
+          <span class="key">memory</span>: <span class="str">"2Gi"</span>
+        <span class="key">limits</span>:
+          <span class="key">cpu</span>: <span class="str">"2"</span>
+          <span class="key">memory</span>: <span class="str">"4Gi"</span>
+  <span class="key">transformer</span>:             <span class="cm"># Optional: pre/post processing</span>
+    <span class="key">containers</span>:
+    - <span class="key">image</span>: gcr.io/my-project/feature-transformer:latest
+      <span class="key">name</span>: transformer</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">invoke_inference.sh</span>
+        </div>
+        <pre><span class="cm"># Get InferenceService URL</span>
+MODEL_URL=$(kubectl get inferenceservice gbm-classifier \
+  -n kubeflow -o jsonpath='{.status.url}')
+
+<span class="cm"># Invoke prediction (v2 KServe protocol)</span>
+curl -X POST "$MODEL_URL/v2/models/gbm-classifier/infer" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inputs": [{
+      "name": "input-0",
+      "shape": [1, 10],
+      "datatype": "FP32",
+      "data": [[0.5, 1.2, 0.8, 0.3, 1.1, 0.9, 0.4, 0.7, 1.3, 0.6]]
+    }]
+  }'</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 18: CANARY ══ -->
+    <section class="section" id="canary">
+      <div class="section-label">Model Serving</div>
+      <h2>Canary <span class="accent">Deployments</span></h2>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">yaml</span>
+          <span class="code-file">canary_deployment.yaml — 20% canary rollout</span>
+        </div>
+        <pre><span class="key">apiVersion</span>: serving.kserve.io/v1beta1
+<span class="key">kind</span>: InferenceService
+<span class="key">metadata</span>:
+  <span class="key">name</span>: gbm-classifier
+<span class="key">spec</span>:
+  <span class="key">predictor</span>:
+    <span class="key">canaryTrafficPercent</span>: <span class="num">20</span>     <span class="cm"># 20% → canary, 80% → default</span>
+    <span class="key">sklearn</span>:
+      <span class="key">storageUri</span>: <span class="str">"gs://my-project/models/gbm-classifier/v2"</span>  <span class="cm"># New version</span>
+</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">canary_lifecycle.sh</span>
+        </div>
+        <pre><span class="cm"># Check canary status</span>
+kubectl get inferenceservice gbm-classifier -n kubeflow -o yaml | grep -A10 canary
+
+<span class="cm"># Promote canary to 100% (full rollout)</span>
+kubectl patch inferenceservice gbm-classifier -n kubeflow \
+  --type=json \
+  -p '[{"op":"remove","path":"/spec/predictor/canaryTrafficPercent"}]'
+
+<span class="cm"># Rollback canary (set to 0%)</span>
+kubectl patch inferenceservice gbm-classifier -n kubeflow \
+  --type=merge \
+  -p '{"spec":{"predictor":{"canaryTrafficPercent":0}}}'</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 19: EXPERIMENT TRACKING ══ -->
+    <section class="section" id="experiment-tracking">
+      <div class="section-label">MLOps Patterns</div>
+      <h2>Experiment <span class="accent">Tracking</span></h2>
+
+      <p>Kubeflow uses <strong>ML Metadata (MLMD)</strong> for lineage tracking. For richer experiment dashboards, integrate <strong>Weights & Biases</strong> (W&B) or <strong>MLflow</strong> — they complement MLMD rather than replace it.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">kfp_with_wandb.py — Pipeline + W&B Integration</span>
+        </div>
+        <pre><span class="fn">@component</span>(
+    base_image=<span class="str">"pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime"</span>,
+    packages_to_install=[<span class="str">"wandb"</span>, <span class="str">"unsloth"</span>],
+)
+<span class="kw">def</span> <span class="fn">finetune_with_wandb</span>(
+    dataset_uri: str,
+    model_name: str,
+    wandb_project: str,
+    wandb_api_key_secret: str,  <span class="cm"># K8s secret name</span>
+    output_model: Output[Model],
+):
+    <span class="kw">import</span> os, wandb
+    <span class="kw">from</span> unsloth <span class="kw">import</span> FastLanguageModel
+
+    <span class="cm"># W&B init — API key from K8s secret (mounted as env var)</span>
+    wandb.init(
+        project=wandb_project,
+        config={<span class="str">"model"</span>: model_name, <span class="str">"dataset"</span>: dataset_uri},
+        tags=[<span class="str">"kubeflow"</span>, <span class="str">"unsloth"</span>],
+    )
+
+    <span class="cm"># ... training code ...
+    # Metrics are automatically logged to both W&B and MLMD via output artifacts</span>
+
+    wandb.finish()</pre>
+      </div>
+
+      <div class="callout callout-cyan">
+        <div class="callout-title">🔐 Secrets in Pipelines</div>
+        <p>Never hardcode API keys. Store secrets as Kubernetes Secrets and mount them as environment variables in your component pod spec. Use <code>task.set_env_variable_from_secret("WANDB_API_KEY", "wandb-secret", "api-key")</code> in KFP v2.</p>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 20: MODEL REGISTRY ══ -->
+    <section class="section" id="model-registry">
+      <div class="section-label">MLOps Patterns</div>
+      <h2>Model <span class="accent">Registry</span></h2>
+
+      <p>Kubeflow 1.8 introduces a <strong>Model Registry</strong> component — a centralized catalog for versioned ML models with metadata, lineage, and deployment state. Models flow: training → registry → serving.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">model_registry.py</span>
+        </div>
+        <pre><span class="kw">from</span> model_registry <span class="kw">import</span> ModelRegistry
+<span class="kw">from</span> model_registry.types <span class="kw">import</span> RegisteredModel, ModelVersion, ModelArtifact
+
+<span class="cm"># Connect to Kubeflow Model Registry</span>
+registry = ModelRegistry(
+    server_address=<span class="str">"http://model-registry-service.kubeflow.svc.cluster.local"</span>,
+    port=<span class="num">8080</span>,
+    author=<span class="str">"ml-pipeline"</span>,
+)
+
+<span class="cm"># Register a new model version</span>
+registered_model = registry.register_model(
+    name=<span class="str">"gbm-classifier"</span>,
+    uri=<span class="str">"gs://my-project/models/gbm-classifier/v2"</span>,
+    model_format_name=<span class="str">"sklearn"</span>,
+    model_format_version=<span class="str">"1.3"</span>,
+    version=<span class="str">"2.0.0"</span>,
+    description=<span class="str">"GBM trained on Q3 2025 features, AUC=0.94"</span>,
+    metadata={
+        <span class="str">"accuracy"</span>: <span class="str">"0.912"</span>,
+        <span class="str">"auc"</span>: <span class="str">"0.940"</span>,
+        <span class="str">"training_data"</span>: <span class="str">"bq://my-project.ml_features.training_v3"</span>,
+        <span class="str">"pipeline_run_id"</span>: <span class="str">"run-abc123"</span>,
+    },
+)
+
+<span class="fn">print</span>(<span class="str">f"Registered: {registered_model.id}"</span>)</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 21: CI/CD ══ -->
+    <section class="section" id="cicd">
+      <div class="section-label">MLOps Patterns</div>
+      <h2>CI/CD <span class="accent">Integration</span></h2>
+
+      <p>A mature MLOps CI/CD pipeline triggers on data changes or code commits, compiles the KFP pipeline, runs tests, and submits a new training run automatically.</p>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">yaml</span>
+          <span class="code-file">.github/workflows/ml_pipeline.yaml — GitHub Actions</span>
+        </div>
+        <pre><span class="key">name</span>: ML Pipeline CI/CD
+<span class="key">on</span>:
+  <span class="key">push</span>:
+    <span class="key">branches</span>: [main]
+    <span class="key">paths</span>: [<span class="str">'components/**'</span>, <span class="str">'pipeline.py'</span>]
+
+<span class="key">jobs</span>:
+  <span class="key">pipeline-ci</span>:
+    <span class="key">runs-on</span>: ubuntu-latest
+    <span class="key">steps</span>:
+    - <span class="key">uses</span>: actions/checkout@v4
+
+    - <span class="key">name</span>: Set up Python
+      <span class="key">uses</span>: actions/setup-python@v5
+      <span class="key">with</span>: {python-version: <span class="str">'3.11'</span>}
+
+    - <span class="key">name</span>: Install dependencies
+      <span class="key">run</span>: pip install kfp==2.7.0 pytest
+
+    - <span class="key">name</span>: Run component unit tests
+      <span class="key">run</span>: pytest tests/ -v
+
+    - <span class="key">name</span>: Compile pipeline
+      <span class="key">run</span>: python pipeline.py --compile-only
+
+    - <span class="key">name</span>: Auth to GKE
+      <span class="key">uses</span>: google-github-actions/auth@v2
+      <span class="key">with</span>:
+        <span class="key">workload_identity_provider</span>: ${{ secrets.WIF_PROVIDER }}
+        <span class="key">service_account</span>: ${{ secrets.SA_EMAIL }}
+
+    - <span class="key">name</span>: Build and push component images
+      <span class="key">run</span>: |
+        gcloud builds submit --tag \
+          us-central1-docker.pkg.dev/$PROJECT/ml/trainer:${{ github.sha }}
+
+    - <span class="key">name</span>: Submit pipeline run
+      <span class="key">run</span>: |
+        python scripts/submit_pipeline.py \
+          --host ${{ secrets.KFP_HOST }} \
+          --experiment "ci-runs" \
+          --run-name "ci-${{ github.sha }}"</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 22: MULTI-ENV ══ -->
+    <section class="section" id="multi-env">
+      <div class="section-label">MLOps Patterns</div>
+      <h2>Multi-Environment <span class="accent">Pattern</span></h2>
+
+      <p>Your GKE infrastructure spans dev, QA, stress, and prod environments. The recommended pattern for Kubeflow is <em>namespace-per-environment</em> on a shared cluster, or <em>cluster-per-environment</em> for strict isolation.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Environment</th><th>Pattern</th><th>Resource Quota</th><th>Pipeline Runs</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Dev</strong></td><td>Namespace on shared cluster</td><td>Low (4 CPU, 16 GB)</td><td>Fast, small datasets</td></tr>
+            <tr class="hl-row"><td><strong>QA</strong></td><td>Namespace on shared cluster</td><td>Medium (8 CPU, 32 GB)</td><td>Full dataset, eval gates</td></tr>
+            <tr><td><strong>Stress</strong></td><td>Namespace or separate cluster</td><td>High (GPU node pool)</td><td>Load testing serving</td></tr>
+            <tr class="hl-row"><td><strong>Prod</strong></td><td>Separate GKE cluster</td><td>Unrestricted (autoscale)</td><td>Triggered by CI/CD only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">python</span>
+          <span class="code-file">multi_env_submit.py</span>
+        </div>
+        <pre><span class="kw">import</span> kfp, os
+
+ENV = os.getenv(<span class="str">"DEPLOY_ENV"</span>, <span class="str">"dev"</span>)
+
+KFP_HOSTS = {
+    <span class="str">"dev"</span>:    <span class="str">"http://kubeflow.dev.internal"</span>,
+    <span class="str">"qa"</span>:     <span class="str">"http://kubeflow.qa.internal"</span>,
+    <span class="str">"prod"</span>:   <span class="str">"http://kubeflow.prod.internal"</span>,
+}
+
+PIPELINE_CONFIGS = {
+    <span class="str">"dev"</span>:  {<span class="str">"row_limit"</span>: <span class="num">5000</span>,   <span class="str">"n_estimators"</span>: <span class="num">50</span>},
+    <span class="str">"qa"</span>:   {<span class="str">"row_limit"</span>: <span class="num">50000</span>,  <span class="str">"n_estimators"</span>: <span class="num">100</span>},
+    <span class="str">"prod"</span>: {<span class="str">"row_limit"</span>: <span class="num">500000</span>, <span class="str">"n_estimators"</span>: <span class="num">200</span>},
+}
+
+client = kfp.Client(host=KFP_HOSTS[ENV])
+client.create_run_from_pipeline_func(
+    ml_pipeline,
+    arguments=PIPELINE_CONFIGS[ENV],
+    run_name=<span class="str">f"auto-{ENV}-{os.getenv('GIT_SHA','manual')}"</span>,
+    experiment_name=<span class="str">f"{ENV}-experiments"</span>,
+)</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 23: GKE IAM ══ -->
+    <section class="section" id="gke-iam">
+      <div class="section-label">Reference</div>
+      <h2>GKE IAM <span class="accent">& Auth</span></h2>
+
+      <p>Kubeflow on GKE uses a layered auth model. Understanding each layer is essential for debugging access issues.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Layer</th><th>Technology</th><th>Controls</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Network</strong></td><td>Cloud Armor / IAP</td><td>Who can reach the Dashboard URL</td></tr>
+            <tr class="hl-row"><td><strong>Identity</strong></td><td>Dex / IAP + IAM</td><td>OIDC token issuance, user identity</td></tr>
+            <tr><td><strong>Kubernetes</strong></td><td>RBAC</td><td>Namespace access, resource permissions</td></tr>
+            <tr class="hl-row"><td><strong>Service Mesh</strong></td><td>Istio AuthorizationPolicy</td><td>Pod-to-pod traffic, cross-namespace</td></tr>
+            <tr><td><strong>Workload Identity</strong></td><td>GCP IAM → K8s SA binding</td><td>GCS / BigQuery / PubSub access from pods</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">yaml</span>
+          <span class="code-file">rbac_profile.yaml — Kubeflow Profile (Namespace)</span>
+        </div>
+        <pre><span class="key">apiVersion</span>: kubeflow.org/v1
+<span class="key">kind</span>: Profile
+<span class="key">metadata</span>:
+  <span class="key">name</span>: ml-team-dev
+<span class="key">spec</span>:
+  <span class="key">owner</span>:
+    <span class="key">kind</span>: User
+    <span class="key">name</span>: vick@company.com
+  <span class="key">resourceQuotaSpec</span>:
+    <span class="key">hard</span>:
+      <span class="key">cpu</span>: <span class="str">"20"</span>
+      <span class="key">memory</span>: <span class="str">"80Gi"</span>
+      <span class="key">nvidia.com/gpu</span>: <span class="str">"2"</span>
+      <span class="key">persistentvolumeclaims</span>: <span class="str">"10"</span>
+      <span class="key">requests.storage</span>: <span class="str">"500Gi"</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <span class="code-file">workload_identity_all_services.sh</span>
+        </div>
+        <pre>PROJECT=$(gcloud config get-value project)
+
+<span class="cm"># Bind pipeline-runner SA for GCS + BigQuery + PubSub access</span>
+gcloud projects add-iam-policy-binding $PROJECT \
+  --member "serviceAccount:kubeflow-pipelines-sa@${PROJECT}.iam.gserviceaccount.com" \
+  --role roles/storage.objectAdmin
+
+gcloud projects add-iam-policy-binding $PROJECT \
+  --member "serviceAccount:kubeflow-pipelines-sa@${PROJECT}.iam.gserviceaccount.com" \
+  --role roles/bigquery.dataViewer
+
+gcloud projects add-iam-policy-binding $PROJECT \
+  --member "serviceAccount:kubeflow-pipelines-sa@${PROJECT}.iam.gserviceaccount.com" \
+  --role roles/pubsub.publisher
+
+<span class="cm"># Replicate for AlloyDB (Cloud SQL)</span>
+gcloud projects add-iam-policy-binding $PROJECT \
+  --member "serviceAccount:kubeflow-pipelines-sa@${PROJECT}.iam.gserviceaccount.com" \
+  --role roles/cloudsql.client</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 24: TROUBLESHOOTING ══ -->
+    <section class="section" id="troubleshooting">
+      <div class="section-label">Reference</div>
+      <h2><span class="accent">Troubleshooting</span></h2>
+
+      <h4>Pipeline Steps Stuck in "Pending"</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">diagnose</span></div>
+        <pre><span class="cm"># Check pod events</span>
+kubectl describe pod &lt;pipeline-pod-name&gt; -n kubeflow
+
+<span class="cm"># Common causes:
+# 1. Insufficient CPU/memory — reduce resource requests
+# 2. GPU node pool has no free nodes — check node pool autoscaler
+# 3. Image pull error — check Artifact Registry permissions
+# 4. PVC binding failure — check StorageClass availability</span>
+
+kubectl get events -n kubeflow --sort-by=.lastTimestamp | tail -20</pre>
+      </div>
+
+      <h4>502/503 on Dashboard or KFP API</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">diagnose</span></div>
+        <pre><span class="cm"># Check Istio ingressgateway</span>
+kubectl get pods -n istio-system
+kubectl logs -n istio-system deployment/istio-ingressgateway
+
+<span class="cm"># Check ml-pipeline API server</span>
+kubectl logs -n kubeflow deployment/ml-pipeline
+kubectl logs -n kubeflow deployment/ml-pipeline-ui
+
+<span class="cm"># Check VirtualService routing</span>
+kubectl get virtualservices -n kubeflow</pre>
+      </div>
+
+      <h4>KServe InferenceService Stuck "Not Ready"</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">diagnose</span></div>
+        <pre><span class="cm"># Get detailed status</span>
+kubectl describe inferenceservice &lt;name&gt; -n kubeflow
+
+<span class="cm"># Check Knative revision status</span>
+kubectl get ksvc -n kubeflow
+kubectl describe revision &lt;revision-name&gt; -n kubeflow
+
+<span class="cm"># Common fixes:
+# 1. GCS model path doesn't exist or SA lacks storage.objectViewer
+# 2. Wrong model format version
+# 3. Knative serving webhook not ready
+# 4. Insufficient node resources for predictor pod</span></pre>
+      </div>
+
+      <h4>PyTorchJob Workers Crash on NCCL</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">fix</span></div>
+        <pre><span class="cm"># Add to your training container env vars:</span>
+<span class="key">env</span>:
+- <span class="key">name</span>: NCCL_DEBUG
+  <span class="key">value</span>: INFO
+- <span class="key">name</span>: NCCL_SOCKET_IFNAME
+  <span class="key">value</span>: eth0
+- <span class="key">name</span>: NCCL_IB_DISABLE
+  <span class="key">value</span>: <span class="str">"1"</span>  <span class="cm"># Disable InfiniBand on GKE (not available)</span>
+
+<span class="cm"># Ensure pods are on same subnet — check GKE network policy</span>
+kubectl get networkpolicies -n kubeflow</pre>
+      </div>
+
+      <h4>Pipeline Metadata Not Appearing in UI</h4>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">diagnose</span></div>
+        <pre><span class="cm"># Check MLMD gRPC service</span>
+kubectl get pods -n kubeflow | grep metadata
+kubectl logs -n kubeflow deployment/metadata-grpc-deployment
+
+<span class="cm"># Check MySQL / Cloud SQL connection</span>
+kubectl logs -n kubeflow deployment/ml-pipeline | grep -i "db\|mysql\|sql"
+
+<span class="cm"># Verify pipeline root GCS path is accessible</span>
+gsutil ls gs://your-bucket/pipeline-root/</pre>
+      </div>
+    </section>
+
+    <!-- ══ SECTION 25: CHEATSHEET ══ -->
+    <section class="section" id="cheatsheet">
+      <div class="section-label">Reference</div>
+      <h2>Quick <span class="accent">Cheat Sheet</span></h2>
+
+      <h3>Essential kubectl Commands</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span></div>
+        <pre><span class="cm"># Get all Kubeflow workloads</span>
+kubectl get all -n kubeflow
+
+<span class="cm"># Watch pipeline pods in real-time</span>
+kubectl get pods -n kubeflow -l workflows.argoproj.io/completed!=true -w
+
+<span class="cm"># Get pipeline run logs</span>
+kubectl logs -n kubeflow -l pipeline/runid=&lt;run-id&gt; --all-containers
+
+<span class="cm"># Forward Dashboard</span>
+kubectl port-forward svc/istio-ingressgateway -n istio-system 8080:80
+
+<span class="cm"># Forward KFP API directly (bypass Istio)</span>
+kubectl port-forward svc/ml-pipeline -n kubeflow 8888:8888
+
+<span class="cm"># Get all InferenceServices</span>
+kubectl get inferenceservice -A
+
+<span class="cm"># Get all PyTorchJobs</span>
+kubectl get pytorchjob -n kubeflow
+
+<span class="cm"># Force delete a stuck pipeline pod</span>
+kubectl delete pod &lt;pod-name&gt; -n kubeflow --force --grace-period=0
+
+<span class="cm"># Scale down/up Kubeflow components (maintenance)</span>
+kubectl scale deployment ml-pipeline -n kubeflow --replicas=0
+kubectl scale deployment ml-pipeline -n kubeflow --replicas=1</pre>
+      </div>
+
+      <h3>KFP Python SDK Quick Reference</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span></div>
+        <pre><span class="kw">import</span> kfp
+
+client = kfp.Client(host=<span class="str">"http://localhost:8080"</span>)
+
+<span class="cm"># List experiments</span>
+client.list_experiments()
+
+<span class="cm"># List runs in experiment</span>
+client.list_runs(experiment_id=<span class="str">"&lt;exp-id&gt;"</span>)
+
+<span class="cm"># Get run details</span>
+client.get_run(run_id=<span class="str">"&lt;run-id&gt;"</span>)
+
+<span class="cm"># Wait for run completion</span>
+client.wait_for_run_completion(run_id=<span class="str">"&lt;run-id&gt;"</span>, timeout=3600)
+
+<span class="cm"># Upload pipeline YAML</span>
+client.upload_pipeline(<span class="str">"ml_pipeline.yaml"</span>, pipeline_name=<span class="str">"ML Training v2"</span>)
+
+<span class="cm"># Create recurring run</span>
+client.create_recurring_run(
+    experiment_id=<span class="str">"&lt;exp-id&gt;"</span>,
+    job_name=<span class="str">"nightly-training"</span>,
+    cron_expression=<span class="str">"0 2 * * *"</span>,
+    pipeline_id=<span class="str">"&lt;pipeline-id&gt;"</span>,
+)</pre>
+      </div>
+
+      <h3>Component Types Decision Guide</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Situation</th><th>Use This</th></tr></thead>
+          <tbody>
+            <tr><td>Quick Python logic, pure stdlib</td><td><code>@component(base_image="python:3.11")</code></td></tr>
+            <tr class="hl-row"><td>Heavy deps (PyTorch, sklearn)</td><td><code>@component(base_image="custom-image")</code></td></tr>
+            <tr><td>Wrap existing CLI tool</td><td>ContainerOp (v1) or <code>@component</code> with subprocess</td></tr>
+            <tr class="hl-row"><td>Distributed training</td><td>PyTorchJobOp / Training Operator</td></tr>
+            <tr><td>Parallel grid search</td><td><code>dsl.ParallelFor</code> loop</td></tr>
+            <tr class="hl-row"><td>Conditional logic</td><td><code>dsl.Condition</code> block</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Useful Labels</h3>
+      <div class="badge-grid">
+        <span class="badge badge-blue">workflows.argoproj.io/completed</span>
+        <span class="badge badge-cyan">pipeline/runid</span>
+        <span class="badge badge-indigo">app=ml-pipeline</span>
+        <span class="badge badge-emerald">app=kserve-controller</span>
+        <span class="badge badge-amber">app=training-operator</span>
+        <span class="badge badge-blue">serving.kserve.io/inferenceservice</span>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <span>⚙️ Kubeflow MLOps Handbook · v1.8 · 2025</span>
+  <span>GKE · AlloyDB · BigQuery · PubSub · KServe · Pipelines v2</span>
+</footer>
+
+<script>
+  const sections = document.querySelectorAll('.section');
+  const navLinks = document.querySelectorAll('.nav-link');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => link.classList.remove('active'));
+        const id = entry.target.id;
+        const activeLink = document.querySelector(`.nav-link[href="#${id}"]`);
+        if (activeLink) activeLink.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
