@@ -1,0 +1,2012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>llama.cpp Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  /* ═══════════════════════════════════════
+     TOKENS
+  ═══════════════════════════════════════ */
+  :root{
+    --bg-base:#040806;
+    --bg-card:#080d09;
+    --bg-card2:#0b1009;
+    --bg-sidebar:#050908;
+    --border:#0f1a10;
+    --border-accent:#172218;
+
+    --g1:#22c55e;   /* green-500 */
+    --g1d:#22c55e18;
+    --g1g:#22c55e28;
+    --g2:#4ade80;   /* green-400 */
+    --g2d:#4ade8012;
+    --lime:#a3e635;
+    --limed:#a3e63518;
+    --amber:#f59e0b;
+    --amberd:#f59e0b18;
+    --rose:#f43f5e;
+    --rosed:#f43f5e18;
+    --sky:#38bdf8;
+    --skyd:#38bdf818;
+    --violet:#a78bfa;
+    --violetd:#a78bfa18;
+
+    --text-primary:#d4f0d8;
+    --text-secondary:#6b8f70;
+    --text-muted:#2d4a31;
+    --text-code:#86efac;
+
+    --sidebar-w:276px;
+    --header-h:60px;
+    --radius:7px;
+    --radius-lg:13px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg-base);
+    color:var(--text-primary);
+    font-family:'Outfit',sans-serif;
+    font-size:15px;line-height:1.75;
+    display:flex;flex-direction:column;min-height:100vh;
+  }
+
+  /* scanline texture */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(34,197,94,0.015) 2px,
+      rgba(34,197,94,0.015) 4px
+    );
+  }
+
+  /* subtle dot grid */
+  body::after{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(circle,rgba(34,197,94,0.08) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+
+  /* ═══════════════════════════════════════
+     TOPBAR
+  ═══════════════════════════════════════ */
+  .topbar{
+    position:fixed;top:0;left:0;right:0;height:var(--header-h);
+    background:rgba(4,8,6,0.95);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--border-accent);
+    display:flex;align-items:center;
+    padding:0 24px;z-index:100;gap:14px;
+  }
+  .topbar-logo{
+    display:flex;align-items:center;gap:10px;
+    font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:.08em;
+    color:var(--text-primary);text-decoration:none;
+  }
+  .logo-icon{
+    width:34px;height:34px;border-radius:8px;
+    background:var(--g1d);
+    border:1px solid var(--g1);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;
+    color:var(--g1);
+    box-shadow:0 0 14px var(--g1g),inset 0 0 8px rgba(34,197,94,0.1);
+  }
+  .topbar-version{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--g1);background:var(--g1d);border:1px solid var(--g1);
+    padding:2px 8px;border-radius:20px;letter-spacing:.06em;
+  }
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:9px;}
+  .chip{
+    font-size:10.5px;padding:3px 9px;border-radius:20px;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.04em;font-weight:700;
+    border:1px solid;
+  }
+  .chip-g{background:var(--g1d);color:var(--g1);border-color:var(--g1);}
+  .chip-lime{background:var(--limed);color:var(--lime);border-color:var(--lime);}
+  .chip-amber{background:var(--amberd);color:var(--amber);border-color:var(--amber);}
+  .chip-sky{background:var(--skyd);color:var(--sky);border-color:var(--sky);}
+  .chip-violet{background:var(--violetd);color:var(--violet);border-color:var(--violet);}
+  .chip-rose{background:var(--rosed);color:var(--rose);border-color:var(--rose);}
+
+  /* ═══════════════════════════════════════
+     LAYOUT
+  ═══════════════════════════════════════ */
+  .layout{display:flex;padding-top:var(--header-h);position:relative;z-index:1;}
+
+  /* ═══════════════════════════════════════
+     SIDEBAR
+  ═══════════════════════════════════════ */
+  .sidebar{
+    width:var(--sidebar-w);min-width:var(--sidebar-w);
+    background:rgba(5,9,8,0.96);
+    border-right:1px solid var(--border-accent);
+    height:calc(100vh - var(--header-h));
+    position:sticky;top:var(--header-h);
+    overflow-y:auto;padding:18px 0;
+  }
+  .sidebar::-webkit-scrollbar{width:3px}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+  .nav-section-title{
+    font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+    color:var(--text-muted);letter-spacing:.18em;text-transform:uppercase;
+    padding:16px 18px 5px;
+  }
+  .nav-link{
+    display:flex;align-items:center;gap:9px;
+    padding:5px 18px;color:var(--text-secondary);text-decoration:none;
+    font-size:12.5px;font-weight:400;font-family:'DM Mono',monospace;
+    transition:all .12s;border-left:2px solid transparent;
+  }
+  .nav-link:hover{color:var(--g2);background:var(--g1d);border-left-color:var(--g1);}
+  .nav-link.active{color:var(--g1);background:var(--g1g);border-left-color:var(--g1);font-weight:600;}
+  .nav-dot{width:4px;height:4px;border-radius:50%;background:var(--text-muted);flex-shrink:0;}
+  .nav-link.active .nav-dot,.nav-link:hover .nav-dot{background:var(--g1);}
+  .nav-link .param-flag{
+    font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text-muted);
+    margin-left:auto;
+  }
+  .nav-link.active .param-flag{color:var(--g1);}
+
+  /* ═══════════════════════════════════════
+     MAIN
+  ═══════════════════════════════════════ */
+  .main{flex:1;max-width:calc(100vw - var(--sidebar-w));padding:44px 56px;overflow-x:hidden;}
+
+  /* ═══════════════════════════════════════
+     HERO
+  ═══════════════════════════════════════ */
+  .hero{
+    position:relative;overflow:hidden;
+    background:linear-gradient(160deg,#06100a 0%,#040c06 60%,#050e07 100%);
+    border:1px solid var(--border-accent);border-radius:var(--radius-lg);
+    padding:52px 48px;margin-bottom:48px;
+  }
+  .hero::before{
+    content:'';position:absolute;top:-100px;right:-80px;
+    width:380px;height:380px;border-radius:50%;
+    background:radial-gradient(circle,var(--g1) 0%,transparent 70%);
+    opacity:.06;pointer-events:none;
+  }
+  .hero::after{
+    content:'';position:absolute;bottom:-60px;left:10%;
+    width:260px;height:260px;border-radius:50%;
+    background:radial-gradient(circle,var(--lime) 0%,transparent 70%);
+    opacity:.04;pointer-events:none;
+  }
+  /* terminal prompt decoration */
+  .hero-prompt{
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:var(--g1);letter-spacing:.08em;margin-bottom:16px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .hero-prompt .cursor{
+    width:8px;height:14px;background:var(--g1);display:inline-block;
+    animation:blink 1.2s step-end infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .hero h1{
+    font-family:'Bebas Neue',sans-serif;font-weight:400;
+    font-size:3.8rem;line-height:1;letter-spacing:.04em;
+    color:var(--text-primary);margin-bottom:6px;
+  }
+  .hero h1 .accent{color:var(--g1);}
+  .hero-tagline{
+    font-family:'JetBrains Mono',monospace;font-size:.85rem;
+    color:var(--g2);letter-spacing:.04em;margin-bottom:18px;
+  }
+  .hero-sub{font-size:1rem;color:var(--text-secondary);max-width:620px;font-weight:300;margin-bottom:28px;line-height:1.85;}
+  .hero-chips{display:flex;flex-wrap:wrap;gap:8px;}
+
+  /* ═══════════════════════════════════════
+     SECTION
+  ═══════════════════════════════════════ */
+  .section{margin-bottom:56px;scroll-margin-top:76px;}
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--g1);letter-spacing:.16em;text-transform:uppercase;
+    margin-bottom:10px;display:flex;align-items:center;gap:8px;
+  }
+  .section-label::before{content:'#';opacity:.5;}
+  h2{
+    font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:2rem;
+    letter-spacing:.05em;color:var(--text-primary);
+    margin-bottom:6px;padding-bottom:12px;
+    border-bottom:1px solid var(--border-accent);
+  }
+  h2 .accent{color:var(--g1);}
+  h3{
+    font-family:'Outfit',sans-serif;font-weight:700;font-size:1.1rem;
+    color:var(--text-primary);margin:26px 0 10px;letter-spacing:-.01em;
+  }
+  h4{
+    font-family:'JetBrains Mono',monospace;font-weight:600;font-size:.9rem;
+    color:var(--lime);margin:18px 0 7px;
+  }
+  p{color:var(--text-secondary);margin-bottom:12px;line-height:1.85;}
+  strong{color:var(--text-primary);font-weight:600;}
+  em{color:var(--g1);font-style:normal;font-weight:500;}
+  ul,ol{color:var(--text-secondary);padding-left:20px;margin-bottom:12px;}
+  li{margin-bottom:5px;line-height:1.75;}
+  li strong{color:var(--text-primary);}
+  a{color:var(--g1);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+
+  /* ═══════════════════════════════════════
+     PARAMETER CARD — the star of the show
+  ═══════════════════════════════════════ */
+  .param-card{
+    background:var(--bg-card);border:1px solid var(--border-accent);
+    border-radius:var(--radius);margin:12px 0;
+    overflow:hidden;transition:border-color .15s;
+  }
+  .param-card:hover{border-color:var(--g1);}
+  .param-header{
+    display:flex;align-items:flex-start;gap:14px;
+    padding:14px 18px 12px;
+    border-bottom:1px solid var(--border);
+    flex-wrap:wrap;
+  }
+  .param-flags{display:flex;flex-direction:column;gap:3px;min-width:200px;}
+  .param-flag-main{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1rem;
+    color:var(--g1);letter-spacing:.04em;
+  }
+  .param-flag-alias{
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:var(--text-muted);
+  }
+  .param-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;}
+  .param-type{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    padding:2px 8px;border-radius:4px;letter-spacing:.05em;border:1px solid;
+  }
+  .type-int{background:var(--skyd);color:var(--sky);border-color:var(--sky);}
+  .type-float{background:var(--violetd);color:var(--violet);border-color:var(--violet);}
+  .type-str{background:var(--amberd);color:var(--amber);border-color:var(--amber);}
+  .type-bool{background:var(--g1d);color:var(--g1);border-color:var(--g1);}
+  .type-enum{background:var(--limed);color:var(--lime);border-color:var(--lime);}
+  .param-default{
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;
+    color:var(--text-secondary);background:var(--bg-card2);
+    padding:2px 8px;border-radius:4px;border:1px solid var(--border-accent);
+  }
+  .param-scope{
+    font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;
+    padding:2px 7px;border-radius:4px;letter-spacing:.06em;border:1px solid;
+  }
+  .scope-server{background:var(--skyd);color:var(--sky);border-color:var(--sky);}
+  .scope-cli{background:var(--g1d);color:var(--g1);border-color:var(--g1);}
+  .scope-both{background:var(--limed);color:var(--lime);border-color:var(--lime);}
+  .param-body{padding:12px 18px 14px;}
+  .param-desc{color:var(--text-secondary);font-size:13.5px;margin-bottom:8px;line-height:1.75;}
+  .param-tip{
+    font-size:12.5px;color:var(--text-muted);
+    background:var(--bg-card2);border-left:2px solid var(--g1);
+    padding:7px 12px;border-radius:0 4px 4px 0;margin-top:6px;
+    font-family:'DM Mono',monospace;line-height:1.65;
+  }
+  .param-tip .tl{color:var(--g1);font-weight:700;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;}
+  .param-example{
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;
+    color:var(--lime);background:rgba(163,230,53,0.05);
+    border:1px solid var(--limed);
+    padding:6px 12px;border-radius:4px;margin-top:8px;
+    display:block;
+  }
+
+  /* ═══════════════════════════════════════
+     CODE BLOCKS
+  ═══════════════════════════════════════ */
+  .code-block{
+    background:#030704;border:1px solid var(--border-accent);
+    border-radius:var(--radius);overflow:hidden;margin:14px 0;
+  }
+  .code-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:7px 14px;background:#050c07;border-bottom:1px solid var(--border);
+  }
+  .code-lang{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--g1);letter-spacing:.1em;text-transform:uppercase;
+  }
+  .code-file{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);}
+  pre{
+    padding:16px 18px;overflow-x:auto;
+    font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.85;
+    color:#b7f5be;
+  }
+  pre::-webkit-scrollbar{height:3px}
+  pre::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+  .kw{color:#86efac;}
+  .fn{color:#6ee7b7;}
+  .str{color:#d9f99d;}
+  .num{color:#fdba74;}
+  .cm{color:var(--text-muted);font-style:italic;}
+  .var{color:#fca5a5;}
+  .flag{color:#4ade80;font-weight:700;}
+  .val{color:#fde68a;}
+  code{
+    font-family:'JetBrains Mono',monospace;font-size:12px;
+    background:#070f08;color:var(--text-code);
+    padding:2px 6px;border-radius:4px;border:1px solid var(--border-accent);
+  }
+
+  /* ═══════════════════════════════════════
+     CALLOUTS
+  ═══════════════════════════════════════ */
+  .callout{
+    border-left:3px solid;border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px;margin:16px 0;font-size:13.5px;
+  }
+  .callout-g{background:var(--g1d);border-color:var(--g1);}
+  .callout-lime{background:var(--limed);border-color:var(--lime);}
+  .callout-amber{background:var(--amberd);border-color:var(--amber);}
+  .callout-rose{background:var(--rosed);border-color:var(--rose);}
+  .callout-sky{background:var(--skyd);border-color:var(--sky);}
+  .callout-title{
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:10.5px;
+    letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;
+  }
+  .callout-g .callout-title{color:var(--g1);}
+  .callout-lime .callout-title{color:var(--lime);}
+  .callout-amber .callout-title{color:var(--amber);}
+  .callout-rose .callout-title{color:var(--rose);}
+  .callout-sky .callout-title{color:var(--sky);}
+  .callout p{color:var(--text-primary);margin:0;font-size:13px;}
+
+  /* ═══════════════════════════════════════
+     TABLES
+  ═══════════════════════════════════════ */
+  .table-wrap{overflow-x:auto;margin:14px 0;border-radius:var(--radius);border:1px solid var(--border);}
+  table{width:100%;border-collapse:collapse;}
+  thead tr{background:#060e08;}
+  th{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--g1);letter-spacing:.1em;text-transform:uppercase;
+    padding:9px 14px;text-align:left;border-bottom:1px solid var(--border-accent);
+  }
+  td{padding:9px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text-secondary);}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(34,197,94,0.03);}
+  td strong{color:var(--text-primary);}
+  td code{font-size:11px;}
+  .hl-row td{background:#060e0820;}
+
+  /* ═══════════════════════════════════════
+     STAT CARDS
+  ═══════════════════════════════════════ */
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;}
+  .stat-card{
+    background:var(--bg-card);border:1px solid var(--border-accent);
+    border-radius:var(--radius);padding:14px;text-align:center;
+    transition:border-color .15s;
+  }
+  .stat-card:hover{border-color:var(--g1);}
+  .stat-num{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--g1);letter-spacing:.04em;}
+  .stat-label{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:.06em;}
+
+  /* ═══════════════════════════════════════
+     VRAM GAUGE
+  ═══════════════════════════════════════ */
+  .vram-gauge{
+    background:var(--bg-card);border:1px solid var(--border-accent);
+    border-radius:var(--radius);padding:16px;margin:10px 0;
+  }
+  .vram-label{
+    display:flex;justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:var(--text-secondary);margin-bottom:6px;
+  }
+  .vram-bar{height:6px;background:var(--border-accent);border-radius:3px;overflow:hidden;}
+  .vram-fill{height:100%;border-radius:3px;transition:width .4s;}
+  .fill-green{background:linear-gradient(90deg,var(--g1),var(--g2));}
+  .fill-yellow{background:linear-gradient(90deg,var(--amber),#fbbf24);}
+  .fill-red{background:linear-gradient(90deg,var(--rose),#fb7185);}
+  .vram-note{font-size:11.5px;color:var(--text-muted);margin-top:5px;font-family:'JetBrains Mono',monospace;}
+
+  /* ═══════════════════════════════════════
+     STEPS
+  ═══════════════════════════════════════ */
+  .steps{display:flex;flex-direction:column;gap:12px;margin:18px 0;}
+  .step{display:flex;gap:14px;align-items:flex-start;}
+  .step-num{
+    width:28px;height:28px;border-radius:50%;flex-shrink:0;margin-top:2px;
+    background:var(--g1d);border:1px solid var(--g1);
+    color:var(--g1);font-weight:700;font-size:12px;font-family:'JetBrains Mono',monospace;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .step-content{flex:1;}
+  .step-title{font-weight:600;color:var(--text-primary);font-size:.92rem;margin-bottom:3px;}
+  .step-body{font-size:13px;color:var(--text-secondary);}
+
+  /* ═══════════════════════════════════════
+     CATEGORY DIVIDER
+  ═══════════════════════════════════════ */
+  .cat-divider{
+    display:flex;align-items:center;gap:12px;margin:24px 0 14px;
+  }
+  .cat-divider-line{flex:1;height:1px;background:var(--border-accent);}
+  .cat-divider-label{
+    font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    color:var(--g1);letter-spacing:.12em;text-transform:uppercase;
+    padding:3px 10px;border:1px solid var(--border-accent);border-radius:20px;
+    background:var(--bg-card);white-space:nowrap;
+  }
+
+  /* ═══════════════════════════════════════
+     TWO-COL
+  ═══════════════════════════════════════ */
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0;}
+  @media(max-width:960px){.two-col{grid-template-columns:1fr;}}
+
+  /* ═══════════════════════════════════════
+     DOCS LINKS (footer)
+  ═══════════════════════════════════════ */
+  .docs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:20px 0;}
+  .docs-card{
+    background:var(--bg-card);border:1px solid var(--border-accent);
+    border-radius:var(--radius);padding:16px 18px;
+    text-decoration:none;transition:border-color .15s,transform .15s;
+    display:block;
+  }
+  .docs-card:hover{border-color:var(--g1);transform:translateY(-1px);text-decoration:none;}
+  .docs-card-title{
+    font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:700;
+    color:var(--g1);margin-bottom:4px;
+  }
+  .docs-card-url{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-muted);margin-bottom:6px;}
+  .docs-card-desc{font-size:12.5px;color:var(--text-secondary);}
+
+  /* ═══════════════════════════════════════
+     FOOTER
+  ═══════════════════════════════════════ */
+  .footer{
+    position:relative;z-index:1;
+    border-top:1px solid var(--border-accent);
+    padding:20px 56px;
+    color:var(--text-muted);font-size:11px;
+    display:flex;align-items:center;justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:var(--bg-base)}
+  ::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+
+  /* badge pill */
+  .badge{
+    display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+    padding:2px 8px;border-radius:4px;border:1px solid;letter-spacing:.04em;margin:2px;
+  }
+  .badge-g{background:var(--g1d);color:var(--g1);border-color:var(--g1);}
+  .badge-lime{background:var(--limed);color:var(--lime);border-color:var(--lime);}
+  .badge-amber{background:var(--amberd);color:var(--amber);border-color:var(--amber);}
+  .badge-sky{background:var(--skyd);color:var(--sky);border-color:var(--sky);}
+  .badge-rose{background:var(--rosed);color:var(--rose);border-color:var(--rose);}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <a class="topbar-logo" href="#">
+    <div class="logo-icon">Ll</div>
+    llama.cpp Handbook
+  </a>
+  <span class="topbar-version">b4500 · 2025</span>
+  <div class="topbar-right">
+    <span class="chip chip-g">llama-server</span>
+    <span class="chip chip-lime">llama-cli</span>
+    <span class="chip chip-amber">GPU+CPU Hybrid</span>
+    <span class="chip chip-sky">GGUF</span>
+    <span class="chip chip-violet">RTX 40/50</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ══ SIDEBAR ══ -->
+  <nav class="sidebar">
+    <div class="nav-section-title">Getting Started</div>
+    <a class="nav-link active" href="#what-is"><span class="nav-dot"></span>What is llama.cpp?</a>
+    <a class="nav-link" href="#install"><span class="nav-dot"></span>Build & Install</a>
+    <a class="nav-link" href="#binaries"><span class="nav-dot"></span>Key Binaries</a>
+
+    <div class="nav-section-title">Core Parameters</div>
+    <a class="nav-link" href="#model-load"><span class="nav-dot"></span>Model Loading <span class="param-flag">-m</span></a>
+    <a class="nav-link" href="#ngl"><span class="nav-dot"></span>GPU Layers <span class="param-flag">-ngl</span></a>
+    <a class="nav-link" href="#ctx"><span class="nav-dot"></span>Context Size <span class="param-flag">-c</span></a>
+    <a class="nav-link" href="#threads"><span class="nav-dot"></span>Threads <span class="param-flag">-t</span></a>
+    <a class="nav-link" href="#batch"><span class="nav-dot"></span>Batch Size <span class="param-flag">-b</span></a>
+
+    <div class="nav-section-title">Sampling Parameters</div>
+    <a class="nav-link" href="#temp"><span class="nav-dot"></span>Temperature <span class="param-flag">--temp</span></a>
+    <a class="nav-link" href="#top-p"><span class="nav-dot"></span>Top-P <span class="param-flag">--top-p</span></a>
+    <a class="nav-link" href="#top-k"><span class="nav-dot"></span>Top-K <span class="param-flag">--top-k</span></a>
+    <a class="nav-link" href="#min-p"><span class="nav-dot"></span>Min-P <span class="param-flag">--min-p</span></a>
+    <a class="nav-link" href="#repeat"><span class="nav-dot"></span>Repeat Penalty <span class="param-flag">--repeat-penalty</span></a>
+    <a class="nav-link" href="#predict"><span class="nav-dot"></span>Max Tokens <span class="param-flag">-n</span></a>
+
+    <div class="nav-section-title">Performance</div>
+    <a class="nav-link" href="#flash-attn"><span class="nav-dot"></span>Flash Attention <span class="param-flag">-fa</span></a>
+    <a class="nav-link" href="#cache-type"><span class="nav-dot"></span>Cache Type K/V <span class="param-flag">--cache-type</span></a>
+    <a class="nav-link" href="#ot"><span class="nav-dot"></span>Tensor Override <span class="param-flag">-ot</span></a>
+    <a class="nav-link" href="#mmap"><span class="nav-dot"></span>Memory Map <span class="param-flag">--mmap</span></a>
+    <a class="nav-link" href="#defrag"><span class="nav-dot"></span>KV Defrag <span class="param-flag">--defrag-thold</span></a>
+
+    <div class="nav-section-title">Server Mode</div>
+    <a class="nav-link" href="#host-port"><span class="nav-dot"></span>Host & Port <span class="param-flag">--host</span></a>
+    <a class="nav-link" href="#jinja"><span class="nav-dot"></span>Jinja Templates <span class="param-flag">--jinja</span></a>
+    <a class="nav-link" href="#np"><span class="nav-dot"></span>Parallel Slots <span class="param-flag">-np</span></a>
+    <a class="nav-link" href="#api-key"><span class="nav-dot"></span>API Key <span class="param-flag">--api-key</span></a>
+    <a class="nav-link" href="#cont-batching"><span class="nav-dot"></span>Cont. Batching <span class="param-flag">--cont-batching</span></a>
+
+    <div class="nav-section-title">GPU/CPU Hybrid</div>
+    <a class="nav-link" href="#hybrid-overview"><span class="nav-dot"></span>Hybrid Overview</a>
+    <a class="nav-link" href="#vram-budgeting"><span class="nav-dot"></span>VRAM Budgeting</a>
+    <a class="nav-link" href="#offload-recipes"><span class="nav-dot"></span>Offload Recipes</a>
+
+    <div class="nav-section-title">Sample Code</div>
+    <a class="nav-link" href="#cli-examples"><span class="nav-dot"></span>CLI Examples</a>
+    <a class="nav-link" href="#server-launch"><span class="nav-dot"></span>Server Launch</a>
+    <a class="nav-link" href="#python-client"><span class="nav-dot"></span>Python Client</a>
+    <a class="nav-link" href="#config-file"><span class="nav-dot"></span>Config Files</a>
+
+    <div class="nav-section-title">Reference</div>
+    <a class="nav-link" href="#cheatsheet"><span class="nav-dot"></span>Cheat Sheet</a>
+    <a class="nav-link" href="#docs"><span class="nav-dot"></span>Docs & Links</a>
+  </nav>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-prompt">$ ./llama-server --version <span class="cursor"></span></div>
+      <h1>LLAMA<span class="accent">.</span>CPP<br/>HANDBOOK</h1>
+      <div class="hero-tagline">// The Complete Parameter Reference for Local LLM Inference</div>
+      <p class="hero-sub">
+        Everything you need to configure, tune, and run GGUF models locally — from GPU/CPU hybrid offloading to sampling parameters, server mode, Jinja templates, and KV cache optimization. Built for RTX 40/50 series and 12–16 GB VRAM setups.
+      </p>
+      <div class="hero-chips">
+        <span class="chip chip-g">llama-server</span>
+        <span class="chip chip-lime">llama-cli</span>
+        <span class="chip chip-amber">-ngl GPU layers</span>
+        <span class="chip chip-sky">--jinja templates</span>
+        <span class="chip chip-violet">Flash Attention</span>
+        <span class="chip chip-rose">CPU+GPU hybrid</span>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════
+         SECTION: WHAT IS
+    ═══════════════════════════════════ -->
+    <section class="section" id="what-is">
+      <div class="section-label">Getting Started</div>
+      <h2>What is <span class="accent">llama.cpp</span>?</h2>
+      <p>
+        <strong>llama.cpp</strong> is a high-performance LLM inference engine written in pure C/C++ by Georgi Gerganov. It runs GGUF-format models with CPU-only, GPU-only, or hybrid GPU+CPU execution — no Python, no CUDA runtime dependency for CPU mode, no HuggingFace stack required.
+      </p>
+      <p>
+        Its defining capability is <em>GPU layer offloading</em>: you load exactly as many transformer layers as fit in your GPU VRAM, with the remainder computed on CPU RAM. This lets you run models larger than your VRAM by trading speed for capacity.
+      </p>
+
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-num">C++</div><div class="stat-label">Core Language</div></div>
+        <div class="stat-card"><div class="stat-num">GGUF</div><div class="stat-label">Model Format</div></div>
+        <div class="stat-card"><div class="stat-num">0</div><div class="stat-label">Python Deps (CLI)</div></div>
+        <div class="stat-card"><div class="stat-num">70+</div><div class="stat-label">Arch Supported</div></div>
+        <div class="stat-card"><div class="stat-num">v1</div><div class="stat-label">OpenAI Compat API</div></div>
+      </div>
+
+      <div class="callout callout-g">
+        <div class="callout-title">🦎 vs Ollama / LM Studio</div>
+        <p>Ollama and LM Studio are frontends that <em>wrap</em> llama.cpp. If you use Ollama, llama.cpp's parameters map directly — Ollama passes them through to the underlying llama.cpp process. Knowing llama.cpp parameters means you understand what every LLM serving tool is doing under the hood.</p>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         SECTION: BUILD & INSTALL
+    ═══════════════════════════════════ -->
+    <section class="section" id="install">
+      <div class="section-label">Getting Started</div>
+      <h2>Build <span class="accent">&amp; Install</span></h2>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><span class="code-file">CUDA build (RTX 40/50 — recommended)</span></div>
+        <pre><span class="cm"># Clone latest</span>
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
+
+<span class="cm"># Build with CUDA — LLAMA_CUDA=ON enables GPU support</span>
+cmake -B build \
+  -DGGML_CUDA=ON \
+  -DCMAKE_CUDA_ARCHITECTURES="89;120" \   <span class="cm"># 89=Ada(40xx) 120=Blackwell(50xx)</span>
+  -DCMAKE_BUILD_TYPE=Release
+
+cmake --build build --config Release -j$(nproc)
+
+<span class="cm"># Binaries land in ./build/bin/</span>
+ls build/bin/
+<span class="cm"># → llama-server  llama-cli  llama-bench  llama-quantize</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><span class="code-file">Pre-built release (fastest path)</span></div>
+        <pre><span class="cm"># Download latest pre-built CUDA binary from GitHub Releases</span>
+RELEASE=$(curl -s https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | grep tag_name | cut -d'"' -f4)
+
+<span class="cm"># Linux CUDA build</span>
+wget "https://github.com/ggerganov/llama.cpp/releases/download/${RELEASE}/llama-${RELEASE}-bin-ubuntu-x64.zip"
+unzip llama-*.zip -d llama-cpp
+export PATH="$PWD/llama-cpp:$PATH"
+
+<span class="cm"># Verify CUDA detected</span>
+./llama-cpp/llama-server --version
+<span class="cm"># Should show: CUDA available, GPU count: 1</span></pre>
+      </div>
+
+      <div class="callout callout-amber">
+        <div class="callout-title">⚡ RTX 50 Series (Blackwell)</div>
+        <p>For RTX 5060 Ti / 5070, set <code>-DCMAKE_CUDA_ARCHITECTURES="120"</code>. Pre-built binaries as of early 2025 may not include sm_120 — build from source for best performance on Blackwell. Also ensure CUDA 12.8+ and driver 560.76+.</p>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         SECTION: BINARIES
+    ═══════════════════════════════════ -->
+    <section class="section" id="binaries">
+      <div class="section-label">Getting Started</div>
+      <h2>Key <span class="accent">Binaries</span></h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Binary</th><th>Purpose</th><th>When to Use</th></tr></thead>
+          <tbody>
+            <tr><td><code>llama-server</code></td><td>HTTP API server (OpenAI-compatible)</td><td>App integration, Claude Code, LangChain, anything that needs an API</td></tr>
+            <tr class="hl-row"><td><code>llama-cli</code></td><td>Interactive CLI / single-shot inference</td><td>Quick testing, scripting, benchmarking prompts</td></tr>
+            <tr><td><code>llama-bench</code></td><td>Benchmark prompt & generation throughput</td><td>Finding optimal -ngl, -b, -t values for your GPU</td></tr>
+            <tr class="hl-row"><td><code>llama-quantize</code></td><td>Convert/re-quantize GGUF models</td><td>Changing quant level (F16→Q4_K_M) locally</td></tr>
+            <tr><td><code>llama-perplexity</code></td><td>Evaluate model quality (PPL score)</td><td>Comparing quant levels for quality loss measurement</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         CORE PARAMETERS
+    ═══════════════════════════════════ -->
+    <section class="section" id="model-load">
+      <div class="section-label">Core Parameters</div>
+      <h2>Model <span class="accent">Loading</span></h2>
+
+      <!-- -m -->
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-m &nbsp;&nbsp;--model</div>
+            <div class="param-flag-alias">alias: --model-path</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-str">string</span>
+            <span class="param-default">default: none</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Path to the GGUF model file. Required parameter — the most basic thing you must specify. Can be a local file path or a URL (llama.cpp will download it).</div>
+          <code class="param-example">-m ./models/qwen2.5-7b-instruct-Q4_K_M.gguf</code>
+          <code class="param-example">-m "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf"</code>
+        </div>
+      </div>
+
+      <!-- --alias -->
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-a &nbsp;&nbsp;--alias</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-str">string</span>
+            <span class="param-scope scope-server">server</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Sets the model name returned by the API's <code>/v1/models</code> endpoint and used in chat completions. Clients like OpenAI SDK must specify this name in the <code>model</code> field of their request.</div>
+          <code class="param-example">-a "qwen2.5-7b" &nbsp; # Client calls: {"model": "qwen2.5-7b", ...}</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ -ngl ════ -->
+    <section class="section" id="ngl">
+      <div class="section-label">Core Parameters</div>
+      <h2>GPU Layers <span class="accent">-ngl</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-ngl &nbsp;&nbsp;--gpu-layers &nbsp;&nbsp;--n-gpu-layers</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-int">integer</span>
+            <span class="param-default">default: 0 (CPU only)</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Number of transformer layers to load into GPU VRAM. Each layer occupies VRAM; layers not on GPU are computed on CPU. Setting <code>-ngl 99</code> or <code>-ngl 9999</code> offloads all layers (safe — clamps to model's actual layer count).</div>
+          <div class="param-tip">
+            <div class="tl">💡 Rule of Thumb</div>
+            Most 7B models have 32 layers. 13B models have 40 layers. Qwen2.5-7B has 28 layers. If you set -ngl 20 on a 28-layer model, 20 go to GPU and 8 run on CPU — you get hybrid inference.
+          </div>
+          <code class="param-example">-ngl 99    # Fully GPU (all layers fit in VRAM)</code>
+          <code class="param-example">-ngl 20    # 20 layers GPU, rest CPU (hybrid for VRAM-tight setups)</code>
+          <code class="param-example">-ngl 0     # Pure CPU inference</code>
+        </div>
+      </div>
+
+      <h3>Layer Count by Model</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Model</th><th>Layers</th><th>12 GB -ngl</th><th>16 GB -ngl</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Qwen2.5-7B Q4_K_M</strong></td><td>28</td><td>-ngl 28 ✅</td><td>-ngl 28 ✅</td><td>Full GPU, ~4.1 GB VRAM</td></tr>
+            <tr class="hl-row"><td><strong>Qwen2.5-7B Q8_0</strong></td><td>28</td><td>-ngl 20</td><td>-ngl 28 ✅</td><td>Q8 = ~7.7 GB, tight on 12 GB</td></tr>
+            <tr><td><strong>Llama-3.1-8B Q4_K_M</strong></td><td>32</td><td>-ngl 32 ✅</td><td>-ngl 32 ✅</td><td>~4.6 GB VRAM</td></tr>
+            <tr class="hl-row"><td><strong>Qwen2.5-14B Q4_K_M</strong></td><td>48</td><td>-ngl 24</td><td>-ngl 35</td><td>~8 GB for 24 layers</td></tr>
+            <tr><td><strong>Mistral-7B Q5_K_M</strong></td><td>32</td><td>-ngl 32 ✅</td><td>-ngl 32 ✅</td><td>~5.1 GB VRAM</td></tr>
+            <tr class="hl-row"><td><strong>Phi-4 14B Q4_K_M</strong></td><td>40</td><td>-ngl 20</td><td>-ngl 30</td><td>~9.0 GB for 30 layers</td></tr>
+            <tr><td><strong>DeepSeek-R1 7B Q4_K_M</strong></td><td>28</td><td>-ngl 28 ✅</td><td>-ngl 28 ✅</td><td>Same as Qwen-7B class</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════ -c context ════ -->
+    <section class="section" id="ctx">
+      <div class="section-label">Core Parameters</div>
+      <h2>Context Size <span class="accent">-c</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-c &nbsp;&nbsp;--ctx-size &nbsp;&nbsp;--context-size</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-int">integer</span>
+            <span class="param-default">default: model default (often 4096)</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Sets the KV cache context window size in tokens. This is the total token budget for prompt + generation. Larger contexts consume more VRAM — the KV cache grows linearly with context and quadratically affects attention computation.</div>
+          <div class="param-tip">
+            <div class="tl">⚠️ VRAM Cost of Context</div>
+            KV cache VRAM ≈ 2 × num_layers × num_heads × head_dim × ctx_size × dtype_bytes. For a 7B model at Q4, adding 4096 ctx costs ~0.5–1 GB. At 32768 ctx it costs ~4–6 GB extra. Use the minimum context you need.
+          </div>
+          <code class="param-example">-c 2048   # Conservative — saves VRAM, good for chat</code>
+          <code class="param-example">-c 8192   # Balanced — suits most tasks</code>
+          <code class="param-example">-c 32768  # Full long-context — Qwen2.5 supports up to 128K</code>
+        </div>
+      </div>
+
+      <h3>Context vs VRAM at Different Sizes (7B Q4_K_M)</h3>
+      <div class="vram-gauge">
+        <div class="vram-label"><span>Model weights (~4.1 GB fixed)</span><span>always loaded</span></div>
+        <div class="vram-bar"><div class="vram-fill fill-green" style="width:34%"></div></div>
+        <div class="vram-note">34% of 12 GB — constant regardless of context</div>
+      </div>
+      <div class="vram-gauge">
+        <div class="vram-label"><span>KV Cache @ ctx=2048</span><span>~0.5 GB extra</span></div>
+        <div class="vram-bar"><div class="vram-fill fill-green" style="width:39%"></div></div>
+        <div class="vram-note">38% total — safe for 12 GB</div>
+      </div>
+      <div class="vram-gauge">
+        <div class="vram-label"><span>KV Cache @ ctx=8192</span><span>~2 GB extra</span></div>
+        <div class="vram-bar"><div class="vram-fill fill-yellow" style="width:51%"></div></div>
+        <div class="vram-note">~51% total — comfortable</div>
+      </div>
+      <div class="vram-gauge">
+        <div class="vram-label"><span>KV Cache @ ctx=32768</span><span>~7 GB extra</span></div>
+        <div class="vram-bar"><div class="vram-fill fill-red" style="width:92%"></div></div>
+        <div class="vram-note">~92% total — very tight on 12 GB, reduce -ngl or use Q4 cache</div>
+      </div>
+    </section>
+
+    <!-- ════ THREADS ════ -->
+    <section class="section" id="threads">
+      <div class="section-label">Core Parameters</div>
+      <h2>Threads <span class="accent">-t / -tb</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-t &nbsp;&nbsp;--threads</div>
+            <div class="param-flag-alias">CPU threads for generation (token-by-token decode)</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-int">integer</span>
+            <span class="param-default">default: physical core count</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Number of CPU threads used for the <strong>decode phase</strong> (generating tokens one by one). Only matters for layers running on CPU. If all layers are on GPU (<code>-ngl 99</code>), this has minimal effect.</div>
+          <div class="param-tip">
+            <div class="tl">💡 Best Practice</div>
+            Set to physical cores (not hyperthreads). E.g., for a 12-core/24-thread CPU, use <code>-t 12</code>. Using too many threads causes context-switching overhead that slows inference.
+          </div>
+          <code class="param-example">-t 12   # 12 physical cores for CPU decode layers</code>
+        </div>
+      </div>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-tb &nbsp;&nbsp;--threads-batch</div>
+            <div class="param-flag-alias">CPU threads for prompt processing (prefill phase)</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-int">integer</span>
+            <span class="param-default">default: same as -t</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Threads for the <strong>prefill/prompt-processing phase</strong> (processing the full input prompt in parallel). Can often be set higher than <code>-t</code> since prefill is more parallelizable. Separate from <code>-t</code> to let you tune each phase independently.</div>
+          <code class="param-example">-t 8 -tb 16   # 8 threads decode, 16 threads prefill</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ BATCH ════ -->
+    <section class="section" id="batch">
+      <div class="section-label">Core Parameters</div>
+      <h2>Batch Size <span class="accent">-b / -ub</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-b &nbsp;&nbsp;--batch-size</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-int">integer</span>
+            <span class="param-default">default: 2048</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Maximum tokens processed in a single batch during the <strong>prompt ingestion (prefill)</strong> phase. Larger batch = faster prompt processing but more VRAM. For short prompts, this barely matters.</div>
+          <div class="param-tip">
+            <div class="tl">Memory Tip</div>
+            On 12 GB VRAM with a 13B model, reduce to <code>-b 512</code> to free VRAM during prompt processing. The speed difference for short prompts is negligible.
+          </div>
+          <code class="param-example">-b 512    # Reduced for VRAM-tight setups</code>
+          <code class="param-example">-b 4096   # Aggressive — maximize prompt throughput if VRAM allows</code>
+        </div>
+      </div>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-ub &nbsp;&nbsp;--ubatch-size</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-int">integer</span>
+            <span class="param-default">default: 512</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Physical micro-batch size — how many tokens are actually computed in one CUDA kernel call during prefill. Must be ≤ <code>-b</code>. Smaller = less VRAM peak usage. Larger = more GPU parallelism. Tune this if you're getting OOM during long-prompt processing.</div>
+          <code class="param-example">-b 2048 -ub 256   # Large logical batch, small physical batch (OOM prevention)</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         SAMPLING PARAMETERS
+    ═══════════════════════════════════ -->
+    <section class="section" id="temp">
+      <div class="section-label">Sampling Parameters</div>
+      <h2>Temperature <span class="accent">--temp</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--temp &nbsp;&nbsp;--temperature</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-float">float</span>
+            <span class="param-default">default: 0.8</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Divides the logits before softmax, controlling randomness. <strong>Lower = more deterministic</strong>, higher = more creative/varied. Temperature=0 is greedy decoding (always picks highest probability token).</div>
+          <div class="param-tip">
+            <div class="tl">📊 Quick Reference</div>
+            0.0 = deterministic · 0.1–0.3 = factual/code · 0.7–0.9 = balanced chat · 1.0–1.3 = creative writing · 2.0+ = chaotic
+          </div>
+          <code class="param-example">--temp 0.1   # Code generation / factual Q&A</code>
+          <code class="param-example">--temp 0.7   # General chat (sweet spot)</code>
+          <code class="param-example">--temp 1.2   # Creative writing / brainstorming</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="top-p">
+      <div class="section-label">Sampling Parameters</div>
+      <h2>Top-P <span class="accent">--top-p</span> (Nucleus Sampling)</h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--top-p</div>
+            <div class="param-flag-alias">nucleus sampling — cumulative probability cutoff</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-float">float [0.0–1.0]</span>
+            <span class="param-default">default: 0.95</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Restricts sampling to the smallest set of tokens whose cumulative probability exceeds <code>p</code>. At 0.95, only the top-probability tokens summing to 95% of the distribution are candidates. Eliminates low-probability "tail" tokens that cause incoherence.</div>
+          <div class="param-tip">
+            <div class="tl">💡 Interaction with Temperature</div>
+            Top-P and Temperature work together. Temperature reshapes the distribution, then Top-P samples from it. For factual tasks: low temp + low top-p. For creative: high temp + high top-p or use Min-P instead (often better).
+          </div>
+          <code class="param-example">--top-p 0.9    # Standard — good quality/diversity balance</code>
+          <code class="param-example">--top-p 1.0    # Disabled — full distribution (rely on temp alone)</code>
+          <code class="param-example">--top-p 0.5    # Very conservative — only high-confidence tokens</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="top-k">
+      <div class="section-label">Sampling Parameters</div>
+      <h2>Top-K <span class="accent">--top-k</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--top-k</div>
+            <div class="param-flag-alias">keep only top K tokens before sampling</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-int">integer</span>
+            <span class="param-default">default: 40</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Keeps only the top <code>K</code> highest-probability tokens and zeros out all others before sampling. Simpler than Top-P. Setting <code>--top-k 0</code> disables it (no hard cutoff). Applied <em>before</em> Top-P in the sampling chain.</div>
+          <div class="param-tip">
+            <div class="tl">When to use Top-K</div>
+            Top-K is a blunter instrument than Top-P — it doesn't care about probability mass, just rank. Generally, use Top-P (or Min-P) instead of Top-K for modern models. If you use both, K is applied first.
+          </div>
+          <code class="param-example">--top-k 0     # Disabled — recommended when using top-p</code>
+          <code class="param-example">--top-k 40    # Classic default</code>
+          <code class="param-example">--top-k 1     # Greedy (same as --temp 0)</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="min-p">
+      <div class="section-label">Sampling Parameters</div>
+      <h2>Min-P <span class="accent">--min-p</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--min-p</div>
+            <div class="param-flag-alias">minimum probability relative to top token</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-float">float [0.0–1.0]</span>
+            <span class="param-default">default: 0.05</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Keeps tokens whose probability is at least <code>min_p × (probability of top token)</code>. Scales dynamically with confidence: when the model is very confident, fewer tokens pass; when uncertain, more pass. Often <strong>superior to Top-P</strong> for modern GGUF models.</div>
+          <div class="param-tip">
+            <div class="tl">🌟 Recommended Modern Sampler</div>
+            Many llama.cpp users replace Top-P entirely with Min-P (set --top-p 1.0, --min-p 0.05). Min-P naturally adapts to model confidence, producing more coherent high-confidence output and appropriately creative low-confidence output.
+          </div>
+          <code class="param-example">--top-p 1.0 --min-p 0.05 --temp 0.8   # Modern recommended combo</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="repeat">
+      <div class="section-label">Sampling Parameters</div>
+      <h2>Repeat Penalty <span class="accent">--repeat-penalty</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--repeat-penalty</div>
+            <div class="param-flag-alias">also: --repeat-last-n &nbsp;--presence-penalty &nbsp;--frequency-penalty</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-float">float</span>
+            <span class="param-default">default: 1.0 (disabled)</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Penalizes tokens that have appeared in the recent context. Values &gt;1.0 discourage repetition; &lt;1.0 encourages it. Applied to logits by dividing (for positive) or multiplying (for negative). Prevents the model from looping the same phrases.</div>
+
+          <div class="param-tip">
+            <div class="tl">Related Parameters</div>
+            <strong>--repeat-last-n N</strong> — how many previous tokens to check for repeats (default 64, -1 = full context)<br/>
+            <strong>--presence-penalty P</strong> — OpenAI-style: flat penalty per token present in context<br/>
+            <strong>--frequency-penalty P</strong> — OpenAI-style: penalty proportional to how often token appeared
+          </div>
+          <code class="param-example">--repeat-penalty 1.1 --repeat-last-n 128   # Gentle anti-repetition</code>
+          <code class="param-example">--repeat-penalty 1.0                        # Disabled (default)</code>
+          <code class="param-example">--presence-penalty 0.2 --frequency-penalty 0.1  # OpenAI-style</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="predict">
+      <div class="section-label">Sampling Parameters</div>
+      <h2>Max Tokens <span class="accent">-n</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-n &nbsp;&nbsp;--predict &nbsp;&nbsp;--n-predict</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-int">integer</span>
+            <span class="param-default">default: -1 (unlimited)</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Maximum number of tokens to generate. <code>-1</code> means generate until the model produces an EOS token or the context is full. In server mode, clients can override this per-request via <code>max_tokens</code> in the API payload.</div>
+          <code class="param-example">-n 512    # Cap at 512 output tokens</code>
+          <code class="param-example">-n -1     # Let model decide when to stop</code>
+          <code class="param-example">-n -2     # Generate until context full (useful for completion tasks)</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         PERFORMANCE PARAMETERS
+    ═══════════════════════════════════ -->
+    <section class="section" id="flash-attn">
+      <div class="section-label">Performance</div>
+      <h2>Flash Attention <span class="accent">-fa</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-fa &nbsp;&nbsp;--flash-attn</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-bool">flag</span>
+            <span class="param-default">default: disabled</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Enables <strong>Flash Attention v2</strong> — a memory-efficient attention algorithm that avoids materializing the full N×N attention matrix. Instead it computes attention in tiles, dramatically reducing VRAM usage during attention computation.</div>
+
+          <div class="two-col" style="margin-top:10px;">
+            <div>
+              <div class="param-tip">
+                <div class="tl">✅ Benefits</div>
+                • Reduces VRAM by 30–60% for attention computation<br/>
+                • Enables larger contexts without OOM<br/>
+                • Often 20–40% faster on GPU (RTX 40/50)<br/>
+                • Required for long context (32K+) on 12 GB
+              </div>
+            </div>
+            <div>
+              <div class="param-tip">
+                <div class="tl">⚠️ Caveats</div>
+                • Requires CUDA build (not CPU-only)<br/>
+                • Incompatible with some older GGUF quant formats<br/>
+                • Must pair with compatible --cache-type-k/v settings<br/>
+                • Best on Ampere+ (RTX 30xx and newer)
+              </div>
+            </div>
+          </div>
+          <code class="param-example">-fa                             # Enable Flash Attention</code>
+          <code class="param-example">-fa -c 32768                    # Flash Attention + long context</code>
+          <code class="param-example">-fa --cache-type-k q8_0         # Flash Attn + quantized KV cache</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="cache-type">
+      <div class="section-label">Performance</div>
+      <h2>Cache Type K/V <span class="accent">--cache-type-k / --cache-type-v</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--cache-type-k &nbsp;&nbsp;--cache-type-v</div>
+            <div class="param-flag-alias">quantize the KV cache to reduce VRAM usage</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-enum">enum</span>
+            <span class="param-default">default: f16</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Controls the data type of the Key and Value caches in the attention mechanism. The KV cache grows linearly with context length and can consume significant VRAM. Quantizing it to Q8 or Q4 can save 50–75% of KV cache VRAM with minimal quality loss.</div>
+
+          <div class="param-tip">
+            <div class="tl">⚠️ Requires Flash Attention</div>
+            KV cache quantization (<code>q8_0</code>, <code>q4_0</code>, <code>q5_0</code>) requires <code>-fa</code> (Flash Attention) to be enabled. Without <code>-fa</code>, only <code>f16</code> and <code>f32</code> work.
+          </div>
+
+          <h4>Available Cache Types</h4>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Type</th><th>Bits</th><th>VRAM (vs f16)</th><th>Quality</th><th>Requires -fa?</th></tr></thead>
+              <tbody>
+                <tr><td><code>f32</code></td><td>32-bit</td><td>2× (more)</td><td>Perfect</td><td>No</td></tr>
+                <tr class="hl-row"><td><code>f16</code></td><td>16-bit</td><td>1× (baseline)</td><td>Excellent</td><td>No</td></tr>
+                <tr><td><code>q8_0</code></td><td>8-bit</td><td>~0.5×</td><td>Near-lossless</td><td><strong>Yes</strong></td></tr>
+                <tr class="hl-row"><td><code>q5_0</code></td><td>5-bit</td><td>~0.35×</td><td>Very good</td><td><strong>Yes</strong></td></tr>
+                <tr><td><code>q4_0</code></td><td>4-bit</td><td>~0.25×</td><td>Good</td><td><strong>Yes</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <code class="param-example">-fa --cache-type-k q8_0 --cache-type-v q8_0   # Best quality + VRAM savings</code>
+          <code class="param-example">-fa --cache-type-k q4_0 --cache-type-v q4_0   # Maximum VRAM savings (long ctx)</code>
+          <code class="param-example">--cache-type-k f16 --cache-type-v f16         # Default — no Flash Attn needed</code>
+        </div>
+      </div>
+
+      <div class="callout callout-lime">
+        <div class="callout-title">🎯 12 GB VRAM — Recommended KV Cache Config</div>
+        <p>For a 7B Q4_K_M model with 32K context on 12 GB: use <code>-fa --cache-type-k q8_0 --cache-type-v q8_0</code>. This keeps KV cache at ~2 GB instead of ~4 GB at f16, leaving room for weights + activations. For 13B models at 8K context: <code>-fa --cache-type-k q4_0 --cache-type-v q4_0</code>.</p>
+      </div>
+    </section>
+
+    <!-- ════ -ot TENSOR OVERRIDE ════ -->
+    <section class="section" id="ot">
+      <div class="section-label">Performance</div>
+      <h2>Tensor Override <span class="accent">-ot</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-ot &nbsp;&nbsp;--override-tensor</div>
+            <div class="param-flag-alias">fine-grained control: which tensors go to GPU vs CPU</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-str">string (regex=device)</span>
+            <span class="param-default">default: none</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Overrides where specific tensors are placed, using a regex pattern matched against tensor names. Format: <code>PATTERN=DEVICE</code> where device is <code>CPU</code>, <code>GPU</code>, or <code>GPU0</code>, <code>GPU1</code> etc. This is the most surgical tool for fitting models into tight VRAM budgets.</div>
+
+          <div class="param-tip">
+            <div class="tl">How it interacts with -ngl</div>
+            <code>-ngl</code> is a blunt instrument — it offloads N complete layers to GPU. <code>-ot</code> is surgical — you can keep specific tensor types on CPU even within layers that -ngl assigned to GPU. Very useful for keeping embedding tables on CPU RAM (they're large and rarely the bottleneck).
+          </div>
+
+          <h4>Common Tensor Name Patterns</h4>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Pattern</th><th>Matches</th><th>VRAM Impact</th></tr></thead>
+              <tbody>
+                <tr><td><code>blk\.\d+\.attn</code></td><td>All attention weights</td><td>~40% of layer VRAM</td></tr>
+                <tr class="hl-row"><td><code>blk\.\d+\.ffn</code></td><td>All FFN/MLP weights</td><td>~60% of layer VRAM</td></tr>
+                <tr><td><code>token_embd</code></td><td>Embedding table</td><td>Large (vocab × dim)</td></tr>
+                <tr class="hl-row"><td><code>output</code></td><td>LM head / output weights</td><td>Same as embeddings</td></tr>
+                <tr><td><code>blk\.[2-9][0-9]</code></td><td>Layers 20–99</td><td>Selective layer control</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <code class="param-example">-ot "token_embd=CPU"           # Keep embedding on CPU RAM (saves ~1-2GB VRAM)</code>
+          <code class="param-example">-ot "output=CPU"               # Keep LM head on CPU</code>
+          <code class="param-example">-ot "blk\.3[2-9]\.=CPU"        # Layers 32-39 to CPU, rest GPU</code>
+          <code class="param-example">-ot "token_embd=CPU" -ot "output=CPU" -ngl 99   # Hybrid: all compute layers GPU, I/O on CPU</code>
+        </div>
+      </div>
+
+      <div class="callout callout-sky">
+        <div class="callout-title">📐 Advanced: -ot for MOE Models</div>
+        <p>For Mixture-of-Experts models (DeepSeek, Mixtral), the FFN expert tensors are huge but only a few activate per token. Use <code>-ot "blk\.\d+\.ffn_gate_exps=CPU"</code> to keep sparse expert weights on CPU RAM and only pull them when needed — massive VRAM savings with modest speed cost.</p>
+      </div>
+    </section>
+
+    <!-- ════ MMAP ════ -->
+    <section class="section" id="mmap">
+      <div class="section-label">Performance</div>
+      <h2>Memory Map <span class="accent">--mmap / --mlock / --no-mmap</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--mmap &nbsp;&nbsp;--no-mmap &nbsp;&nbsp;--mlock</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-bool">flags</span>
+            <span class="param-default">default: --mmap enabled</span>
+            <span class="param-scope scope-both">server + cli</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc"><strong>--mmap</strong> (default): model file is memory-mapped — pages are loaded from disk on demand. Fast startup, but first inference may be slower as pages fault in. <strong>--no-mmap</strong>: entire model loaded into RAM eagerly at startup. Slower launch, but consistent inference speed. <strong>--mlock</strong>: pins RAM pages so they can't be swapped to disk — prevents latency spikes but requires OS permissions.</div>
+          <code class="param-example">--no-mmap          # Load fully into RAM — best for repeated inference, no page faults</code>
+          <code class="param-example">--mmap --mlock     # Map + lock in RAM — fast and no swap risk</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ DEFRAG ════ -->
+    <section class="section" id="defrag">
+      <div class="section-label">Performance</div>
+      <h2>KV Cache Defrag <span class="accent">--defrag-thold</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--defrag-thold</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-float">float [0.0–1.0]</span>
+            <span class="param-default">default: -1.0 (disabled)</span>
+            <span class="param-scope scope-server">server</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">When the KV cache fragmentation ratio exceeds this threshold, llama-server automatically defragments it. Fragmentation occurs in server mode when multiple concurrent requests start and end at different times, leaving gaps in the KV cache. Setting <code>0.1</code> means "defrag when 10%+ of cache is fragmented".</div>
+          <div class="param-tip">
+            <div class="tl">💡 When to Enable</div>
+            Enable in production server deployments with many concurrent users. For single-user local use, leave disabled. A threshold of 0.1–0.2 is a good starting point.
+          </div>
+          <code class="param-example">--defrag-thold 0.1   # Defrag when 10% fragmentation detected</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         SERVER MODE PARAMETERS
+    ═══════════════════════════════════ -->
+    <section class="section" id="host-port">
+      <div class="section-label">Server Mode</div>
+      <h2>Host <span class="accent">&amp; Port</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--host &nbsp;&nbsp;--port</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-str">string / integer</span>
+            <span class="param-default">default: 127.0.0.1 / 8080</span>
+            <span class="param-scope scope-server">server only</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Network interface and port the HTTP server binds to. Default <code>127.0.0.1</code> means localhost-only (safe). Use <code>0.0.0.0</code> to expose to all network interfaces — use with caution and add <code>--api-key</code> if exposed externally.</div>
+          <code class="param-example">--host 127.0.0.1 --port 8080    # Localhost only (default)</code>
+          <code class="param-example">--host 0.0.0.0 --port 8080      # All interfaces — accessible on LAN</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="jinja">
+      <div class="section-label">Server Mode</div>
+      <h2>Jinja Templates <span class="accent">--jinja</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--jinja</div>
+            <div class="param-flag-alias">also: --chat-template &nbsp;&nbsp;--chat-template-file</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-bool">flag / string</span>
+            <span class="param-default">default: disabled</span>
+            <span class="param-scope scope-server">server</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc"><strong>--jinja</strong> enables Jinja2-based chat template processing — the same system HuggingFace uses for chat formatting. When enabled, llama-server applies the model's built-in <code>chat_template</code> from the GGUF metadata to format messages. This is critical for correct instruction-following behavior.</div>
+
+          <div class="param-tip">
+            <div class="tl">Why this matters</div>
+            Each model family (Qwen, Llama, Mistral, Phi) uses a different special token format for system/user/assistant turns. Without the correct template, the model receives malformed input and produces poor outputs. --jinja applies the template automatically from model metadata.
+          </div>
+
+          <h4>--chat-template — Override template manually</h4>
+          <div class="param-desc" style="margin-top:4px;">Override the built-in chat template with a named preset or custom Jinja2 string. Useful when GGUF metadata has wrong/missing template.</div>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Template Preset</th><th>Use For</th></tr></thead>
+              <tbody>
+                <tr><td><code>qwen2</code></td><td>Qwen 2.x / 2.5 models</td></tr>
+                <tr class="hl-row"><td><code>llama3</code></td><td>Llama 3.x, Meta models</td></tr>
+                <tr><td><code>mistral</code></td><td>Mistral / Mixtral</td></tr>
+                <tr class="hl-row"><td><code>chatml</code></td><td>ChatML format (many fine-tunes)</td></tr>
+                <tr><td><code>gemma</code></td><td>Google Gemma</td></tr>
+                <tr class="hl-row"><td><code>phi3</code></td><td>Microsoft Phi-3/4</td></tr>
+                <tr><td><code>deepseek2</code></td><td>DeepSeek V2/R1</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <code class="param-example">--jinja                              # Use template from GGUF metadata</code>
+          <code class="param-example">--chat-template qwen2                # Force Qwen2 template</code>
+          <code class="param-example">--chat-template-file my_template.j2  # Load custom Jinja2 file</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="np">
+      <div class="section-label">Server Mode</div>
+      <h2>Parallel Slots <span class="accent">-np</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">-np &nbsp;&nbsp;--parallel &nbsp;&nbsp;--n-parallel</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-int">integer</span>
+            <span class="param-default">default: 1</span>
+            <span class="param-scope scope-server">server</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Number of concurrent inference slots — how many requests can be processed simultaneously. Each slot reserves a portion of the KV cache. VRAM cost scales linearly: <code>total_kv_cache = ctx_size × n_parallel</code>.</div>
+          <div class="param-tip">
+            <div class="tl">💡 For Local Single-User Use</div>
+            Keep -np 1 (default) for best single-request latency. Increase only for multi-user serving. With -np 4 and ctx=4096, you need 4× the KV cache VRAM.
+          </div>
+          <code class="param-example">-np 1   # Single user — best latency</code>
+          <code class="param-example">-np 4   # 4 concurrent users — 4× KV VRAM cost</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="api-key">
+      <div class="section-label">Server Mode</div>
+      <h2>API Key <span class="accent">--api-key</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--api-key &nbsp;&nbsp;--api-key-file</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-str">string</span>
+            <span class="param-default">default: none (open access)</span>
+            <span class="param-scope scope-server">server</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Requires clients to pass a Bearer token in the <code>Authorization</code> header. Must match exactly. When set, unauthenticated requests return HTTP 401. Use when exposing llama-server beyond localhost.</div>
+          <code class="param-example">--api-key "my-secret-key-here"</code>
+          <code class="param-example">--api-key-file /run/secrets/llama_api_key   # Load from file (safer)</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="cont-batching">
+      <div class="section-label">Server Mode</div>
+      <h2>Continuous Batching <span class="accent">--cont-batching</span></h2>
+
+      <div class="param-card">
+        <div class="param-header">
+          <div class="param-flags">
+            <div class="param-flag-main">--cont-batching &nbsp;&nbsp;--no-cont-batching</div>
+          </div>
+          <div class="param-meta">
+            <span class="param-type type-bool">flag</span>
+            <span class="param-default">default: enabled</span>
+            <span class="param-scope scope-server">server</span>
+          </div>
+        </div>
+        <div class="param-body">
+          <div class="param-desc">Enables continuous batching — new requests are inserted into the inference pipeline mid-generation without waiting for current requests to finish. Dramatically improves GPU utilization under concurrent load. Enabled by default in llama-server. Disable only for debugging or strict FIFO order requirements.</div>
+          <code class="param-example">--cont-batching    # Default — good for multi-user serving</code>
+          <code class="param-example">--no-cont-batching # Disable — strict sequential processing</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         GPU / CPU HYBRID
+    ═══════════════════════════════════ -->
+    <section class="section" id="hybrid-overview">
+      <div class="section-label">GPU/CPU Hybrid</div>
+      <h2>Hybrid <span class="accent">Overview</span></h2>
+
+      <p>llama.cpp's killer feature is <strong>partial GPU offloading</strong>: you split the model's transformer layers between GPU VRAM and CPU RAM. Layers on GPU run fast (CUDA/CUBLAS). Layers on CPU run slower but allow running models far larger than your VRAM.</p>
+
+      <div class="callout callout-g">
+        <div class="callout-title">⚡ How Hybrid Works</div>
+        <p>The model has N total layers. You set <code>-ngl K</code>. Layers 0 to K-1 → GPU VRAM. Layers K to N-1 → CPU RAM + CPU compute. The embedding table and LM head placement is controlled separately by <code>-ot</code>. Data passes from GPU→CPU→GPU between the split, which creates some overhead on the PCIe bus.</p>
+      </div>
+
+      <h3>Speed Impact of Hybrid vs Full GPU</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Config</th><th>Tokens/sec (7B Q4_K_M, RTX 5070)</th><th>VRAM Used</th></tr></thead>
+          <tbody>
+            <tr><td>Full GPU (-ngl 99)</td><td>~80–110 tok/s</td><td>~4.5 GB</td></tr>
+            <tr class="hl-row"><td>Hybrid 20/28 layers GPU</td><td>~35–55 tok/s</td><td>~3.0 GB</td></tr>
+            <tr><td>Hybrid 10/28 layers GPU</td><td>~20–30 tok/s</td><td>~1.5 GB</td></tr>
+            <tr class="hl-row"><td>Full CPU (-ngl 0)</td><td>~5–12 tok/s</td><td>0 GB (RAM only)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="vram-budgeting">
+      <div class="section-label">GPU/CPU Hybrid</div>
+      <h2>VRAM <span class="accent">Budgeting</span></h2>
+
+      <p>Use this formula to estimate -ngl for your VRAM budget:</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">formula</span><span class="code-file">VRAM estimation</span></div>
+        <pre><span class="cm"># VRAM per layer ≈ model_file_size / total_layers</span>
+<span class="cm"># Total VRAM ≈ (layers_on_gpu × vram_per_layer) + kv_cache + overhead</span>
+
+<span class="cm"># Example: Qwen2.5-14B Q4_K_M (8.9 GB file, 48 layers)</span>
+vram_per_layer = 8900 MB / 48 = ~185 MB / layer
+kv_cache_f16   = 2 × 48 × 40 × 128 × 8192 × 2 bytes ≈ ~3200 MB (8K ctx)
+overhead       = ~500 MB (CUDA context, activations)
+
+<span class="cm"># For 12 GB VRAM:</span>
+available = 12000 - 3200 - 500 = 8300 MB for weights
+max_layers = 8300 / 185 = ~44 layers → use -ngl 44
+
+<span class="cm"># With quantized KV cache (q8_0):</span>
+kv_cache_q8 = ~1600 MB → available = 9900 MB → -ngl 53 (close to all 48!)</pre>
+      </div>
+
+      <h3>Pre-calculated -ngl Values for Common Setups</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Model + Quant</th><th>GPU VRAM</th><th>ctx=2048</th><th>ctx=8192</th><th>ctx=32768</th></tr></thead>
+          <tbody>
+            <tr><td><strong>7B Q4_K_M</strong></td><td>12 GB</td><td>-ngl 99 ✅</td><td>-ngl 99 ✅</td><td>-ngl 99 (-fa -ctk q8_0)</td></tr>
+            <tr class="hl-row"><td><strong>7B Q8_0</strong></td><td>12 GB</td><td>-ngl 99 ✅</td><td>-ngl 26</td><td>-ngl 14</td></tr>
+            <tr><td><strong>13B Q4_K_M</strong></td><td>12 GB</td><td>-ngl 40 ✅</td><td>-ngl 32</td><td>-ngl 20</td></tr>
+            <tr class="hl-row"><td><strong>14B Q4_K_M</strong></td><td>16 GB</td><td>-ngl 48 ✅</td><td>-ngl 44</td><td>-ngl 36</td></tr>
+            <tr><td><strong>4B Q8_0</strong></td><td>12 GB</td><td>-ngl 99 ✅</td><td>-ngl 99 ✅</td><td>-ngl 99 ✅</td></tr>
+            <tr class="hl-row"><td><strong>70B Q4_K_M</strong></td><td>12 GB</td><td>-ngl 14</td><td>-ngl 10</td><td>-ngl 6</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="offload-recipes">
+      <div class="section-label">GPU/CPU Hybrid</div>
+      <h2>Offload <span class="accent">Recipes</span></h2>
+
+      <div class="cat-divider">
+        <div class="cat-divider-line"></div>
+        <div class="cat-divider-label">Recipe 1 — VRAM Tight (12 GB, 13B model)</div>
+        <div class="cat-divider-line"></div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><span class="code-file">13B on 12 GB VRAM — aggressive offloading</span></div>
+        <pre>./llama-server \
+  -m ./Qwen2.5-14B-Instruct-Q4_K_M.gguf \
+  -ngl 30 \                        <span class="cm"># 30/48 layers on GPU</span>
+  -c 4096 \                        <span class="cm"># Smaller context to save KV cache VRAM</span>
+  -b 512 \                         <span class="cm"># Smaller batch to reduce peak VRAM</span>
+  -fa \                            <span class="cm"># Flash attention — saves attention VRAM</span>
+  --cache-type-k q8_0 \            <span class="cm"># Quantize K cache — halves KV VRAM</span>
+  --cache-type-v q8_0 \
+  -ot "token_embd=CPU" \           <span class="cm"># Embedding to CPU (saves ~1.2 GB)</span>
+  -ot "output=CPU" \               <span class="cm"># LM head to CPU</span>
+  -t 8 \                           <span class="cm"># 8 threads for CPU layers</span>
+  --host 127.0.0.1 --port 8080 \
+  --jinja -a "qwen14b"</pre>
+      </div>
+
+      <div class="cat-divider">
+        <div class="cat-divider-line"></div>
+        <div class="cat-divider-label">Recipe 2 — Large Model, Mostly CPU</div>
+        <div class="cat-divider-line"></div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><span class="code-file">70B Q4_K_M on 12 GB VRAM + 64 GB RAM</span></div>
+        <pre>./llama-server \
+  -m ./DeepSeek-R1-70B-Q4_K_M.gguf \
+  -ngl 10 \                        <span class="cm"># Only 10 layers on GPU (70B has 80 layers)</span>
+  -c 2048 \                        <span class="cm"># Keep context small</span>
+  -t 16 \                          <span class="cm"># 16 CPU threads for the 70 CPU layers</span>
+  -tb 16 \                         <span class="cm"># 16 threads for prefill</span>
+  -b 512 \
+  --no-mmap \                      <span class="cm"># Load fully into RAM — avoids page faults</span>
+  -fa \
+  --cache-type-k q4_0 \            <span class="cm"># Maximum KV compression</span>
+  --cache-type-v q4_0 \
+  --host 127.0.0.1 --port 8080 \
+  --jinja -a "deepseek-70b"
+<span class="cm"># Expect ~3-6 tok/s — the PCIe + CPU compute limits throughput</span></pre>
+      </div>
+
+      <div class="cat-divider">
+        <div class="cat-divider-line"></div>
+        <div class="cat-divider-label">Recipe 3 — Full GPU (7B, maximized)</div>
+        <div class="cat-divider-line"></div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><span class="code-file">7B fully on GPU — maximum speed</span></div>
+        <pre>./llama-server \
+  -m ./Qwen2.5-7B-Instruct-Q4_K_M.gguf \
+  -ngl 99 \                        <span class="cm"># All layers to GPU</span>
+  -c 8192 \
+  -fa \
+  --cache-type-k q8_0 \
+  --cache-type-v q8_0 \
+  -b 2048 \
+  --cont-batching \
+  -np 2 \                          <span class="cm"># 2 parallel slots for multiple users</span>
+  --host 127.0.0.1 --port 8080 \
+  --jinja \
+  -a "qwen7b" \
+  --defrag-thold 0.1               <span class="cm"># Auto-defrag KV cache</span></pre>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         SAMPLE CODE
+    ═══════════════════════════════════ -->
+    <section class="section" id="cli-examples">
+      <div class="section-label">Sample Code</div>
+      <h2>CLI <span class="accent">Examples</span></h2>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><span class="code-file">llama-cli — single-shot inference</span></div>
+        <pre><span class="cm"># Interactive chat (GPU, Qwen2.5)</span>
+./llama-cli \
+  -m ./Qwen2.5-7B-Instruct-Q4_K_M.gguf \
+  -ngl 99 \
+  -c 4096 \
+  --temp 0.7 \
+  --top-p 1.0 \
+  --min-p 0.05 \
+  --repeat-penalty 1.05 \
+  --jinja \
+  -i -if           <span class="cm"># -i = interactive, -if = interactive first</span>
+
+<span class="cm"># One-shot generation (pipe to output)</span>
+./llama-cli \
+  -m ./model.gguf \
+  -ngl 99 \
+  -p "Explain ELSS mutual funds in 3 bullet points" \
+  -n 256 \
+  --temp 0.3 \
+  --no-display-prompt \
+  -s 42            <span class="cm"># -s = seed (reproducible output)</span>
+
+<span class="cm"># Benchmark to find optimal -ngl</span>
+./llama-bench \
+  -m ./Qwen2.5-7B-Instruct-Q4_K_M.gguf \
+  -ngl 0,10,20,28 \    <span class="cm"># Test multiple values</span>
+  -p 512 -n 128 \
+  -r 3                 <span class="cm"># 3 repetitions per config</span></pre>
+      </div>
+    </section>
+
+    <section class="section" id="server-launch">
+      <div class="section-label">Sample Code</div>
+      <h2>Server <span class="accent">Launch</span></h2>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><span class="code-file">llama-server — production launch script</span></div>
+        <pre><span class="cm">#!/bin/bash
+# launch_server.sh — parameterized llama-server launch</span>
+
+MODEL="${MODEL:-./models/Qwen2.5-7B-Instruct-Q4_K_M.gguf}"
+PORT="${PORT:-8080}"
+CTX="${CTX:-8192}"
+NGL="${NGL:-99}"
+THREADS="${THREADS:-12}"
+ALIAS="${ALIAS:-local-model}"
+
+./llama-server \
+  <span class="flag">-m</span>  <span class="val">"$MODEL"</span> \
+  <span class="flag">-a</span>  <span class="val">"$ALIAS"</span> \
+  <span class="flag">-ngl</span> <span class="val">$NGL</span> \
+  <span class="flag">-c</span>  <span class="val">$CTX</span> \
+  <span class="flag">-t</span>  <span class="val">$THREADS</span> \
+  <span class="flag">-tb</span> <span class="val">$THREADS</span> \
+  <span class="flag">-b</span>  <span class="val">2048</span> \
+  <span class="flag">-fa</span> \
+  <span class="flag">--cache-type-k</span> <span class="val">q8_0</span> \
+  <span class="flag">--cache-type-v</span> <span class="val">q8_0</span> \
+  <span class="flag">--cont-batching</span> \
+  <span class="flag">--defrag-thold</span> <span class="val">0.1</span> \
+  <span class="flag">--jinja</span> \
+  <span class="flag">--host</span> <span class="val">127.0.0.1</span> \
+  <span class="flag">--port</span> <span class="val">$PORT</span> \
+  <span class="flag">--log-disable</span> \            <span class="cm"># Suppress verbose logs</span>
+  2>&1 | tee llama-server.log
+
+<span class="cm"># Usage:
+# ./launch_server.sh
+# MODEL=./14B.gguf NGL=30 CTX=4096 ./launch_server.sh</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><span class="code-file">Verify server is running</span></div>
+        <pre><span class="cm"># Health check</span>
+curl http://localhost:8080/health
+
+<span class="cm"># List models</span>
+curl http://localhost:8080/v1/models | python3 -m json.tool
+
+<span class="cm"># Test completion</span>
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "local-model",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user",   "content": "What is Section 80C?"}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 256
+  }' | python3 -m json.tool</pre>
+      </div>
+    </section>
+
+    <section class="section" id="python-client">
+      <div class="section-label">Sample Code</div>
+      <h2>Python <span class="accent">Client</span></h2>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><span class="code-file">client_openai.py — OpenAI SDK (recommended)</span></div>
+        <pre><span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+
+<span class="cm"># llama-server is OpenAI API-compatible</span>
+client = OpenAI(
+    base_url=<span class="str">"http://localhost:8080/v1"</span>,
+    api_key=<span class="str">"not-needed"</span>,   <span class="cm"># Required by SDK but ignored if no --api-key set</span>
+)
+
+<span class="cm"># ─── Non-streaming completion ─────────</span>
+response = client.chat.completions.create(
+    model=<span class="str">"local-model"</span>,
+    messages=[
+        {<span class="str">"role"</span>: <span class="str">"system"</span>,  <span class="str">"content"</span>: <span class="str">"You are Arthavidya, an Indian finance expert."</span>},
+        {<span class="str">"role"</span>: <span class="str">"user"</span>,    <span class="str">"content"</span>: <span class="str">"Explain ELSS tax saving mutual funds."</span>},
+    ],
+    temperature=<span class="num">0.7</span>,
+    max_tokens=<span class="num">512</span>,
+    top_p=<span class="num">0.9</span>,
+    frequency_penalty=<span class="num">0.1</span>,
+    presence_penalty=<span class="num">0.05</span>,
+)
+<span class="fn">print</span>(response.choices[<span class="num">0</span>].message.content)
+
+<span class="cm"># ─── Streaming response ───────────────</span>
+stream = client.chat.completions.create(
+    model=<span class="str">"local-model"</span>,
+    messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"Write a haiku about investing."</span>}],
+    stream=<span class="kw">True</span>,
+    temperature=<span class="num">1.0</span>,
+    max_tokens=<span class="num">100</span>,
+)
+<span class="kw">for</span> chunk <span class="kw">in</span> stream:
+    <span class="kw">if</span> chunk.choices[<span class="num">0</span>].delta.content:
+        <span class="fn">print</span>(chunk.choices[<span class="num">0</span>].delta.content, end=<span class="str">""</span>, flush=<span class="kw">True</span>)
+<span class="fn">print</span>()</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><span class="code-file">client_requests.py — Direct HTTP (no OpenAI SDK)</span></div>
+        <pre><span class="kw">import</span> requests, json
+
+<span class="kw">def</span> <span class="fn">chat</span>(messages: list, temperature: float = <span class="num">0.7</span>, max_tokens: int = <span class="num">512</span>) -> str:
+    response = requests.post(
+        <span class="str">"http://localhost:8080/v1/chat/completions"</span>,
+        json={
+            <span class="str">"model"</span>: <span class="str">"local-model"</span>,
+            <span class="str">"messages"</span>: messages,
+            <span class="str">"temperature"</span>: temperature,
+            <span class="str">"max_tokens"</span>: max_tokens,
+            <span class="str">"top_p"</span>: <span class="num">0.9</span>,
+            <span class="str">"repeat_penalty"</span>: <span class="num">1.05</span>,   <span class="cm"># llama.cpp native field</span>
+            <span class="str">"min_p"</span>: <span class="num">0.05</span>,              <span class="cm"># llama.cpp extension</span>
+        },
+        timeout=<span class="num">120</span>,
+    )
+    response.raise_for_status()
+    <span class="kw">return</span> response.json()[<span class="str">"choices"</span>][<span class="num">0</span>][<span class="str">"message"</span>][<span class="str">"content"</span>]
+
+<span class="cm"># ─── Example usage ────────────────────</span>
+answer = chat([
+    {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: <span class="str">"You are a helpful finance assistant."</span>},
+    {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: <span class="str">"What is Section 80D deduction?"</span>},
+])
+<span class="fn">print</span>(answer)
+
+<span class="cm"># ─── Check server info ────────────────</span>
+info = requests.get(<span class="str">"http://localhost:8080/v1/models"</span>).json()
+<span class="fn">print</span>(<span class="str">f"Loaded model: {info['data'][0]['id']}"</span>)</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><span class="code-file">client_langchain.py — LangChain integration</span></div>
+        <pre><span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> SystemMessage, HumanMessage
+
+<span class="cm"># Point LangChain at local llama-server</span>
+llm = ChatOpenAI(
+    model=<span class="str">"local-model"</span>,
+    base_url=<span class="str">"http://localhost:8080/v1"</span>,
+    api_key=<span class="str">"not-needed"</span>,
+    temperature=<span class="num">0.7</span>,
+    max_tokens=<span class="num">1024</span>,
+)
+
+messages = [
+    SystemMessage(content=<span class="str">"You are an expert in Indian taxation."</span>),
+    HumanMessage(content=<span class="str">"What is the difference between ELSS and PPF?"</span>),
+]
+
+response = llm.invoke(messages)
+<span class="fn">print</span>(response.content)</pre>
+      </div>
+    </section>
+
+    <section class="section" id="config-file">
+      <div class="section-label">Sample Code</div>
+      <h2>Config <span class="accent">Files</span></h2>
+
+      <p>Instead of long command-line flags, llama-server accepts a JSON config file via <code>--config</code>. Easier to version-control and manage across environments.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">json</span><span class="code-file">config_7b_12gb.json — 7B full GPU config</span></div>
+        <pre>{
+  <span class="str">"model"</span>: <span class="str">"./models/Qwen2.5-7B-Instruct-Q4_K_M.gguf"</span>,
+  <span class="str">"alias"</span>: <span class="str">"qwen7b"</span>,
+  <span class="str">"n_gpu_layers"</span>: <span class="num">99</span>,
+  <span class="str">"ctx_size"</span>: <span class="num">8192</span>,
+  <span class="str">"batch_size"</span>: <span class="num">2048</span>,
+  <span class="str">"ubatch_size"</span>: <span class="num">512</span>,
+  <span class="str">"threads"</span>: <span class="num">12</span>,
+  <span class="str">"threads_batch"</span>: <span class="num">12</span>,
+  <span class="str">"flash_attn"</span>: <span class="kw">true</span>,
+  <span class="str">"cache_type_k"</span>: <span class="str">"q8_0"</span>,
+  <span class="str">"cache_type_v"</span>: <span class="str">"q8_0"</span>,
+  <span class="str">"cont_batching"</span>: <span class="kw">true</span>,
+  <span class="str">"defrag_thold"</span>: <span class="num">0.1</span>,
+  <span class="str">"jinja"</span>: <span class="kw">true</span>,
+  <span class="str">"host"</span>: <span class="str">"127.0.0.1"</span>,
+  <span class="str">"port"</span>: <span class="num">8080</span>,
+  <span class="str">"n_parallel"</span>: <span class="num">1</span>,
+  <span class="str">"temperature"</span>: <span class="num">0.7</span>,
+  <span class="str">"top_p"</span>: <span class="num">1.0</span>,
+  <span class="str">"min_p"</span>: <span class="num">0.05</span>,
+  <span class="str">"repeat_penalty"</span>: <span class="num">1.05</span>
+}</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">json</span><span class="code-file">config_13b_12gb.json — 13B hybrid GPU+CPU</span></div>
+        <pre>{
+  <span class="str">"model"</span>: <span class="str">"./models/Qwen2.5-14B-Instruct-Q4_K_M.gguf"</span>,
+  <span class="str">"alias"</span>: <span class="str">"qwen14b"</span>,
+  <span class="str">"n_gpu_layers"</span>: <span class="num">32</span>,
+  <span class="str">"ctx_size"</span>: <span class="num">4096</span>,
+  <span class="str">"batch_size"</span>: <span class="num">512</span>,
+  <span class="str">"ubatch_size"</span>: <span class="num">256</span>,
+  <span class="str">"threads"</span>: <span class="num">12</span>,
+  <span class="str">"threads_batch"</span>: <span class="num">16</span>,
+  <span class="str">"flash_attn"</span>: <span class="kw">true</span>,
+  <span class="str">"cache_type_k"</span>: <span class="str">"q4_0"</span>,
+  <span class="str">"cache_type_v"</span>: <span class="str">"q4_0"</span>,
+  <span class="str">"tensor_split"</span>: <span class="str">""</span>,
+  <span class="str">"override_tensor"</span>: <span class="str">"token_embd=CPU,output=CPU"</span>,
+  <span class="str">"no_mmap"</span>: <span class="kw">false</span>,
+  <span class="str">"jinja"</span>: <span class="kw">true</span>,
+  <span class="str">"host"</span>: <span class="str">"127.0.0.1"</span>,
+  <span class="str">"port"</span>: <span class="num">8080</span>
+}</pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><span class="code-file">Launch with config file</span></div>
+        <pre>./llama-server --config config_7b_12gb.json
+
+<span class="cm"># Override specific values from config via CLI flags</span>
+./llama-server --config config_7b_12gb.json --port 8081 -c 16384</pre>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         CHEAT SHEET
+    ═══════════════════════════════════ -->
+    <section class="section" id="cheatsheet">
+      <div class="section-label">Reference</div>
+      <h2>Cheat <span class="accent">Sheet</span></h2>
+
+      <h3>All Major Parameters — Quick Reference</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Flag</th><th>Long Form</th><th>Type</th><th>Default</th><th>One-Line Summary</th></tr></thead>
+          <tbody>
+            <tr><td><code>-m</code></td><td><code>--model</code></td><td>str</td><td>—</td><td>Path to GGUF file ← required</td></tr>
+            <tr class="hl-row"><td><code>-a</code></td><td><code>--alias</code></td><td>str</td><td>—</td><td>Model name returned by API</td></tr>
+            <tr><td><code>-ngl</code></td><td><code>--n-gpu-layers</code></td><td>int</td><td>0</td><td>Layers offloaded to GPU VRAM</td></tr>
+            <tr class="hl-row"><td><code>-c</code></td><td><code>--ctx-size</code></td><td>int</td><td>model</td><td>Context window in tokens</td></tr>
+            <tr><td><code>-t</code></td><td><code>--threads</code></td><td>int</td><td>cores</td><td>CPU threads for decode</td></tr>
+            <tr class="hl-row"><td><code>-tb</code></td><td><code>--threads-batch</code></td><td>int</td><td>= -t</td><td>CPU threads for prefill</td></tr>
+            <tr><td><code>-b</code></td><td><code>--batch-size</code></td><td>int</td><td>2048</td><td>Logical batch tokens (prefill)</td></tr>
+            <tr class="hl-row"><td><code>-ub</code></td><td><code>--ubatch-size</code></td><td>int</td><td>512</td><td>Physical micro-batch (CUDA)</td></tr>
+            <tr><td><code>-n</code></td><td><code>--predict</code></td><td>int</td><td>-1</td><td>Max output tokens (-1=unlimited)</td></tr>
+            <tr class="hl-row"><td><code>--temp</code></td><td><code>--temperature</code></td><td>float</td><td>0.8</td><td>Sampling randomness (0=greedy)</td></tr>
+            <tr><td><code>--top-p</code></td><td>—</td><td>float</td><td>0.95</td><td>Nucleus sampling cutoff</td></tr>
+            <tr class="hl-row"><td><code>--top-k</code></td><td>—</td><td>int</td><td>40</td><td>Top-K token limit (0=off)</td></tr>
+            <tr><td><code>--min-p</code></td><td>—</td><td>float</td><td>0.05</td><td>Min probability relative to top</td></tr>
+            <tr class="hl-row"><td><code>--repeat-penalty</code></td><td>—</td><td>float</td><td>1.0</td><td>Penalty for repeating tokens</td></tr>
+            <tr><td><code>--repeat-last-n</code></td><td>—</td><td>int</td><td>64</td><td>Context window for repeat check</td></tr>
+            <tr class="hl-row"><td><code>-fa</code></td><td><code>--flash-attn</code></td><td>bool</td><td>off</td><td>Enable Flash Attention v2</td></tr>
+            <tr><td><code>--cache-type-k</code></td><td>—</td><td>enum</td><td>f16</td><td>K-cache dtype (f16/q8_0/q4_0)</td></tr>
+            <tr class="hl-row"><td><code>--cache-type-v</code></td><td>—</td><td>enum</td><td>f16</td><td>V-cache dtype (f16/q8_0/q4_0)</td></tr>
+            <tr><td><code>-ot</code></td><td><code>--override-tensor</code></td><td>str</td><td>—</td><td>Regex=device tensor placement</td></tr>
+            <tr class="hl-row"><td><code>--mmap</code></td><td><code>--no-mmap</code></td><td>bool</td><td>on</td><td>Memory-mapped model loading</td></tr>
+            <tr><td><code>--mlock</code></td><td>—</td><td>bool</td><td>off</td><td>Lock model pages in RAM</td></tr>
+            <tr class="hl-row"><td><code>--defrag-thold</code></td><td>—</td><td>float</td><td>-1</td><td>KV cache defrag threshold</td></tr>
+            <tr><td><code>--host</code></td><td>—</td><td>str</td><td>127.0.0.1</td><td>Server bind address</td></tr>
+            <tr class="hl-row"><td><code>--port</code></td><td>—</td><td>int</td><td>8080</td><td>Server port</td></tr>
+            <tr><td><code>--jinja</code></td><td>—</td><td>bool</td><td>off</td><td>Enable Jinja2 chat templates</td></tr>
+            <tr class="hl-row"><td><code>--chat-template</code></td><td>—</td><td>str</td><td>—</td><td>Override chat template preset</td></tr>
+            <tr><td><code>-np</code></td><td><code>--parallel</code></td><td>int</td><td>1</td><td>Concurrent inference slots</td></tr>
+            <tr class="hl-row"><td><code>--api-key</code></td><td>—</td><td>str</td><td>—</td><td>Bearer token for auth</td></tr>
+            <tr><td><code>--cont-batching</code></td><td>—</td><td>bool</td><td>on</td><td>Continuous batching (server)</td></tr>
+            <tr class="hl-row"><td><code>-s</code></td><td><code>--seed</code></td><td>int</td><td>-1</td><td>RNG seed (-1=random)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Sampling Stack — Execution Order</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">text</span><span class="code-file">How samplers chain together</span></div>
+        <pre>Raw logits from model
+    ↓
+Temperature scaling     (--temp)
+    ↓
+Top-K filtering         (--top-k 0 to disable)
+    ↓
+Top-P / nucleus         (--top-p)
+    ↓
+Min-P filtering         (--min-p)
+    ↓
+Repeat penalty          (--repeat-penalty)
+    ↓
+Sample final token</pre>
+      </div>
+
+      <h3>Quick Decision Guide</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Goal</th><th>Settings</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Code / factual answers</strong></td><td><code>--temp 0.1 --top-p 0.9 --top-k 0 --repeat-penalty 1.0</code></td></tr>
+            <tr class="hl-row"><td><strong>General chat</strong></td><td><code>--temp 0.7 --top-p 1.0 --min-p 0.05 --repeat-penalty 1.05</code></td></tr>
+            <tr><td><strong>Creative writing</strong></td><td><code>--temp 1.1 --top-p 0.95 --min-p 0.02 --repeat-penalty 1.1</code></td></tr>
+            <tr class="hl-row"><td><strong>Reproduce output</strong></td><td><code>--temp 0 -s 42</code> (greedy + fixed seed)</td></tr>
+            <tr><td><strong>Max VRAM savings</strong></td><td><code>-fa --cache-type-k q4_0 --cache-type-v q4_0 -ot "token_embd=CPU,output=CPU"</code></td></tr>
+            <tr class="hl-row"><td><strong>Max speed (full GPU)</strong></td><td><code>-ngl 99 -fa -b 4096 -ub 1024 --cont-batching</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════
+         DOCS & LINKS
+    ═══════════════════════════════════ -->
+    <section class="section" id="docs">
+      <div class="section-label">Reference</div>
+      <h2>Official <span class="accent">Docs &amp; Links</span></h2>
+
+      <div class="docs-grid">
+        <a class="docs-card" href="https://github.com/ggerganov/llama.cpp" target="_blank">
+          <div class="docs-card-title">📦 llama.cpp Repository</div>
+          <div class="docs-card-url">github.com/ggerganov/llama.cpp</div>
+          <div class="docs-card-desc">Main repository. Source code, releases, build instructions, and issue tracker.</div>
+        </a>
+        <a class="docs-card" href="https://github.com/ggerganov/llama.cpp/blob/master/docs/server.md" target="_blank">
+          <div class="docs-card-title">🖥️ llama-server Docs</div>
+          <div class="docs-card-url">github.com/ggerganov/llama.cpp/blob/master/docs/server.md</div>
+          <div class="docs-card-desc">Complete llama-server parameter reference, API endpoints, OpenAI compatibility notes.</div>
+        </a>
+        <a class="docs-card" href="https://github.com/ggerganov/llama.cpp/blob/master/docs/build.md" target="_blank">
+          <div class="docs-card-title">🔨 Build Guide</div>
+          <div class="docs-card-url">github.com/ggerganov/llama.cpp/blob/master/docs/build.md</div>
+          <div class="docs-card-desc">Platform-specific build instructions: CUDA, Metal, Vulkan, OpenCL, CPU backends.</div>
+        </a>
+        <a class="docs-card" href="https://github.com/ggerganov/llama.cpp/blob/master/docs/development/token-generation-performance-tips.md" target="_blank">
+          <div class="docs-card-title">⚡ Performance Tips</div>
+          <div class="docs-card-url">docs/development/token-generation-performance-tips.md</div>
+          <div class="docs-card-desc">Official performance tuning guide: batch size, threading, GPU offload, and throughput optimization.</div>
+        </a>
+        <a class="docs-card" href="https://github.com/ggerganov/llama.cpp/blob/master/docs/flash-attention.md" target="_blank">
+          <div class="docs-card-title">✨ Flash Attention Docs</div>
+          <div class="docs-card-url">docs/flash-attention.md</div>
+          <div class="docs-card-desc">Detailed explanation of FA support, compatible quant types, and how KV cache quantization interacts.</div>
+        </a>
+        <a class="docs-card" href="https://github.com/ggerganov/ggml/blob/master/docs/gguf.md" target="_blank">
+          <div class="docs-card-title">📄 GGUF Format Spec</div>
+          <div class="docs-card-url">github.com/ggerganov/ggml/blob/master/docs/gguf.md</div>
+          <div class="docs-card-desc">GGUF file format specification — metadata fields, tensor layout, and quantization types.</div>
+        </a>
+        <a class="docs-card" href="https://github.com/ggerganov/llama.cpp/discussions" target="_blank">
+          <div class="docs-card-title">💬 GitHub Discussions</div>
+          <div class="docs-card-url">github.com/ggerganov/llama.cpp/discussions</div>
+          <div class="docs-card-desc">Community Q&A, model compatibility reports, performance benchmarks, and config sharing.</div>
+        </a>
+        <a class="docs-card" href="https://huggingface.co/bartowski" target="_blank">
+          <div class="docs-card-title">🤗 bartowski GGUF Hub</div>
+          <div class="docs-card-url">huggingface.co/bartowski</div>
+          <div class="docs-card-desc">High-quality GGUF quantizations of the latest models — Q4_K_M, Q5_K_M, Q8_0, and more.</div>
+        </a>
+        <a class="docs-card" href="https://github.com/ggerganov/llama.cpp/blob/master/tools/server/README.md" target="_blank">
+          <div class="docs-card-title">🔌 Server API Reference</div>
+          <div class="docs-card-url">tools/server/README.md</div>
+          <div class="docs-card-desc">All REST endpoints: /v1/chat/completions, /v1/completions, /tokenize, /detokenize, /slots, /health.</div>
+        </a>
+        <a class="docs-card" href="https://github.com/ggerganov/llama.cpp/releases" target="_blank">
+          <div class="docs-card-title">🚀 Releases &amp; Changelogs</div>
+          <div class="docs-card-url">github.com/ggerganov/llama.cpp/releases</div>
+          <div class="docs-card-desc">Pre-built binaries for Linux, macOS, Windows. CUDA, Metal, and CPU variants available.</div>
+        </a>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <span>⚡ llama.cpp Handbook · b4500 · 2025 · by Georgi Gerganov</span>
+  <span>RTX 5070 · 5060Ti · 4060Ti · 12–16 GB VRAM Optimized</span>
+</footer>
+
+<script>
+  const sections = document.querySelectorAll('.section');
+  const navLinks = document.querySelectorAll('.nav-link');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const id = entry.target.id;
+        const active = document.querySelector(`.nav-link[href="#${id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
