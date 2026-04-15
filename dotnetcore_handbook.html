@@ -1,0 +1,2555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>.NET Core Handbook — Basic to Intermediate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:wght@400;600;700;800;900&family=Mulish:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS — Navy / Silver / Crimson
+═══════════════════════════════════════════ */
+:root{
+  --bg:#03050f;
+  --bg-card:#07091a;
+  --bg-card2:#0a0d21;
+  --bg-sidebar:#050814;
+  --border:#111630;
+  --border-accent:#1a2048;
+
+  --navy:#1e3a8a;
+  --navy-dim:#1e3a8a18;
+  --navy-glow:#1e3a8a30;
+  --sky:#60a5fa;
+  --sky-dim:#60a5fa14;
+  --violet:#818cf8;
+  --violet-dim:#818cf818;
+  --crimson:#e11d48;
+  --crimson-dim:#e11d4815;
+  --silver:#94a3b8;
+  --silver-dim:#94a3b815;
+  --emerald:#34d399;
+  --emerald-dim:#34d39915;
+  --amber:#fbbf24;
+  --amber-dim:#fbbf2415;
+
+  --text-primary:#e2e8f8;
+  --text-secondary:#64748b;
+  --text-muted:#2a3555;
+  --text-code:#93c5fd;
+
+  --sidebar-w:280px;
+  --header-h:62px;
+  --r:8px;
+  --rl:14px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text-primary);
+  font-family:'Mulish',sans-serif;
+  font-size:15px;line-height:1.75;
+  display:flex;flex-direction:column;min-height:100vh;
+}
+/* Subtle diagonal grid */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(135deg, var(--border) 25%, transparent 25%),
+    linear-gradient(225deg, var(--border) 25%, transparent 25%),
+    linear-gradient(45deg,  var(--border) 25%, transparent 25%),
+    linear-gradient(315deg, var(--border) 25%, transparent 25%);
+  background-position:10px 0,10px 0,0 0,0 0;
+  background-size:20px 20px;
+  opacity:.25;
+}
+
+/* ═══════════ TOPBAR ═══════════ */
+.topbar{
+  position:fixed;top:0;left:0;right:0;height:var(--header-h);
+  background:rgba(3,5,15,0.96);backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--border-accent);
+  display:flex;align-items:center;padding:0 26px;z-index:200;gap:14px;
+}
+.topbar-logo{
+  display:flex;align-items:center;gap:11px;text-decoration:none;
+}
+.logo-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,#1e40af,#3b82f6);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-weight:900;font-size:16px;
+  color:#fff;letter-spacing:-.02em;
+  box-shadow:0 0 18px var(--navy-glow);
+}
+.logo-text{
+  font-family:'Playfair Display',serif;font-weight:800;font-size:1.1rem;
+  color:var(--text-primary);letter-spacing:-.01em;
+}
+.logo-text span{color:var(--sky);}
+.topbar-badge{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  color:var(--sky);background:var(--sky-dim);border:1px solid var(--sky);
+  padding:2px 9px;border-radius:20px;letter-spacing:.06em;
+}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:9px;}
+.chip{
+  font-size:10.5px;padding:3px 9px;border-radius:20px;
+  font-family:'JetBrains Mono',monospace;letter-spacing:.04em;font-weight:700;
+  border:1px solid;
+}
+.chip-sky{background:var(--sky-dim);color:var(--sky);border-color:var(--sky);}
+.chip-violet{background:var(--violet-dim);color:var(--violet);border-color:var(--violet);}
+.chip-crimson{background:var(--crimson-dim);color:var(--crimson);border-color:var(--crimson);}
+.chip-emerald{background:var(--emerald-dim);color:var(--emerald);border-color:var(--emerald);}
+.chip-amber{background:var(--amber-dim);color:var(--amber);border-color:var(--amber);}
+
+/* ═══════════ LAYOUT ═══════════ */
+.layout{display:flex;padding-top:var(--header-h);position:relative;z-index:1;}
+
+/* ═══════════ SIDEBAR ═══════════ */
+.sidebar{
+  width:var(--sidebar-w);min-width:var(--sidebar-w);
+  background:rgba(5,8,20,0.97);
+  border-right:1px solid var(--border-accent);
+  height:calc(100vh - var(--header-h));
+  position:sticky;top:var(--header-h);
+  overflow-y:auto;padding:18px 0;
+}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+.nav-section-title{
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  color:var(--text-muted);letter-spacing:.18em;text-transform:uppercase;
+  padding:16px 18px 5px;
+}
+.nav-link{
+  display:flex;align-items:center;gap:9px;
+  padding:5px 18px;color:var(--text-secondary);text-decoration:none;
+  font-size:12.5px;font-weight:500;font-family:'Mulish',sans-serif;
+  transition:all .12s;border-left:2px solid transparent;
+}
+.nav-link:hover{color:var(--text-primary);background:var(--sky-dim);border-left-color:var(--sky);}
+.nav-link.active{color:var(--sky);background:var(--sky-dim);border-left-color:var(--sky);font-weight:700;}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:var(--text-muted);flex-shrink:0;transition:background .12s;}
+.nav-link.active .nav-dot,.nav-link:hover .nav-dot{background:var(--sky);}
+
+/* ═══════════ MAIN ═══════════ */
+.main{flex:1;max-width:calc(100vw - var(--sidebar-w));padding:46px 60px;overflow-x:hidden;}
+
+/* ═══════════ HERO ═══════════ */
+.hero{
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,#060a1f 0%,#040615 55%,#070a1e 100%);
+  border:1px solid var(--border-accent);border-radius:var(--rl);
+  padding:56px 52px;margin-bottom:52px;
+}
+.hero::before{
+  content:'';position:absolute;top:-80px;right:-60px;width:400px;height:400px;
+  border-radius:50%;background:radial-gradient(circle,#1e40af 0%,transparent 70%);
+  opacity:.1;pointer-events:none;
+}
+.hero::after{
+  content:'';position:absolute;bottom:-80px;left:15%;width:300px;height:300px;
+  border-radius:50%;background:radial-gradient(circle,var(--sky) 0%,transparent 70%);
+  opacity:.05;pointer-events:none;
+}
+.hero-pre{
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;
+  color:var(--sky);text-transform:uppercase;margin-bottom:14px;
+  display:flex;align-items:center;gap:10px;
+}
+.hero-pre::before,.hero-pre::after{content:'';flex:0 0 20px;height:1px;background:var(--sky);opacity:.5;}
+.hero h1{
+  font-family:'Playfair Display',serif;font-weight:900;
+  font-size:3.4rem;line-height:1.08;letter-spacing:-.03em;
+  color:var(--text-primary);margin-bottom:10px;
+}
+.hero h1 em{
+  background:linear-gradient(90deg,#60a5fa,#818cf8);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;font-style:normal;
+}
+.hero-version{
+  font-family:'JetBrains Mono',monospace;font-size:.85rem;
+  color:var(--silver);letter-spacing:.04em;margin-bottom:18px;
+}
+.hero-sub{font-size:1rem;color:var(--text-secondary);max-width:640px;font-weight:300;margin-bottom:28px;line-height:1.85;}
+.hero-chips{display:flex;flex-wrap:wrap;gap:8px;}
+
+/* ═══════════ SECTIONS ═══════════ */
+.section{margin-bottom:58px;scroll-margin-top:80px;}
+.section-label{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  color:var(--sky);letter-spacing:.15em;text-transform:uppercase;
+  margin-bottom:10px;display:flex;align-items:center;gap:8px;
+}
+.section-label::before{
+  content:'';width:18px;height:2px;
+  background:linear-gradient(90deg,var(--sky),transparent);
+}
+h2{
+  font-family:'Playfair Display',serif;font-weight:800;font-size:1.85rem;
+  letter-spacing:-.02em;color:var(--text-primary);
+  margin-bottom:8px;padding-bottom:14px;
+  border-bottom:1px solid var(--border-accent);
+}
+h2 em{
+  background:linear-gradient(90deg,var(--sky),var(--violet));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;font-style:normal;
+}
+h3{
+  font-family:'Mulish',sans-serif;font-weight:700;font-size:1.1rem;
+  color:var(--text-primary);margin:26px 0 10px;
+}
+h4{
+  font-family:'JetBrains Mono',monospace;font-weight:600;font-size:.88rem;
+  color:var(--amber);margin:18px 0 7px;letter-spacing:.02em;
+}
+p{color:var(--text-secondary);margin-bottom:12px;line-height:1.88;}
+strong{color:var(--text-primary);font-weight:700;}
+em{color:var(--sky);font-style:normal;font-weight:600;}
+ul,ol{color:var(--text-secondary);padding-left:22px;margin-bottom:12px;}
+li{margin-bottom:5px;line-height:1.75;}
+li strong{color:var(--text-primary);}
+a{color:var(--sky);text-decoration:none;}
+a:hover{text-decoration:underline;}
+
+/* ═══════════ CODE ═══════════ */
+.code-block{
+  background:#020410;border:1px solid var(--border-accent);
+  border-radius:var(--r);overflow:hidden;margin:14px 0;
+}
+.code-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 16px;background:#060a1a;border-bottom:1px solid var(--border);
+}
+.code-lang{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  color:var(--sky);letter-spacing:.1em;text-transform:uppercase;
+}
+.code-file{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);}
+pre{
+  padding:18px 20px;overflow-x:auto;
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.82;
+  color:#cbd5e1;
+}
+pre::-webkit-scrollbar{height:3px}
+pre::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+.kw{color:#93c5fd;}   /* keywords: using, class, var */
+.kw2{color:#c084fc;}  /* control: if, foreach, return */
+.fn{color:#86efac;}   /* method names */
+.str{color:#fde68a;}  /* strings */
+.num{color:#fb923c;}  /* numbers */
+.cm{color:#374151;font-style:italic;} /* comments */
+.type{color:#67e8f9;} /* types: string, int, ILogger */
+.attr{color:#f9a8d4;}/* attributes [ApiController] */
+.iface{color:#a5f3fc;} /* interfaces */
+code{
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  background:#080d24;color:var(--text-code);
+  padding:2px 6px;border-radius:4px;border:1px solid var(--border-accent);
+}
+
+/* ═══════════ CALLOUTS ═══════════ */
+.callout{
+  border-left:3px solid;border-radius:0 var(--r) var(--r) 0;
+  padding:13px 17px;margin:16px 0;font-size:13.5px;
+}
+.callout-sky{background:var(--sky-dim);border-color:var(--sky);}
+.callout-violet{background:var(--violet-dim);border-color:var(--violet);}
+.callout-crimson{background:var(--crimson-dim);border-color:var(--crimson);}
+.callout-emerald{background:var(--emerald-dim);border-color:var(--emerald);}
+.callout-amber{background:var(--amber-dim);border-color:var(--amber);}
+.callout-title{
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:10.5px;
+  letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;
+}
+.callout-sky .callout-title{color:var(--sky);}
+.callout-violet .callout-title{color:var(--violet);}
+.callout-crimson .callout-title{color:var(--crimson);}
+.callout-emerald .callout-title{color:var(--emerald);}
+.callout-amber .callout-title{color:var(--amber);}
+.callout p{color:var(--text-primary);margin:0;font-size:13px;}
+
+/* ═══════════ TABLES ═══════════ */
+.table-wrap{overflow-x:auto;margin:14px 0;border-radius:var(--r);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:#060a1a;}
+th{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  color:var(--sky);letter-spacing:.09em;text-transform:uppercase;
+  padding:9px 15px;text-align:left;border-bottom:1px solid var(--border-accent);
+}
+td{padding:9px 15px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text-secondary);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(96,165,250,.03);}
+td strong{color:var(--text-primary);}
+td code{font-size:11.5px;}
+.hl-row td{background:#070b1c;}
+
+/* ═══════════ CARDS ═══════════ */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:18px 0;}
+.card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--rl);padding:20px;
+  transition:border-color .18s,transform .18s,box-shadow .18s;
+  position:relative;overflow:hidden;
+}
+.card:hover{border-color:var(--sky);transform:translateY(-2px);box-shadow:0 8px 28px var(--navy-glow);}
+.card-glow{position:absolute;top:-40px;right:-40px;width:90px;height:90px;border-radius:50%;opacity:.06;pointer-events:none;}
+.card-glow-sky{background:var(--sky);}
+.card-glow-violet{background:var(--violet);}
+.card-glow-crimson{background:var(--crimson);}
+.card-glow-emerald{background:var(--emerald);}
+.card-icon{font-size:1.5rem;margin-bottom:9px;}
+.card-title{font-family:'Mulish',sans-serif;font-weight:700;font-size:.95rem;color:var(--text-primary);margin-bottom:5px;}
+.card-body{font-size:13px;color:var(--text-secondary);line-height:1.65;}
+
+/* ═══════════ STAT ROW ═══════════ */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:18px 0;}
+.stat-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;text-align:center;transition:border-color .15s;
+}
+.stat-card:hover{border-color:var(--sky);}
+.stat-num{
+  font-family:'Playfair Display',serif;font-weight:900;font-size:1.9rem;
+  background:linear-gradient(90deg,var(--sky),var(--violet));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.stat-label{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:.06em;}
+
+/* ═══════════ STEPS ═══════════ */
+.steps{display:flex;flex-direction:column;gap:14px;margin:18px 0;}
+.step{display:flex;gap:15px;align-items:flex-start;position:relative;}
+.step::before{
+  content:'';position:absolute;left:14px;top:34px;bottom:-14px;width:1px;
+  background:linear-gradient(to bottom,var(--sky),transparent);opacity:.25;
+}
+.step:last-child::before{display:none;}
+.step-num{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;margin-top:2px;
+  background:linear-gradient(135deg,#1e40af,#3b82f6);
+  color:#fff;font-weight:800;font-size:12px;font-family:'JetBrains Mono',monospace;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 12px var(--navy-glow);
+}
+.step-title{font-weight:700;color:var(--text-primary);font-size:.92rem;margin-bottom:3px;}
+.step-body{font-size:13px;color:var(--text-secondary);}
+
+/* ═══════════ TWO-COL ═══════════ */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0;}
+@media(max-width:960px){.two-col{grid-template-columns:1fr;}}
+
+/* ═══════════ MIDDLEWARE PIPELINE ═══════════ */
+.mw-pipeline{
+  background:var(--bg-card);border:1px solid var(--border-accent);
+  border-radius:var(--r);padding:20px;margin:16px 0;
+}
+.mw-node{
+  display:flex;align-items:center;gap:12px;
+  padding:8px 16px;margin:4px 0;
+  background:var(--bg-card2);border:1px solid var(--border-accent);
+  border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--text-secondary);transition:border-color .15s;cursor:default;
+}
+.mw-node:hover{border-color:var(--sky);color:var(--text-primary);}
+.mw-node-dot{
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+}
+.mw-node-name{color:var(--sky);font-weight:700;min-width:200px;}
+.mw-node-desc{font-size:11px;color:var(--text-muted);}
+.mw-arrow{
+  display:flex;align-items:center;justify-content:center;
+  height:18px;color:var(--text-muted);font-size:14px;
+}
+
+/* ═══════════ BADGE LIST ═══════════ */
+.badge-list{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0;}
+.badge{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  padding:3px 9px;border-radius:5px;border:1px solid;letter-spacing:.04em;
+}
+.badge-sky{background:var(--sky-dim);color:var(--sky);border-color:var(--sky);}
+.badge-violet{background:var(--violet-dim);color:var(--violet);border-color:var(--violet);}
+.badge-crimson{background:var(--crimson-dim);color:var(--crimson);border-color:var(--crimson);}
+.badge-emerald{background:var(--emerald-dim);color:var(--emerald);border-color:var(--emerald);}
+.badge-amber{background:var(--amber-dim);color:var(--amber);border-color:var(--amber);}
+.badge-silver{background:var(--silver-dim);color:var(--silver);border-color:var(--silver);}
+
+/* ═══════════ SECTION DIVIDER ═══════════ */
+.sec-div{
+  display:flex;align-items:center;gap:12px;margin:28px 0 16px;
+}
+.sec-div-line{flex:1;height:1px;background:var(--border-accent);}
+.sec-div-label{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  color:var(--sky);letter-spacing:.12em;text-transform:uppercase;
+  padding:3px 12px;border:1px solid var(--border-accent);border-radius:20px;
+  background:var(--bg-card);white-space:nowrap;
+}
+
+/* ═══════════ COMPARISON ═══════════ */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0;}
+@media(max-width:840px){.compare-grid{grid-template-columns:1fr;}}
+.compare-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;
+}
+.compare-header{
+  padding:10px 16px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+  letter-spacing:.07em;text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+}
+.compare-header-sky{background:var(--sky-dim);color:var(--sky);}
+.compare-header-violet{background:var(--violet-dim);color:var(--violet);}
+.compare-body{padding:0;}
+.compare-body pre{padding:14px 16px;font-size:12px;}
+
+/* ═══════════ FOOTER ═══════════ */
+.footer{
+  position:relative;z-index:1;
+  border-top:1px solid var(--border-accent);
+  padding:20px 60px;
+  color:var(--text-muted);font-size:11px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-family:'JetBrains Mono',monospace;
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <a class="topbar-logo" href="#">
+    <div class="logo-icon">.N</div>
+    <span class="logo-text">.NET <span>Core</span> Handbook</span>
+  </a>
+  <span class="topbar-badge">.NET 8 · 2025</span>
+  <div class="topbar-right">
+    <span class="chip chip-sky">ASP.NET Core</span>
+    <span class="chip chip-violet">EF Core</span>
+    <span class="chip chip-crimson">Middleware</span>
+    <span class="chip chip-emerald">Minimal API</span>
+    <span class="chip chip-amber">Basic → Intermediate</span>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="nav-section-title">Foundations</div>
+  <a class="nav-link active" href="#intro"><span class="nav-dot"></span>What is .NET Core?</a>
+  <a class="nav-link" href="#project-structure"><span class="nav-dot"></span>Project Structure</a>
+  <a class="nav-link" href="#program-cs"><span class="nav-dot"></span>Program.cs & Host</a>
+
+  <div class="nav-section-title">Dependency Injection</div>
+  <a class="nav-link" href="#di-intro"><span class="nav-dot"></span>DI Fundamentals</a>
+  <a class="nav-link" href="#di-lifetimes"><span class="nav-dot"></span>Service Lifetimes</a>
+  <a class="nav-link" href="#di-advanced"><span class="nav-dot"></span>Advanced DI Patterns</a>
+
+  <div class="nav-section-title">Configuration</div>
+  <a class="nav-link" href="#configuration"><span class="nav-dot"></span>appsettings.json</a>
+  <a class="nav-link" href="#options-pattern"><span class="nav-dot"></span>Options Pattern</a>
+  <a class="nav-link" href="#secrets"><span class="nav-dot"></span>Secrets & Env Vars</a>
+
+  <div class="nav-section-title">Middleware</div>
+  <a class="nav-link" href="#middleware-intro"><span class="nav-dot"></span>Pipeline Concept</a>
+  <a class="nav-link" href="#built-in-middleware"><span class="nav-dot"></span>Built-in Middleware</a>
+  <a class="nav-link" href="#custom-middleware"><span class="nav-dot"></span>Custom Middleware</a>
+  <a class="nav-link" href="#middleware-order"><span class="nav-dot"></span>Order Matters</a>
+
+  <div class="nav-section-title">Routing & Controllers</div>
+  <a class="nav-link" href="#routing"><span class="nav-dot"></span>Routing</a>
+  <a class="nav-link" href="#controllers"><span class="nav-dot"></span>Controllers</a>
+  <a class="nav-link" href="#action-results"><span class="nav-dot"></span>Action Results</a>
+  <a class="nav-link" href="#model-binding"><span class="nav-dot"></span>Model Binding</a>
+  <a class="nav-link" href="#validation"><span class="nav-dot"></span>Validation</a>
+
+  <div class="nav-section-title">Minimal APIs</div>
+  <a class="nav-link" href="#minimal-api"><span class="nav-dot"></span>Minimal API Basics</a>
+  <a class="nav-link" href="#minimal-advanced"><span class="nav-dot"></span>Filters & Groups</a>
+
+  <div class="nav-section-title">Data Access</div>
+  <a class="nav-link" href="#efcore"><span class="nav-dot"></span>Entity Framework Core</a>
+  <a class="nav-link" href="#migrations"><span class="nav-dot"></span>Migrations</a>
+  <a class="nav-link" href="#queries"><span class="nav-dot"></span>Querying Data</a>
+  <a class="nav-link" href="#repository"><span class="nav-dot"></span>Repository Pattern</a>
+
+  <div class="nav-section-title">Auth & Security</div>
+  <a class="nav-link" href="#authn"><span class="nav-dot"></span>Authentication</a>
+  <a class="nav-link" href="#jwt"><span class="nav-dot"></span>JWT Bearer</a>
+  <a class="nav-link" href="#authz"><span class="nav-dot"></span>Authorization</a>
+  <a class="nav-link" href="#cors"><span class="nav-dot"></span>CORS</a>
+
+  <div class="nav-section-title">HTTP & Services</div>
+  <a class="nav-link" href="#httpclient"><span class="nav-dot"></span>HttpClient & Factory</a>
+  <a class="nav-link" href="#background"><span class="nav-dot"></span>Background Services</a>
+  <a class="nav-link" href="#caching"><span class="nav-dot"></span>Caching</a>
+
+  <div class="nav-section-title">Cross-Cutting</div>
+  <a class="nav-link" href="#logging"><span class="nav-dot"></span>Logging</a>
+  <a class="nav-link" href="#error-handling"><span class="nav-dot"></span>Error Handling</a>
+  <a class="nav-link" href="#filters"><span class="nav-dot"></span>Filters</a>
+  <a class="nav-link" href="#health-checks"><span class="nav-dot"></span>Health Checks</a>
+
+  <div class="nav-section-title">Testing & Deploy</div>
+  <a class="nav-link" href="#testing"><span class="nav-dot"></span>Unit & Integration Tests</a>
+  <a class="nav-link" href="#docker"><span class="nav-dot"></span>Docker & Deployment</a>
+  <a class="nav-link" href="#cheatsheet"><span class="nav-dot"></span>Cheat Sheet</a>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-pre">Developer Handbook</div>
+  <h1>ASP.NET <em>Core</em><br/>Complete Guide</h1>
+  <div class="hero-version">// .NET 8 · ASP.NET Core 8 · EF Core 8 · C# 12</div>
+  <p class="hero-sub">From project structure and dependency injection through middleware pipelines, controllers, EF Core, authentication, and deployment. A comprehensive reference covering every essential concept from basic to intermediate .NET Core development.</p>
+  <div class="hero-chips">
+    <span class="chip chip-sky">.NET 8 LTS</span>
+    <span class="chip chip-violet">C# 12</span>
+    <span class="chip chip-crimson">Middleware Pipeline</span>
+    <span class="chip chip-emerald">EF Core 8</span>
+    <span class="chip chip-amber">JWT Auth</span>
+    <span class="chip chip-sky">Minimal APIs</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════
+     SECTION: INTRO
+════════════════════════════════ -->
+<section class="section" id="intro">
+  <div class="section-label">Foundations</div>
+  <h2>What is <em>.NET Core</em>?</h2>
+  <p><strong>.NET Core</strong> (now simply called <strong>.NET</strong> from version 5 onwards) is Microsoft's open-source, cross-platform successor to the Windows-only .NET Framework. <strong>ASP.NET Core</strong> is the web framework built on top of it — used for building APIs, web apps, gRPC services, and real-time applications.</p>
+
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-num">.NET 8</div><div class="stat-label">Current LTS</div></div>
+    <div class="stat-card"><div class="stat-num">C# 12</div><div class="stat-label">Language Version</div></div>
+    <div class="stat-card"><div class="stat-num">3</div><div class="stat-label">OS Platforms</div></div>
+    <div class="stat-card"><div class="stat-num">AOT</div><div class="stat-label">Native Compilation</div></div>
+    <div class="stat-card"><div class="stat-num">Open</div><div class="stat-label">Source (MIT)</div></div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card"><div class="card-glow card-glow-sky"></div><div class="card-icon">🌐</div><div class="card-title">ASP.NET Core</div><div class="card-body">Web APIs, MVC, Razor Pages, gRPC, SignalR, Blazor — all unified under one framework.</div></div>
+    <div class="card"><div class="card-glow card-glow-violet"></div><div class="card-icon">🗄️</div><div class="card-title">Entity Framework Core</div><div class="card-body">ORM for database access. Code-first migrations, LINQ queries, SQL Server, PostgreSQL, SQLite.</div></div>
+    <div class="card"><div class="card-glow card-glow-crimson"></div><div class="card-icon">⚡</div><div class="card-title">Performance</div><div class="card-body">Consistently in top 10 on TechEmpower benchmarks. Kestrel web server is blazingly fast.</div></div>
+    <div class="card"><div class="card-glow card-glow-emerald"></div><div class="card-icon">🔌</div><div class="card-title">Dependency Injection</div><div class="card-body">First-class built-in DI container. No third-party IoC needed for most scenarios.</div></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: PROJECT STRUCTURE
+════════════════════════════════ -->
+<section class="section" id="project-structure">
+  <div class="section-label">Foundations</div>
+  <h2>Project <em>Structure</em></h2>
+  <p>A typical ASP.NET Core Web API project follows a convention-based structure. Understanding each file's role is essential before writing any code.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">text</span><span class="code-file">Typical Web API Project Layout</span></div>
+    <pre>MyApi/
+├── Controllers/            <span class="cm">// API Controllers (MVC pattern)</span>
+│   ├── ProductsController.cs
+│   └── UsersController.cs
+├── Models/                 <span class="cm">// Domain entities / DTOs</span>
+│   ├── Product.cs
+│   └── CreateProductRequest.cs
+├── Services/               <span class="cm">// Business logic layer</span>
+│   ├── IProductService.cs
+│   └── ProductService.cs
+├── Data/                   <span class="cm">// EF Core DbContext and repositories</span>
+│   ├── AppDbContext.cs
+│   └── Migrations/
+├── Middleware/             <span class="cm">// Custom middleware classes</span>
+│   └── RequestLoggingMiddleware.cs
+├── Extensions/             <span class="cm">// IServiceCollection extension methods</span>
+│   └── ServiceCollectionExtensions.cs
+├── appsettings.json        <span class="cm">// Default configuration</span>
+├── appsettings.Development.json
+├── Program.cs              <span class="cm">// Entry point + DI + middleware setup</span>
+└── MyApi.csproj            <span class="cm">// Project file (SDK, packages, TFM)</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">xml</span><span class="code-file">MyApi.csproj — Project File</span></div>
+    <pre><span class="kw">&lt;Project</span> Sdk=<span class="str">"Microsoft.NET.Sdk.Web"</span><span class="kw">&gt;</span>
+  <span class="kw">&lt;PropertyGroup&gt;</span>
+    <span class="kw">&lt;TargetFramework&gt;</span>net8.0<span class="kw">&lt;/TargetFramework&gt;</span>
+    <span class="kw">&lt;Nullable&gt;</span>enable<span class="kw">&lt;/Nullable&gt;</span>      <span class="cm">&lt;!-- Nullable reference types --&gt;</span>
+    <span class="kw">&lt;ImplicitUsings&gt;</span>enable<span class="kw">&lt;/ImplicitUsings&gt;</span>  <span class="cm">&lt;!-- Auto-include common namespaces --&gt;</span>
+    <span class="kw">&lt;InvariantGlobalization&gt;</span>true<span class="kw">&lt;/InvariantGlobalization&gt;</span>
+  <span class="kw">&lt;/PropertyGroup&gt;</span>
+  <span class="kw">&lt;ItemGroup&gt;</span>
+    <span class="kw">&lt;PackageReference</span> Include=<span class="str">"Microsoft.EntityFrameworkCore.SqlServer"</span> Version=<span class="str">"8.0.0"</span> <span class="kw">/&gt;</span>
+    <span class="kw">&lt;PackageReference</span> Include=<span class="str">"Microsoft.AspNetCore.Authentication.JwtBearer"</span> Version=<span class="str">"8.0.0"</span> <span class="kw">/&gt;</span>
+  <span class="kw">&lt;/ItemGroup&gt;</span>
+<span class="kw">&lt;/Project&gt;</span></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: PROGRAM.CS
+════════════════════════════════ -->
+<section class="section" id="program-cs">
+  <div class="section-label">Foundations</div>
+  <h2>Program.cs <em>&amp; Host Builder</em></h2>
+  <p>In .NET 6+, <strong>Program.cs</strong> is the single entry point. It uses the <em>top-level statements</em> and <em>minimal hosting model</em> — no separate Startup class needed. The <code>WebApplicationBuilder</code> configures services and the <code>WebApplication</code> configures the middleware pipeline.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Program.cs — Complete annotated example</span></div>
+    <pre><span class="cm">// ─── 1. Create builder ──────────────────────────────────────────</span>
+<span class="kw">var</span> builder = WebApplication.CreateBuilder(args);
+
+<span class="cm">// ─── 2. Register Services (Dependency Injection container) ──────</span>
+builder.Services.AddControllers();           <span class="cm">// MVC Controllers</span>
+builder.Services.AddEndpointsApiExplorer();  <span class="cm">// Required for Swagger</span>
+builder.Services.AddSwaggerGen();            <span class="cm">// OpenAPI docs</span>
+
+builder.Services.AddDbContext&lt;<span class="type">AppDbContext</span>&gt;(opt =&gt;
+    opt.UseSqlServer(builder.Configuration.GetConnectionString(<span class="str">"DefaultConnection"</span>)));
+
+builder.Services.AddScoped&lt;<span class="type">IProductService</span>, <span class="type">ProductService</span>&gt;();
+builder.Services.AddSingleton&lt;<span class="type">ICacheService</span>, <span class="type">MemoryCacheService</span>&gt;();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt; { <span class="cm">/* configure JWT */</span> });
+
+builder.Services.AddAuthorization();
+builder.Services.AddMemoryCache();
+builder.Services.AddResponseCompression();
+builder.Services.AddHealthChecks();
+
+<span class="cm">// ─── 3. Build the application ───────────────────────────────────</span>
+<span class="kw">var</span> app = builder.Build();
+
+<span class="cm">// ─── 4. Configure Middleware Pipeline ───────────────────────────</span>
+<span class="kw2">if</span> (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();      <span class="cm">// HTTP → HTTPS redirect</span>
+app.UseResponseCompression();   <span class="cm">// Gzip/Brotli responses</span>
+app.UseStaticFiles();           <span class="cm">// Serve wwwroot files</span>
+app.UseRouting();               <span class="cm">// Endpoint routing middleware</span>
+app.UseCors(<span class="str">"AllowAll"</span>);         <span class="cm">// CORS (MUST be after UseRouting)</span>
+app.UseAuthentication();        <span class="cm">// Who are you?</span>
+app.UseAuthorization();         <span class="cm">// What can you do?</span>
+
+app.UseMiddleware&lt;<span class="type">RequestLoggingMiddleware</span>&gt;(); <span class="cm">// Custom middleware</span>
+
+app.MapControllers();           <span class="cm">// Map controller routes</span>
+app.MapHealthChecks(<span class="str">"/health"</span>);  <span class="cm">// Health endpoint</span>
+
+<span class="cm">// ─── 5. Run ─────────────────────────────────────────────────────</span>
+app.Run();</pre>
+  </div>
+
+  <div class="callout callout-sky">
+    <div class="callout-title">💡 Pre-.NET 6 vs Modern</div>
+    <p>Before .NET 6, you had a separate <code>Startup.cs</code> with <code>ConfigureServices()</code> and <code>Configure()</code> methods. These are now merged into <code>Program.cs</code>. Both patterns work in .NET 8, but the minimal hosting model is the standard going forward.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: DEPENDENCY INJECTION
+════════════════════════════════ -->
+<section class="section" id="di-intro">
+  <div class="section-label">Dependency Injection</div>
+  <h2>DI <em>Fundamentals</em></h2>
+  <p>Dependency Injection is built into ASP.NET Core's foundation. Instead of creating objects directly, you declare what you need (via constructor parameters) and the DI container provides them. This enables loose coupling, testability, and clean separation of concerns.</p>
+
+  <div class="compare-grid">
+    <div class="compare-card">
+      <div class="compare-header compare-header-crimson">❌ Without DI</div>
+      <div class="compare-body">
+        <pre><span class="kw">public class</span> <span class="type">OrderController</span>
+{
+    <span class="kw">public</span> <span class="fn">Process</span>()
+    {
+        <span class="cm">// Tightly coupled — hard to test</span>
+        <span class="kw">var</span> db = <span class="kw">new</span> <span class="type">SqlDatabase</span>();
+        <span class="kw">var</span> svc = <span class="kw">new</span> <span class="type">OrderService</span>(db);
+        svc.Process();
+    }
+}</pre>
+      </div>
+    </div>
+    <div class="compare-card">
+      <div class="compare-header compare-header-sky">✅ With DI</div>
+      <div class="compare-body">
+        <pre><span class="kw">public class</span> <span class="type">OrderController</span>(<span class="type">IOrderService</span> svc)
+{
+    <span class="kw">public</span> <span class="fn">Process</span>()
+    {
+        <span class="cm">// Loosely coupled — testable</span>
+        svc.Process();
+    }
+    <span class="cm">// DI container injects IOrderService</span>
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Defining and Registering Services</span></div>
+    <pre><span class="cm">// 1. Define interface</span>
+<span class="kw">public interface</span> <span class="iface">IEmailService</span>
+{
+    Task <span class="fn">SendAsync</span>(<span class="type">string</span> to, <span class="type">string</span> subject, <span class="type">string</span> body);
+}
+
+<span class="cm">// 2. Implement it</span>
+<span class="kw">public class</span> <span class="type">SmtpEmailService</span>(<span class="type">IConfiguration</span> config) : <span class="iface">IEmailService</span>
+{
+    <span class="kw">public async</span> Task <span class="fn">SendAsync</span>(<span class="type">string</span> to, <span class="type">string</span> subject, <span class="type">string</span> body)
+    {
+        <span class="cm">// send via SMTP using config["Smtp:Host"]</span>
+    }
+}
+
+<span class="cm">// 3. Register in Program.cs</span>
+builder.Services.AddScoped&lt;<span class="iface">IEmailService</span>, <span class="type">SmtpEmailService</span>&gt;();
+
+<span class="cm">// 4. Inject wherever needed (constructor injection — preferred)</span>
+<span class="kw">public class</span> <span class="type">UserController</span>(
+    <span class="iface">IEmailService</span> emailService,
+    <span class="iface">IUserService</span> userService,
+    <span class="type">ILogger</span>&lt;<span class="type">UserController</span>&gt; logger)  <span class="cm">// Primary constructor syntax (C# 12)</span>
+{
+    <span class="cm">// all dependencies available via this.emailService etc.</span>
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: DI LIFETIMES
+════════════════════════════════ -->
+<section class="section" id="di-lifetimes">
+  <div class="section-label">Dependency Injection</div>
+  <h2>Service <em>Lifetimes</em></h2>
+  <p>Every registered service has a <strong>lifetime</strong> — it controls how long the instance lives and how it is shared. Choosing the wrong lifetime is a common source of bugs.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Lifetime</th><th>Created</th><th>Shared?</th><th>Use For</th><th>Register</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Singleton</strong></td><td>Once, app lifetime</td><td>All requests + threads</td><td>Cache, config, HTTP clients</td><td><code>AddSingleton&lt;&gt;</code></td></tr>
+        <tr class="hl-row"><td><strong>Scoped</strong></td><td>Once per HTTP request</td><td>Within same request</td><td>DbContext, per-request services</td><td><code>AddScoped&lt;&gt;</code></td></tr>
+        <tr><td><strong>Transient</strong></td><td>Every injection</td><td>Never</td><td>Lightweight, stateless services</td><td><code>AddTransient&lt;&gt;</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-crimson">
+    <div class="callout-title">⚠️ Captive Dependency (Common Bug)</div>
+    <p>Never inject a <strong>Scoped</strong> or <strong>Transient</strong> service into a <strong>Singleton</strong>. The Singleton lives forever — the scoped instance it captures becomes stale and can cause concurrency bugs or memory leaks. ASP.NET Core will throw at startup in Development mode if it detects this.</p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Lifetime Examples</span></div>
+    <pre><span class="cm">// Singleton — shared across all requests</span>
+builder.Services.AddSingleton&lt;<span class="type">IMemoryCache</span>, <span class="type">MemoryCache</span>&gt;();
+builder.Services.AddSingleton&lt;<span class="type">AppSettings</span>&gt;();
+
+<span class="cm">// Scoped — new instance per HTTP request (same instance within a request)</span>
+builder.Services.AddScoped&lt;<span class="iface">IOrderService</span>, <span class="type">OrderService</span>&gt;();
+builder.Services.AddDbContext&lt;<span class="type">AppDbContext</span>&gt;(opts =&gt; ...);  <span class="cm">// Scoped by default</span>
+
+<span class="cm">// Transient — new instance every time it's requested from container</span>
+builder.Services.AddTransient&lt;<span class="iface">IEmailSender</span>, <span class="type">SmtpEmailSender</span>&gt;();
+
+<span class="cm">// Factory registration — use when construction needs logic</span>
+builder.Services.AddScoped&lt;<span class="iface">IReportService</span>&gt;(sp =&gt;
+{
+    <span class="kw">var</span> config = sp.GetRequiredService&lt;<span class="type">IConfiguration</span>&gt;();
+    <span class="kw">return</span> config[<span class="str">"ReportType"</span>] == <span class="str">"PDF"</span>
+        ? <span class="kw">new</span> <span class="type">PdfReportService</span>()
+        : <span class="kw">new</span> <span class="type">ExcelReportService</span>();
+});</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: DI ADVANCED
+════════════════════════════════ -->
+<section class="section" id="di-advanced">
+  <div class="section-label">Dependency Injection</div>
+  <h2>Advanced <em>DI Patterns</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Keyed Services (.NET 8), IEnumerable injection, Extension Methods</span></div>
+    <pre><span class="cm">// ── Keyed Services (.NET 8 new feature) ──────────────────────────</span>
+builder.Services.AddKeyedScoped&lt;<span class="iface">IStorageService</span>, <span class="type">LocalStorageService</span>&gt;(<span class="str">"local"</span>);
+builder.Services.AddKeyedScoped&lt;<span class="iface">IStorageService</span>, <span class="type">AzureBlobService</span>&gt;(<span class="str">"azure"</span>);
+
+<span class="cm">// Inject with [FromKeyedServices] attribute</span>
+<span class="kw">public class</span> <span class="type">FileController</span>(
+    [FromKeyedServices(<span class="str">"azure"</span>)] <span class="iface">IStorageService</span> storage) { }
+
+<span class="cm">// ── IEnumerable injection — get all implementations ───────────────</span>
+builder.Services.AddScoped&lt;<span class="iface">IValidator</span>, <span class="type">EmailValidator</span>&gt;();
+builder.Services.AddScoped&lt;<span class="iface">IValidator</span>, <span class="type">PhoneValidator</span>&gt;();
+builder.Services.AddScoped&lt;<span class="iface">IValidator</span>, <span class="type">AgeValidator</span>&gt;();
+
+<span class="kw">public class</span> <span class="type">ValidationService</span>(<span class="type">IEnumerable</span>&lt;<span class="iface">IValidator</span>&gt; validators)
+{
+    <span class="kw">public bool</span> <span class="fn">ValidateAll</span>(<span class="type">object</span> model)
+        =&gt; validators.All(v =&gt; v.Validate(model));
+}
+
+<span class="cm">// ── Extension method for clean Program.cs ─────────────────────────</span>
+<span class="kw">public static class</span> <span class="type">ServiceExtensions</span>
+{
+    <span class="kw">public static</span> <span class="type">IServiceCollection</span> <span class="fn">AddApplicationServices</span>(
+        <span class="kw">this</span> <span class="type">IServiceCollection</span> services, <span class="type">IConfiguration</span> config)
+    {
+        services.AddScoped&lt;<span class="iface">IProductService</span>, <span class="type">ProductService</span>&gt;();
+        services.AddScoped&lt;<span class="iface">IOrderService</span>, <span class="type">OrderService</span>&gt;();
+        services.Configure&lt;<span class="type">EmailOptions</span>&gt;(config.GetSection(<span class="str">"Email"</span>));
+        <span class="kw2">return</span> services;
+    }
+}
+
+<span class="cm">// In Program.cs:</span>
+builder.Services.AddApplicationServices(builder.Configuration);</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: CONFIGURATION
+════════════════════════════════ -->
+<section class="section" id="configuration">
+  <div class="section-label">Configuration</div>
+  <h2><em>Configuration</em> System</h2>
+  <p>ASP.NET Core has a layered configuration system. Sources are merged in order — later sources override earlier ones. The final merged result is available via <code>IConfiguration</code>.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">json</span><span class="code-file">appsettings.json</span></div>
+    <pre>{
+  <span class="str">"ConnectionStrings"</span>: {
+    <span class="str">"DefaultConnection"</span>: <span class="str">"Server=.;Database=MyDb;Trusted_Connection=true"</span>
+  },
+  <span class="str">"Logging"</span>: {
+    <span class="str">"LogLevel"</span>: {
+      <span class="str">"Default"</span>: <span class="str">"Information"</span>,
+      <span class="str">"Microsoft.AspNetCore"</span>: <span class="str">"Warning"</span>
+    }
+  },
+  <span class="str">"Email"</span>: {
+    <span class="str">"SmtpHost"</span>: <span class="str">"smtp.example.com"</span>,
+    <span class="str">"SmtpPort"</span>: <span class="num">587</span>,
+    <span class="str">"SenderAddress"</span>: <span class="str">"noreply@example.com"</span>,
+    <span class="str">"EnableSsl"</span>: <span class="kw">true</span>
+  },
+  <span class="str">"Jwt"</span>: {
+    <span class="str">"Key"</span>: <span class="str">"SUPER_SECRET_KEY_MIN_256_BITS"</span>,
+    <span class="str">"Issuer"</span>: <span class="str">"https://myapi.com"</span>,
+    <span class="str">"Audience"</span>: <span class="str">"https://myapi.com"</span>,
+    <span class="str">"ExpiryMinutes"</span>: <span class="num">60</span>
+  },
+  <span class="str">"AllowedHosts"</span>: <span class="str">"*"</span>
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Reading Configuration</span></div>
+    <pre><span class="cm">// Direct access (string keys)</span>
+<span class="kw">var</span> host = builder.Configuration[<span class="str">"Email:SmtpHost"</span>];
+<span class="kw">var</span> connStr = builder.Configuration.GetConnectionString(<span class="str">"DefaultConnection"</span>);
+
+<span class="cm">// Strongly-typed section binding</span>
+<span class="kw">var</span> emailSettings = builder.Configuration
+    .GetSection(<span class="str">"Email"</span>)
+    .Get&lt;<span class="type">EmailOptions</span>&gt;();
+
+<span class="cm">// In a service via IConfiguration</span>
+<span class="kw">public class</span> <span class="type">EmailService</span>(<span class="type">IConfiguration</span> config)
+{
+    <span class="kw">private readonly string</span> _host = config[<span class="str">"Email:SmtpHost"</span>]!;
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: OPTIONS PATTERN
+════════════════════════════════ -->
+<section class="section" id="options-pattern">
+  <div class="section-label">Configuration</div>
+  <h2>Options <em>Pattern</em></h2>
+  <p>The Options pattern is the <strong>recommended</strong> way to consume configuration. It provides strongly-typed access with validation and change-notification support.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">IOptions / IOptionsSnapshot / IOptionsMonitor</span></div>
+    <pre><span class="cm">// 1. Define options class</span>
+<span class="kw">public class</span> <span class="type">EmailOptions</span>
+{
+    <span class="kw">public const string</span> Section = <span class="str">"Email"</span>;
+
+    [<span class="attr">Required</span>]
+    <span class="kw">public string</span> SmtpHost { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="kw">string</span>.Empty;
+
+    [<span class="attr">Range(1, 65535)</span>]
+    <span class="kw">public int</span> SmtpPort { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="num">587</span>;
+
+    <span class="kw">public bool</span> EnableSsl { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="kw">true</span>;
+}
+
+<span class="cm">// 2. Register with validation</span>
+builder.Services
+    .AddOptions&lt;<span class="type">EmailOptions</span>&gt;()
+    .BindConfiguration(<span class="type">EmailOptions</span>.Section)
+    .ValidateDataAnnotations()      <span class="cm">// Validate on startup</span>
+    .ValidateOnStart();             <span class="cm">// Fail fast if invalid</span>
+
+<span class="cm">// 3. Inject and use</span>
+<span class="kw">public class</span> <span class="type">EmailService</span>(<span class="type">IOptions</span>&lt;<span class="type">EmailOptions</span>&gt; opts)
+{
+    <span class="kw">private readonly</span> <span class="type">EmailOptions</span> _opts = opts.Value;
+    <span class="cm">// IOptions       — singleton, doesn't reflect runtime changes</span>
+    <span class="cm">// IOptionsSnapshot — scoped, reloads per request</span>
+    <span class="cm">// IOptionsMonitor  — singleton + reacts to file changes</span>
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: SECRETS
+════════════════════════════════ -->
+<section class="section" id="secrets">
+  <div class="section-label">Configuration</div>
+  <h2>Secrets <em>&amp; Environment Variables</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash</span><span class="code-file">User Secrets (Development only)</span></div>
+    <pre><span class="cm"># Initialize secrets storage for project</span>
+dotnet user-secrets init
+
+<span class="cm"># Set secrets (stored outside project directory)</span>
+dotnet user-secrets set "Jwt:Key" "my-256-bit-secret-key-here-for-dev"
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=..."
+
+<span class="cm"># Secrets are auto-loaded in Development environment</span>
+<span class="cm"># Access exactly the same as appsettings.json values</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash</span><span class="code-file">Environment Variables — override any config key</span></div>
+    <pre><span class="cm"># Use __ (double underscore) as section separator</span>
+export ConnectionStrings__DefaultConnection="Server=prod-db;..."
+export Jwt__Key="production-secret-key"
+export Email__SmtpHost="smtp.sendgrid.net"
+
+<span class="cm"># In Docker Compose:</span>
+environment:
+  - ConnectionStrings__DefaultConnection=Server=db;Database=MyDb;...
+  - ASPNETCORE_ENVIRONMENT=Production</pre>
+  </div>
+
+  <h3>Configuration Priority (highest to lowest)</h3>
+  <ol style="color:var(--text-secondary);line-height:2.2">
+    <li><strong>Command-line arguments</strong> — <code>--Jwt:Key=secret</code></li>
+    <li><strong>Environment variables</strong> — override appsettings values</li>
+    <li><strong>User Secrets</strong> — Development only, not in source control</li>
+    <li><strong>appsettings.{Environment}.json</strong> — per-environment overrides</li>
+    <li><strong>appsettings.json</strong> — base defaults</li>
+  </ol>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: MIDDLEWARE INTRO
+════════════════════════════════ -->
+<section class="section" id="middleware-intro">
+  <div class="section-label">Middleware</div>
+  <h2>The Middleware <em>Pipeline</em></h2>
+  <p>Middleware is software assembled into the request pipeline to handle requests and responses. Each middleware component can execute before <em>and</em> after the next component — forming a bidirectional pipeline. This is the most important architectural concept in ASP.NET Core.</p>
+
+  <div class="mw-pipeline">
+    <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sky);margin-bottom:12px;letter-spacing:.08em;">── HTTP REQUEST FLOW →→→</div>
+    <div class="mw-node"><span class="mw-node-dot" style="background:#60a5fa"></span><span class="mw-node-name">UseExceptionHandler</span><span class="mw-node-desc">Global error catching — outermost layer</span></div>
+    <div class="mw-arrow">↓</div>
+    <div class="mw-node"><span class="mw-node-dot" style="background:#a78bfa"></span><span class="mw-node-name">UseHsts / UseHttpsRedirection</span><span class="mw-node-desc">Security headers, HTTP→HTTPS</span></div>
+    <div class="mw-arrow">↓</div>
+    <div class="mw-node"><span class="mw-node-dot" style="background:#34d399"></span><span class="mw-node-name">UseStaticFiles</span><span class="mw-node-desc">Short-circuits for static assets (no further processing)</span></div>
+    <div class="mw-arrow">↓</div>
+    <div class="mw-node"><span class="mw-node-dot" style="background:#fbbf24"></span><span class="mw-node-name">UseRouting</span><span class="mw-node-desc">Matches request URL to endpoint — sets RouteData</span></div>
+    <div class="mw-arrow">↓</div>
+    <div class="mw-node"><span class="mw-node-dot" style="background:#60a5fa"></span><span class="mw-node-name">UseCors</span><span class="mw-node-desc">Cross-origin resource sharing headers</span></div>
+    <div class="mw-arrow">↓</div>
+    <div class="mw-node"><span class="mw-node-dot" style="background:#e11d48"></span><span class="mw-node-name">UseAuthentication</span><span class="mw-node-desc">Sets HttpContext.User from JWT/cookie/scheme</span></div>
+    <div class="mw-arrow">↓</div>
+    <div class="mw-node"><span class="mw-node-dot" style="background:#f97316"></span><span class="mw-node-name">UseAuthorization</span><span class="mw-node-desc">Checks [Authorize] policies, returns 401/403</span></div>
+    <div class="mw-arrow">↓</div>
+    <div class="mw-node"><span class="mw-node-dot" style="background:#94a3b8"></span><span class="mw-node-name">Custom Middleware</span><span class="mw-node-desc">Logging, rate limiting, request ID, etc.</span></div>
+    <div class="mw-arrow">↓</div>
+    <div class="mw-node"><span class="mw-node-dot" style="background:#4ade80"></span><span class="mw-node-name">MapControllers / MapGet</span><span class="mw-node-desc">Endpoint execution — your controller/handler runs here</span></div>
+    <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sky);margin-top:12px;letter-spacing:.08em;">←←← HTTP RESPONSE UNWINDS</div>
+  </div>
+
+  <div class="callout callout-amber">
+    <div class="callout-title">🔑 Key Concept: Request Delegates</div>
+    <p>Each middleware receives a <code>RequestDelegate next</code> — calling <code>await next(context)</code> passes the request to the next middleware. Not calling it <strong>short-circuits</strong> the pipeline (e.g. static files, auth failures). This bidirectional flow means you can execute logic both before and after downstream processing.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: BUILT-IN MIDDLEWARE
+════════════════════════════════ -->
+<section class="section" id="built-in-middleware">
+  <div class="section-label">Middleware</div>
+  <h2>Built-in <em>Middleware Reference</em></h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Middleware</th><th>Method</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Exception Handler</strong></td><td><code>UseExceptionHandler()</code></td><td>Catches unhandled exceptions, returns error response</td></tr>
+        <tr class="hl-row"><td><strong>HSTS</strong></td><td><code>UseHsts()</code></td><td>Adds Strict-Transport-Security header (prod only)</td></tr>
+        <tr><td><strong>HTTPS Redirect</strong></td><td><code>UseHttpsRedirection()</code></td><td>Redirects HTTP requests to HTTPS</td></tr>
+        <tr class="hl-row"><td><strong>Static Files</strong></td><td><code>UseStaticFiles()</code></td><td>Serves files from wwwroot, short-circuits pipeline</td></tr>
+        <tr><td><strong>Routing</strong></td><td><code>UseRouting()</code></td><td>Matches URL to endpoint, required before UseCors/UseAuth</td></tr>
+        <tr class="hl-row"><td><strong>CORS</strong></td><td><code>UseCors()</code></td><td>Sets Access-Control-* headers for cross-origin requests</td></tr>
+        <tr><td><strong>Authentication</strong></td><td><code>UseAuthentication()</code></td><td>Reads auth token/cookie, populates HttpContext.User</td></tr>
+        <tr class="hl-row"><td><strong>Authorization</strong></td><td><code>UseAuthorization()</code></td><td>Evaluates [Authorize] policies, returns 401/403</td></tr>
+        <tr><td><strong>Response Compression</strong></td><td><code>UseResponseCompression()</code></td><td>Gzip/Brotli compresses responses</td></tr>
+        <tr class="hl-row"><td><strong>Response Caching</strong></td><td><code>UseResponseCaching()</code></td><td>Cache responses server-side</td></tr>
+        <tr><td><strong>Rate Limiting</strong></td><td><code>UseRateLimiter()</code></td><td>.NET 7+ built-in rate limiting</td></tr>
+        <tr class="hl-row"><td><strong>Request Timeout</strong></td><td><code>UseRequestTimeouts()</code></td><td>.NET 8 per-endpoint timeouts</td></tr>
+        <tr><td><strong>Health Checks</strong></td><td><code>MapHealthChecks()</code></td><td>/health endpoint for orchestrators</td></tr>
+        <tr class="hl-row"><td><strong>Output Cache</strong></td><td><code>UseOutputCache()</code></td><td>.NET 7+ improved response caching</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: CUSTOM MIDDLEWARE
+════════════════════════════════ -->
+<section class="section" id="custom-middleware">
+  <div class="section-label">Middleware</div>
+  <h2>Custom <em>Middleware</em></h2>
+  <p>You can write custom middleware as a class (recommended for complex logic) or inline using <code>Use()</code>/<code>Run()</code>/<code>Map()</code>.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Class-based Custom Middleware (recommended)</span></div>
+    <pre><span class="kw">public class</span> <span class="type">RequestLoggingMiddleware</span>
+{
+    <span class="kw">private readonly</span> <span class="type">RequestDelegate</span> _next;
+    <span class="kw">private readonly</span> <span class="type">ILogger</span>&lt;<span class="type">RequestLoggingMiddleware</span>&gt; _logger;
+
+    <span class="kw">public</span> <span class="fn">RequestLoggingMiddleware</span>(
+        <span class="type">RequestDelegate</span> next,
+        <span class="type">ILogger</span>&lt;<span class="type">RequestLoggingMiddleware</span>&gt; logger)   <span class="cm">// DI works here</span>
+    {
+        _next = next;
+        _logger = logger;
+    }
+
+    <span class="kw">public async</span> Task <span class="fn">InvokeAsync</span>(<span class="type">HttpContext</span> context)
+    {
+        <span class="cm">// ── Before next middleware ──</span>
+        <span class="kw">var</span> sw = Stopwatch.StartNew();
+        _logger.LogInformation(<span class="str">"→ {Method} {Path}"</span>,
+            context.Request.Method, context.Request.Path);
+
+        <span class="kw2">try</span>
+        {
+            <span class="kw">await</span> _next(context);  <span class="cm">// Call next middleware</span>
+        }
+        <span class="kw2">finally</span>
+        {
+            <span class="cm">// ── After next middleware (response phase) ──</span>
+            sw.Stop();
+            _logger.LogInformation(<span class="str">"← {Status} {Path} in {Ms}ms"</span>,
+                context.Response.StatusCode,
+                context.Request.Path,
+                sw.ElapsedMilliseconds);
+        }
+    }
+}
+
+<span class="cm">// Register in Program.cs</span>
+app.UseMiddleware&lt;<span class="type">RequestLoggingMiddleware</span>&gt;();</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Inline Middleware — Use / Run / Map</span></div>
+    <pre><span class="cm">// Use — passes to next, can also short-circuit</span>
+app.Use(<span class="kw">async</span> (context, next) =&gt;
+{
+    context.Response.Headers.Append(<span class="str">"X-Request-Id"</span>, Guid.NewGuid().ToString());
+    <span class="kw">await</span> next(context);  <span class="cm">// call next; omit to short-circuit</span>
+});
+
+<span class="cm">// Run — terminal middleware (never calls next)</span>
+app.Run(<span class="kw">async</span> context =&gt;
+{
+    <span class="kw">await</span> context.Response.WriteAsync(<span class="str">"Hello from terminal!"</span>);
+});
+
+<span class="cm">// Map — branch pipeline based on path</span>
+app.Map(<span class="str">"/admin"</span>, adminApp =&gt;
+{
+    adminApp.UseMiddleware&lt;<span class="type">AdminAuthMiddleware</span>&gt;();
+    adminApp.Run(<span class="kw">async</span> ctx =&gt;
+        <span class="kw">await</span> ctx.Response.WriteAsync(<span class="str">"Admin area"</span>));
+});
+
+<span class="cm">// MapWhen — conditional branching</span>
+app.MapWhen(
+    ctx =&gt; ctx.Request.Query.ContainsKey(<span class="str">"version"</span>),
+    branchApp =&gt; branchApp.UseMiddleware&lt;<span class="type">VersionMiddleware</span>&gt;()
+);</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Correlation ID Middleware — Production Example</span></div>
+    <pre><span class="kw">public class</span> <span class="type">CorrelationIdMiddleware</span>(<span class="type">RequestDelegate</span> next)
+{
+    <span class="kw">private const string</span> CorrelationIdHeader = <span class="str">"X-Correlation-Id"</span>;
+
+    <span class="kw">public async</span> Task <span class="fn">InvokeAsync</span>(<span class="type">HttpContext</span> context)
+    {
+        <span class="cm">// Use existing ID or generate new one</span>
+        <span class="kw">var</span> correlationId = context.Request.Headers[CorrelationIdHeader].FirstOrDefault()
+            ?? Guid.NewGuid().ToString();
+
+        <span class="cm">// Store in HttpContext.Items for access downstream</span>
+        context.Items[<span class="str">"CorrelationId"</span>] = correlationId;
+
+        <span class="cm">// Echo back in response header</span>
+        context.Response.OnStarting(() =&gt;
+        {
+            context.Response.Headers.TryAdd(CorrelationIdHeader, correlationId);
+            <span class="kw2">return</span> Task.CompletedTask;
+        });
+
+        <span class="kw">await</span> next(context);
+    }
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: MIDDLEWARE ORDER
+════════════════════════════════ -->
+<section class="section" id="middleware-order">
+  <div class="section-label">Middleware</div>
+  <h2>Order <em>Matters</em></h2>
+  <p>Middleware order is <strong>critical</strong>. The request flows through middleware in the order they are added; the response unwinds in reverse. Getting the order wrong causes subtle bugs — authentication failures, CORS errors, missing headers.</p>
+
+  <div class="callout callout-crimson">
+    <div class="callout-title">⛔ Wrong Order — Common Mistakes</div>
+    <p><strong>UseAuthentication after UseAuthorization</strong> → User is never set, all [Authorize] endpoints return 401. <strong>UseCors before UseRouting</strong> → CORS policy is applied to all requests, not just matched endpoints. <strong>UseStaticFiles after UseRouting</strong> → Static file requests hit the router and fail if no route matches.</p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Correct Middleware Order</span></div>
+    <pre><span class="cm">// ✅ CORRECT ORDER — Production ASP.NET Core 8</span>
+app.UseExceptionHandler(<span class="str">"/error"</span>);    <span class="cm">// 1. First — catches everything below</span>
+app.UseHsts();                          <span class="cm">// 2. Security headers</span>
+app.UseHttpsRedirection();              <span class="cm">// 3. Protocol enforcement</span>
+app.UseResponseCompression();           <span class="cm">// 4. Before static files helps compression</span>
+app.UseStaticFiles();                   <span class="cm">// 5. Before routing — short-circuit assets</span>
+
+app.UseRouting();                       <span class="cm">// 6. Match routes (MUST come before CORS/Auth)</span>
+app.UseRateLimiter();                   <span class="cm">// 7. Rate limit (after routing, before auth)</span>
+app.UseCors();                          <span class="cm">// 8. CORS (after UseRouting)</span>
+app.UseOutputCache();                   <span class="cm">// 9. Cache (after routing)</span>
+
+app.UseAuthentication();               <span class="cm">// 10. Identify user (BEFORE authorization)</span>
+app.UseAuthorization();                <span class="cm">// 11. Check permissions (AFTER authentication)</span>
+
+app.UseMiddleware&lt;<span class="type">CorrelationIdMiddleware</span>&gt;(); <span class="cm">// 12. Custom (after auth)</span>
+
+app.MapControllers();                  <span class="cm">// 13. Last — execute endpoint</span>
+app.MapHealthChecks(<span class="str">"/health"</span>);</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: ROUTING
+════════════════════════════════ -->
+<section class="section" id="routing">
+  <div class="section-label">Routing & Controllers</div>
+  <h2>Routing <em>System</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Attribute Routing — all patterns</span></div>
+    <pre><span class="attr">[ApiController]</span>
+<span class="attr">[Route("api/[controller]")]</span>        <span class="cm">// → api/products</span>
+<span class="kw">public class</span> <span class="type">ProductsController</span> : <span class="type">ControllerBase</span>
+{
+    <span class="cm">// GET api/products</span>
+    <span class="attr">[HttpGet]</span>
+    <span class="kw">public</span> IActionResult <span class="fn">GetAll</span>() =&gt; Ok();
+
+    <span class="cm">// GET api/products/42</span>
+    <span class="attr">[HttpGet("{id:int}")]</span>             <span class="cm">// route constraint: must be int</span>
+    <span class="kw">public</span> IActionResult <span class="fn">GetById</span>(<span class="type">int</span> id) =&gt; Ok();
+
+    <span class="cm">// GET api/products/search?q=laptop&maxPrice=500</span>
+    <span class="attr">[HttpGet("search")]</span>
+    <span class="kw">public</span> IActionResult <span class="fn">Search</span>(<span class="type">string</span> q, <span class="type">decimal</span>? maxPrice) =&gt; Ok();
+
+    <span class="cm">// POST api/products</span>
+    <span class="attr">[HttpPost]</span>
+    <span class="kw">public</span> IActionResult <span class="fn">Create</span>(<span class="attr">[FromBody]</span> <span class="type">CreateProductRequest</span> req) =&gt; Ok();
+
+    <span class="cm">// PUT api/products/42</span>
+    <span class="attr">[HttpPut("{id:int}")]</span>
+    <span class="kw">public</span> IActionResult <span class="fn">Update</span>(<span class="type">int</span> id, <span class="attr">[FromBody]</span> <span class="type">UpdateProductRequest</span> req) =&gt; Ok();
+
+    <span class="cm">// DELETE api/products/42</span>
+    <span class="attr">[HttpDelete("{id:int}")]</span>
+    <span class="kw">public</span> IActionResult <span class="fn">Delete</span>(<span class="type">int</span> id) =&gt; Ok();
+
+    <span class="cm">// GET api/products/42/reviews</span>
+    <span class="attr">[HttpGet("{id:int}/reviews")]</span>     <span class="cm">// nested resource</span>
+    <span class="kw">public</span> IActionResult <span class="fn">GetReviews</span>(<span class="type">int</span> id) =&gt; Ok();
+}
+
+<span class="cm">// Route Constraints: {id:int} {slug:alpha} {date:datetime}
+//                   {id:guid} {id:min(1)} {name:maxlength(50)}</span></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: CONTROLLERS
+════════════════════════════════ -->
+<section class="section" id="controllers">
+  <div class="section-label">Routing & Controllers</div>
+  <h2>Controllers <em>in Depth</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Full CRUD Controller — Best Practices</span></div>
+    <pre><span class="attr">[ApiController]</span>
+<span class="attr">[Route("api/[controller]")]</span>
+<span class="attr">[Produces("application/json")]</span>
+<span class="kw">public class</span> <span class="type">ProductsController</span>(
+    <span class="iface">IProductService</span> productService,
+    <span class="type">ILogger</span>&lt;<span class="type">ProductsController</span>&gt; logger) : <span class="type">ControllerBase</span>
+{
+    <span class="cm">/// GET api/products?page=1&amp;size=20</span>
+    <span class="attr">[HttpGet]</span>
+    <span class="attr">[ProducesResponseType(typeof(PagedResult&lt;ProductDto&gt;), StatusCodes.Status200OK)]</span>
+    <span class="kw">public async</span> Task&lt;<span class="type">IActionResult</span>&gt; <span class="fn">GetAll</span>(<span class="type">int</span> page = <span class="num">1</span>, <span class="type">int</span> size = <span class="num">20</span>)
+    {
+        <span class="kw">var</span> result = <span class="kw">await</span> productService.GetPagedAsync(page, size);
+        <span class="kw2">return</span> Ok(result);
+    }
+
+    <span class="cm">/// GET api/products/42</span>
+    <span class="attr">[HttpGet("{id:int}", Name = "GetProduct")]</span>
+    <span class="attr">[ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]</span>
+    <span class="attr">[ProducesResponseType(StatusCodes.Status404NotFound)]</span>
+    <span class="kw">public async</span> Task&lt;<span class="type">IActionResult</span>&gt; <span class="fn">GetById</span>(<span class="type">int</span> id)
+    {
+        <span class="kw">var</span> product = <span class="kw">await</span> productService.GetByIdAsync(id);
+        <span class="kw2">if</span> (product <span class="kw">is null</span>) <span class="kw2">return</span> NotFound();
+        <span class="kw2">return</span> Ok(product);
+    }
+
+    <span class="cm">/// POST api/products</span>
+    <span class="attr">[HttpPost]</span>
+    <span class="attr">[ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]</span>
+    <span class="attr">[ProducesResponseType(StatusCodes.Status400BadRequest)]</span>
+    <span class="kw">public async</span> Task&lt;<span class="type">IActionResult</span>&gt; <span class="fn">Create</span>(<span class="attr">[FromBody]</span> <span class="type">CreateProductRequest</span> request)
+    {
+        <span class="cm">// ModelState is auto-validated by [ApiController]</span>
+        <span class="kw">var</span> created = <span class="kw">await</span> productService.CreateAsync(request);
+        <span class="kw2">return</span> CreatedAtRoute(<span class="str">"GetProduct"</span>, <span class="kw">new</span> { id = created.Id }, created);
+    }
+
+    <span class="cm">/// PUT api/products/42</span>
+    <span class="attr">[HttpPut("{id:int}")]</span>
+    <span class="attr">[Authorize]</span>
+    <span class="kw">public async</span> Task&lt;<span class="type">IActionResult</span>&gt; <span class="fn">Update</span>(<span class="type">int</span> id, <span class="attr">[FromBody]</span> <span class="type">UpdateProductRequest</span> req)
+    {
+        <span class="kw">var</span> success = <span class="kw">await</span> productService.UpdateAsync(id, req);
+        <span class="kw2">return</span> success ? NoContent() : NotFound();
+    }
+
+    <span class="cm">/// DELETE api/products/42</span>
+    <span class="attr">[HttpDelete("{id:int}")]</span>
+    <span class="attr">[Authorize(Roles = "Admin")]</span>
+    <span class="kw">public async</span> Task&lt;<span class="type">IActionResult</span>&gt; <span class="fn">Delete</span>(<span class="type">int</span> id)
+    {
+        <span class="kw">var</span> success = <span class="kw">await</span> productService.DeleteAsync(id);
+        <span class="kw2">return</span> success ? NoContent() : NotFound();
+    }
+}</pre>
+  </div>
+
+  <div class="callout callout-sky">
+    <div class="callout-title">💡 [ApiController] Attribute</div>
+    <p>Adding <code>[ApiController]</code> unlocks automatic model validation (returns 400 without entering action), binding source inference (<code>[FromBody]</code> for complex types, <code>[FromRoute]</code> for route params), and problem details responses for validation errors.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: ACTION RESULTS
+════════════════════════════════ -->
+<section class="section" id="action-results">
+  <div class="section-label">Routing & Controllers</div>
+  <h2>Action <em>Results</em></h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Status</th><th>Use When</th></tr></thead>
+      <tbody>
+        <tr><td><code>Ok(data)</code></td><td>200</td><td>Successful GET or operation with data</td></tr>
+        <tr class="hl-row"><td><code>Created(uri, data)</code> / <code>CreatedAtRoute()</code></td><td>201</td><td>Resource created — include location header</td></tr>
+        <tr><td><code>NoContent()</code></td><td>204</td><td>Successful PUT/DELETE with no response body</td></tr>
+        <tr class="hl-row"><td><code>BadRequest()</code> / <code>BadRequest(errors)</code></td><td>400</td><td>Invalid input, validation failure</td></tr>
+        <tr><td><code>Unauthorized()</code></td><td>401</td><td>Not authenticated</td></tr>
+        <tr class="hl-row"><td><code>Forbid()</code></td><td>403</td><td>Authenticated but not authorized</td></tr>
+        <tr><td><code>NotFound()</code></td><td>404</td><td>Resource not found</td></tr>
+        <tr class="hl-row"><td><code>Conflict()</code></td><td>409</td><td>Duplicate resource, optimistic concurrency failure</td></tr>
+        <tr><td><code>UnprocessableEntity()</code></td><td>422</td><td>Business validation failure</td></tr>
+        <tr class="hl-row"><td><code>Problem()</code></td><td>varies</td><td>RFC 7807 problem details response</td></tr>
+        <tr><td><code>StatusCode(code, data)</code></td><td>any</td><td>Custom status code</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">TypedResults — .NET 7+ Minimal API style in controllers</span></div>
+    <pre><span class="cm">// TypedResults provides compile-time type safety for OpenAPI</span>
+<span class="attr">[HttpGet("{id:int}")]</span>
+<span class="kw">public async</span> Task&lt;<span class="type">Results</span>&lt;<span class="type">Ok</span>&lt;<span class="type">ProductDto</span>&gt;, <span class="type">NotFound</span>&gt;&gt; <span class="fn">GetById</span>(<span class="type">int</span> id)
+{
+    <span class="kw">var</span> product = <span class="kw">await</span> _service.GetByIdAsync(id);
+    <span class="kw2">return</span> product <span class="kw">is null</span>
+        ? TypedResults.NotFound()
+        : TypedResults.Ok(product);
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: MODEL BINDING
+════════════════════════════════ -->
+<section class="section" id="model-binding">
+  <div class="section-label">Routing & Controllers</div>
+  <h2>Model <em>Binding</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Binding Sources</span></div>
+    <pre><span class="kw">public</span> IActionResult <span class="fn">Example</span>(
+    <span class="attr">[FromRoute]</span>  <span class="type">int</span>      id,           <span class="cm">// From URL path: /products/{id}</span>
+    <span class="attr">[FromQuery]</span>  <span class="type">string</span>?  search,       <span class="cm">// From query string: ?search=laptop</span>
+    <span class="attr">[FromBody]</span>   <span class="type">CreateRequest</span> body,    <span class="cm">// From JSON request body</span>
+    <span class="attr">[FromHeader(Name="X-Api-Key")]</span> <span class="type">string</span> key,  <span class="cm">// From request header</span>
+    <span class="attr">[FromForm]</span>   <span class="type">IFormFile</span> file,       <span class="cm">// From multipart/form-data</span>
+    <span class="attr">[FromServices]</span> <span class="iface">IEmailService</span> email) <span class="cm">// From DI container (injected)</span>
+{ ... }
+
+<span class="cm">// Custom complex type from multiple sources</span>
+<span class="kw">public record</span> <span class="type">SearchQuery</span>(
+    <span class="attr">[FromQuery]</span> <span class="type">string</span>? Q,
+    <span class="attr">[FromQuery]</span> <span class="type">int</span> Page = <span class="num">1</span>,
+    <span class="attr">[FromQuery]</span> <span class="type">int</span> Size = <span class="num">20</span>,
+    <span class="attr">[FromQuery]</span> <span class="type">string</span>? SortBy = <span class="str">"name"</span>
+);</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: VALIDATION
+════════════════════════════════ -->
+<section class="section" id="validation">
+  <div class="section-label">Routing & Controllers</div>
+  <h2>Model <em>Validation</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Data Annotations + FluentValidation</span></div>
+    <pre><span class="cm">// ── Data Annotations (built-in) ──────────────────────────────────</span>
+<span class="kw">public class</span> <span class="type">CreateProductRequest</span>
+{
+    <span class="attr">[Required(ErrorMessage = "Name is required")]</span>
+    <span class="attr">[StringLength(100, MinimumLength = 3)]</span>
+    <span class="kw">public string</span> Name { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="str">""</span>;
+
+    <span class="attr">[Range(0.01, 99999.99)]</span>
+    <span class="kw">public decimal</span> Price { <span class="kw">get</span>; <span class="kw">set</span>; }
+
+    <span class="attr">[EmailAddress]</span>
+    <span class="kw">public string?</span> ContactEmail { <span class="kw">get</span>; <span class="kw">set</span>; }
+
+    <span class="attr">[RegularExpression(@"^[A-Z]{2}\d{4}$")]</span>
+    <span class="kw">public string</span> Sku { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="str">""</span>;
+}
+
+<span class="cm">// ── FluentValidation (NuGet: FluentValidation.AspNetCore) ─────────</span>
+<span class="kw">public class</span> <span class="type">CreateProductValidator</span> : <span class="type">AbstractValidator</span>&lt;<span class="type">CreateProductRequest</span>&gt;
+{
+    <span class="kw">public</span> <span class="fn">CreateProductValidator</span>()
+    {
+        RuleFor(x =&gt; x.Name)
+            .NotEmpty()
+            .Length(<span class="num">3</span>, <span class="num">100</span>)
+            .MustAsync(<span class="kw">async</span> (name, ct) =&gt; !<span class="kw">await</span> <span class="fn">NameExistsAsync</span>(name));
+
+        RuleFor(x =&gt; x.Price)
+            .GreaterThan(<span class="num">0</span>)
+            .LessThanOrEqualTo(<span class="num">99999</span>);
+
+        RuleFor(x =&gt; x.Sku)
+            .Matches(<span class="str">@"^[A-Z]{2}\d{4}$"</span>)
+            .WithMessage(<span class="str">"SKU must be 2 uppercase letters followed by 4 digits"</span>);
+    }
+}
+
+<span class="cm">// Register: builder.Services.AddValidatorsFromAssemblyContaining&lt;CreateProductValidator&gt;();</span></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: MINIMAL API
+════════════════════════════════ -->
+<section class="section" id="minimal-api">
+  <div class="section-label">Minimal APIs</div>
+  <h2>Minimal API <em>Basics</em></h2>
+  <p>Minimal APIs (introduced in .NET 6) let you define HTTP endpoints without controllers. Ideal for microservices, small APIs, and when you want to avoid MVC overhead.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Program.cs — Minimal API with all patterns</span></div>
+    <pre><span class="kw">var</span> builder = WebApplication.CreateBuilder(args);
+builder.Services.AddScoped&lt;<span class="iface">IProductService</span>, <span class="type">ProductService</span>&gt;();
+<span class="kw">var</span> app = builder.Build();
+
+<span class="cm">// Simple GET</span>
+app.MapGet(<span class="str">"/hello"</span>, () =&gt; <span class="str">"Hello World!"</span>);
+
+<span class="cm">// With dependency injection</span>
+app.MapGet(<span class="str">"/products"</span>, async (<span class="iface">IProductService</span> svc) =&gt;
+    Results.Ok(<span class="kw">await</span> svc.GetAllAsync()));
+
+<span class="cm">// With route parameter + query string + DI</span>
+app.MapGet(<span class="str">"/products/{id:int}"</span>, async (
+    <span class="type">int</span> id,
+    <span class="iface">IProductService</span> svc) =&gt;
+{
+    <span class="kw">var</span> product = <span class="kw">await</span> svc.GetByIdAsync(id);
+    <span class="kw2">return</span> product <span class="kw">is null</span>
+        ? Results.NotFound()
+        : Results.Ok(product);
+});
+
+<span class="cm">// POST with body</span>
+app.MapPost(<span class="str">"/products"</span>, async (
+    <span class="attr">[FromBody]</span> <span class="type">CreateProductRequest</span> request,
+    <span class="iface">IProductService</span> svc) =&gt;
+{
+    <span class="kw">var</span> created = <span class="kw">await</span> svc.CreateAsync(request);
+    <span class="kw2">return</span> Results.CreatedAtRoute(<span class="str">"GetProduct"</span>, <span class="kw">new</span> { id = created.Id }, created);
+}).WithName(<span class="str">"CreateProduct"</span>).WithOpenApi();
+
+<span class="cm">// Auth + metadata</span>
+app.MapDelete(<span class="str">"/products/{id:int}"</span>, async (<span class="type">int</span> id, <span class="iface">IProductService</span> svc) =&gt;
+{
+    <span class="kw">var</span> success = <span class="kw">await</span> svc.DeleteAsync(id);
+    <span class="kw2">return</span> success ? Results.NoContent() : Results.NotFound();
+})
+.RequireAuthorization(<span class="str">"AdminPolicy"</span>)
+.WithTags(<span class="str">"Products"</span>);
+
+app.Run();</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: MINIMAL ADVANCED
+════════════════════════════════ -->
+<section class="section" id="minimal-advanced">
+  <div class="section-label">Minimal APIs</div>
+  <h2>Filters <em>&amp; Route Groups</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">RouteGroupBuilder — clean organization</span></div>
+    <pre><span class="cm">// Group related endpoints — share prefix, auth, tags</span>
+<span class="kw">var</span> products = app.MapGroup(<span class="str">"/api/products"</span>)
+    .WithTags(<span class="str">"Products"</span>)
+    .RequireAuthorization()              <span class="cm">// All endpoints in group require auth</span>
+    .AddEndpointFilter&lt;<span class="type">ValidationFilter</span>&gt;(); <span class="cm">// Apply filter to group</span>
+
+products.MapGet(<span class="str">"/"</span>,         async (<span class="iface">IProductService</span> s) =&gt; await s.GetAllAsync());
+products.MapGet(<span class="str">"/{id:int}"</span>, async (<span class="type">int</span> id, <span class="iface">IProductService</span> s) =&gt; await s.GetByIdAsync(id));
+products.MapPost(<span class="str">"/"</span>,        async (<span class="type">CreateProductRequest</span> r, <span class="iface">IProductService</span> s) =&gt; await s.CreateAsync(r));
+
+<span class="cm">// Endpoint filter (like Action Filters for minimal APIs)</span>
+<span class="kw">public class</span> <span class="type">ValidationFilter</span> : IEndpointFilter
+{
+    <span class="kw">public async</span> ValueTask&lt;<span class="type">object</span>?&gt; <span class="fn">InvokeAsync</span>(
+        <span class="type">EndpointFilterInvocationContext</span> ctx,
+        <span class="type">EndpointFilterDelegate</span> next)
+    {
+        <span class="cm">// Validate before execution</span>
+        <span class="kw">var</span> validator = ctx.HttpContext.RequestServices
+            .GetService&lt;<span class="type">IValidator</span>&lt;<span class="type">CreateProductRequest</span>&gt;&gt;();
+
+        <span class="kw2">if</span> (validator <span class="kw">is not null</span>)
+        {
+            <span class="kw">var</span> body = ctx.GetArgument&lt;<span class="type">CreateProductRequest</span>&gt;(<span class="num">0</span>);
+            <span class="kw">var</span> result = <span class="kw">await</span> validator.ValidateAsync(body);
+            <span class="kw2">if</span> (!result.IsValid)
+                <span class="kw2">return</span> Results.ValidationProblem(result.ToDictionary());
+        }
+        <span class="kw2">return</span> <span class="kw">await</span> next(ctx);
+    }
+}
+
+<span class="cm">// Separate the endpoints into a static class for organization</span>
+<span class="kw">public static class</span> <span class="type">ProductEndpoints</span>
+{
+    <span class="kw">public static</span> <span class="type">IEndpointRouteBuilder</span> <span class="fn">MapProductEndpoints</span>(<span class="kw">this</span> <span class="type">IEndpointRouteBuilder</span> app)
+    {
+        <span class="kw">var</span> group = app.MapGroup(<span class="str">"/api/products"</span>);
+        group.MapGet(<span class="str">"/"</span>, <span class="fn">GetAll</span>);
+        group.MapGet(<span class="str">"/{id}"</span>, <span class="fn">GetById</span>);
+        <span class="kw2">return</span> app;
+    }
+    <span class="kw">private static async</span> Task&lt;<span class="type">IResult</span>&gt; <span class="fn">GetAll</span>(<span class="iface">IProductService</span> svc)
+        =&gt; Results.Ok(<span class="kw">await</span> svc.GetAllAsync());
+    <span class="kw">private static async</span> Task&lt;<span class="type">IResult</span>&gt; <span class="fn">GetById</span>(<span class="type">int</span> id, <span class="iface">IProductService</span> svc)
+        =&gt; <span class="kw">await</span> svc.GetByIdAsync(id) <span class="kw">is</span> {} p ? Results.Ok(p) : Results.NotFound();
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: EF CORE
+════════════════════════════════ -->
+<section class="section" id="efcore">
+  <div class="section-label">Data Access</div>
+  <h2>Entity Framework <em>Core</em></h2>
+  <p>EF Core is the ORM for .NET. It maps C# classes to database tables and lets you query with LINQ. Code-first means you define your model in C# and EF generates the database schema.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">DbContext + Entity Configuration</span></div>
+    <pre><span class="cm">// ── Entity ──────────────────────────────────────────────────────</span>
+<span class="kw">public class</span> <span class="type">Product</span>
+{
+    <span class="kw">public int</span>     Id          { <span class="kw">get</span>; <span class="kw">set</span>; }
+    <span class="kw">public string</span>  Name        { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="str">""</span>;
+    <span class="kw">public decimal</span> Price       { <span class="kw">get</span>; <span class="kw">set</span>; }
+    <span class="kw">public int</span>     CategoryId  { <span class="kw">get</span>; <span class="kw">set</span>; }
+    <span class="kw">public</span> <span class="type">Category</span> Category { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="kw">null</span>!;  <span class="cm">// Navigation property</span>
+    <span class="kw">public</span> List&lt;<span class="type">Review</span>&gt; Reviews { <span class="kw">get</span>; <span class="kw">set</span>; } = [];
+    <span class="kw">public</span> <span class="type">DateTimeOffset</span> CreatedAt { <span class="kw">get</span>; <span class="kw">set</span>; }
+}
+
+<span class="cm">// ── DbContext ────────────────────────────────────────────────────</span>
+<span class="kw">public class</span> <span class="type">AppDbContext</span>(<span class="type">DbContextOptions</span>&lt;<span class="type">AppDbContext</span>&gt; options) : <span class="type">DbContext</span>(options)
+{
+    <span class="kw">public</span> DbSet&lt;<span class="type">Product</span>&gt;  Products  { <span class="kw">get</span>; <span class="kw">set</span>; }
+    <span class="kw">public</span> DbSet&lt;<span class="type">Category</span>&gt; Categories { <span class="kw">get</span>; <span class="kw">set</span>; }
+    <span class="kw">public</span> DbSet&lt;<span class="type">Review</span>&gt;   Reviews   { <span class="kw">get</span>; <span class="kw">set</span>; }
+
+    <span class="kw">protected override void</span> <span class="fn">OnModelCreating</span>(<span class="type">ModelBuilder</span> mb)
+    {
+        <span class="cm">// Fluent API configuration (preferred over Data Annotations)</span>
+        mb.Entity&lt;<span class="type">Product</span>&gt;(e =&gt;
+        {
+            e.HasKey(p =&gt; p.Id);
+            e.Property(p =&gt; p.Name).HasMaxLength(<span class="num">200</span>).IsRequired();
+            e.Property(p =&gt; p.Price).HasColumnType(<span class="str">"decimal(18,2)"</span>);
+            e.HasOne(p =&gt; p.Category)
+             .WithMany(c =&gt; c.Products)
+             .HasForeignKey(p =&gt; p.CategoryId)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(p =&gt; p.Name).IsUnique();
+        });
+
+        <span class="cm">// Apply all IEntityTypeConfiguration in assembly</span>
+        mb.ApplyConfigurationsFromAssembly(<span class="kw">typeof</span>(<span class="type">AppDbContext</span>).Assembly);
+    }
+
+    <span class="cm">// Auto-set timestamps</span>
+    <span class="kw">public override</span> Task&lt;<span class="type">int</span>&gt; <span class="fn">SaveChangesAsync</span>(<span class="type">CancellationToken</span> ct = <span class="kw">default</span>)
+    {
+        <span class="kw">foreach</span> (<span class="kw">var</span> entry <span class="kw">in</span> ChangeTracker.Entries&lt;<span class="type">IAuditable</span>&gt;())
+        {
+            <span class="kw2">if</span> (entry.State == EntityState.Added)
+                entry.Entity.CreatedAt = DateTimeOffset.UtcNow;
+        }
+        <span class="kw2">return</span> <span class="kw">base</span>.SaveChangesAsync(ct);
+    }
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: MIGRATIONS
+════════════════════════════════ -->
+<section class="section" id="migrations">
+  <div class="section-label">Data Access</div>
+  <h2>EF Core <em>Migrations</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash</span><span class="code-file">Migration CLI Commands</span></div>
+    <pre><span class="cm"># Install EF Core tools (once, globally)</span>
+dotnet tool install --global dotnet-ef
+
+<span class="cm"># Add first migration</span>
+dotnet ef migrations add InitialCreate --project src/MyApi
+
+<span class="cm"># Add migration for schema change</span>
+dotnet ef migrations add AddProductCategory
+
+<span class="cm"># Apply pending migrations to database</span>
+dotnet ef database update
+
+<span class="cm"># Rollback to specific migration</span>
+dotnet ef database update InitialCreate
+
+<span class="cm"># Remove last migration (if not applied)</span>
+dotnet ef migrations remove
+
+<span class="cm"># Generate SQL script (for CI/CD, production)</span>
+dotnet ef migrations script --idempotent -o migrations.sql
+
+<span class="cm"># Apply migrations programmatically at startup</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Auto-migrate at startup (dev/staging)</span></div>
+    <pre><span class="cm">// In Program.cs — apply migrations on startup</span>
+<span class="kw">using</span> (<span class="kw">var</span> scope = app.Services.CreateScope())
+{
+    <span class="kw">var</span> db = scope.ServiceProvider.GetRequiredService&lt;<span class="type">AppDbContext</span>&gt;();
+    <span class="kw">await</span> db.Database.MigrateAsync();  <span class="cm">// Apply any pending migrations</span>
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: QUERIES
+════════════════════════════════ -->
+<section class="section" id="queries">
+  <div class="section-label">Data Access</div>
+  <h2><em>Querying</em> Data</h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">LINQ Queries — Common Patterns</span></div>
+    <pre><span class="kw">public class</span> <span class="type">ProductService</span>(<span class="type">AppDbContext</span> db)
+{
+    <span class="cm">// Basic query with filtering, ordering, paging</span>
+    <span class="kw">public async</span> Task&lt;List&lt;<span class="type">Product</span>&gt;&gt; <span class="fn">GetPagedAsync</span>(<span class="type">int</span> page, <span class="type">int</span> size)
+        =&gt; <span class="kw">await</span> db.Products
+            .AsNoTracking()               <span class="cm">// Read-only — skips change tracking</span>
+            .Where(p =&gt; p.Price &gt; <span class="num">0</span>)
+            .OrderBy(p =&gt; p.Name)
+            .Skip((page - <span class="num">1</span>) * size)
+            .Take(size)
+            .ToListAsync();
+
+    <span class="cm">// Include navigation properties (eager loading)</span>
+    <span class="kw">public async</span> Task&lt;<span class="type">Product</span>?&gt; <span class="fn">GetWithDetailsAsync</span>(<span class="type">int</span> id)
+        =&gt; <span class="kw">await</span> db.Products
+            .Include(p =&gt; p.Category)
+            .Include(p =&gt; p.Reviews.OrderByDescending(r =&gt; r.CreatedAt).Take(<span class="num">5</span>))
+            .FirstOrDefaultAsync(p =&gt; p.Id == id);
+
+    <span class="cm">// Projection to DTO (avoids loading full entity)</span>
+    <span class="kw">public async</span> Task&lt;List&lt;<span class="type">ProductSummaryDto</span>&gt;&gt; <span class="fn">GetSummariesAsync</span>()
+        =&gt; <span class="kw">await</span> db.Products
+            .Select(p =&gt; <span class="kw">new</span> <span class="type">ProductSummaryDto</span>(p.Id, p.Name, p.Price, p.Category.Name))
+            .ToListAsync();
+
+    <span class="cm">// Raw SQL for complex queries</span>
+    <span class="kw">public async</span> Task&lt;List&lt;<span class="type">Product</span>&gt;&gt; <span class="fn">SearchAsync</span>(<span class="type">string</span> term)
+        =&gt; <span class="kw">await</span> db.Products
+            .FromSqlInterpolated(<span class="str">$"SELECT * FROM Products WHERE CONTAINS(Name, {term})"</span>)
+            .ToListAsync();
+
+    <span class="cm">// Aggregation</span>
+    <span class="kw">public async</span> Task&lt;<span class="type">decimal</span>&gt; <span class="fn">GetAveragePriceAsync</span>(<span class="type">int</span> categoryId)
+        =&gt; <span class="kw">await</span> db.Products
+            .Where(p =&gt; p.CategoryId == categoryId)
+            .AverageAsync(p =&gt; p.Price);
+
+    <span class="cm">// Insert / Update / Delete</span>
+    <span class="kw">public async</span> Task&lt;<span class="type">Product</span>&gt; <span class="fn">CreateAsync</span>(<span class="type">CreateProductRequest</span> req)
+    {
+        <span class="kw">var</span> product = <span class="kw">new</span> <span class="type">Product</span> { Name = req.Name, Price = req.Price };
+        db.Products.Add(product);
+        <span class="kw">await</span> db.SaveChangesAsync();
+        <span class="kw2">return</span> product;
+    }
+
+    <span class="cm">// ExecuteUpdate / ExecuteDelete (.NET 7+ — no change tracking overhead)</span>
+    <span class="kw">public async</span> Task <span class="fn">DeactivateOldProductsAsync</span>()
+        =&gt; <span class="kw">await</span> db.Products
+            .Where(p =&gt; p.LastSoldAt &lt; DateTime.UtcNow.AddYears(<span class="num">-2</span>))
+            .ExecuteUpdateAsync(s =&gt; s.SetProperty(p =&gt; p.IsActive, <span class="kw">false</span>));
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: REPOSITORY
+════════════════════════════════ -->
+<section class="section" id="repository">
+  <div class="section-label">Data Access</div>
+  <h2>Repository <em>Pattern</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Generic Repository + Unit of Work</span></div>
+    <pre><span class="cm">// Generic repository interface</span>
+<span class="kw">public interface</span> <span class="iface">IRepository</span>&lt;T&gt; <span class="kw">where</span> T : <span class="kw">class</span>
+{
+    Task&lt;<span class="type">T</span>?&gt;       <span class="fn">GetByIdAsync</span>(<span class="type">int</span> id);
+    Task&lt;List&lt;<span class="type">T</span>&gt;&gt; <span class="fn">GetAllAsync</span>();
+    Task             <span class="fn">AddAsync</span>(<span class="type">T</span> entity);
+    <span class="kw">void</span>             <span class="fn">Update</span>(<span class="type">T</span> entity);
+    <span class="kw">void</span>             <span class="fn">Remove</span>(<span class="type">T</span> entity);
+}
+
+<span class="cm">// Generic implementation</span>
+<span class="kw">public class</span> <span class="type">Repository</span>&lt;T&gt;(<span class="type">AppDbContext</span> context) : <span class="iface">IRepository</span>&lt;T&gt; <span class="kw">where</span> T : <span class="kw">class</span>
+{
+    <span class="kw">protected readonly</span> DbSet&lt;T&gt; _set = context.Set&lt;T&gt;();
+
+    <span class="kw">public async</span> Task&lt;T?&gt; <span class="fn">GetByIdAsync</span>(<span class="type">int</span> id)
+        =&gt; <span class="kw">await</span> _set.FindAsync(id);
+
+    <span class="kw">public async</span> Task&lt;List&lt;T&gt;&gt; <span class="fn">GetAllAsync</span>()
+        =&gt; <span class="kw">await</span> _set.AsNoTracking().ToListAsync();
+
+    <span class="kw">public async</span> Task <span class="fn">AddAsync</span>(T entity) =&gt; <span class="kw">await</span> _set.AddAsync(entity);
+    <span class="kw">public void</span> <span class="fn">Update</span>(T entity)  =&gt; _set.Update(entity);
+    <span class="kw">public void</span> <span class="fn">Remove</span>(T entity)  =&gt; _set.Remove(entity);
+}
+
+<span class="cm">// Unit of Work — single SaveChanges across repos</span>
+<span class="kw">public interface</span> <span class="iface">IUnitOfWork</span>
+{
+    <span class="iface">IRepository</span>&lt;<span class="type">Product</span>&gt;  Products  { <span class="kw">get</span>; }
+    <span class="iface">IRepository</span>&lt;<span class="type">Category</span>&gt; Categories { <span class="kw">get</span>; }
+    Task&lt;<span class="type">int</span>&gt; <span class="fn">SaveChangesAsync</span>();
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: AUTHN
+════════════════════════════════ -->
+<section class="section" id="authn">
+  <div class="section-label">Auth & Security</div>
+  <h2><em>Authentication</em></h2>
+  <p>ASP.NET Core separates <strong>authentication</strong> (who are you?) from <strong>authorization</strong> (what can you do?). Authentication schemes read credentials from the request and populate <code>HttpContext.User</code>.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Scheme</th><th>Use Case</th><th>Package</th></tr></thead>
+      <tbody>
+        <tr><td><strong>JWT Bearer</strong></td><td>APIs, mobile clients, SPAs</td><td><code>Microsoft.AspNetCore.Authentication.JwtBearer</code></td></tr>
+        <tr class="hl-row"><td><strong>Cookie</strong></td><td>Web apps, Razor Pages, MVC</td><td>Built-in</td></tr>
+        <tr><td><strong>API Key</strong></td><td>Service-to-service, B2B</td><td>Custom middleware</td></tr>
+        <tr class="hl-row"><td><strong>OAuth 2.0 / OIDC</strong></td><td>Social login, Azure AD, Auth0</td><td><code>Microsoft.AspNetCore.Authentication.OpenIdConnect</code></td></tr>
+        <tr><td><strong>Basic Auth</strong></td><td>Internal tools, legacy</td><td>Custom handler</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: JWT
+════════════════════════════════ -->
+<section class="section" id="jwt">
+  <div class="section-label">Auth & Security</div>
+  <h2>JWT <em>Bearer Authentication</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">JWT Setup — Program.cs + Token Generation</span></div>
+    <pre><span class="cm">// ── Program.cs — configure JWT ─────────────────────────────────</span>
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.TokenValidationParameters = <span class="kw">new</span> <span class="type">TokenValidationParameters</span>
+        {
+            ValidateIssuer           = <span class="kw">true</span>,
+            ValidateAudience         = <span class="kw">true</span>,
+            ValidateLifetime         = <span class="kw">true</span>,
+            ValidateIssuerSigningKey = <span class="kw">true</span>,
+            ValidIssuer    = builder.Configuration[<span class="str">"Jwt:Issuer"</span>],
+            ValidAudience  = builder.Configuration[<span class="str">"Jwt:Audience"</span>],
+            IssuerSigningKey = <span class="kw">new</span> <span class="type">SymmetricSecurityKey</span>(
+                Encoding.UTF8.GetBytes(builder.Configuration[<span class="str">"Jwt:Key"</span>]!)),
+            ClockSkew = TimeSpan.Zero  <span class="cm">// No tolerance for expired tokens</span>
+        };
+    });
+
+<span class="cm">// ── Token Generation Service ───────────────────────────────────</span>
+<span class="kw">public class</span> <span class="type">TokenService</span>(<span class="type">IConfiguration</span> config)
+{
+    <span class="kw">public string</span> <span class="fn">GenerateToken</span>(<span class="type">User</span> user)
+    {
+        <span class="kw">var</span> key = <span class="kw">new</span> <span class="type">SymmetricSecurityKey</span>(Encoding.UTF8.GetBytes(config[<span class="str">"Jwt:Key"</span>]!));
+        <span class="kw">var</span> creds = <span class="kw">new</span> <span class="type">SigningCredentials</span>(key, SecurityAlgorithms.HmacSha256);
+
+        <span class="kw">var</span> claims = <span class="kw">new</span> List&lt;<span class="type">Claim</span>&gt;
+        {
+            <span class="kw">new</span>(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            <span class="kw">new</span>(ClaimTypes.Email, user.Email),
+            <span class="kw">new</span>(ClaimTypes.Name, user.UserName),
+            <span class="kw">new</span>(<span class="str">"tenant_id"</span>, user.TenantId.ToString()),
+        };
+        <span class="cm">// Add role claims</span>
+        claims.AddRange(user.Roles.Select(r =&gt; <span class="kw">new</span> <span class="type">Claim</span>(ClaimTypes.Role, r)));
+
+        <span class="kw">var</span> token = <span class="kw">new</span> <span class="type">JwtSecurityToken</span>(
+            issuer:   config[<span class="str">"Jwt:Issuer"</span>],
+            audience: config[<span class="str">"Jwt:Audience"</span>],
+            claims:   claims,
+            expires:  DateTime.UtcNow.AddMinutes(<span class="kw">int</span>.Parse(config[<span class="str">"Jwt:ExpiryMinutes"</span>]!)),
+            signingCredentials: creds
+        );
+
+        <span class="kw2">return</span> <span class="kw">new</span> <span class="type">JwtSecurityTokenHandler</span>().WriteToken(token);
+    }
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: AUTHZ
+════════════════════════════════ -->
+<section class="section" id="authz">
+  <div class="section-label">Auth & Security</div>
+  <h2><em>Authorization</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Role-based + Policy-based Authorization</span></div>
+    <pre><span class="cm">// ── Setup policies ─────────────────────────────────────────────</span>
+builder.Services.AddAuthorization(options =&gt;
+{
+    options.AddPolicy(<span class="str">"AdminOnly"</span>,
+        p =&gt; p.RequireRole(<span class="str">"Admin"</span>));
+
+    options.AddPolicy(<span class="str">"MinAge18"</span>,
+        p =&gt; p.RequireClaim(<span class="str">"age"</span>, "18", "19", "20")); <span class="cm">// oversimplified</span>
+
+    options.AddPolicy(<span class="str">"PremiumUser"</span>,
+        p =&gt; p.RequireClaim(<span class="str">"subscription"</span>, <span class="str">"premium"</span>, <span class="str">"enterprise"</span>));
+
+    options.AddPolicy(<span class="str">"ResourceOwner"</span>,
+        p =&gt; p.AddRequirements(<span class="kw">new</span> <span class="type">ResourceOwnerRequirement</span>()));
+
+    options.FallbackPolicy = <span class="kw">new</span> <span class="type">AuthorizationPolicyBuilder</span>()
+        .RequireAuthenticatedUser()  <span class="cm">// All endpoints require auth by default</span>
+        .Build();
+});
+
+<span class="cm">// ── Custom requirement + handler ───────────────────────────────</span>
+<span class="kw">public class</span> <span class="type">ResourceOwnerRequirement</span> : <span class="type">IAuthorizationRequirement</span> { }
+
+<span class="kw">public class</span> <span class="type">ResourceOwnerHandler</span> : <span class="type">AuthorizationHandler</span>&lt;<span class="type">ResourceOwnerRequirement</span>&gt;
+{
+    <span class="kw">protected override</span> Task <span class="fn">HandleRequirementAsync</span>(
+        <span class="type">AuthorizationHandlerContext</span> context,
+        <span class="type">ResourceOwnerRequirement</span> requirement)
+    {
+        <span class="kw">var</span> userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        <span class="kw">var</span> resourceOwnerId = (context.Resource <span class="kw">as</span> <span class="type">Product</span>)?.OwnerId.ToString();
+
+        <span class="kw2">if</span> (userId == resourceOwnerId || context.User.IsInRole(<span class="str">"Admin"</span>))
+            context.Succeed(requirement);
+
+        <span class="kw2">return</span> Task.CompletedTask;
+    }
+}
+
+<span class="cm">// ── Usage on controllers ───────────────────────────────────────</span>
+<span class="attr">[Authorize]</span>                           <span class="cm">// Any authenticated user</span>
+<span class="attr">[Authorize(Roles = "Admin,Manager")]</span>  <span class="cm">// Role-based</span>
+<span class="attr">[Authorize(Policy = "PremiumUser")]</span>   <span class="cm">// Policy-based</span>
+<span class="attr">[AllowAnonymous]</span>                      <span class="cm">// Override — public endpoint</span></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: CORS
+════════════════════════════════ -->
+<section class="section" id="cors">
+  <div class="section-label">Auth & Security</div>
+  <h2>CORS <em>Configuration</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">CORS Policies</span></div>
+    <pre><span class="cm">// ── Define named policies ─────────────────────────────────────</span>
+builder.Services.AddCors(options =&gt;
+{
+    <span class="cm">// Development — permissive</span>
+    options.AddPolicy(<span class="str">"AllowAll"</span>, policy =&gt;
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+
+    <span class="cm">// Production — restrictive</span>
+    options.AddPolicy(<span class="str">"ProductionPolicy"</span>, policy =&gt;
+        policy
+            .WithOrigins(<span class="str">"https://myapp.com"</span>, <span class="str">"https://www.myapp.com"</span>)
+            .WithMethods(<span class="str">"GET"</span>, <span class="str">"POST"</span>, <span class="str">"PUT"</span>, <span class="str">"DELETE"</span>)
+            .WithHeaders(<span class="str">"Authorization"</span>, <span class="str">"Content-Type"</span>)
+            .AllowCredentials()         <span class="cm">// Required for cookies</span>
+            .SetPreflightMaxAge(TimeSpan.FromMinutes(<span class="num">10</span>)));
+});
+
+<span class="cm">// Apply globally</span>
+app.UseCors(<span class="str">"ProductionPolicy"</span>);
+
+<span class="cm">// Or per endpoint</span>
+<span class="attr">[EnableCors("AllowAll")]</span>
+<span class="kw">public</span> IActionResult <span class="fn">PublicEndpoint</span>() =&gt; Ok();
+
+<span class="attr">[DisableCors]</span>
+<span class="kw">public</span> IActionResult <span class="fn">InternalEndpoint</span>() =&gt; Ok();</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: HTTPCLIENT
+════════════════════════════════ -->
+<section class="section" id="httpclient">
+  <div class="section-label">HTTP & Services</div>
+  <h2>HttpClient <em>&amp; IHttpClientFactory</em></h2>
+  <p>Never create raw <code>HttpClient</code> instances directly — it causes socket exhaustion. Always use <code>IHttpClientFactory</code>.</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Named + Typed Clients</span></div>
+    <pre><span class="cm">// ── Named client ──────────────────────────────────────────────</span>
+builder.Services.AddHttpClient(<span class="str">"PaymentApi"</span>, client =&gt;
+{
+    client.BaseAddress = <span class="kw">new</span> Uri(<span class="str">"https://api.payments.com/"</span>);
+    client.DefaultRequestHeaders.Add(<span class="str">"X-Api-Key"</span>, config[<span class="str">"PaymentApi:Key"</span>]);
+    client.Timeout = TimeSpan.FromSeconds(<span class="num">30</span>);
+});
+
+<span class="cm">// Usage in service</span>
+<span class="kw">public class</span> <span class="type">PaymentService</span>(<span class="type">IHttpClientFactory</span> factory)
+{
+    <span class="kw">public async</span> Task <span class="fn">ChargeAsync</span>(<span class="type">ChargeRequest</span> req)
+    {
+        <span class="kw">var</span> client = factory.CreateClient(<span class="str">"PaymentApi"</span>);
+        <span class="kw">var</span> response = <span class="kw">await</span> client.PostAsJsonAsync(<span class="str">"charges"</span>, req);
+        response.EnsureSuccessStatusCode();
+    }
+}
+
+<span class="cm">// ── Typed client (preferred) ───────────────────────────────────</span>
+<span class="kw">public class</span> <span class="type">WeatherClient</span>(<span class="type">HttpClient</span> http)
+{
+    <span class="kw">public async</span> Task&lt;<span class="type">WeatherData</span>&gt; <span class="fn">GetForecastAsync</span>(<span class="type">string</span> city)
+    {
+        <span class="kw">var</span> data = <span class="kw">await</span> http.GetFromJsonAsync&lt;<span class="type">WeatherData</span>&gt;(<span class="str">$"forecast?city={city}"</span>);
+        <span class="kw2">return</span> data ?? <span class="kw">throw new</span> <span class="type">InvalidOperationException</span>(<span class="str">"No data"</span>);
+    }
+}
+
+<span class="cm">// Register typed client + Polly resilience (.NET 8 builtin)</span>
+builder.Services.AddHttpClient&lt;<span class="type">WeatherClient</span>&gt;(c =&gt;
+    c.BaseAddress = <span class="kw">new</span> Uri(<span class="str">"https://api.weather.com/"</span>))
+    .AddStandardResilienceHandler();    <span class="cm">// Retry + circuit breaker built-in (.NET 8)</span></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: BACKGROUND SERVICES
+════════════════════════════════ -->
+<section class="section" id="background">
+  <div class="section-label">HTTP & Services</div>
+  <h2>Background <em>Services</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">BackgroundService + IHostedService</span></div>
+    <pre><span class="cm">// ── Periodic background task ───────────────────────────────────</span>
+<span class="kw">public class</span> <span class="type">EmailQueueProcessor</span>(<span class="type">IServiceScopeFactory</span> scopeFactory,
+                                    <span class="type">ILogger</span>&lt;<span class="type">EmailQueueProcessor</span>&gt; logger)
+    : <span class="type">BackgroundService</span>
+{
+    <span class="kw">protected override async</span> Task <span class="fn">ExecuteAsync</span>(<span class="type">CancellationToken</span> stoppingToken)
+    {
+        logger.LogInformation(<span class="str">"Email processor started"</span>);
+
+        <span class="kw">while</span> (!stoppingToken.IsCancellationRequested)
+        {
+            <span class="kw">try</span>
+            {
+                <span class="cm">// Create scope for scoped services (EF Core DbContext)</span>
+                <span class="kw">using</span> <span class="kw">var</span> scope = scopeFactory.CreateScope();
+                <span class="kw">var</span> emailService = scope.ServiceProvider
+                    .GetRequiredService&lt;<span class="iface">IEmailService</span>&gt;();
+
+                <span class="kw">await</span> emailService.ProcessQueueAsync(stoppingToken);
+            }
+            <span class="kw">catch</span> (<span class="type">Exception</span> ex) <span class="kw">when</span> (ex <span class="kw">is not</span> <span class="type">OperationCanceledException</span>)
+            {
+                logger.LogError(ex, <span class="str">"Error processing email queue"</span>);
+            }
+
+            <span class="kw">await</span> Task.Delay(TimeSpan.FromSeconds(<span class="num">30</span>), stoppingToken);
+        }
+    }
+}
+
+<span class="cm">// Register as hosted service</span>
+builder.Services.AddHostedService&lt;<span class="type">EmailQueueProcessor</span>&gt;();
+
+<span class="cm">// ── Timed background service ────────────────────────────────────</span>
+<span class="kw">public class</span> <span class="type">MetricsCollector</span> : <span class="type">IHostedService</span>, <span class="type">IDisposable</span>
+{
+    <span class="kw">private</span> <span class="type">Timer</span>? _timer;
+
+    <span class="kw">public</span> Task <span class="fn">StartAsync</span>(<span class="type">CancellationToken</span> ct)
+    {
+        _timer = <span class="kw">new</span> <span class="type">Timer</span>(CollectMetrics, <span class="kw">null</span>, TimeSpan.Zero, TimeSpan.FromMinutes(<span class="num">1</span>));
+        <span class="kw2">return</span> Task.CompletedTask;
+    }
+
+    <span class="kw">private void</span> <span class="fn">CollectMetrics</span>(<span class="type">object</span>? state) =&gt; <span class="cm">/* gather metrics */</span>{}
+
+    <span class="kw">public</span> Task <span class="fn">StopAsync</span>(<span class="type">CancellationToken</span> ct)
+    {
+        _timer?.Change(Timeout.Infinite, <span class="num">0</span>);
+        <span class="kw2">return</span> Task.CompletedTask;
+    }
+
+    <span class="kw">public void</span> <span class="fn">Dispose</span>() =&gt; _timer?.Dispose();
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: CACHING
+════════════════════════════════ -->
+<section class="section" id="caching">
+  <div class="section-label">HTTP & Services</div>
+  <h2><em>Caching</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">IMemoryCache + IDistributedCache + Output Cache</span></div>
+    <pre><span class="cm">// ── In-Memory Cache ────────────────────────────────────────────</span>
+builder.Services.AddMemoryCache();
+
+<span class="kw">public class</span> <span class="type">ProductService</span>(<span class="type">IMemoryCache</span> cache, <span class="type">AppDbContext</span> db)
+{
+    <span class="kw">public async</span> Task&lt;<span class="type">Product</span>?&gt; <span class="fn">GetByIdAsync</span>(<span class="type">int</span> id)
+    {
+        <span class="kw">var</span> cacheKey = <span class="str">$"product:{id}"</span>;
+
+        <span class="kw2">if</span> (cache.TryGetValue(cacheKey, out <span class="type">Product</span>? cached))
+            <span class="kw2">return</span> cached;
+
+        <span class="kw">var</span> product = <span class="kw">await</span> db.Products.FindAsync(id);
+
+        <span class="kw2">if</span> (product <span class="kw">is not null</span>)
+            cache.Set(cacheKey, product, <span class="kw">new</span> <span class="type">MemoryCacheEntryOptions</span>
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(<span class="num">5</span>),
+                SlidingExpiration = TimeSpan.FromMinutes(<span class="num">2</span>),
+                Size = <span class="num">1</span>
+            });
+
+        <span class="kw2">return</span> product;
+    }
+}
+
+<span class="cm">// ── Redis Distributed Cache ────────────────────────────────────</span>
+builder.Services.AddStackExchangeRedisCache(options =&gt;
+    options.Configuration = builder.Configuration.GetConnectionString(<span class="str">"Redis"</span>));
+
+<span class="cm">// ── Output Cache (.NET 7+) — cache entire responses ────────────</span>
+builder.Services.AddOutputCache(options =&gt;
+{
+    options.AddBasePolicy(b =&gt; b.Cache());
+    options.AddPolicy(<span class="str">"ProductsCache"</span>, b =&gt;
+        b.Expire(TimeSpan.FromMinutes(<span class="num">2</span>)).Tag(<span class="str">"products"</span>));
+});
+
+app.UseOutputCache();
+
+<span class="attr">[OutputCache(PolicyName = "ProductsCache")]</span>
+<span class="attr">[HttpGet]</span>
+<span class="kw">public async</span> Task&lt;<span class="type">IActionResult</span>&gt; <span class="fn">GetAll</span>() =&gt; Ok(<span class="kw">await</span> _service.GetAllAsync());</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: LOGGING
+════════════════════════════════ -->
+<section class="section" id="logging">
+  <div class="section-label">Cross-Cutting</div>
+  <h2><em>Logging</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">ILogger + Structured Logging + Serilog</span></div>
+    <pre><span class="cm">// ── Built-in ILogger ───────────────────────────────────────────</span>
+<span class="kw">public class</span> <span class="type">OrderService</span>(<span class="type">ILogger</span>&lt;<span class="type">OrderService</span>&gt; logger)
+{
+    <span class="kw">public async</span> Task <span class="fn">ProcessOrderAsync</span>(<span class="type">Order</span> order)
+    {
+        <span class="cm">// Structured logging — use message templates, not string interpolation!</span>
+        logger.LogInformation(<span class="str">"Processing order {OrderId} for user {UserId}"</span>,
+            order.Id, order.UserId);
+
+        logger.LogWarning(<span class="str">"Order {OrderId} total {Total:C} exceeds threshold"</span>,
+            order.Id, order.Total);
+
+        logger.LogError(<span class="str">"Failed to process order {OrderId}: {Error}"</span>,
+            order.Id, "Payment declined");
+
+        <span class="cm">// High-performance logging (avoids string allocation when not needed)</span>
+        _logOrderProcessed(logger, order.Id, <span class="kw">null</span>);
+    }
+
+    <span class="cm">// Compile-time logging (fastest, .NET 6+)</span>
+    <span class="kw">private static readonly</span> <span class="type">Action</span>&lt;<span class="type">ILogger</span>, <span class="type">int</span>, <span class="type">Exception</span>?&gt; _logOrderProcessed =
+        LoggerMessage.Define&lt;<span class="type">int</span>&gt;(
+            LogLevel.Information,
+            EventId: <span class="kw">new</span>(<span class="num">1001</span>, <span class="str">"OrderProcessed"</span>),
+            <span class="str">"Order {OrderId} processed successfully"</span>);
+}
+
+<span class="cm">// ── Serilog (NuGet: Serilog.AspNetCore) ──────────────────────────</span>
+builder.Host.UseSerilog((ctx, config) =&gt;
+    config
+        .ReadFrom.Configuration(ctx.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithEnvironmentName()
+        .WriteTo.Console(
+            outputTemplate: <span class="str">"[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"</span>)
+        .WriteTo.File(<span class="str">"logs/app-.log"</span>, rollingInterval: RollingInterval.Day)
+        .WriteTo.Seq(<span class="str">"http://localhost:5341"</span>));  <span class="cm">// Seq log server</span></pre>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Level</th><th>When to use</th></tr></thead>
+      <tbody>
+        <tr><td><code>Trace</code></td><td>Extremely detailed, every step. Development only.</td></tr>
+        <tr class="hl-row"><td><code>Debug</code></td><td>Diagnostic information for developers. Disabled in prod.</td></tr>
+        <tr><td><code>Information</code></td><td>Normal application flow — requests received, tasks completed.</td></tr>
+        <tr class="hl-row"><td><code>Warning</code></td><td>Unexpected but handled — slow query, degraded service, retry.</td></tr>
+        <tr><td><code>Error</code></td><td>Failures that affect current operation — exceptions, DB errors.</td></tr>
+        <tr class="hl-row"><td><code>Critical</code></td><td>System-level failures requiring immediate action — app crash.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: ERROR HANDLING
+════════════════════════════════ -->
+<section class="section" id="error-handling">
+  <div class="section-label">Cross-Cutting</div>
+  <h2>Error <em>Handling</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Global Exception Handler + Problem Details</span></div>
+    <pre><span class="cm">// ── .NET 8 IExceptionHandler (preferred) ─────────────────────</span>
+<span class="kw">public class</span> <span class="type">GlobalExceptionHandler</span>(<span class="type">ILogger</span>&lt;<span class="type">GlobalExceptionHandler</span>&gt; logger)
+    : <span class="type">IExceptionHandler</span>
+{
+    <span class="kw">public async</span> ValueTask&lt;<span class="type">bool</span>&gt; <span class="fn">TryHandleAsync</span>(
+        <span class="type">HttpContext</span> context,
+        <span class="type">Exception</span> exception,
+        <span class="type">CancellationToken</span> ct)
+    {
+        <span class="kw">var</span> (status, title) = exception <span class="kw">switch</span>
+        {
+            <span class="type">NotFoundException</span>  =&gt; (<span class="num">404</span>, <span class="str">"Resource Not Found"</span>),
+            <span class="type">ValidationException</span> =&gt; (<span class="num">422</span>, <span class="str">"Validation Error"</span>),
+            <span class="type">UnauthorizedException</span> =&gt; (<span class="num">401</span>, <span class="str">"Unauthorized"</span>),
+            _                    =&gt; (<span class="num">500</span>, <span class="str">"Internal Server Error"</span>)
+        };
+
+        logger.LogError(exception, <span class="str">"Unhandled exception: {Message}"</span>, exception.Message);
+
+        <span class="cm">// Return RFC 7807 Problem Details</span>
+        <span class="kw">await</span> Results.Problem(
+            title: title,
+            statusCode: status,
+            detail: exception.Message,
+            extensions: <span class="kw">new</span> Dictionary&lt;<span class="type">string</span>, <span class="type">object</span>?&gt; {
+                [<span class="str">"traceId"</span>] = context.TraceIdentifier
+            }
+        ).ExecuteAsync(context);
+
+        <span class="kw2">return</span> <span class="kw">true</span>;
+    }
+}
+
+<span class="cm">// Register in Program.cs</span>
+builder.Services.AddExceptionHandler&lt;<span class="type">GlobalExceptionHandler</span>&gt;();
+builder.Services.AddProblemDetails();
+
+app.UseExceptionHandler();</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: FILTERS
+════════════════════════════════ -->
+<section class="section" id="filters">
+  <div class="section-label">Cross-Cutting</div>
+  <h2>Action <em>Filters</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">IActionFilter — before and after controller actions</span></div>
+    <pre><span class="cm">// Filter executes around controller action methods</span>
+<span class="kw">public class</span> <span class="type">PerformanceFilter</span>(<span class="type">ILogger</span>&lt;<span class="type">PerformanceFilter</span>&gt; logger) : <span class="type">IAsyncActionFilter</span>
+{
+    <span class="kw">public async</span> Task <span class="fn">OnActionExecutionAsync</span>(
+        <span class="type">ActionExecutingContext</span> ctx,
+        <span class="type">ActionExecutionDelegate</span> next)
+    {
+        <span class="kw">var</span> sw = Stopwatch.StartNew();
+
+        <span class="kw">var</span> executed = <span class="kw">await</span> next();  <span class="cm">// Execute the action</span>
+
+        sw.Stop();
+        <span class="kw2">if</span> (sw.ElapsedMilliseconds &gt; <span class="num">500</span>)
+            logger.LogWarning(<span class="str">"SLOW: {Action} took {Ms}ms"</span>,
+                ctx.ActionDescriptor.DisplayName, sw.ElapsedMilliseconds);
+    }
+}
+
+<span class="cm">// Filter types and execution order:</span>
+<span class="cm">// Authorization → Resource → Action → Exception → Result</span>
+
+<span class="cm">// Register globally</span>
+builder.Services.AddControllers(options =&gt;
+    options.Filters.Add&lt;<span class="type">PerformanceFilter</span>&gt;());
+
+<span class="cm">// Or per controller/action</span>
+<span class="attr">[ServiceFilter(typeof(PerformanceFilter))]</span>
+<span class="kw">public class</span> <span class="type">ProductsController</span> : <span class="type">ControllerBase</span> { }</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: HEALTH CHECKS
+════════════════════════════════ -->
+<section class="section" id="health-checks">
+  <div class="section-label">Cross-Cutting</div>
+  <h2>Health <em>Checks</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Health Checks for database, Redis, external APIs</span></div>
+    <pre>builder.Services
+    .AddHealthChecks()
+    .AddDbContextCheck&lt;<span class="type">AppDbContext</span>&gt;(<span class="str">"database"</span>)
+    .AddRedis(config.GetConnectionString(<span class="str">"Redis"</span>)!, <span class="str">"redis"</span>)
+    .AddUrlGroup(<span class="kw">new</span> Uri(<span class="str">"https://api.external.com/health"</span>), <span class="str">"external-api"</span>)
+    .AddCheck(<span class="str">"custom"</span>, () =&gt;
+        HealthCheckResult.Healthy(<span class="str">"All systems go"</span>));
+
+<span class="cm">// Expose endpoints</span>
+app.MapHealthChecks(<span class="str">"/health"</span>);            <span class="cm">// Simple: 200 / 503</span>
+app.MapHealthChecks(<span class="str">"/health/detail"</span>, <span class="kw">new</span> <span class="type">HealthCheckOptions</span>
+{
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse  <span class="cm">// JSON details</span>
+});</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: TESTING
+════════════════════════════════ -->
+<section class="section" id="testing">
+  <div class="section-label">Testing & Deploy</div>
+  <h2>Unit <em>&amp; Integration Tests</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">xUnit + Moq Unit Test</span></div>
+    <pre><span class="kw">public class</span> <span class="type">ProductServiceTests</span>
+{
+    <span class="kw">private readonly</span> Mock&lt;<span class="iface">IRepository</span>&lt;<span class="type">Product</span>&gt;&gt; _repoMock = <span class="kw">new</span>();
+    <span class="kw">private readonly</span> <span class="type">ProductService</span> _sut;
+
+    <span class="kw">public</span> <span class="fn">ProductServiceTests</span>()
+    {
+        _sut = <span class="kw">new</span> <span class="type">ProductService</span>(_repoMock.Object);
+    }
+
+    <span class="attr">[Fact]</span>
+    <span class="kw">public async</span> Task <span class="fn">GetById_ExistingId_ReturnsProduct</span>()
+    {
+        <span class="cm">// Arrange</span>
+        <span class="kw">var</span> product = <span class="kw">new</span> <span class="type">Product</span> { Id = <span class="num">1</span>, Name = <span class="str">"Laptop"</span>, Price = <span class="num">999</span> };
+        _repoMock.Setup(r =&gt; r.GetByIdAsync(<span class="num">1</span>)).ReturnsAsync(product);
+
+        <span class="cm">// Act</span>
+        <span class="kw">var</span> result = <span class="kw">await</span> _sut.GetByIdAsync(<span class="num">1</span>);
+
+        <span class="cm">// Assert</span>
+        Assert.NotNull(result);
+        Assert.Equal(<span class="str">"Laptop"</span>, result.Name);
+        _repoMock.Verify(r =&gt; r.GetByIdAsync(<span class="num">1</span>), Times.Once);
+    }
+
+    <span class="attr">[Theory]</span>
+    <span class="attr">[InlineData("", false)]</span>
+    <span class="attr">[InlineData("A", false)]</span>
+    <span class="attr">[InlineData("Valid Product", true)]</span>
+    <span class="kw">public void</span> <span class="fn">ValidateName_VariousInputs_ReturnsExpected</span>(<span class="type">string</span> name, <span class="type">bool</span> expected)
+    {
+        <span class="kw">var</span> result = _sut.ValidateName(name);
+        Assert.Equal(expected, result);
+    }
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span><span class="code-file">Integration Tests — WebApplicationFactory</span></div>
+    <pre><span class="cm">// Full integration test — spins up real ASP.NET Core test server</span>
+<span class="kw">public class</span> <span class="type">ProductsApiTests</span>(<span class="type">WebApplicationFactory</span>&lt;<span class="type">Program</span>&gt; factory)
+    : IClassFixture&lt;<span class="type">WebApplicationFactory</span>&lt;<span class="type">Program</span>&gt;&gt;
+{
+    <span class="kw">private readonly</span> <span class="type">HttpClient</span> _client = factory
+        .WithWebHostBuilder(builder =&gt;
+        {
+            builder.ConfigureServices(services =&gt;
+            {
+                <span class="cm">// Replace real DB with in-memory for tests</span>
+                services.RemoveAll&lt;<span class="type">DbContextOptions</span>&lt;<span class="type">AppDbContext</span>&gt;&gt;();
+                services.AddDbContext&lt;<span class="type">AppDbContext</span>&gt;(opts =&gt;
+                    opts.UseInMemoryDatabase(<span class="str">"TestDb"</span>));
+            });
+        })
+        .CreateClient();
+
+    <span class="attr">[Fact]</span>
+    <span class="kw">public async</span> Task <span class="fn">GetProducts_ReturnsOk</span>()
+    {
+        <span class="kw">var</span> response = <span class="kw">await</span> _client.GetAsync(<span class="str">"/api/products"</span>);
+        response.EnsureSuccessStatusCode();
+        <span class="kw">var</span> products = <span class="kw">await</span> response.Content.ReadFromJsonAsync&lt;List&lt;<span class="type">ProductDto</span>&gt;&gt;();
+        Assert.NotNull(products);
+    }
+
+    <span class="attr">[Fact]</span>
+    <span class="kw">public async</span> Task <span class="fn">CreateProduct_ValidRequest_Returns201</span>()
+    {
+        <span class="kw">var</span> request = <span class="kw">new</span> <span class="type">CreateProductRequest</span> { Name = <span class="str">"Test"</span>, Price = <span class="num">9.99m</span> };
+        <span class="kw">var</span> response = <span class="kw">await</span> _client.PostAsJsonAsync(<span class="str">"/api/products"</span>, request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     SECTION: DOCKER
+════════════════════════════════ -->
+<section class="section" id="docker">
+  <div class="section-label">Testing & Deploy</div>
+  <h2>Docker <em>&amp; Deployment</em></h2>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">dockerfile</span><span class="code-file">Dockerfile — multi-stage optimized build</span></div>
+    <pre><span class="cm"># Stage 1: Build</span>
+<span class="kw">FROM</span> mcr.microsoft.com/dotnet/sdk:8.0 <span class="kw">AS</span> build
+<span class="kw">WORKDIR</span> /src
+
+<span class="cm"># Copy csproj and restore (layer caching)</span>
+<span class="kw">COPY</span> ["src/MyApi/MyApi.csproj", "src/MyApi/"]
+<span class="kw">RUN</span> dotnet restore "src/MyApi/MyApi.csproj"
+
+<span class="cm"># Copy everything and build</span>
+<span class="kw">COPY</span> . .
+<span class="kw">WORKDIR</span> /src/src/MyApi
+<span class="kw">RUN</span> dotnet publish -c Release -o /app/publish --no-restore
+
+<span class="cm"># Stage 2: Runtime image (much smaller)</span>
+<span class="kw">FROM</span> mcr.microsoft.com/dotnet/aspnet:8.0 <span class="kw">AS</span> final
+<span class="kw">WORKDIR</span> /app
+<span class="kw">EXPOSE</span> 8080
+
+<span class="cm"># Create non-root user</span>
+<span class="kw">RUN</span> adduser --disabled-password --gecos "" appuser
+<span class="kw">USER</span> appuser
+
+<span class="kw">COPY</span> --from=build /app/publish .
+<span class="kw">ENTRYPOINT</span> ["dotnet", "MyApi.dll"]</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">yaml</span><span class="code-file">docker-compose.yml</span></div>
+    <pre>services:
+  api:
+    build: .
+    ports: ["8080:8080"]
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db;Database=MyDb;User=sa;Password=${DB_PASSWORD}
+      - Jwt__Key=${JWT_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "${DB_PASSWORD}"
+      ACCEPT_EULA: "Y"
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P ${DB_PASSWORD} -Q "SELECT 1"
+      interval: 10s
+      retries: 5</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════
+     CHEAT SHEET
+════════════════════════════════ -->
+<section class="section" id="cheatsheet">
+  <div class="section-label">Reference</div>
+  <h2>Quick <em>Cheat Sheet</em></h2>
+
+  <h3>Essential CLI Commands</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash</span></div>
+    <pre><span class="cm"># Create new Web API project</span>
+dotnet new webapi -n MyApi --use-controllers
+
+<span class="cm"># Minimal API template</span>
+dotnet new webapi -n MyApi --no-openapi
+
+<span class="cm"># Add NuGet packages</span>
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add package Serilog.AspNetCore
+dotnet add package FluentValidation.AspNetCore
+
+<span class="cm"># EF Core migrations</span>
+dotnet ef migrations add MigrationName
+dotnet ef database update
+dotnet ef migrations script --idempotent -o migrate.sql
+
+<span class="cm"># Run with hot reload</span>
+dotnet watch run
+
+<span class="cm"># Run tests</span>
+dotnet test --logger "console;verbosity=detailed"
+
+<span class="cm"># Publish for deployment</span>
+dotnet publish -c Release -o ./publish</pre>
+  </div>
+
+  <h3>Service Registration Quick Reference</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>What</th><th>Registration</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Controllers (MVC)</strong></td><td><code>services.AddControllers()</code></td></tr>
+        <tr class="hl-row"><td><strong>Swagger / OpenAPI</strong></td><td><code>services.AddEndpointsApiExplorer(); services.AddSwaggerGen()</code></td></tr>
+        <tr><td><strong>EF Core (SQL Server)</strong></td><td><code>services.AddDbContext&lt;TCtx&gt;(o => o.UseSqlServer(connStr))</code></td></tr>
+        <tr class="hl-row"><td><strong>JWT Auth</strong></td><td><code>services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer()</code></td></tr>
+        <tr><td><strong>Memory Cache</strong></td><td><code>services.AddMemoryCache()</code></td></tr>
+        <tr class="hl-row"><td><strong>Redis Cache</strong></td><td><code>services.AddStackExchangeRedisCache()</code></td></tr>
+        <tr><td><strong>CORS</strong></td><td><code>services.AddCors(o => o.AddPolicy("name", p => p.AllowAnyOrigin()))</code></td></tr>
+        <tr class="hl-row"><td><strong>Health Checks</strong></td><td><code>services.AddHealthChecks().AddDbContextCheck&lt;TCtx&gt;()</code></td></tr>
+        <tr><td><strong>HTTP Client</strong></td><td><code>services.AddHttpClient&lt;TClient&gt;(c => c.BaseAddress = new Uri(...))</code></td></tr>
+        <tr class="hl-row"><td><strong>Background Service</strong></td><td><code>services.AddHostedService&lt;TService&gt;()</code></td></tr>
+        <tr><td><strong>Rate Limiting</strong></td><td><code>services.AddRateLimiter()</code></td></tr>
+        <tr class="hl-row"><td><strong>Output Cache</strong></td><td><code>services.AddOutputCache()</code></td></tr>
+        <tr><td><strong>Problem Details</strong></td><td><code>services.AddProblemDetails(); services.AddExceptionHandler&lt;T&gt;()</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Key Attributes Quick Reference</h3>
+  <div class="badge-list">
+    <span class="badge badge-sky">[ApiController]</span>
+    <span class="badge badge-sky">[Route("api/[controller]")]</span>
+    <span class="badge badge-sky">[HttpGet/Post/Put/Delete/Patch]</span>
+    <span class="badge badge-violet">[FromBody]</span>
+    <span class="badge badge-violet">[FromQuery]</span>
+    <span class="badge badge-violet">[FromRoute]</span>
+    <span class="badge badge-violet">[FromHeader]</span>
+    <span class="badge badge-crimson">[Authorize]</span>
+    <span class="badge badge-crimson">[AllowAnonymous]</span>
+    <span class="badge badge-crimson">[Authorize(Roles="Admin")]</span>
+    <span class="badge badge-emerald">[Required]</span>
+    <span class="badge badge-emerald">[StringLength(100)]</span>
+    <span class="badge badge-emerald">[Range(1,99)]</span>
+    <span class="badge badge-amber">[OutputCache(Duration=60)]</span>
+    <span class="badge badge-amber">[ResponseCache]</span>
+    <span class="badge badge-amber">[ServiceFilter]</span>
+    <span class="badge badge-silver">[ProducesResponseType(200)]</span>
+    <span class="badge badge-silver">[Produces("application/json")]</span>
+  </div>
+
+  <h3>C# 12 Features Used in .NET 8</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">csharp</span></div>
+    <pre><span class="cm">// Primary constructors (C# 12) — cleaner service classes</span>
+<span class="kw">public class</span> <span class="type">OrderService</span>(<span class="iface">IOrderRepository</span> repo, <span class="type">ILogger</span>&lt;<span class="type">OrderService</span>&gt; logger) { }
+
+<span class="cm">// Collection expressions</span>
+<span class="type">int</span>[] ids = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+List&lt;<span class="type">string</span>&gt; names = [<span class="str">"Alice"</span>, <span class="str">"Bob"</span>];
+
+<span class="cm">// Pattern matching switch expression</span>
+<span class="kw">var</span> status = order.State <span class="kw">switch</span>
+{
+    OrderState.Pending   =&gt; <span class="str">"Awaiting payment"</span>,
+    OrderState.Paid      =&gt; <span class="str">"Processing"</span>,
+    OrderState.Shipped   =&gt; <span class="str">"On the way"</span>,
+    _                    =&gt; <span class="str">"Unknown"</span>
+};
+
+<span class="cm">// Records (immutable DTOs)</span>
+<span class="kw">public record</span> <span class="type">ProductDto</span>(<span class="type">int</span> Id, <span class="type">string</span> Name, <span class="type">decimal</span> Price);
+
+<span class="cm">// Required properties</span>
+<span class="kw">public class</span> <span class="type">Config</span>
+{
+    <span class="kw">public required string</span> Host { <span class="kw">get</span>; <span class="kw">init</span>; }
+    <span class="kw">public required int</span>    Port { <span class="kw">get</span>; <span class="kw">init</span>; }
+}</pre>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer class="footer">
+  <span>⚡ ASP.NET Core Handbook · .NET 8 · C# 12 · EF Core 8 · 2025</span>
+  <span>docs.microsoft.com/aspnet/core · learn.microsoft.com/dotnet</span>
+</footer>
+
+<script>
+  const sections = document.querySelectorAll('.section');
+  const navLinks = document.querySelectorAll('.nav-link');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const id = entry.target.id;
+        const active = document.querySelector(`.nav-link[href="#${id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
