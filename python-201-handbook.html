@@ -1,0 +1,2451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Python 201 — Advanced Internals Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep:      #050f0d;
+  --bg-panel:     #091512;
+  --bg-card:      #0d1f1b;
+  --bg-code:      #071410;
+  --border:       #1a3d35;
+  --border-bright:#2a6b5a;
+  --teal-dim:     #1a5c4e;
+  --teal-mid:     #0d9e82;
+  --teal-bright:  #00e5b8;
+  --emerald:      #10b981;
+  --emerald-glow: #34d399;
+  --lime:         #a3e635;
+  --text-primary: #d4f5ee;
+  --text-secondary:#7ec8b8;
+  --text-muted:   #4a8a7a;
+  --text-code:    #5eead4;
+  --accent-amber: #f59e0b;
+  --accent-coral: #f87171;
+  --accent-violet:#a78bfa;
+  --font-display: 'Syne', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+  --sidebar-w:    280px;
+  --nav-h:        60px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* ── CIRCUIT BOARD BACKGROUND ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.18;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 20%, rgba(0,229,184,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 85% 80%, rgba(16,185,129,0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(0,229,184,0.03) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Circuit traces decorative SVG lines */
+.circuit-traces {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.12;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  background: rgba(5,15,13,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  z-index: 100;
+  gap: 1rem;
+}
+
+.topbar-logo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--teal-bright);
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 20px rgba(0,229,184,0.5);
+  white-space: nowrap;
+}
+
+.topbar-logo span {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.topbar-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: rgba(0,229,184,0.12);
+  border: 1px solid var(--teal-dim);
+  color: var(--teal-bright);
+  padding: 2px 8px;
+  border-radius: 2px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.topbar-tag {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+/* ── LAYOUT ── */
+.layout {
+  display: flex;
+  padding-top: var(--nav-h);
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  position: sticky;
+  top: var(--nav-h);
+  height: calc(100vh - var(--nav-h));
+  overflow-y: auto;
+  background: rgba(9,21,18,0.95);
+  border-right: 1px solid var(--border);
+  padding: 1.5rem 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--teal-dim) transparent;
+}
+
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--teal-dim); border-radius: 2px; }
+
+.nav-section {
+  padding: 0.25rem 0;
+}
+
+.nav-section-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--teal-mid);
+  padding: 0.75rem 1.5rem 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-section-label::before {
+  content: '';
+  display: block;
+  width: 16px;
+  height: 1px;
+  background: var(--teal-mid);
+  opacity: 0.6;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 1.5rem;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+  line-height: 1.3;
+}
+
+.nav-link:hover {
+  color: var(--text-secondary);
+  background: rgba(0,229,184,0.04);
+  border-left-color: var(--teal-dim);
+}
+
+.nav-link.active {
+  color: var(--teal-bright);
+  background: rgba(0,229,184,0.08);
+  border-left-color: var(--teal-bright);
+  font-weight: 500;
+  text-shadow: 0 0 12px rgba(0,229,184,0.3);
+}
+
+.nav-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.nav-link.active .nav-dot { opacity: 1; }
+
+/* ── MAIN CONTENT ── */
+main {
+  flex: 1;
+  min-width: 0;
+  padding: 3rem 3.5rem 6rem;
+  max-width: 900px;
+}
+
+/* ── HERO ── */
+.hero {
+  padding: 3rem 0 4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--teal-mid);
+  margin-bottom: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hero-eyebrow::before, .hero-eyebrow::after {
+  content: '';
+  display: block;
+  height: 1px;
+  background: linear-gradient(90deg, var(--teal-mid), transparent);
+}
+
+.hero-eyebrow::before { width: 30px; }
+.hero-eyebrow::after { width: 60px; }
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  margin-bottom: 1.5rem;
+}
+
+.hero h1 .py { color: var(--teal-bright); text-shadow: 0 0 40px rgba(0,229,184,0.4); }
+.hero h1 .num { color: var(--emerald-glow); }
+.hero h1 .sub {
+  display: block;
+  font-size: 0.45em;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  margin-top: 0.3em;
+}
+
+.hero-desc {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 560px;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 4px 10px;
+  border-radius: 2px;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+.chip-teal { background: rgba(0,229,184,0.1); border: 1px solid rgba(0,229,184,0.25); color: var(--teal-bright); }
+.chip-emerald { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: var(--emerald-glow); }
+.chip-violet { background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.25); color: var(--accent-violet); }
+.chip-amber { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); color: var(--accent-amber); }
+
+.hero-divider {
+  margin-top: 3rem;
+  height: 1px;
+  background: linear-gradient(90deg, var(--teal-bright), var(--emerald), transparent);
+  opacity: 0.3;
+}
+
+/* ── SECTIONS ── */
+.section {
+  padding: 4rem 0 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section:last-child { border-bottom: none; }
+
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+
+.section-number {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--teal-mid);
+  background: rgba(0,229,184,0.08);
+  border: 1px solid var(--teal-dim);
+  padding: 3px 8px;
+  border-radius: 2px;
+  margin-top: 0.35rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1.15;
+}
+
+.section-title .accent { color: var(--teal-bright); }
+
+/* ── SUBSECTIONS ── */
+h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--emerald-glow);
+  margin: 2.5rem 0 1rem;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+h3::before {
+  content: '▸';
+  color: var(--teal-mid);
+  font-size: 0.8em;
+}
+
+h4 {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 1.5rem 0 0.5rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+p {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  font-size: 0.93rem;
+  line-height: 1.75;
+}
+
+/* ── CODE BLOCKS ── */
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--teal-bright);
+  border-radius: 4px;
+  margin: 1.25rem 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.code-block::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,229,184,0.02) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 1rem;
+  background: rgba(0,229,184,0.05);
+  border-bottom: 1px solid var(--border);
+}
+
+.code-lang {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--teal-mid);
+}
+
+.code-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.code-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--teal-dim);
+  opacity: 0.5;
+}
+
+pre {
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: var(--text-code);
+}
+
+pre::-webkit-scrollbar { height: 4px; }
+pre::-webkit-scrollbar-track { background: transparent; }
+pre::-webkit-scrollbar-thumb { background: var(--teal-dim); border-radius: 2px; }
+
+.kw  { color: #67e8f9; font-weight: 600; }   /* keywords */
+.fn  { color: #86efac; }                       /* functions */
+.st  { color: #fde68a; }                       /* strings */
+.cm  { color: #4a8a7a; font-style: italic; }   /* comments */
+.nm  { color: #c4b5fd; }                       /* numbers/names */
+.op  { color: var(--teal-bright); }            /* operators */
+.cl  { color: #f9a8d4; }                       /* class names */
+.dc  { color: #fdba74; }                       /* decorators */
+.mg  { color: #5eead4; font-weight: 600; }     /* magic methods */
+
+/* ── INLINE CODE ── */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--teal-bright);
+  background: rgba(0,229,184,0.08);
+  border: 1px solid rgba(0,229,184,0.15);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* ── TABLES ── */
+.table-wrap {
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+}
+
+th {
+  background: rgba(0,229,184,0.08);
+  color: var(--teal-bright);
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-bright);
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+td {
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(0,229,184,0.03); }
+
+td:first-child {
+  color: var(--teal-bright);
+  font-weight: 500;
+}
+
+/* ── CALLOUTS ── */
+.callout {
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+  border-left: 3px solid;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.callout-title {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.callout-info {
+  background: rgba(0,229,184,0.05);
+  border-color: var(--teal-bright);
+}
+.callout-info .callout-title { color: var(--teal-bright); }
+.callout-info p { color: var(--text-secondary); margin: 0; }
+
+.callout-warn {
+  background: rgba(245,158,11,0.06);
+  border-color: var(--accent-amber);
+}
+.callout-warn .callout-title { color: var(--accent-amber); }
+.callout-warn p { color: #d4a96a; margin: 0; }
+
+.callout-danger {
+  background: rgba(248,113,113,0.06);
+  border-color: var(--accent-coral);
+}
+.callout-danger .callout-title { color: var(--accent-coral); }
+.callout-danger p { color: #f8b4b4; margin: 0; }
+
+.callout-violet {
+  background: rgba(167,139,250,0.06);
+  border-color: var(--accent-violet);
+}
+.callout-violet .callout-title { color: var(--accent-violet); }
+.callout-violet p { color: #c4b5fd; margin: 0; }
+
+/* ── GRID CARDS ── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1rem 1.2rem;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.card:hover {
+  border-color: var(--teal-dim);
+  transform: translateY(-2px);
+}
+
+.card-title {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--teal-bright);
+  margin-bottom: 0.4rem;
+}
+
+.card-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── DUNDER TABLE ── */
+.dunder-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  margin: 0.75rem 0;
+}
+
+.dunder-name {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--emerald-glow);
+  margin-bottom: 0.25rem;
+}
+
+.dunder-trigger {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent-amber);
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.2);
+  padding: 1px 6px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-bottom: 0.4rem;
+}
+
+.dunder-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── DIAGRAM BOX ── */
+.diagram {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1.5rem 2rem;
+  margin: 1.25rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-code);
+  line-height: 1.8;
+  overflow-x: auto;
+}
+
+/* ── TAG PILLS ── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-weight: 600;
+  margin: 2px;
+}
+
+.pill-g { background: rgba(52,211,153,0.12); color: var(--emerald-glow); border: 1px solid rgba(52,211,153,0.25); }
+.pill-b { background: rgba(0,229,184,0.1); color: var(--teal-bright); border: 1px solid rgba(0,229,184,0.2); }
+.pill-v { background: rgba(167,139,250,0.1); color: var(--accent-violet); border: 1px solid rgba(167,139,250,0.2); }
+.pill-r { background: rgba(248,113,113,0.1); color: var(--accent-coral); border: 1px solid rgba(248,113,113,0.2); }
+
+/* ── TWO-COL ── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+@media (max-width: 700px) {
+  .two-col { grid-template-columns: 1fr; }
+  main { padding: 2rem 1.5rem 4rem; }
+  .sidebar { display: none; }
+  .hero h1 { font-size: 2.2rem; }
+}
+
+/* ── SCROLLSPY ANIMATIONS ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.section {
+  animation: fadeInUp 0.5s ease both;
+}
+
+/* ── FOOTER ── */
+.doc-footer {
+  margin-top: 4rem;
+  padding: 2rem 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* ── GLOW PULSE ON ACTIVE NAV ── */
+@keyframes navPulse {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: inset 0 0 8px rgba(0,229,184,0.15); }
+}
+.nav-link.active { animation: navPulse 3s ease infinite; }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+  <div class="topbar-logo"><span>handbook /</span> Python 201</div>
+  <span class="topbar-badge">Advanced Internals</span>
+  <div class="topbar-right">
+    <span class="topbar-tag">Python 3.12+</span>
+    <span class="topbar-tag">// series 7 of 8</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="nav-section">
+      <div class="nav-section-label">Data Model</div>
+      <a class="nav-link" href="#data-model"><span class="nav-dot"></span>Python Data Model</a>
+      <a class="nav-link" href="#lifecycle-dunders"><span class="nav-dot"></span>Lifecycle Dunders</a>
+      <a class="nav-link" href="#attr-dunders"><span class="nav-dot"></span>Attribute Dunders</a>
+      <a class="nav-link" href="#container-proto"><span class="nav-dot"></span>Container Protocol</a>
+      <a class="nav-link" href="#arith-ops"><span class="nav-dot"></span>Arithmetic Operators</a>
+      <a class="nav-link" href="#slots"><span class="nav-dot"></span>__slots__</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Functions</div>
+      <a class="nav-link" href="#func-anatomy"><span class="nav-dot"></span>Function Anatomy</a>
+      <a class="nav-link" href="#param-kinds"><span class="nav-dot"></span>Parameter Kinds</a>
+      <a class="nav-link" href="#args-kwargs"><span class="nav-dot"></span>*args / **kwargs Deep</a>
+      <a class="nav-link" href="#inspect-mod"><span class="nav-dot"></span>inspect Module</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">OOP Internals</div>
+      <a class="nav-link" href="#descriptors"><span class="nav-dot"></span>Descriptor Protocol</a>
+      <a class="nav-link" href="#metaclasses"><span class="nav-dot"></span>Metaclasses</a>
+      <a class="nav-link" href="#protocols"><span class="nav-dot"></span>Protocols</a>
+      <a class="nav-link" href="#dataclasses"><span class="nav-dot"></span>Dataclasses Deep</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Decorators</div>
+      <a class="nav-link" href="#adv-decorators"><span class="nav-dot"></span>Advanced Decorators</a>
+      <a class="nav-link" href="#class-decorators"><span class="nav-dot"></span>Class Decorators</a>
+      <a class="nav-link" href="#functools"><span class="nav-dot"></span>functools Toolkit</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Stdlib Deep</div>
+      <a class="nav-link" href="#itertools"><span class="nav-dot"></span>itertools Reference</a>
+      <a class="nav-link" href="#collections"><span class="nav-dot"></span>collections</a>
+      <a class="nav-link" href="#operator-mod"><span class="nav-dot"></span>operator Module</a>
+      <a class="nav-link" href="#copy-weakref"><span class="nav-dot"></span>copy / weakref</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Generators & Async</div>
+      <a class="nav-link" href="#gen-protocol"><span class="nav-dot"></span>Generator Protocol</a>
+      <a class="nav-link" href="#coroutines"><span class="nav-dot"></span>Coroutines</a>
+      <a class="nav-link" href="#asyncio-deep"><span class="nav-dot"></span>asyncio Deep</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Concurrency</div>
+      <a class="nav-link" href="#gil"><span class="nav-dot"></span>GIL Explained</a>
+      <a class="nav-link" href="#threading"><span class="nav-dot"></span>Threading</a>
+      <a class="nav-link" href="#multiprocessing"><span class="nav-dot"></span>Multiprocessing</a>
+      <a class="nav-link" href="#futures"><span class="nav-dot"></span>concurrent.futures</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-eyebrow">handbook series · vol 7</div>
+      <h1>
+        <span class="py">Py</span><span class="num">201</span>
+        <span class="sub">Advanced Python Internals & Concurrency</span>
+      </h1>
+      <p class="hero-desc">
+        Go beneath the surface. Master the data model, descriptor protocol, metaclasses, generator machinery, the GIL, and full async concurrency. Written for engineers who already know Python and want to understand <em>how</em> it works.
+      </p>
+      <div class="hero-chips">
+        <span class="chip chip-teal">Data Model</span>
+        <span class="chip chip-emerald">Descriptors</span>
+        <span class="chip chip-teal">Metaclasses</span>
+        <span class="chip chip-violet">asyncio</span>
+        <span class="chip chip-amber">Concurrency</span>
+        <span class="chip chip-emerald">Generators</span>
+        <span class="chip chip-teal">functools</span>
+        <span class="chip chip-violet">itertools</span>
+      </div>
+      <div class="hero-divider"></div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 1: DATA MODEL
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="data-model">
+      <div class="section-header">
+        <span class="section-number">01</span>
+        <h2 class="section-title">The Python <span class="accent">Data Model</span></h2>
+      </div>
+
+      <p>The Python data model is the system of <strong>special (dunder) methods</strong> that let your objects participate in the language itself — operators, iteration, attribute access, context managers, and more. Understanding it unlocks idiomatic Python.</p>
+
+      <div class="callout callout-info">
+        <div class="callout-title">▸ Core Concept</div>
+        <p>When Python evaluates <code>a + b</code>, it does not call a built-in function; it calls <code>a.__add__(b)</code>. Every language feature maps to one or more special methods. Your objects can implement any of them.</p>
+      </div>
+
+      <h3 id="lifecycle-dunders">Object Lifecycle</h3>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__new__(cls, *args, **kwargs)</div>
+        <div class="dunder-trigger">TRIGGER: ClassName(...) — before __init__</div>
+        <p class="dunder-desc">Allocates and returns the new object. Must return an instance of <code>cls</code> (or a different type). Rarely overridden — use for immutable types (subclassing <code>int</code>, <code>str</code>, <code>tuple</code>) or singleton patterns.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">class</span> <span class="cl">Singleton</span>:
+    _instance = <span class="kw">None</span>
+
+    <span class="kw">def</span> <span class="mg">__new__</span>(<span class="cl">cls</span>, *args, **kwargs):
+        <span class="kw">if</span> <span class="cl">cls</span>._instance <span class="kw">is</span> <span class="kw">None</span>:
+            <span class="cm"># super().__new__ actually allocates memory</span>
+            <span class="cl">cls</span>._instance = <span class="fn">super</span>().__new__(<span class="cl">cls</span>)
+        <span class="kw">return</span> <span class="cl">cls</span>._instance
+
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, value):
+        <span class="nm">self</span>.value = value  <span class="cm"># called even on re-use!</span>
+
+a = <span class="cl">Singleton</span>(<span class="nm">1</span>)
+b = <span class="cl">Singleton</span>(<span class="nm">2</span>)
+<span class="fn">print</span>(a <span class="kw">is</span> b)       <span class="cm"># True — same object</span>
+<span class="fn">print</span>(a.value)       <span class="cm"># 2  — __init__ ran again</span></pre>
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__init__(self, *args, **kwargs)</div>
+        <div class="dunder-trigger">TRIGGER: After __new__ returns an instance of cls</div>
+        <p class="dunder-desc">Initialises the already-created object. Must return <code>None</code>. This is where attributes are set.</p>
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__del__(self)</div>
+        <div class="dunder-trigger">TRIGGER: When reference count reaches zero (CPython) or GC collects</div>
+        <p class="dunder-desc">Finaliser — not a destructor. Timing is not guaranteed (especially with cycles). Prefer context managers. Never raises exceptions from here.</p>
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__call__(self, *args, **kwargs)</div>
+        <div class="dunder-trigger">TRIGGER: instance() — calling an object like a function</div>
+        <p class="dunder-desc">Makes any object callable. Used extensively in decorators, neural network modules, and function-like classes.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">class</span> <span class="cl">Multiplier</span>:
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, factor):
+        <span class="nm">self</span>.factor = factor
+
+    <span class="kw">def</span> <span class="mg">__call__</span>(<span class="nm">self</span>, x):
+        <span class="kw">return</span> <span class="nm">self</span>.factor * x
+
+triple = <span class="cl">Multiplier</span>(<span class="nm">3</span>)
+<span class="fn">print</span>(triple(<span class="nm">10</span>))   <span class="cm"># 30</span>
+<span class="fn">callable</span>(triple)    <span class="cm"># True</span></pre>
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__repr__(self) / __str__(self)</div>
+        <div class="dunder-trigger">repr(obj) / str(obj) / f"{obj}" / print(obj)</div>
+        <p class="dunder-desc"><code>__repr__</code> should return an unambiguous string, ideally one that recreates the object. <code>__str__</code> returns a readable string. <code>print()</code> uses <code>__str__</code>, falling back to <code>__repr__</code>.</p>
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__bool__(self) / __len__(self)</div>
+        <div class="dunder-trigger">bool(obj) / if obj: / while obj:</div>
+        <p class="dunder-desc">Truth testing calls <code>__bool__</code>. If absent, calls <code>__len__</code> — zero means false. If neither, objects are always truthy.</p>
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__hash__(self)</div>
+        <div class="dunder-trigger">hash(obj) / using as dict key or set member</div>
+        <p class="dunder-desc">If you define <code>__eq__</code>, Python sets <code>__hash__ = None</code> (unhashable). To keep hashability, also define <code>__hash__</code>. Objects that compare equal must have equal hashes.</p>
+      </div>
+
+      <h3 id="attr-dunders">Attribute Access Dunders</h3>
+
+      <p>Python's attribute system is rich and layered. Understanding the lookup order is essential for descriptors and metaclasses.</p>
+
+      <div class="diagram">
+attribute lookup order for  obj.name
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. type(obj).__mro__  → look for DATA descriptor in class hierarchy
+2. obj.__dict__       → instance dictionary
+3. type(obj).__mro__  → look for NON-DATA descriptor or plain class attr
+4. AttributeError
+
+data descriptor     = defines __set__ or __delete__
+non-data descriptor = defines __get__ only  (e.g., functions/methods)
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__getattr__(self, name)</div>
+        <div class="dunder-trigger">ONLY when normal lookup fails (AttributeError path)</div>
+        <p class="dunder-desc">Fallback for missing attributes. Great for lazy loading, proxy objects, or DSL attribute chaining. Avoid infinite recursion by not accessing undefined attrs inside it.</p>
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__getattribute__(self, name)</div>
+        <div class="dunder-trigger">EVERY attribute access — obj.anything</div>
+        <p class="dunder-desc">Called for <em>every</em> attribute access. Override with extreme care. Must call <code>super().__getattribute__(name)</code> for default behaviour. Easy to create infinite recursion.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">class</span> <span class="cl">AccessLog</span>:
+    <span class="kw">def</span> <span class="mg">__getattribute__</span>(<span class="nm">self</span>, name):
+        <span class="cm"># intercept every access</span>
+        <span class="fn">print</span>(<span class="st">f"getting '</span>{name}<span class="st">'"</span>)
+        <span class="cm"># MUST delegate to super — NOT self.name (infinite loop!)</span>
+        <span class="kw">return</span> <span class="fn">super</span>().<span class="mg">__getattribute__</span>(name)
+
+    <span class="kw">def</span> <span class="mg">__getattr__</span>(<span class="nm">self</span>, name):
+        <span class="cm"># only called when attr genuinely missing</span>
+        <span class="kw">return</span> <span class="st">f"&lt;dynamic:{name}&gt;"</span>
+
+obj = <span class="cl">AccessLog</span>()
+obj.x    <span class="cm"># → getting 'x' → "&lt;dynamic:x&gt;"</span></pre>
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__setattr__(self, name, value)</div>
+        <div class="dunder-trigger">obj.name = value — every attribute assignment</div>
+        <p class="dunder-desc">Intercepts all attribute writes. Use <code>object.__setattr__(self, name, value)</code> inside to avoid recursion.</p>
+      </div>
+
+      <div class="dunder-block">
+        <div class="dunder-name">__delattr__(self, name)</div>
+        <div class="dunder-trigger">del obj.name</div>
+        <p class="dunder-desc">Intercepts attribute deletion. Same recursion caveat applies.</p>
+      </div>
+
+      <h3 id="container-proto">Container Protocol</h3>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Dunder</th><th>Triggered by</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>__len__</td><td>len(obj)</td><td>Return non-negative int</td></tr>
+            <tr><td>__getitem__</td><td>obj[key]</td><td>Support slices via isinstance(key, slice)</td></tr>
+            <tr><td>__setitem__</td><td>obj[key] = val</td><td>—</td></tr>
+            <tr><td>__delitem__</td><td>del obj[key]</td><td>—</td></tr>
+            <tr><td>__contains__</td><td>x in obj</td><td>Falls back to __iter__ linear scan</td></tr>
+            <tr><td>__iter__</td><td>for x in obj / iter(obj)</td><td>Return iterator (object with __next__)</td></tr>
+            <tr><td>__next__</td><td>next(iterator)</td><td>Raise StopIteration when exhausted</td></tr>
+            <tr><td>__reversed__</td><td>reversed(obj)</td><td>Falls back to __len__ + __getitem__</td></tr>
+            <tr><td>__missing__</td><td>self[key] KeyError in dict subclass</td><td>dict subclasses only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">class</span> <span class="cl">RingBuffer</span>:
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, size):
+        <span class="nm">self</span>._data = [<span class="kw">None</span>] * size
+        <span class="nm">self</span>._size = size
+        <span class="nm">self</span>._head = <span class="nm">0</span>
+
+    <span class="kw">def</span> <span class="mg">__len__</span>(<span class="nm">self</span>):
+        <span class="kw">return</span> <span class="nm">self</span>._size
+
+    <span class="kw">def</span> <span class="mg">__getitem__</span>(<span class="nm">self</span>, idx):
+        <span class="kw">return</span> <span class="nm">self</span>._data[(self._head + idx) % <span class="nm">self</span>._size]
+
+    <span class="kw">def</span> <span class="mg">__setitem__</span>(<span class="nm">self</span>, idx, val):
+        <span class="nm">self</span>._data[(self._head + idx) % <span class="nm">self</span>._size] = val
+
+    <span class="kw">def</span> <span class="mg">__iter__</span>(<span class="nm">self</span>):
+        <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">self</span>._size):
+            <span class="kw">yield</span> <span class="nm">self</span>[i]
+
+    <span class="kw">def</span> <span class="mg">__contains__</span>(<span class="nm">self</span>, item):
+        <span class="kw">return</span> item <span class="kw">in</span> <span class="nm">self</span>._data</pre>
+      </div>
+
+      <h3 id="arith-ops">Arithmetic Operators</h3>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Op</th><th>Forward</th><th>Reflected</th><th>In-place</th></tr></thead>
+          <tbody>
+            <tr><td>+</td><td>__add__</td><td>__radd__</td><td>__iadd__</td></tr>
+            <tr><td>-</td><td>__sub__</td><td>__rsub__</td><td>__isub__</td></tr>
+            <tr><td>*</td><td>__mul__</td><td>__rmul__</td><td>__imul__</td></tr>
+            <tr><td>/</td><td>__truediv__</td><td>__rtruediv__</td><td>__itruediv__</td></tr>
+            <tr><td>//</td><td>__floordiv__</td><td>__rfloordiv__</td><td>__ifloordiv__</td></tr>
+            <tr><td>%</td><td>__mod__</td><td>__rmod__</td><td>__imod__</td></tr>
+            <tr><td>**</td><td>__pow__</td><td>__rpow__</td><td>__ipow__</td></tr>
+            <tr><td>&amp;</td><td>__and__</td><td>__rand__</td><td>__iand__</td></tr>
+            <tr><td>|</td><td>__or__</td><td>__ror__</td><td>__ior__</td></tr>
+            <tr><td>^</td><td>__xor__</td><td>__rxor__</td><td>__ixor__</td></tr>
+            <tr><td>&lt;&lt;</td><td>__lshift__</td><td>__rlshift__</td><td>__ilshift__</td></tr>
+            <tr><td>&gt;&gt;</td><td>__rshift__</td><td>__rrshift__</td><td>__irshift__</td></tr>
+            <tr><td>@</td><td>__matmul__</td><td>__rmatmul__</td><td>__imatmul__</td></tr>
+            <tr><td>-x</td><td>__neg__</td><td>—</td><td>—</td></tr>
+            <tr><td>+x</td><td>__pos__</td><td>—</td><td>—</td></tr>
+            <tr><td>~x</td><td>__invert__</td><td>—</td><td>—</td></tr>
+            <tr><td>abs()</td><td>__abs__</td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-title">▸ Reflected Dispatch Rule</div>
+        <p>For <code>a + b</code>: Python first tries <code>a.__add__(b)</code>. If it returns <code>NotImplemented</code>, Python tries <code>b.__radd__(a)</code>. If that also fails, raises <code>TypeError</code>. In-place operators (<code>+=</code>) should return <code>self</code> for mutables or a new object for immutables.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> functools <span class="kw">import</span> total_ordering
+
+<span class="dc">@total_ordering</span>  <span class="cm"># implement __eq__ + one of lt/le/gt/ge → get all 6</span>
+<span class="kw">class</span> <span class="cl">Vector</span>:
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, x, y):
+        <span class="nm">self</span>.x, <span class="nm">self</span>.y = x, y
+
+    <span class="kw">def</span> <span class="mg">__add__</span>(<span class="nm">self</span>, other):
+        <span class="kw">if not</span> <span class="fn">isinstance</span>(other, <span class="cl">Vector</span>):
+            <span class="kw">return</span> <span class="cl">NotImplemented</span>  <span class="cm"># triggers __radd__</span>
+        <span class="kw">return</span> <span class="cl">Vector</span>(<span class="nm">self</span>.x + other.x, <span class="nm">self</span>.y + other.y)
+
+    <span class="kw">def</span> <span class="mg">__mul__</span>(<span class="nm">self</span>, scalar):
+        <span class="kw">return</span> <span class="cl">Vector</span>(<span class="nm">self</span>.x * scalar, <span class="nm">self</span>.y * scalar)
+
+    <span class="mg">__rmul__</span> = <span class="mg">__mul__</span>  <span class="cm"># 3 * v  works too</span>
+
+    <span class="kw">def</span> <span class="mg">__iadd__</span>(<span class="nm">self</span>, other):
+        <span class="nm">self</span>.x += other.x
+        <span class="nm">self</span>.y += other.y
+        <span class="kw">return</span> <span class="nm">self</span>  <span class="cm"># mutate + return self</span>
+
+    <span class="kw">def</span> <span class="mg">__eq__</span>(<span class="nm">self</span>, other):
+        <span class="kw">return</span> (<span class="nm">self</span>.x, <span class="nm">self</span>.y) == (other.x, other.y)
+
+    <span class="kw">def</span> <span class="mg">__lt__</span>(<span class="nm">self</span>, other):
+        <span class="kw">return</span> (<span class="nm">self</span>.x**<span class="nm">2</span> + <span class="nm">self</span>.y**<span class="nm">2</span>) &lt; (other.x**<span class="nm">2</span> + other.y**<span class="nm">2</span>)
+
+    <span class="kw">def</span> <span class="mg">__repr__</span>(<span class="nm">self</span>):
+        <span class="kw">return</span> <span class="st">f"Vector(</span>{self.x}<span class="st">, </span>{self.y}<span class="st">)"</span></pre>
+      </div>
+
+      <h3 id="slots">__slots__</h3>
+
+      <p><code>__slots__</code> replaces the per-instance <code>__dict__</code> with a fixed set of slot descriptors stored in the class, significantly reducing memory overhead and slightly speeding up attribute access.</p>
+
+      <div class="two-col">
+        <div class="callout callout-info" style="margin:0">
+          <div class="callout-title">▸ With __slots__</div>
+          <p>~56 bytes/instance (CPython 3.12)<br>No __dict__ overhead<br>Attribute names fixed at class creation<br>Can't add arbitrary attrs at runtime</p>
+        </div>
+        <div class="callout callout-warn" style="margin:0">
+          <div class="callout-title">▸ Without __slots__</div>
+          <p>~248 bytes/instance minimum<br>__dict__ is a hash map per object<br>Fully dynamic — add any attr<br>Better for exploratory / generic code</p>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">class</span> <span class="cl">Point</span>:
+    __slots__ = (<span class="st">'x'</span>, <span class="st">'y'</span>)  <span class="cm"># tuple of allowed attr names</span>
+
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, x, y):
+        <span class="nm">self</span>.x = x  <span class="cm"># uses slot descriptor, not __dict__</span>
+        <span class="nm">self</span>.y = y
+
+p = <span class="cl">Point</span>(<span class="nm">1</span>, <span class="nm">2</span>)
+p.z = <span class="nm">3</span>   <span class="cm"># AttributeError — no __dict__, no slot for 'z'</span>
+
+<span class="cm"># Inheritance rules:</span>
+<span class="kw">class</span> <span class="cl">Point3D</span>(<span class="cl">Point</span>):
+    __slots__ = (<span class="st">'z'</span>,)  <span class="cm"># only add NEW slots</span>
+    <span class="cm"># if you omit __slots__ here, a __dict__ is added back!</span>
+
+<span class="cm"># Allow __weakref__ support:</span>
+<span class="kw">class</span> <span class="cl">WeakPoint</span>:
+    __slots__ = (<span class="st">'x'</span>, <span class="st">'y'</span>, <span class="st">'__weakref__'</span>)</pre>
+      </div>
+
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 2: FUNCTIONS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="func-anatomy">
+      <div class="section-header">
+        <span class="section-number">02</span>
+        <h2 class="section-title">Function <span class="accent">Internals</span></h2>
+      </div>
+
+      <p>Python functions are first-class objects — instances of <code>function</code> type with a rich set of attributes. Understanding the function object and call conventions unlocks advanced metaprogramming.</p>
+
+      <h3>Function Object Anatomy</h3>
+
+      <div class="diagram">
+function object attributes (fn.__xxx__)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+__name__       str     function name
+__qualname__   str     qualified name (e.g. 'Outer.inner')
+__doc__        str     docstring
+__module__     str     defining module name
+__globals__    dict    global namespace of defining module
+__closure__    tuple   cell objects holding free variables
+__code__       code    compiled bytecode object
+__defaults__   tuple   default values for positional params
+__kwdefaults__ dict    default values for keyword-only params
+__annotations__ dict   type annotations (param + return)
+__dict__       dict    arbitrary attributes set on the function
+__wrapped__    fn      original fn (set by functools.wraps)
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">def</span> <span class="fn">make_adder</span>(n):
+    <span class="kw">def</span> <span class="fn">adder</span>(x):
+        <span class="kw">return</span> x + n   <span class="cm"># n is a free variable → stored in closure</span>
+    <span class="kw">return</span> adder
+
+add5 = <span class="fn">make_adder</span>(<span class="nm">5</span>)
+add5.__closure__          <span class="cm"># (&lt;cell at 0x...&gt;,)</span>
+add5.__closure__[<span class="nm">0</span>].cell_contents   <span class="cm"># 5</span>
+add5.__code__.co_freevars  <span class="cm"># ('n',)</span>
+
+<span class="cm"># Mutate a closure cell (CPython hack — educational only):</span>
+<span class="kw">import</span> ctypes
+ctypes.cast(<span class="fn">id</span>(add5.__closure__[<span class="nm">0</span>]), ctypes.py_object).value.cell_contents = <span class="nm">10</span>
+add5(<span class="nm">1</span>)  <span class="cm"># 11 — closed-over value changed!</span></pre>
+      </div>
+
+      <h3 id="param-kinds">Parameter Kinds</h3>
+
+      <p>Python 3 has five distinct parameter kinds, distinguished by position and syntax.</p>
+
+      <div class="diagram">
+def fn(pos1, pos2, /, normal, *, kw_only, **kwargs)
+       ↑────↑ ↑     ↑──────↑  ↑  ↑───────↑  ↑──────↑
+       POSITIONAL_  POSITIONAL_ | KEYWORD_  VAR_
+       ONLY         OR_KEYWORD  | ONLY      KEYWORD
+
+POS_ONLY  →  before /    (can't be passed by name)
+POS_OR_KW →  between / and *   (default if neither / nor *)
+VAR_POS   →  *args       (captures extra positional)
+KW_ONLY   →  after *     (must be passed by name)
+VAR_KW    →  **kwargs    (captures extra keyword)
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">def</span> <span class="fn">api</span>(x, y, <span class="op">/</span>, z=<span class="nm">0</span>, <span class="op">*</span>, verbose=<span class="kw">False</span>, **opts):
+    <span class="kw">pass</span>
+
+<span class="cm"># x, y must be positional — name is implementation detail</span>
+<span class="fn">api</span>(<span class="nm">1</span>, <span class="nm">2</span>)               <span class="cm"># OK</span>
+<span class="fn">api</span>(<span class="nm">1</span>, <span class="nm">2</span>, z=<span class="nm">3</span>)          <span class="cm"># OK — z is pos-or-kw</span>
+<span class="fn">api</span>(<span class="nm">1</span>, y=<span class="nm">2</span>)             <span class="cm"># TypeError — y is positional-only</span>
+<span class="fn">api</span>(<span class="nm">1</span>, <span class="nm">2</span>, verbose=<span class="kw">True</span>) <span class="cm"># OK — verbose is kw-only</span>
+
+<span class="cm"># / in builtin signatures: len(obj) — obj is pos-only</span>
+<span class="cm"># Why? Allows renaming params in C impl without breaking callers</span></pre>
+      </div>
+
+      <h3 id="args-kwargs">*args / **kwargs Deep Dive</h3>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="cm"># TypedDict + Unpack for typed **kwargs (Python 3.12+)</span>
+<span class="kw">from</span> typing <span class="kw">import</span> TypedDict, Unpack
+
+<span class="kw">class</span> <span class="cl">Options</span>(TypedDict, total=<span class="kw">False</span>):
+    verbose: <span class="fn">bool</span>
+    timeout: <span class="fn">float</span>
+    retries: <span class="fn">int</span>
+
+<span class="kw">def</span> <span class="fn">connect</span>(host: <span class="fn">str</span>, **opts: Unpack[<span class="cl">Options</span>]) -> <span class="kw">None</span>:
+    <span class="cm"># type checker knows opts keys are verbose/timeout/retries</span>
+    timeout = opts.get(<span class="st">'timeout'</span>, <span class="nm">30.0</span>)
+    ...
+
+<span class="cm"># Spread / unpack at call site</span>
+args   = (<span class="st">'example.com'</span>,)
+kwargs = {<span class="st">'verbose'</span>: <span class="kw">True</span>, <span class="st">'timeout'</span>: <span class="nm">5.0</span>}
+<span class="fn">connect</span>(*args, **kwargs)
+
+<span class="cm"># Forwarding all args to another function</span>
+<span class="kw">def</span> <span class="fn">wrapper</span>(*args, **kwargs):
+    <span class="fn">print</span>(<span class="st">"before"</span>)
+    result = <span class="fn">original</span>(*args, **kwargs)  <span class="cm"># perfect forwarding</span>
+    <span class="fn">print</span>(<span class="st">"after"</span>)
+    <span class="kw">return</span> result</pre>
+      </div>
+
+      <h3 id="inspect-mod">inspect Module</h3>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">import</span> inspect
+
+<span class="kw">def</span> <span class="fn">greet</span>(name: <span class="fn">str</span>, *, loud: <span class="fn">bool</span> = <span class="kw">False</span>) -> <span class="fn">str</span>: ...
+
+sig = inspect.signature(<span class="fn">greet</span>)
+<span class="kw">for</span> name, param <span class="kw">in</span> sig.parameters.items():
+    <span class="fn">print</span>(name, param.kind, param.default, param.annotation)
+<span class="cm"># name  POSITIONAL_OR_KEYWORD  &lt;empty&gt;  &lt;class 'str'&gt;</span>
+<span class="cm"># loud  KEYWORD_ONLY           False    &lt;class 'bool'&gt;</span>
+
+<span class="cm"># Bind arguments programmatically:</span>
+bound = sig.bind(<span class="st">"Alice"</span>, loud=<span class="kw">True</span>)
+bound.apply_defaults()
+bound.arguments  <span class="cm"># OrderedDict([('name','Alice'),('loud',True)])</span>
+
+<span class="cm"># Useful predicates:</span>
+inspect.isfunction(fn)
+inspect.ismethod(obj.method)
+inspect.iscoroutinefunction(async_fn)
+inspect.isgeneratorfunction(gen_fn)
+
+<span class="cm"># Get source code:</span>
+inspect.getsource(<span class="fn">greet</span>)
+inspect.getfile(<span class="fn">greet</span>)</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 3: DESCRIPTORS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="descriptors">
+      <div class="section-header">
+        <span class="section-number">03</span>
+        <h2 class="section-title">Descriptor <span class="accent">Protocol</span></h2>
+      </div>
+
+      <p>Descriptors are the mechanism behind <code>property</code>, classmethods, staticmethods, slots, and ORM fields. Any class that defines <code>__get__</code>, <code>__set__</code>, or <code>__delete__</code> is a descriptor.</p>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Data Descriptor</div>
+          <p class="card-desc">Defines <code>__set__</code> and/or <code>__delete__</code>. Takes priority over instance <code>__dict__</code>. <code>property</code> is a data descriptor.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Non-data Descriptor</div>
+          <p class="card-desc">Defines <code>__get__</code> only. Instance <code>__dict__</code> takes priority. Functions (methods) are non-data descriptors.</p>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">class</span> <span class="cl">TypedAttr</span>:
+    <span class="st">"""Data descriptor that enforces a type."""</span>
+    <span class="kw">def</span> <span class="mg">__set_name__</span>(<span class="nm">self</span>, owner, name):
+        <span class="cm"># called when class body is executed (Python 3.6+)</span>
+        <span class="nm">self</span>.public_name  = name
+        <span class="nm">self</span>.private_name = <span class="st">'_'</span> + name  <span class="cm"># store in instance __dict__</span>
+
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, expected_type):
+        <span class="nm">self</span>.expected_type = expected_type
+
+    <span class="kw">def</span> <span class="mg">__get__</span>(<span class="nm">self</span>, obj, objtype=<span class="kw">None</span>):
+        <span class="kw">if</span> obj <span class="kw">is</span> <span class="kw">None</span>:
+            <span class="kw">return</span> <span class="nm">self</span>  <span class="cm"># Class.attr → return descriptor itself</span>
+        <span class="kw">return</span> <span class="fn">getattr</span>(obj, <span class="nm">self</span>.private_name, <span class="kw">None</span>)
+
+    <span class="kw">def</span> <span class="mg">__set__</span>(<span class="nm">self</span>, obj, value):
+        <span class="kw">if not</span> <span class="fn">isinstance</span>(value, <span class="nm">self</span>.expected_type):
+            <span class="kw">raise</span> <span class="cl">TypeError</span>(<span class="st">f"</span>{self.public_name}<span class="st"> must be </span>{self.expected_type.__name__}<span class="st">"</span>)
+        <span class="fn">setattr</span>(obj, <span class="nm">self</span>.private_name, value)
+
+    <span class="kw">def</span> <span class="mg">__delete__</span>(<span class="nm">self</span>, obj):
+        <span class="fn">delattr</span>(obj, <span class="nm">self</span>.private_name)
+
+<span class="kw">class</span> <span class="cl">Person</span>:
+    name = <span class="cl">TypedAttr</span>(<span class="fn">str</span>)
+    age  = <span class="cl">TypedAttr</span>(<span class="fn">int</span>)
+
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, name, age):
+        <span class="nm">self</span>.name = name  <span class="cm"># triggers TypedAttr.__set__</span>
+        <span class="nm">self</span>.age  = age
+
+p = <span class="cl">Person</span>(<span class="st">"Alice"</span>, <span class="nm">30</span>)
+p.age = <span class="st">"old"</span>   <span class="cm"># TypeError: age must be int</span></pre>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-title">▸ How property is implemented with descriptors</div>
+        <p><code>property</code> is itself a data descriptor written in C. When you write <code>@property</code>, you get a <code>property</code> object assigned to the class. Its <code>__get__</code> calls your getter, <code>__set__</code> calls your setter (or raises AttributeError if none), and <code>__delete__</code> calls your deleter.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="cm"># Pure-Python reimplementation of @property:</span>
+<span class="kw">class</span> <span class="cl">myproperty</span>:
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, fget=<span class="kw">None</span>, fset=<span class="kw">None</span>, fdel=<span class="kw">None</span>):
+        <span class="nm">self</span>.fget, <span class="nm">self</span>.fset, <span class="nm">self</span>.fdel = fget, fset, fdel
+
+    <span class="kw">def</span> <span class="mg">__get__</span>(<span class="nm">self</span>, obj, objtype=<span class="kw">None</span>):
+        <span class="kw">if</span> obj <span class="kw">is</span> <span class="kw">None</span>: <span class="kw">return</span> <span class="nm">self</span>
+        <span class="kw">if</span> <span class="nm">self</span>.fget <span class="kw">is</span> <span class="kw">None</span>: <span class="kw">raise</span> <span class="cl">AttributeError</span>
+        <span class="kw">return</span> <span class="nm">self</span>.fget(obj)
+
+    <span class="kw">def</span> <span class="mg">__set__</span>(<span class="nm">self</span>, obj, value):
+        <span class="kw">if</span> <span class="nm">self</span>.fset <span class="kw">is</span> <span class="kw">None</span>: <span class="kw">raise</span> <span class="cl">AttributeError</span>(<span class="st">"can't set"</span>)
+        <span class="nm">self</span>.fset(obj, value)
+
+    <span class="kw">def</span> <span class="fn">setter</span>(<span class="nm">self</span>, fset):
+        <span class="kw">return</span> <span class="cl">myproperty</span>(<span class="nm">self</span>.fget, fset, <span class="nm">self</span>.fdel)
+
+<span class="kw">class</span> <span class="cl">Temperature</span>:
+    <span class="dc">@myproperty</span>
+    <span class="kw">def</span> <span class="fn">celsius</span>(<span class="nm">self</span>):
+        <span class="kw">return</span> <span class="nm">self</span>._c
+
+    <span class="dc">@celsius.setter</span>
+    <span class="kw">def</span> <span class="fn">celsius</span>(<span class="nm">self</span>, val):
+        <span class="nm">self</span>._c = <span class="fn">float</span>(val)</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 4: METACLASSES
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="metaclasses">
+      <div class="section-header">
+        <span class="section-number">04</span>
+        <h2 class="section-title">Meta<span class="accent">classes</span></h2>
+      </div>
+
+      <p>A metaclass is the class of a class. Just as a class defines the behaviour of its instances, a metaclass defines the behaviour of its classes. The default metaclass is <code>type</code>.</p>
+
+      <div class="diagram">
+isinstance(42, int)     → True   (42 is an instance of int)
+isinstance(int, type)   → True   (int is an instance of type)
+isinstance(type, type)  → True   (type is its own metaclass)
+
+Hierarchy:
+  object     ← instance of → type
+  int        ← instance of → type
+  MyClass    ← instance of → MyMeta (if metaclass=MyMeta)
+  MyMeta     ← instance of → type
+      </div>
+
+      <h3>type() — Three-argument Form</h3>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="cm"># type(name, bases, namespace) creates a class dynamically</span>
+<span class="cl">Dog</span> = <span class="fn">type</span>(<span class="st">'Dog'</span>, (object,), {
+    <span class="st">'sound'</span>: <span class="st">'woof'</span>,
+    <span class="st">'speak'</span>: <span class="kw">lambda</span> <span class="nm">self</span>: <span class="st">f"</span>{self.sound}<span class="st">!"</span>
+})
+
+<span class="cm"># Equivalent to:</span>
+<span class="kw">class</span> <span class="cl">Dog</span>:
+    sound = <span class="st">'woof'</span>
+    <span class="kw">def</span> <span class="fn">speak</span>(<span class="nm">self</span>): <span class="kw">return</span> <span class="st">f"</span>{self.sound}<span class="st">!"</span>
+
+<span class="cm"># type.__call__ orchestrates class creation:</span>
+<span class="cm"># 1. MyMeta.__prepare__(name, bases)  → namespace dict</span>
+<span class="cm"># 2. Execute class body in namespace</span>
+<span class="cm"># 3. MyMeta.__new__(meta, name, bases, namespace) → cls</span>
+<span class="cm"># 4. MyMeta.__init__(cls, name, bases, namespace)</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">class</span> <span class="cl">RegistryMeta</span>(<span class="fn">type</span>):
+    <span class="st">"""Metaclass that auto-registers all subclasses."""</span>
+    _registry = {}
+
+    <span class="kw">def</span> <span class="mg">__new__</span>(<span class="cl">mcs</span>, name, bases, namespace):
+        cls = <span class="fn">super</span>().<span class="mg">__new__</span>(<span class="cl">mcs</span>, name, bases, namespace)
+        <span class="kw">if</span> bases:  <span class="cm"># don't register the base class itself</span>
+            <span class="cl">mcs</span>._registry[name] = cls
+        <span class="kw">return</span> cls
+
+    <span class="dc">@classmethod</span>
+    <span class="kw">def</span> <span class="fn">get</span>(<span class="cl">mcs</span>, name):
+        <span class="kw">return</span> <span class="cl">mcs</span>._registry[name]
+
+<span class="kw">class</span> <span class="cl">Plugin</span>(metaclass=<span class="cl">RegistryMeta</span>):
+    <span class="kw">pass</span>
+
+<span class="kw">class</span> <span class="cl">AudioPlugin</span>(<span class="cl">Plugin</span>):  <span class="cm"># auto-registered</span>
+    <span class="kw">pass</span>
+
+<span class="kw">class</span> <span class="cl">VideoPlugin</span>(<span class="cl">Plugin</span>):  <span class="cm"># auto-registered</span>
+    <span class="kw">pass</span>
+
+<span class="cl">RegistryMeta</span>._registry  <span class="cm"># {'AudioPlugin': &lt;class...&gt;, 'VideoPlugin': ...}</span></pre>
+      </div>
+
+      <h3>__init_subclass__ — Simpler Alternative</h3>
+
+      <p>For many metaclass use cases, <code>__init_subclass__</code> (Python 3.6+) is cleaner and avoids the full metaclass machinery.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">class</span> <span class="cl">Plugin</span>:
+    _registry = {}
+
+    <span class="kw">def</span> <span class="mg">__init_subclass__</span>(<span class="cl">cls</span>, alias=<span class="kw">None</span>, **kwargs):
+        <span class="fn">super</span>().<span class="mg">__init_subclass__</span>(**kwargs)
+        name = alias <span class="kw">or</span> cls.__name__
+        <span class="cl">Plugin</span>._registry[name] = cls
+
+<span class="kw">class</span> <span class="cl">AudioPlugin</span>(<span class="cl">Plugin</span>, alias=<span class="st">'audio'</span>):
+    <span class="kw">pass</span>
+
+<span class="kw">class</span> <span class="cl">VideoPlugin</span>(<span class="cl">Plugin</span>):
+    <span class="kw">pass</span>
+
+<span class="cl">Plugin</span>._registry
+<span class="cm"># {'audio': AudioPlugin, 'VideoPlugin': VideoPlugin}</span></pre>
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-title">⚠ Metaclass Conflicts</div>
+        <p>If two metaclasses in a hierarchy are not subclasses of each other, Python raises a <code>TypeError: metaclass conflict</code>. Resolve by creating a merged metaclass: <code>class Merged(MetaA, MetaB): pass</code> and using it explicitly.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 5: PROTOCOLS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="protocols">
+      <div class="section-header">
+        <span class="section-number">05</span>
+        <h2 class="section-title">Structural Sub<span class="accent">typing (Protocols)</span></h2>
+      </div>
+
+      <p><code>Protocol</code> (Python 3.8+) enables structural subtyping — "duck typing with type checker support". A class satisfies a Protocol if it has the required methods/attributes, without inheriting from it.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> typing <span class="kw">import</span> Protocol, runtime_checkable
+
+<span class="dc">@runtime_checkable</span>
+<span class="kw">class</span> <span class="cl">Drawable</span>(<span class="cl">Protocol</span>):
+    <span class="kw">def</span> <span class="fn">draw</span>(<span class="nm">self</span>) -> <span class="kw">None</span>: ...
+    <span class="kw">def</span> <span class="fn">resize</span>(<span class="nm">self</span>, factor: <span class="fn">float</span>) -> <span class="kw">None</span>: ...
+
+<span class="kw">class</span> <span class="cl">Circle</span>:          <span class="cm"># no inheritance!</span>
+    <span class="kw">def</span> <span class="fn">draw</span>(<span class="nm">self</span>):    <span class="fn">print</span>(<span class="st">"○"</span>)
+    <span class="kw">def</span> <span class="fn">resize</span>(<span class="nm">self</span>, f): <span class="nm">self</span>.r *= f
+
+<span class="kw">def</span> <span class="fn">render</span>(shape: <span class="cl">Drawable</span>) -> <span class="kw">None</span>:
+    shape.draw()
+
+<span class="fn">render</span>(<span class="cl">Circle</span>())            <span class="cm"># type checker ✓, works at runtime</span>
+<span class="fn">isinstance</span>(<span class="cl">Circle</span>(), <span class="cl">Drawable</span>)  <span class="cm"># True (runtime_checkable)</span>
+
+<span class="cm"># Protocol with class variables:</span>
+<span class="kw">class</span> <span class="cl">HasVersion</span>(<span class="cl">Protocol</span>):
+    version: <span class="fn">str</span>  <span class="cm"># must be a class-level attribute</span>
+
+<span class="cm"># Protocol inheritance for composition:</span>
+<span class="kw">class</span> <span class="cl">DrawableAndSaveable</span>(<span class="cl">Drawable</span>, <span class="cl">Protocol</span>):
+    <span class="kw">def</span> <span class="fn">save</span>(<span class="nm">self</span>, path: <span class="fn">str</span>) -> <span class="kw">None</span>: ...</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 6: DATACLASSES
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="dataclasses">
+      <div class="section-header">
+        <span class="section-number">06</span>
+        <h2 class="section-title">Dataclasses <span class="accent">Deep Dive</span></h2>
+      </div>
+
+      <p>The <code>dataclasses</code> module auto-generates boilerplate methods. Understanding all its knobs unlocks elegant, well-typed data classes.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field, InitVar, KW_ONLY, replace
+<span class="kw">from</span> typing <span class="kw">import</span> ClassVar
+
+<span class="dc">@dataclass</span>(order=<span class="kw">True</span>, frozen=<span class="kw">False</span>, slots=<span class="kw">True</span>)
+<span class="kw">class</span> <span class="cl">Point</span>:
+    <span class="cm"># Comparison uses (x, y) tuple ordering (order=True)</span>
+    x: <span class="fn">float</span> = <span class="nm">0.0</span>
+    y: <span class="fn">float</span> = <span class="nm">0.0</span>
+    label: <span class="fn">str</span> = field(default=<span class="st">''</span>, compare=<span class="kw">False</span>, repr=<span class="kw">True</span>)
+    <span class="cm"># field() options: default, default_factory, init, repr, compare, hash, metadata</span>
+    tags: <span class="fn">list</span> = field(default_factory=<span class="fn">list</span>)  <span class="cm"># NOT tags=[]!</span>
+    total: <span class="cl">ClassVar</span>[<span class="fn">int</span>] = <span class="nm">0</span>               <span class="cm"># excluded from all methods</span></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="cm"># __post_init__ and InitVar</span>
+<span class="dc">@dataclass</span>
+<span class="kw">class</span> <span class="cl">Circle</span>:
+    radius: <span class="fn">float</span>
+    unit: InitVar[<span class="fn">str</span>] = <span class="st">'m'</span>   <span class="cm"># passed to __init__ but NOT stored</span>
+
+    <span class="kw">def</span> <span class="mg">__post_init__</span>(<span class="nm">self</span>, unit):  <span class="cm"># InitVar comes here</span>
+        <span class="kw">if</span> unit == <span class="st">'cm'</span>:
+            <span class="nm">self</span>.radius /= <span class="nm">100</span>   <span class="cm"># convert to metres</span>
+
+c = <span class="cl">Circle</span>(<span class="nm">50</span>, unit=<span class="st">'cm'</span>)   <span class="cm"># radius → 0.5</span>
+
+<span class="cm"># KW_ONLY sentinel (Python 3.10+)</span>
+<span class="dc">@dataclass</span>
+<span class="kw">class</span> <span class="cl">Config</span>:
+    host: <span class="fn">str</span>
+    port: <span class="fn">int</span>
+    <span class="op">_</span>: KW_ONLY              <span class="cm"># all fields after this are kw-only</span>
+    debug: <span class="fn">bool</span> = <span class="kw">False</span>
+    timeout: <span class="fn">float</span> = <span class="nm">30.0</span>
+
+<span class="cl">Config</span>(<span class="st">"localhost"</span>, <span class="nm">8080</span>, debug=<span class="kw">True</span>)  <span class="cm"># debug must be keyword</span>
+
+<span class="cm"># replace() — copy with field overrides (like NamedTuple._replace)</span>
+c2 = replace(c, radius=<span class="nm">1.0</span>)
+<span class="fn">print</span>(c <span class="kw">is</span> c2)  <span class="cm"># False — new object</span></pre>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>@dataclass parameter</th><th>Default</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td>init</td><td>True</td><td>Generate __init__</td></tr>
+            <tr><td>repr</td><td>True</td><td>Generate __repr__</td></tr>
+            <tr><td>eq</td><td>True</td><td>Generate __eq__</td></tr>
+            <tr><td>order</td><td>False</td><td>Generate __lt__ etc. (requires eq=True)</td></tr>
+            <tr><td>frozen</td><td>False</td><td>Immutable — raises on __setattr__</td></tr>
+            <tr><td>unsafe_hash</td><td>False</td><td>Force __hash__ generation</td></tr>
+            <tr><td>slots</td><td>False</td><td>Auto-generate __slots__ (3.10+)</td></tr>
+            <tr><td>kw_only</td><td>False</td><td>All fields become keyword-only (3.10+)</td></tr>
+            <tr><td>match_args</td><td>True</td><td>Generate __match_args__ for pattern matching</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 7: ADVANCED DECORATORS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="adv-decorators">
+      <div class="section-header">
+        <span class="section-number">07</span>
+        <h2 class="section-title">Advanced <span class="accent">Decorators</span></h2>
+      </div>
+
+      <h3>Optional-argument Decorators</h3>
+
+      <p>A decorator that works both with and without arguments — <code>@retry</code> and <code>@retry(times=3)</code> — is tricky but elegant when done right.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">import</span> functools
+
+<span class="kw">def</span> <span class="fn">retry</span>(fn=<span class="kw">None</span>, *, times=<span class="nm">3</span>, exceptions=(<span class="cl">Exception</span>,)):
+    <span class="st">"""Works as @retry or @retry(times=5)."""</span>
+    <span class="kw">if</span> fn <span class="kw">is</span> <span class="kw">None</span>:
+        <span class="cm"># Called WITH args: @retry(times=5) → returns real decorator</span>
+        <span class="kw">return</span> functools.partial(retry, times=times, exceptions=exceptions)
+
+    <span class="dc">@functools.wraps</span>(fn)
+    <span class="kw">def</span> <span class="fn">wrapper</span>(*args, **kwargs):
+        <span class="kw">for</span> attempt <span class="kw">in</span> <span class="fn">range</span>(times):
+            <span class="kw">try</span>:
+                <span class="kw">return</span> fn(*args, **kwargs)
+            <span class="kw">except</span> exceptions <span class="kw">as</span> e:
+                <span class="kw">if</span> attempt == times - <span class="nm">1</span>:
+                    <span class="kw">raise</span>
+                <span class="fn">print</span>(<span class="st">f"Retry </span>{attempt+1}<span class="st">/</span>{times}<span class="st">: </span>{e}<span class="st">"</span>)
+    <span class="kw">return</span> wrapper
+
+<span class="dc">@retry</span>                    <span class="cm"># fn is the function → works</span>
+<span class="kw">def</span> <span class="fn">fetch_data</span>(): ...
+
+<span class="dc">@retry(times=5)</span>           <span class="cm"># fn is None → returns decorator</span>
+<span class="kw">def</span> <span class="fn">connect</span>(): ...</pre>
+      </div>
+
+      <h3>ParamSpec — Preserving Callable Types</h3>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> typing <span class="kw">import</span> ParamSpec, TypeVar, Callable
+<span class="kw">import</span> functools
+
+P = ParamSpec(<span class="st">'P'</span>)  <span class="cm"># captures parameter spec</span>
+T = TypeVar(<span class="st">'T'</span>)   <span class="cm"># captures return type</span>
+
+<span class="kw">def</span> <span class="fn">logged</span>(fn: Callable[P, T]) -> Callable[P, T]:
+    <span class="dc">@functools.wraps</span>(fn)
+    <span class="kw">def</span> <span class="fn">wrapper</span>(*args: P.args, **kwargs: P.kwargs) -> T:
+        <span class="fn">print</span>(<span class="st">f"calling {fn.__name__}"</span>)
+        result = fn(*args, **kwargs)
+        <span class="fn">print</span>(<span class="st">f"done"</span>)
+        <span class="kw">return</span> result
+    <span class="kw">return</span> wrapper
+
+<span class="dc">@logged</span>
+<span class="kw">def</span> <span class="fn">greet</span>(name: <span class="fn">str</span>, *, loud: <span class="fn">bool</span> = <span class="kw">False</span>) -> <span class="fn">str</span>:
+    <span class="kw">return</span> name.upper() <span class="kw">if</span> loud <span class="kw">else</span> name
+
+<span class="cm"># Type checker knows greet still accepts (name: str, *, loud: bool)</span></pre>
+      </div>
+
+      <h3 id="class-decorators">Class Decorators</h3>
+
+      <p>Class decorators receive the class object and return a (usually modified) class. Simpler than metaclasses for many use cases.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">def</span> <span class="fn">singleton</span>(cls):
+    <span class="st">"""Class decorator that converts any class into a singleton."""</span>
+    instances = {}
+    <span class="dc">@functools.wraps</span>(cls, updated=[])  <span class="cm"># keep cls name/doc</span>
+    <span class="kw">class</span> <span class="cl">Wrapper</span>(*cls.__bases__):
+        <span class="kw">def</span> <span class="mg">__new__</span>(<span class="cl">klass</span>, *a, **kw):
+            <span class="kw">if</span> cls <span class="kw">not in</span> instances:
+                instances[cls] = <span class="fn">super</span>().<span class="mg">__new__</span>(<span class="cl">klass</span>)
+                cls.__init__(instances[cls], *a, **kw)
+            <span class="kw">return</span> instances[cls]
+    <span class="kw">return</span> <span class="cl">Wrapper</span>
+
+<span class="kw">def</span> <span class="fn">add_repr</span>(cls):
+    <span class="st">"""Auto-generate __repr__ from annotations."""</span>
+    fields = <span class="fn">list</span>(cls.__annotations__.keys())
+    <span class="kw">def</span> <span class="mg">__repr__</span>(<span class="nm">self</span>):
+        attrs = <span class="st">', '</span>.join(<span class="st">f"</span>{f}<span class="st">=</span>{getattr(self,f)!r}<span class="st">"</span> <span class="kw">for</span> f <span class="kw">in</span> fields)
+        <span class="kw">return</span> <span class="st">f"</span>{cls.__name__}<span class="st">(</span>{attrs}<span class="st">)"</span>
+    cls.__repr__ = <span class="mg">__repr__</span>
+    <span class="kw">return</span> cls
+
+<span class="dc">@add_repr</span>
+<span class="kw">class</span> <span class="cl">Config</span>:
+    host: <span class="fn">str</span>
+    port: <span class="fn">int</span>
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, host, port):
+        <span class="nm">self</span>.host, <span class="nm">self</span>.port = host, port</pre>
+      </div>
+
+      <h3 id="functools">functools Toolkit</h3>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tool</th><th>Use</th></tr></thead>
+          <tbody>
+            <tr><td>@lru_cache(maxsize=128)</td><td>Memoize with LRU eviction. Use None for unlimited.</td></tr>
+            <tr><td>@cache</td><td>lru_cache(maxsize=None) — simpler, no eviction</td></tr>
+            <tr><td>@cached_property</td><td>Computed once, cached in instance __dict__. No locks — not thread-safe.</td></tr>
+            <tr><td>partial(fn, *args)</td><td>Freeze positional/keyword arguments</td></tr>
+            <tr><td>partialmethod</td><td>Like partial but for descriptors/methods</td></tr>
+            <tr><td>reduce(fn, iterable)</td><td>Left-fold / accumulate</td></tr>
+            <tr><td>@total_ordering</td><td>Fill in comparison methods from __eq__ + one other</td></tr>
+            <tr><td>@singledispatch</td><td>Function overloading based on first arg type</td></tr>
+            <tr><td>@singledispatchmethod</td><td>Method version (3.8+)</td></tr>
+            <tr><td>wraps(fn)</td><td>Copy __name__, __doc__, __annotations__, etc.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> functools <span class="kw">import</span> lru_cache, cached_property, singledispatch
+
+<span class="cm"># lru_cache — function must be hashable args</span>
+<span class="dc">@lru_cache</span>(maxsize=<span class="nm">256</span>)
+<span class="kw">def</span> <span class="fn">fib</span>(n: <span class="fn">int</span>) -> <span class="fn">int</span>:
+    <span class="kw">if</span> n < <span class="nm">2</span>: <span class="kw">return</span> n
+    <span class="kw">return</span> <span class="fn">fib</span>(n-<span class="nm">1</span>) + <span class="fn">fib</span>(n-<span class="nm">2</span>)
+
+<span class="fn">fib</span>.cache_info()    <span class="cm"># CacheInfo(hits=..., misses=..., maxsize=256, currsize=...)</span>
+<span class="fn">fib</span>.cache_clear()   <span class="cm"># empty the cache</span>
+
+<span class="cm"># cached_property</span>
+<span class="kw">class</span> <span class="cl">DataSet</span>:
+    <span class="kw">def</span> <span class="mg">__init__</span>(<span class="nm">self</span>, data):
+        <span class="nm">self</span>._data = data
+
+    <span class="dc">@cached_property</span>
+    <span class="kw">def</span> <span class="fn">mean</span>(<span class="nm">self</span>):   <span class="cm"># computed lazily on first access, then stored</span>
+        <span class="kw">return</span> <span class="fn">sum</span>(<span class="nm">self</span>._data) / <span class="fn">len</span>(<span class="nm">self</span>._data)
+
+<span class="cm"># singledispatch</span>
+<span class="dc">@singledispatch</span>
+<span class="kw">def</span> <span class="fn">process</span>(arg):
+    <span class="kw">raise</span> <span class="cl">NotImplementedError</span>(<span class="st">f"No handler for {type(arg)}"</span>)
+
+<span class="dc">@process.register</span>(<span class="fn">int</span>)
+<span class="kw">def</span> _(n): <span class="kw">return</span> n * <span class="nm">2</span>
+
+<span class="dc">@process.register</span>(<span class="fn">str</span>)
+<span class="kw">def</span> _(s): <span class="kw">return</span> s.upper()
+
+<span class="dc">@process.register</span>(<span class="fn">list</span>)
+<span class="dc">@process.register</span>(<span class="fn">tuple</span>)  <span class="cm"># stack registers for same handler</span>
+<span class="kw">def</span> _(seq): <span class="kw">return</span> [<span class="fn">process</span>(x) <span class="kw">for</span> x <span class="kw">in</span> seq]</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 8: ITERTOOLS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="itertools">
+      <div class="section-header">
+        <span class="section-number">08</span>
+        <h2 class="section-title">itertools <span class="accent">Reference</span></h2>
+      </div>
+
+      <h3>Infinite Iterators</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Function</th><th>Signature</th><th>Output</th></tr></thead>
+        <tbody>
+          <tr><td>count</td><td>count(start=0, step=1)</td><td>start, start+step, start+2*step …</td></tr>
+          <tr><td>cycle</td><td>cycle(iterable)</td><td>A B C A B C A B C …</td></tr>
+          <tr><td>repeat</td><td>repeat(obj, times=None)</td><td>obj obj obj … (finite if times set)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Finite / Combinatoric</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Function</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td>chain(*iterables)</td><td>Concatenate iterables lazily</td></tr>
+          <tr><td>chain.from_iterable(it)</td><td>Flatten one level: [[1,2],[3]] → 1 2 3</td></tr>
+          <tr><td>islice(it, stop) / islice(it, start, stop, step)</td><td>Lazy slice of iterator</td></tr>
+          <tr><td>zip_longest(*its, fillvalue=None)</td><td>Like zip but pads shortest</td></tr>
+          <tr><td>starmap(fn, iterable)</td><td>fn(*item) for item in iterable</td></tr>
+          <tr><td>takewhile(pred, it)</td><td>Yield until pred is False</td></tr>
+          <tr><td>dropwhile(pred, it)</td><td>Skip until pred is False, yield rest</td></tr>
+          <tr><td>filterfalse(pred, it)</td><td>Yield items where pred is falsy</td></tr>
+          <tr><td>compress(data, selectors)</td><td>Yield data where selector is truthy</td></tr>
+          <tr><td>groupby(it, key=None)</td><td>Group consecutive equal-key items</td></tr>
+          <tr><td>pairwise(it)</td><td>Overlapping pairs (3.10+): ABCDE → AB BC CD DE</td></tr>
+          <tr><td>batched(it, n)</td><td>Fixed-size chunks (3.12+)</td></tr>
+          <tr><td>accumulate(it, fn=add, initial=None)</td><td>Running total / prefix sums</td></tr>
+          <tr><td>product(*its, repeat=1)</td><td>Cartesian product</td></tr>
+          <tr><td>permutations(it, r=None)</td><td>All ordered r-length subsets</td></tr>
+          <tr><td>combinations(it, r)</td><td>All unordered r-length subsets (no repeat)</td></tr>
+          <tr><td>combinations_with_replacement(it, r)</td><td>Like combinations but with repeats</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> itertools <span class="kw">import</span> groupby, accumulate, batched, pairwise
+<span class="kw">import</span> operator
+
+<span class="cm"># groupby — input must be sorted by key!</span>
+data = [(<span class="st">'a'</span>, <span class="nm">1</span>), (<span class="st">'a'</span>, <span class="nm">2</span>), (<span class="st">'b'</span>, <span class="nm">3</span>), (<span class="st">'b'</span>, <span class="nm">4</span>)]
+<span class="kw">for</span> key, group <span class="kw">in</span> groupby(data, key=<span class="kw">lambda</span> x: x[<span class="nm">0</span>]):
+    <span class="fn">print</span>(key, <span class="fn">list</span>(group))
+<span class="cm"># 'a' [('a',1),('a',2)]   'b' [('b',3),('b',4)]</span>
+
+<span class="cm"># accumulate — prefix sums, running product, running max</span>
+<span class="fn">list</span>(accumulate([<span class="nm">1</span>,<span class="nm">2</span>,<span class="nm">3</span>,<span class="nm">4</span>]))                        <span class="cm"># [1,3,6,10]</span>
+<span class="fn">list</span>(accumulate([<span class="nm">1</span>,<span class="nm">2</span>,<span class="nm">3</span>,<span class="nm">4</span>], operator.mul))         <span class="cm"># [1,2,6,24]</span>
+<span class="fn">list</span>(accumulate([<span class="nm">3</span>,<span class="nm">1</span>,<span class="nm">4</span>,<span class="nm">1</span>,<span class="nm">5</span>], <span class="fn">max</span>))                <span class="cm"># [3,3,4,4,5]</span>
+
+<span class="cm"># batched (3.12) — strict chunking</span>
+<span class="fn">list</span>(batched(<span class="fn">range</span>(<span class="nm">7</span>), <span class="nm">3</span>))
+<span class="cm"># [(0,1,2), (3,4,5), (6,)]</span>
+
+<span class="cm"># pairwise (3.10) — overlapping windows of 2</span>
+<span class="fn">list</span>(pairwise(<span class="st">'ABCDE'</span>))
+<span class="cm"># [('A','B'), ('B','C'), ('C','D'), ('D','E')]</span>
+
+<span class="cm"># Manual sliding window of any size:</span>
+<span class="kw">from</span> collections <span class="kw">import</span> deque
+<span class="kw">def</span> <span class="fn">sliding</span>(it, n):
+    win = deque(<span class="fn">maxlen</span>=n)
+    <span class="kw">for</span> x <span class="kw">in</span> it:
+        win.append(x)
+        <span class="kw">if</span> <span class="fn">len</span>(win) == n: <span class="kw">yield</span> <span class="fn">tuple</span>(win)</pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 9: COLLECTIONS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="collections">
+      <div class="section-header">
+        <span class="section-number">09</span>
+        <h2 class="section-title">collections <span class="accent">Module</span></h2>
+      </div>
+
+      <h3>Counter</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> collections <span class="kw">import</span> Counter
+
+c = Counter(<span class="st">"abracadabra"</span>)
+<span class="cm"># Counter({'a':5, 'b':2, 'r':2, 'c':1, 'd':1})</span>
+
+c.most_common(<span class="nm">3</span>)          <span class="cm"># [('a',5), ('b',2), ('r',2)]</span>
+c.total()                  <span class="cm"># 11  (3.10+)</span>
+c + Counter(<span class="st">"abc"</span>)        <span class="cm"># add counts (drop zeros/negatives)</span>
+c - Counter(<span class="st">"abc"</span>)        <span class="cm"># subtract (drop zeros/negatives)</span>
+c & Counter(<span class="st">"abc"</span>)        <span class="cm"># intersection (min count)</span>
+c | Counter(<span class="st">"abc"</span>)        <span class="cm"># union (max count)</span>
+c[<span class="st">'z'</span>]                    <span class="cm"># 0 — missing keys return 0, not KeyError</span>
+
+<span class="cm"># Word frequency:</span>
+words = <span class="st">"the quick brown fox the fox"</span>.split()
+Counter(words).most_common() <span class="cm"># [('the',2),('fox',2),...]</span></pre>
+      </div>
+
+      <h3>defaultdict</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> collections <span class="kw">import</span> defaultdict
+
+<span class="cm"># Group items without KeyError:</span>
+graph = defaultdict(<span class="fn">list</span>)
+edges = [(<span class="nm">1</span>,<span class="nm">2</span>), (<span class="nm">1</span>,<span class="nm">3</span>), (<span class="nm">2</span>,<span class="nm">3</span>)]
+<span class="kw">for</span> src, dst <span class="kw">in</span> edges:
+    graph[src].append(dst)  <span class="cm"># no need to check/init</span>
+
+<span class="cm"># Nested defaultdict:</span>
+nested = defaultdict(<span class="kw">lambda</span>: defaultdict(<span class="fn">int</span>))
+nested[<span class="st">'a'</span>][<span class="st">'x'</span>] += <span class="nm">1</span>    <span class="cm"># no KeyError at either level</span>
+
+<span class="cm"># Counter implemented with defaultdict:</span>
+freq = defaultdict(<span class="fn">int</span>)
+<span class="kw">for</span> word <span class="kw">in</span> words:
+    freq[word] += <span class="nm">1</span></pre>
+      </div>
+
+      <h3>deque</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+dq = deque([<span class="nm">1</span>,<span class="nm">2</span>,<span class="nm">3</span>], maxlen=<span class="nm">5</span>)  <span class="cm"># circular buffer when maxlen set</span>
+dq.appendleft(<span class="nm">0</span>)     <span class="cm"># O(1) — unlike list.insert(0, x)</span>
+dq.popleft()          <span class="cm"># O(1) — unlike list.pop(0)</span>
+dq.rotate(<span class="nm">2</span>)          <span class="cm"># rotate right by 2 steps</span>
+dq.rotate(<span class="op">-</span><span class="nm">1</span>)         <span class="cm"># rotate left by 1</span>
+dq.extendleft([<span class="nm">10</span>,<span class="nm">11</span>]) <span class="cm"># each appended left → reverses order</span>
+
+<span class="cm"># Use as a bounded queue (maxlen) — oldest items auto-drop</span>
+recent = deque(maxlen=<span class="nm">3</span>)
+<span class="kw">for</span> x <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">6</span>): recent.append(x)
+<span class="cm"># deque([3,4,5], maxlen=3)</span></pre>
+      </div>
+
+      <h3>ChainMap</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> collections <span class="kw">import</span> ChainMap
+
+defaults = {<span class="st">'color'</span>: <span class="st">'blue'</span>, <span class="st">'size'</span>: <span class="nm">10</span>}
+overrides = {<span class="st">'color'</span>: <span class="st">'red'</span>}
+
+cfg = ChainMap(overrides, defaults)
+cfg[<span class="st">'color'</span>]  <span class="cm"># 'red'  — first map wins</span>
+cfg[<span class="st">'size'</span>]   <span class="cm"># 10    — falls through to defaults</span>
+
+<span class="cm"># Writes go to FIRST map only:</span>
+cfg[<span class="st">'weight'</span>] = <span class="nm">5</span>   <span class="cm"># added to overrides, not defaults</span>
+
+<span class="cm"># Use for variable scoping (like CPython's implementation):</span>
+base = ChainMap({}, cfg)   <span class="cm"># new child scope</span>
+base.parents               <span class="cm"># original ChainMap</span>
+base.maps                  <span class="cm"># list of all dicts in chain</span></pre>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Collection</th><th>Best for</th><th>Key advantage</th></tr></thead>
+          <tbody>
+            <tr><td>OrderedDict</td><td>Ordered dicts pre-3.7 / reordering</td><td>move_to_end(), popitem(last=True/False)</td></tr>
+            <tr><td>namedtuple</td><td>Lightweight record types</td><td>Tuple + named field access</td></tr>
+            <tr><td>UserDict/UserList/UserString</td><td>Subclassing built-ins safely</td><td>Avoids C-extension subclass pitfalls</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="operator-mod">operator Module</h3>
+      <p>Functions corresponding to built-in Python operators — useful for <code>sorted()</code>, <code>functools.reduce()</code>, and higher-order function patterns.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">import</span> operator
+
+<span class="cm"># Arithmetic</span>
+operator.add(<span class="nm">2</span>, <span class="nm">3</span>)      <span class="cm"># 5</span>
+operator.mul(<span class="nm">2</span>, <span class="nm">3</span>)      <span class="cm"># 6</span>
+
+<span class="cm"># Attribute / item access (great for key= args)</span>
+<span class="fn">sorted</span>(people, key=operator.attrgetter(<span class="st">'age'</span>, <span class="st">'name'</span>))
+<span class="fn">sorted</span>(rows,   key=operator.itemgetter(<span class="nm">2</span>, <span class="nm">0</span>))   <span class="cm"># col 2 then col 0</span>
+
+<span class="cm"># Method call</span>
+strip_all = <span class="fn">map</span>(operator.methodcaller(<span class="st">'strip'</span>), strings)
+
+<span class="cm"># Comparison</span>
+operator.lt(<span class="nm">1</span>, <span class="nm">2</span>)   <span class="cm"># True</span>
+operator.eq(<span class="st">'a'</span>, <span class="st">'a'</span>)  <span class="cm"># True</span>
+
+<span class="cm"># Logical</span>
+operator.truth(<span class="nm">0</span>)   <span class="cm"># False</span>
+operator.not_(<span class="nm">1</span>)    <span class="cm"># False</span>
+
+<span class="cm"># Use with functools.reduce:</span>
+<span class="kw">from</span> functools <span class="kw">import</span> reduce
+reduce(operator.add, [<span class="nm">1</span>,<span class="nm">2</span>,<span class="nm">3</span>,<span class="nm">4</span>])   <span class="cm"># 10</span>
+reduce(operator.mul, [<span class="nm">1</span>,<span class="nm">2</span>,<span class="nm">3</span>,<span class="nm">4</span>])   <span class="cm"># 24</span></pre>
+      </div>
+
+      <h3 id="copy-weakref">copy / weakref</h3>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">import</span> copy
+
+a = [[<span class="nm">1</span>,<span class="nm">2</span>], [<span class="nm">3</span>,<span class="nm">4</span>]]
+b = copy.copy(a)        <span class="cm"># shallow: new list, same inner lists</span>
+c = copy.deepcopy(a)    <span class="cm"># deep: new list AND new inner lists</span>
+
+b[<span class="nm">0</span>].append(<span class="nm">99</span>)  <span class="cm"># a[0] also changes! (same object)</span>
+c[<span class="nm">0</span>].append(<span class="nm">99</span>)  <span class="cm"># a[0] unchanged</span>
+
+<span class="cm"># Customise deep copy:</span>
+<span class="kw">class</span> <span class="cl">MyObj</span>:
+    <span class="kw">def</span> <span class="mg">__deepcopy__</span>(<span class="nm">self</span>, memo):
+        new = <span class="cl">MyObj</span>()
+        memo[<span class="fn">id</span>(<span class="nm">self</span>)] = new  <span class="cm"># important: register before recursion</span>
+        <span class="cm"># ... copy fields selectively</span>
+        <span class="kw">return</span> new
+
+<span class="cm"># weakref — reference that doesn't prevent GC</span>
+<span class="kw">import</span> weakref
+
+<span class="kw">class</span> <span class="cl">Node</span>: <span class="kw">pass</span>
+node = <span class="cl">Node</span>()
+ref = weakref.ref(node)  <span class="cm"># weak reference</span>
+ref()                     <span class="cm"># &lt;Node&gt; — alive</span>
+del node
+ref()                     <span class="cm"># None  — collected</span>
+
+<span class="cm"># WeakValueDictionary — auto-remove when values are GC'd</span>
+cache = weakref.WeakValueDictionary()
+cache[<span class="st">'key'</span>] = <span class="cl">Node</span>()  <span class="cm"># will disappear after this line!</span>
+
+<span class="cm"># WeakSet and WeakKeyDictionary also exist</span></pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 10: GENERATORS
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="gen-protocol">
+      <div class="section-header">
+        <span class="section-number">10</span>
+        <h2 class="section-title">Generator <span class="accent">Protocol</span></h2>
+      </div>
+
+      <p>Generators are iterators produced by generator functions (with <code>yield</code>) or generator expressions. They implement the full iterator protocol plus <code>send()</code>, <code>throw()</code>, and <code>close()</code>.</p>
+
+      <div class="diagram">
+Generator State Machine
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          ┌─────────────────┐
+          │    Created      │ ← gen = gen_fn()
+          └────────┬────────┘
+                   │ next(gen) or gen.send(None)
+          ┌────────▼────────┐
+     ┌───►│    Suspended    │◄─── yield value
+     │    └────────┬────────┘
+     │  next(gen)  │ next(gen)
+     │  gen.send(v)│ gen.throw(exc)
+     │             │ gen.close()
+     │    ┌────────▼────────┐
+     └────│    Running      │
+          └────────┬────────┘
+                   │ return / StopIteration
+          ┌────────▼────────┐
+          │     Closed      │
+          └─────────────────┘
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">def</span> <span class="fn">accumulator</span>():
+    <span class="st">"""Demonstrates send(), throw(), return value."""</span>
+    total = <span class="nm">0</span>
+    <span class="kw">while</span> <span class="kw">True</span>:
+        <span class="kw">try</span>:
+            value = <span class="kw">yield</span> total      <span class="cm"># suspend; receive sent value</span>
+        <span class="kw">except</span> <span class="cl">GeneratorExit</span>:
+            <span class="kw">return</span> total              <span class="cm"># return value from return</span>
+        <span class="kw">except</span> <span class="cl">ValueError</span>:
+            total = <span class="nm">0</span>               <span class="cm"># reset on throw(ValueError)</span>
+        <span class="kw">else</span>:
+            total += value
+
+gen = <span class="fn">accumulator</span>()
+<span class="fn">next</span>(gen)           <span class="cm"># advance to first yield → 0</span>
+gen.send(<span class="nm">10</span>)        <span class="cm"># send 10 → 10</span>
+gen.send(<span class="nm">5</span>)         <span class="cm"># send 5  → 15</span>
+gen.throw(<span class="cl">ValueError</span>)  <span class="cm"># resets → 0</span>
+gen.send(<span class="nm">3</span>)         <span class="cm"># → 3</span>
+
+<span class="cm"># yield from — delegate to sub-generator</span>
+<span class="kw">def</span> <span class="fn">chain_gen</span>(*iterables):
+    <span class="kw">for</span> it <span class="kw">in</span> iterables:
+        <span class="kw">yield from</span> it   <span class="cm"># passes send/throw/close through!</span>
+
+<span class="cm"># Generator return value captured by yield from:</span>
+<span class="kw">def</span> <span class="fn">inner</span>():
+    <span class="kw">yield</span> <span class="nm">1</span>
+    <span class="kw">return</span> <span class="st">'done'</span>
+
+<span class="kw">def</span> <span class="fn">outer</span>():
+    result = <span class="kw">yield from</span> <span class="fn">inner</span>()   <span class="cm"># result = 'done'</span>
+    <span class="fn">print</span>(<span class="st">f"inner returned: </span>{result}<span class="st">"</span>)</pre>
+      </div>
+
+      <h3 id="coroutines">Native Coroutines</h3>
+
+      <div class="callout callout-info">
+        <div class="callout-title">▸ async def vs generator-based coroutines</div>
+        <p>Before Python 3.5, coroutines were generator functions decorated with <code>@asyncio.coroutine</code> using <code>yield from</code>. Since 3.5, use <code>async def</code> / <code>await</code>. Generator-based coroutines are removed in 3.12.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">import</span> asyncio
+
+<span class="kw">async def</span> <span class="fn">fetch</span>(url: <span class="fn">str</span>) -> <span class="fn">str</span>:
+    <span class="cm"># awaitable = coroutine | Task | Future</span>
+    <span class="kw">async with</span> aiohttp.ClientSession() <span class="kw">as</span> sess:
+        <span class="kw">async with</span> sess.get(url) <span class="kw">as</span> resp:
+            <span class="kw">return await</span> resp.text()
+
+<span class="cm"># Async iteration:</span>
+<span class="kw">async def</span> <span class="fn">stream_lines</span>(path):
+    <span class="kw">async with</span> aiofiles.open(path) <span class="kw">as</span> f:
+        <span class="kw">async for</span> line <span class="kw">in</span> f:           <span class="cm"># __aiter__ / __anext__</span>
+            <span class="kw">yield</span> line.strip()           <span class="cm"># async generator!</span>
+
+<span class="cm"># Async context manager protocol:</span>
+<span class="kw">class</span> <span class="cl">AsyncTimer</span>:
+    <span class="kw">async def</span> <span class="mg">__aenter__</span>(<span class="nm">self</span>):
+        <span class="nm">self</span>.start = asyncio.get_event_loop().time()
+        <span class="kw">return</span> <span class="nm">self</span>
+
+    <span class="kw">async def</span> <span class="mg">__aexit__</span>(<span class="nm">self</span>, *exc):
+        elapsed = asyncio.get_event_loop().time() - <span class="nm">self</span>.start
+        <span class="fn">print</span>(<span class="st">f"{elapsed:.3f}s"</span>)</pre>
+      </div>
+
+      <h3 id="asyncio-deep">asyncio Deep Dive</h3>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">import</span> asyncio
+
+<span class="cm"># TaskGroup (3.11+) — structured concurrency</span>
+<span class="kw">async def</span> <span class="fn">main</span>():
+    <span class="kw">async with</span> asyncio.TaskGroup() <span class="kw">as</span> tg:
+        t1 = tg.create_task(<span class="fn">fetch</span>(<span class="st">"https://example.com"</span>))
+        t2 = tg.create_task(<span class="fn">fetch</span>(<span class="st">"https://example.org"</span>))
+    <span class="cm"># both done here; any exception cancels all tasks</span>
+    <span class="fn">print</span>(t1.result(), t2.result())
+
+<span class="cm"># asyncio.shield — prevent cancellation of a subtask</span>
+<span class="kw">async def</span> <span class="fn">safe_save</span>(data):
+    <span class="kw">try</span>:
+        result = <span class="kw">await</span> asyncio.shield(<span class="fn">write_to_db</span>(data))
+    <span class="kw">except</span> asyncio.CancelledError:
+        <span class="fn">print</span>(<span class="st">"cancelled — but write_to_db still runs!"</span>)
+        <span class="kw">raise</span>
+
+<span class="cm"># timeout (3.11+)</span>
+<span class="kw">async def</span> <span class="fn">with_timeout</span>():
+    <span class="kw">try</span>:
+        <span class="kw">async with</span> asyncio.timeout(<span class="nm">5.0</span>):
+            <span class="kw">return await</span> <span class="fn">slow_operation</span>()
+    <span class="kw">except</span> asyncio.TimeoutError:
+        <span class="fn">print</span>(<span class="st">"timed out"</span>)
+
+<span class="cm"># asyncio.Semaphore — limit concurrency</span>
+sem = asyncio.Semaphore(<span class="nm">10</span>)
+<span class="kw">async def</span> <span class="fn">rate_limited</span>(url):
+    <span class="kw">async with</span> sem:     <span class="cm"># max 10 concurrent requests</span>
+        <span class="kw">return await</span> <span class="fn">fetch</span>(url)
+
+<span class="cm"># run_in_executor — run blocking code in thread pool</span>
+<span class="kw">async def</span> <span class="fn">read_file</span>(path):
+    loop = asyncio.get_running_loop()
+    <span class="kw">return await</span> loop.run_in_executor(
+        <span class="kw">None</span>,                 <span class="cm"># None = default ThreadPoolExecutor</span>
+        pathlib.Path(path).read_text
+    )
+
+<span class="cm"># asyncio.gather vs TaskGroup:</span>
+<span class="cm"># gather: partial results on failure (return_exceptions=True)</span>
+<span class="cm"># TaskGroup: all-or-nothing, strict structured concurrency</span>
+results = <span class="kw">await</span> asyncio.gather(*coros, return_exceptions=<span class="kw">True</span>)</pre>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>asyncio Primitive</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>asyncio.Event</td><td>Notify multiple waiters (one-shot broadcast)</td></tr>
+            <tr><td>asyncio.Condition</td><td>Wait for a condition + Lock combo</td></tr>
+            <tr><td>asyncio.Semaphore</td><td>Limit concurrent access to a resource</td></tr>
+            <tr><td>asyncio.BoundedSemaphore</td><td>Semaphore that errors if released too many times</td></tr>
+            <tr><td>asyncio.Queue</td><td>Producer-consumer between coroutines</td></tr>
+            <tr><td>asyncio.PriorityQueue</td><td>Queue with priority ordering</td></tr>
+            <tr><td>asyncio.Lock</td><td>Mutual exclusion within event loop</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 11: GIL
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="gil">
+      <div class="section-header">
+        <span class="section-number">11</span>
+        <h2 class="section-title">The <span class="accent">GIL</span> Explained</h2>
+      </div>
+
+      <p>The <strong>Global Interpreter Lock</strong> is a mutex in CPython that prevents multiple native threads from executing Python bytecode simultaneously. It is <em>not</em> a language feature — it's a CPython implementation detail.</p>
+
+      <div class="diagram">
+CPython Thread Execution (with GIL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Thread 1:  ██████ run ██████ (wait) ██████ run ██████
+Thread 2:  (wait) ██████ run ██████ (wait) ██████ run
+                  ↑                ↑
+               GIL released   GIL acquired
+               on I/O or      (every 5ms check-interval)
+               sys.check_interval
+
+GIL is released for:
+  ✓ I/O operations  ✓ time.sleep()
+  ✓ C extension code that releases it (NumPy, etc.)
+  ✓ Every ~5ms (sys.getswitchinterval())
+
+GIL is NOT released for:
+  ✗ Pure Python CPU work → threads don't help for CPU-bound
+      </div>
+
+      <div class="two-col">
+        <div class="callout callout-info" style="margin:0">
+          <div class="callout-title">▸ Use threads for I/O-bound</div>
+          <p>Network calls, file reads, sleep — GIL released during waiting. 10 threads fetching 10 URLs: near 10x faster.</p>
+        </div>
+        <div class="callout callout-warn" style="margin:0">
+          <div class="callout-title">▸ Use processes for CPU-bound</div>
+          <p>Image processing, ML inference, number crunching — each process has its own GIL. Use <code>multiprocessing</code> or <code>concurrent.futures.ProcessPoolExecutor</code>.</p>
+        </div>
+      </div>
+
+      <div class="callout callout-violet">
+        <div class="callout-title">▸ Python 3.13+ Free-threaded Mode (Experimental)</div>
+        <p>Python 3.13 introduced an optional free-threaded build (<code>python3.13t</code>) that disables the GIL. Opt-in per module with <code>sys.flags.nogil</code>. Not yet production-stable but signifies the path forward. NumPy and Cython are being updated to support it.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 12: THREADING
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="threading">
+      <div class="section-header">
+        <span class="section-number">12</span>
+        <h2 class="section-title">Thread<span class="accent">ing</span></h2>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">import</span> threading
+
+<span class="cm"># Basic thread</span>
+t = threading.Thread(target=<span class="fn">worker</span>, args=(<span class="nm">1</span>,), daemon=<span class="kw">True</span>)
+t.start()
+t.join(timeout=<span class="nm">5.0</span>)  <span class="cm"># wait up to 5s</span>
+
+<span class="cm"># Thread-local storage — each thread has its own value</span>
+local = threading.local()
+<span class="kw">def</span> <span class="fn">worker</span>():
+    local.connection = <span class="fn">create_db_connection</span>()  <span class="cm"># not shared</span>
+
+<span class="cm"># Subclassing Thread:</span>
+<span class="kw">class</span> <span class="cl">Worker</span>(threading.Thread):
+    <span class="kw">def</span> <span class="fn">run</span>(<span class="nm">self</span>):
+        <span class="cm"># runs in new thread</span>
+        <span class="kw">pass</span></pre>
+      </div>
+
+      <h3>Synchronisation Primitives</h3>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Primitive</th><th>When to use</th></tr></thead>
+          <tbody>
+            <tr><td>Lock</td><td>Basic mutual exclusion. acquire/release. Not reentrant.</td></tr>
+            <tr><td>RLock</td><td>Reentrant lock — same thread can acquire multiple times</td></tr>
+            <tr><td>Event</td><td>Signal between threads. wait() blocks until set() called.</td></tr>
+            <tr><td>Condition</td><td>Wait for a condition to become true. Wraps a Lock.</td></tr>
+            <tr><td>Semaphore</td><td>Limit access to a resource pool (e.g. max N connections)</td></tr>
+            <tr><td>BoundedSemaphore</td><td>Semaphore that raises if released more than acquired</td></tr>
+            <tr><td>Barrier</td><td>Block N threads until all have called wait()</td></tr>
+            <tr><td>Timer</td><td>Call function after delay in a background thread</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">import</span> threading
+
+<span class="cm"># Lock — always use as context manager</span>
+lock = threading.Lock()
+counter = <span class="nm">0</span>
+<span class="kw">def</span> <span class="fn">increment</span>():
+    <span class="kw">global</span> counter
+    <span class="kw">with</span> lock:              <span class="cm"># auto-release even on exception</span>
+        counter += <span class="nm">1</span>
+
+<span class="cm"># RLock — reentrant (same thread can acquire again)</span>
+rlock = threading.RLock()
+<span class="kw">def</span> <span class="fn">recursive</span>(n):
+    <span class="kw">with</span> rlock:
+        <span class="kw">if</span> n > <span class="nm">0</span>: <span class="fn">recursive</span>(n-<span class="nm">1</span>)   <span class="cm"># same thread reacquires</span>
+
+<span class="cm"># Event — one-shot signal</span>
+ready = threading.Event()
+<span class="kw">def</span> <span class="fn">producer</span>():
+    <span class="fn">time</span>.sleep(<span class="nm">1</span>)
+    ready.set()             <span class="cm"># signal all waiters</span>
+
+<span class="kw">def</span> <span class="fn">consumer</span>():
+    ready.wait(timeout=<span class="nm">5</span>)  <span class="cm"># block until set or timeout</span>
+    <span class="fn">print</span>(<span class="st">"ready!"</span>)
+
+<span class="cm"># Condition — wait for complex state</span>
+cond = threading.Condition()
+items = []
+
+<span class="kw">def</span> <span class="fn">wait_for_item</span>():
+    <span class="kw">with</span> cond:
+        cond.wait_for(<span class="kw">lambda</span>: <span class="fn">len</span>(items) > <span class="nm">0</span>)  <span class="cm"># atomically wait</span>
+        <span class="kw">return</span> items.pop()
+
+<span class="kw">def</span> <span class="fn">add_item</span>(item):
+    <span class="kw">with</span> cond:
+        items.append(item)
+        cond.notify_all()   <span class="cm"># wake all waiters</span></pre>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         SECTION 13: MULTIPROCESSING
+    ══════════════════════════════════════════════ -->
+    <section class="section" id="multiprocessing">
+      <div class="section-header">
+        <span class="section-number">13</span>
+        <h2 class="section-title">Multi<span class="accent">processing</span></h2>
+      </div>
+
+      <p>Each process gets its own memory space, GIL, and Python interpreter. Data is passed between processes by serialisation (pickle). Best for CPU-bound work.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> multiprocessing <span class="kw">import</span> Pool, Process, Queue, Value, Array
+<span class="kw">import</span> multiprocessing <span class="kw">as</span> mp
+
+<span class="cm"># Pool — the workhorses</span>
+<span class="kw">def</span> <span class="fn">square</span>(n): <span class="kw">return</span> n ** <span class="nm">2</span>
+
+<span class="kw">with</span> Pool(processes=<span class="nm">4</span>) <span class="kw">as</span> pool:
+    results = pool.map(<span class="fn">square</span>, <span class="fn">range</span>(<span class="nm">100</span>))   <span class="cm"># blocking</span>
+
+    <span class="cm"># Non-blocking variants:</span>
+    ar = pool.map_async(<span class="fn">square</span>, <span class="fn">range</span>(<span class="nm">100</span>))
+    ar.get(timeout=<span class="nm">10</span>)
+
+    <span class="cm"># Chunked for large iterables:</span>
+    results = pool.imap(<span class="fn">square</span>, <span class="fn">range</span>(<span class="nm">10000</span>), chunksize=<span class="nm">100</span>)
+
+    <span class="cm"># starmap — multiple args per call:</span>
+    pool.starmap(<span class="fn">pow</span>, [(<span class="nm">2</span>,<span class="nm">3</span>), (<span class="nm">3</span>,<span class="nm">4</span>)])  <span class="cm"># [8, 81]</span>
+
+<span class="cm"># Queue — IPC between processes</span>
+q = mp.Queue()
+<span class="kw">def</span> <span class="fn">producer</span>(q):
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">10</span>):
+        q.put(i)
+    q.put(<span class="kw">None</span>)  <span class="cm"># sentinel</span>
+
+<span class="kw">def</span> <span class="fn">consumer</span>(q):
+    <span class="kw">while</span> (item := q.get()) <span class="kw">is not</span> <span class="kw">None</span>:
+        <span class="fn">process</span>(item)
+
+<span class="cm"># Shared memory (fastest — no pickle)</span>
+counter = Value(<span class="st">'i'</span>, <span class="nm">0</span>)   <span class="cm"># 'i' = C int</span>
+arr     = Array(<span class="st">'d'</span>, <span class="fn">range</span>(<span class="nm">10</span>))  <span class="cm"># 'd' = C double</span>
+
+<span class="kw">def</span> <span class="fn">increment</span>(counter):
+    <span class="kw">with</span> counter.get_lock():   <span class="cm"># shared memory is NOT thread-safe!</span>
+        counter.value += <span class="nm">1</span>
+
+<span class="cm"># multiprocessing.shared_memory (3.8+) — arbitrary data</span>
+<span class="kw">from</span> multiprocessing.shared_memory <span class="kw">import</span> SharedMemory
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+shm  = SharedMemory(create=<span class="kw">True</span>, size=<span class="nm">1024</span>)
+arr  = np.ndarray((<span class="nm">128</span>,), dtype=np.float64, buffer=shm.buf)
+<span class="cm"># ... pass shm.name to other processes; they attach with SharedMemory(name=...)</span>
+shm.close(); shm.unlink()  <span class="cm"># cleanup!</span></pre>
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-title">⚠ start method matters</div>
+        <p><code>fork</code> (default on Linux) copies parent memory — fastest but unsafe with threads (deadlocks). <code>spawn</code> (default on macOS 3.8+, Windows) starts fresh Python interpreter — safest. Always use <code>if __name__ == '__main__':</code> guard with spawn/forkserver. Set globally with <code>mp.set_start_method('spawn')</code>.</p>
+      </div>
+
+      <h3 id="futures">concurrent.futures</h3>
+
+      <p>High-level API over threading and multiprocessing, with a unified <code>Future</code> interface.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><div class="code-dots"><span></span><span></span><span></span></div></div>
+        <pre><span class="kw">from</span> concurrent.futures <span class="kw">import</span> (
+    ThreadPoolExecutor, ProcessPoolExecutor,
+    as_completed, wait, FIRST_COMPLETED
+)
+
+<span class="cm"># ThreadPoolExecutor — I/O bound tasks</span>
+<span class="kw">with</span> ThreadPoolExecutor(max_workers=<span class="nm">20</span>) <span class="kw">as</span> exe:
+    futures = [exe.submit(<span class="fn">fetch</span>, url) <span class="kw">for</span> url <span class="kw">in</span> urls]
+
+    <span class="cm"># Process as they complete (order not guaranteed):</span>
+    <span class="kw">for</span> fut <span class="kw">in</span> as_completed(futures):
+        <span class="kw">try</span>:
+            data = fut.result()
+        <span class="kw">except</span> <span class="cl">Exception</span> <span class="kw">as</span> e:
+            <span class="fn">print</span>(<span class="st">f"failed: </span>{e}<span class="st">"</span>)
+
+<span class="cm"># executor.map — preserves order, raises on first exception</span>
+<span class="kw">with</span> ProcessPoolExecutor() <span class="kw">as</span> exe:
+    results = <span class="fn">list</span>(exe.map(<span class="fn">cpu_work</span>, data_items))
+
+<span class="cm"># wait — fine-grained control</span>
+done, not_done = wait(futures, timeout=<span class="nm">5</span>, return_when=FIRST_COMPLETED)
+
+<span class="cm"># Future API:</span>
+fut.result(timeout=<span class="nm">10</span>)   <span class="cm"># blocks; raises exception if fn raised</span>
+fut.exception()            <span class="cm"># None if successful</span>
+fut.done()                 <span class="cm"># True if finished (any state)</span>
+fut.cancel()               <span class="cm"># True if successfully cancelled (pending only)</span>
+fut.add_done_callback(<span class="fn">cb</span>) <span class="cm"># cb(future) called when done</span></pre>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Scenario</th><th>Best choice</th></tr></thead>
+          <tbody>
+            <tr><td>Many I/O tasks, async code</td><td>asyncio (no thread overhead)</td></tr>
+            <tr><td>I/O + 3rd party blocking libs</td><td>ThreadPoolExecutor</td></tr>
+            <tr><td>CPU-bound, single machine</td><td>ProcessPoolExecutor / multiprocessing.Pool</td></tr>
+            <tr><td>CPU-bound, C extensions (NumPy)</td><td>Threads (NumPy releases GIL)</td></tr>
+            <tr><td>Mixed CPU + I/O</td><td>asyncio + run_in_executor for CPU parts</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <div class="doc-footer">
+      <span>Python 201 // Advanced Internals Handbook</span>
+      <span>Handbook Series · Vol 7 of 8</span>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── SCROLLSPY ──
+const navLinks = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section[id], div[id]');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, {
+  rootMargin: '-60px 0px -60% 0px',
+  threshold: 0
+});
+
+sections.forEach(s => observer.observe(s));
+
+// ── SMOOTH NAV CLICKS ──
+navLinks.forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+</body>
+</html>
