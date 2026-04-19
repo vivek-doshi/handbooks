@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Docker &amp; Kubernetes Command Reference Handbook</title>
+<link rel="stylesheet" href="styles/docker-k8s-command-reference-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">
+      <span class="logo-pip docker"></span>
+      <span class="logo-pip k8s"></span>
+      <span class="logo-pip sre"></span>
+    </div>
+    <div class="logo-title">Docker &amp; Kubernetes</div>
+    <div class="logo-sub">Command Reference Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label docker-label">Docker</div>
+    <a class="nav-link" href="#m1">Module 1 · Lifecycle</a>
+    <a class="nav-link" href="#m1-containers">Container Operations</a>
+    <a class="nav-link" href="#m1-images">Image Operations</a>
+    <a class="nav-link" href="#m1-exec">Exec &amp; Shell</a>
+    <a class="nav-link" href="#m2">Module 2 · Debug &amp; Clean</a>
+    <a class="nav-link" href="#m2-logs">Log Analysis</a>
+    <a class="nav-link" href="#m2-stats">Resource Monitoring</a>
+    <a class="nav-link" href="#m2-prune">Housekeeping</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label k8s-label">Kubernetes</div>
+    <a class="nav-link" href="#m3">Module 3 · Cluster &amp; Nodes</a>
+    <a class="nav-link" href="#m3-ctx">Contexts &amp; Namespaces</a>
+    <a class="nav-link" href="#m3-nodes">Node Management</a>
+    <a class="nav-link" href="#m4">Module 4 · Workloads</a>
+    <a class="nav-link" href="#m4-daily">Daily Operations</a>
+    <a class="nav-link" href="#m4-rollouts">Rollouts &amp; Scaling</a>
+    <a class="nav-link" href="#m5">Module 5 · Deep Debug</a>
+    <a class="nav-link" href="#m5-logs">Log Aggregation</a>
+    <a class="nav-link" href="#m5-net">Network Debugging</a>
+    <a class="nav-link" href="#m5-exec">Interactive Debug</a>
+    <a class="nav-link" href="#m5-events">Event Tracking</a>
+    <a class="nav-link" href="#m6">Module 6 · Cleanup</a>
+    <a class="nav-link" href="#m6-stuck">Stuck Pods</a>
+    <a class="nav-link" href="#m6-bulk">Bulk Cleanup</a>
+    <a class="nav-link" href="#m6-rs">Orphaned ReplicaSets</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════ MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero" id="overview">
+    <h1>Docker &amp; Kubernetes Command Reference</h1>
+    <p class="u-hero-subtle">A tactical SRE cheat sheet for multi-cluster environments — every command annotated with the exact production scenario that warrants it. No hello-world fluff.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">Docker 27+</span>
+      <span class="badge badge-k8s">Kubernetes 1.30+</span>
+      <span class="badge badge-green">kubectl · crictl</span>
+      <span class="badge badge-amber">SRE · DevOps · Infra</span>
+      <span class="badge badge-purple">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body">
+      <strong>Scope &amp; assumptions:</strong> This handbook targets teams running production workloads in multi-cluster environments. Commands are shown with their most operationally useful flags. Replace <code>&lt;values&gt;</code> in angle brackets with your own identifiers.
+    </div>
+  </div>
+
+  <!-- ═══════ MODULE 1 ═══════ -->
+  <section id="m1">
+    <div class="module-banner docker">
+      <div>
+        <div class="module-banner-num">MODULE 1</div>
+        <div class="module-banner-title">Docker — Container &amp; Image Lifecycle</div>
+        <div class="module-banner-sub">Start, stop, build, tag, pull, layer inspection</div>
+      </div>
+    </div>
+
+    <!-- Container Operations -->
+    <h2 id="m1-containers">Container Operations</h2>
+    <p>The core verbs for managing container runtime state. Knowing the difference between <code>stop</code>, <code>kill</code>, and <code>rm</code> prevents accidents in production.</p>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>docker ps</td>
+            <td>List all <strong>running</strong> containers with ID, image, status, and ports.</td>
+            <td class="scenario"><strong>First step in any incident.</strong> Confirm the container is actually running before investigating further.</td>
+          </tr>
+          <tr>
+            <td>docker ps -a</td>
+            <td>List <strong>all</strong> containers including stopped/exited.</td>
+            <td class="scenario">Find recently crashed containers by name or exit code before their logs vanish.</td>
+          </tr>
+          <tr>
+            <td>docker ps --filter "status=exited" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}"</td>
+            <td>Filtered, formatted list of exited containers with clean tabular output.</td>
+            <td class="scenario">Quickly audit how many containers crashed on the host. Pipe to <code>wc -l</code> for a count.</td>
+          </tr>
+          <tr>
+            <td>docker start &lt;container&gt;</td>
+            <td>Start a stopped container preserving its original configuration.</td>
+            <td class="scenario">Re-start a container that was cleanly stopped without re-creating it from scratch.</td>
+          </tr>
+          <tr>
+            <td>docker stop &lt;container&gt;</td>
+            <td>Send <code>SIGTERM</code>, wait 10 s (default), then send <code>SIGKILL</code>. Graceful shutdown.</td>
+            <td class="scenario">Controlled shutdown for deployments or maintenance. Gives the process time to flush buffers.</td>
+          </tr>
+          <tr>
+            <td>docker stop -t 30 &lt;container&gt;</td>
+            <td>Extend the grace period to 30 seconds before force-kill.</td>
+            <td class="scenario">When your app needs more time to drain connections (e.g., Kafka consumers, database writers).</td>
+          </tr>
+          <tr>
+            <td>docker restart &lt;container&gt;</td>
+            <td>Stop then start in one command. Equivalent to <code>stop</code> + <code>start</code>.</td>
+            <td class="scenario">Quick fix for a container exhibiting memory leaks or stale connections — restores state without a full re-deploy.</td>
+          </tr>
+          <tr>
+            <td>docker kill &lt;container&gt;</td>
+            <td>Send <code>SIGKILL</code> immediately. No grace period.</td>
+            <td class="scenario">Container is stuck — ignoring <code>SIGTERM</code>, consuming 100 % CPU, or the process is wedged in an uninterruptible wait.</td>
+          </tr>
+          <tr>
+            <td>docker kill --signal SIGUSR1 &lt;container&gt;</td>
+            <td>Send a custom POSIX signal to the container's PID 1.</td>
+            <td class="scenario">Trigger a hot-reload in nginx (<code>SIGHUP</code>) or a heap dump in a JVM process (<code>SIGUSR1</code>) without restarting.</td>
+          </tr>
+          <tr>
+            <td>docker rm &lt;container&gt;</td>
+            <td>Remove a stopped container and its anonymous volumes.</td>
+            <td class="scenario">Post-incident cleanup. Always remove before re-creating to avoid name conflicts.</td>
+          </tr>
+          <tr>
+            <td>docker rm -f &lt;container&gt;</td>
+            <td>Force-remove a <strong>running</strong> container (implicit kill + rm).</td>
+            <td class="scenario">Emergency teardown when the container must be gone immediately (e.g., security breach, runaway process).</td>
+          </tr>
+          <tr>
+            <td>docker run -d --name &lt;name&gt; --restart=always &lt;image&gt;</td>
+            <td>Start a container in detached mode with automatic restart on failure or host reboot.</td>
+            <td class="scenario">Production services on bare-metal or single-node hosts where no orchestrator handles restarts.</td>
+          </tr>
+          <tr>
+            <td>docker run --rm -it &lt;image&gt; /bin/sh</td>
+            <td>Run a throwaway interactive container that self-destructs on exit.</td>
+            <td class="scenario">One-off debugging, testing environment variables, or validating an image's contents without leaving garbage.</td>
+          </tr>
+          <tr>
+            <td>docker rename &lt;old&gt; &lt;new&gt;</td>
+            <td>Rename a running or stopped container.</td>
+            <td class="scenario">Resolve name collisions without killing the container when a deployment creates a conflict.</td>
+          </tr>
+          <tr>
+            <td>docker update --memory 512m --cpus 1.5 &lt;container&gt;</td>
+            <td>Live-update resource limits without restarting.</td>
+            <td class="scenario">Emergency throttling when a container is starving neighboring services on the same host.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Image Operations -->
+    <h2 id="m1-images">Image Operations</h2>
+    <p>Image management from build through registry push. Understand layer caching and image provenance before you're under pressure during an incident.</p>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>docker build -t &lt;repo&gt;:&lt;tag&gt; .</td>
+            <td>Build an image from the <code>Dockerfile</code> in the current directory and tag it.</td>
+            <td class="scenario">Standard CI/CD build step. Always tag with both a semantic version and <code>latest</code> in production pipelines.</td>
+          </tr>
+          <tr>
+            <td>docker build --no-cache -t &lt;repo&gt;:&lt;tag&gt; .</td>
+            <td>Rebuild every layer from scratch, ignoring all cached layers.</td>
+            <td class="scenario">When a base image has a security patch and you need to ensure the new layer is pulled, not served from cache.</td>
+          </tr>
+          <tr>
+            <td>docker build --build-arg APP_VERSION=1.2.3 -t &lt;repo&gt;:1.2.3 .</td>
+            <td>Inject build-time variables into the Dockerfile.</td>
+            <td class="scenario">Bake version strings, git SHAs, or feature flags into the image at build time for reproducibility.</td>
+          </tr>
+          <tr>
+            <td>docker build --target &lt;stage&gt; -t &lt;repo&gt;:dev .</td>
+            <td>Build only up to a named stage in a multi-stage Dockerfile.</td>
+            <td class="scenario">Build a fat "developer" image with test tools without producing the slim production artifact.</td>
+          </tr>
+          <tr>
+            <td>docker tag &lt;source&gt;:&lt;tag&gt; &lt;registry&gt;/&lt;repo&gt;:&lt;tag&gt;</td>
+            <td>Create an additional tag pointing to the same image ID.</td>
+            <td class="scenario">Promote an image from a staging registry to a production registry without rebuilding.</td>
+          </tr>
+          <tr>
+            <td>docker pull &lt;image&gt;:&lt;tag&gt;</td>
+            <td>Fetch the image from its registry to the local daemon cache.</td>
+            <td class="scenario">Pre-pull images to a node before a time-sensitive deployment to eliminate pull latency from the critical path.</td>
+          </tr>
+          <tr>
+            <td>docker push &lt;registry&gt;/&lt;repo&gt;:&lt;tag&gt;</td>
+            <td>Upload the image to the registry.</td>
+            <td class="scenario">End of every CI pipeline after image tests pass.</td>
+          </tr>
+          <tr>
+            <td>docker images --filter "dangling=true"</td>
+            <td>List untagged (dangling) image layers consuming disk space.</td>
+            <td class="scenario">Pre-cleanup audit to see how much space dangling images are occupying before running prune.</td>
+          </tr>
+          <tr>
+            <td>docker rmi &lt;image&gt;</td>
+            <td>Remove one or more images from the local daemon.</td>
+            <td class="scenario">Retire a specific image version after confirming rollback is no longer needed.</td>
+          </tr>
+          <tr>
+            <td>docker history &lt;image&gt;:&lt;tag&gt;</td>
+            <td>Show every layer of an image: the creating command, size, and timestamp.</td>
+            <td class="scenario">Diagnose bloated images. Find which <code>RUN</code> step is responsible for excessive size. Essential for security audits to verify no secrets were accidentally committed to a layer.</td>
+          </tr>
+          <tr>
+            <td>docker history --no-trunc &lt;image&gt;:&lt;tag&gt;</td>
+            <td>Same as above but shows the full command without truncation.</td>
+            <td class="scenario">When the truncated history hides the specific <code>apt-get</code> or <code>curl</code> command you need to audit.</td>
+          </tr>
+          <tr>
+            <td>docker save -o &lt;file.tar&gt; &lt;image&gt;:&lt;tag&gt;</td>
+            <td>Export an image to a tarball for air-gapped transfer.</td>
+            <td class="scenario">Deploy to an environment with no internet access or a restricted registry. Transfer via SCP, then <code>docker load</code>.</td>
+          </tr>
+          <tr>
+            <td>docker load -i &lt;file.tar&gt;</td>
+            <td>Import an image from a tarball into the local daemon.</td>
+            <td class="scenario">Air-gapped environment image ingestion. Pair with image signing to validate integrity.</td>
+          </tr>
+          <tr>
+            <td>docker image inspect &lt;image&gt;:&lt;tag&gt;</td>
+            <td>Dump the full JSON manifest: layers, env vars, entrypoint, exposed ports, labels.</td>
+            <td class="scenario">Verify the build pipeline embedded correct labels (git SHA, build date), or confirm the entrypoint before deploying to production.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Exec -->
+    <h2 id="m1-exec">Exec &amp; Interactive Shell</h2>
+    <p>Getting inside a running container. The most frequently used debugging primitive — know the options cold.</p>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>docker exec -it &lt;container&gt; /bin/bash</td>
+            <td>Open an interactive bash shell in a running container.</td>
+            <td class="scenario">Live inspection — check running processes, environment variables, file contents, or network connectivity without restarting.</td>
+          </tr>
+          <tr>
+            <td>docker exec -it &lt;container&gt; /bin/sh</td>
+            <td>Open a POSIX sh shell (use when bash is not available in the image).</td>
+            <td class="scenario">Minimal images (Alpine, distroless lite) where bash is not installed.</td>
+          </tr>
+          <tr>
+            <td>docker exec &lt;container&gt; env</td>
+            <td>Print all environment variables in the container's process space.</td>
+            <td class="scenario">Verify that secrets injected at runtime (e.g., via <code>--env-file</code> or a secrets manager) are present with the correct values.</td>
+          </tr>
+          <tr>
+            <td>docker exec &lt;container&gt; cat /etc/hosts</td>
+            <td>Read a file without entering an interactive shell.</td>
+            <td class="scenario">Quickly check DNS overrides or network configuration without the overhead of an interactive session.</td>
+          </tr>
+          <tr>
+            <td>docker exec -u root &lt;container&gt; /bin/bash</td>
+            <td>Enter the container as root regardless of the default USER setting.</td>
+            <td class="scenario">When the app runs as a non-root user but you need root privileges to install a debug tool or inspect a protected file.</td>
+          </tr>
+          <tr>
+            <td>docker exec -it &lt;container&gt; sh -c "ps aux | grep &lt;process&gt;"</td>
+            <td>Run a compound shell command in one line without an interactive shell.</td>
+            <td class="scenario">Scripted health checks or automated incident response playbooks that need to confirm a specific process is running inside the container.</td>
+          </tr>
+          <tr>
+            <td>docker cp &lt;container&gt;:/path/to/file ./local/</td>
+            <td>Copy a file from a running container to the host.</td>
+            <td class="scenario">Extract a crash dump, log file, or generated config from the container for analysis without terminating it.</td>
+          </tr>
+          <tr>
+            <td>docker cp ./local/file &lt;container&gt;:/path/to/</td>
+            <td>Copy a file from the host into a running container.</td>
+            <td class="scenario">Hot-patch a configuration file or inject a debug script without rebuilding the image (use with care — ephemeral change only).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════ MODULE 2 ═══════ -->
+  <section id="m2">
+    <div class="module-banner docker">
+      <div>
+        <div class="module-banner-num">MODULE 2</div>
+        <div class="module-banner-title">Docker — Logs, Debugging &amp; Cleaning</div>
+        <div class="module-banner-sub">Log tailing · resource stats · inspect · system prune</div>
+      </div>
+    </div>
+
+    <!-- Log Analysis -->
+    <h2 id="m2-logs">Log Analysis</h2>
+    <p>Effective log triage during an incident. The <code>--since</code> and <code>--until</code> flags are critical for isolating the blast radius of a specific event.</p>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>docker logs &lt;container&gt;</td>
+            <td>Dump the full stdout/stderr log for a container.</td>
+            <td class="scenario">First look at what a container printed before or during a crash. Caution: can produce enormous output for long-running services.</td>
+          </tr>
+          <tr>
+            <td>docker logs --tail 200 &lt;container&gt;</td>
+            <td>Show only the last N lines of log output.</td>
+            <td class="scenario">Quick sanity check on a running service — see the most recent activity without scrolling through the entire history.</td>
+          </tr>
+          <tr>
+            <td>docker logs -f &lt;container&gt;</td>
+            <td>Follow (stream) logs in real time. Behaves like <code>tail -f</code>.</td>
+            <td class="scenario">Watch a deployment roll out, monitor a batch job, or observe a container's behaviour during a load test live.</td>
+          </tr>
+          <tr>
+            <td>docker logs --since 30m &lt;container&gt;</td>
+            <td>Show logs from the last 30 minutes only.</td>
+            <td class="scenario">Isolate logs to the window of an incident. Accepts durations (<code>30m</code>, <code>2h</code>) or RFC3339 timestamps.</td>
+          </tr>
+          <tr>
+            <td>docker logs --since "2026-04-19T14:00:00Z" --until "2026-04-19T14:15:00Z" &lt;container&gt;</td>
+            <td>Retrieve logs for an exact time window using RFC3339 timestamps.</td>
+            <td class="scenario">Post-incident log extraction for a SIEM or a support ticket. Pinpoint output to the 15-minute blast radius of an outage.</td>
+          </tr>
+          <tr>
+            <td>docker logs -f --tail 50 &lt;container&gt; 2&gt;&amp;1 | grep -i "error\|exception\|fatal"</td>
+            <td>Follow logs and filter for error-level messages in real time.</td>
+            <td class="scenario">High-noise service emitting thousands of INFO lines — stream only the signals that matter during an incident bridge.</td>
+          </tr>
+          <tr>
+            <td>docker logs --timestamps &lt;container&gt;</td>
+            <td>Prepend an RFC3339Nano timestamp to each log line.</td>
+            <td class="scenario">Correlate Docker container log lines with host-level events (kernel OOM killer, disk I/O spikes) that have precise timestamps.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Resource Monitoring -->
+    <h2 id="m2-stats">Resource Monitoring &amp; Deep Inspection</h2>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>docker stats</td>
+            <td>Live, refreshing table of CPU %, memory usage/limit, network I/O, and block I/O for all running containers.</td>
+            <td class="scenario">Real-time host health check during a traffic spike. Identify which container is consuming runaway resources before the host OOM-kills something.</td>
+          </tr>
+          <tr>
+            <td>docker stats --no-stream</td>
+            <td>Print a single snapshot of stats and exit — useful for scripting and alerting.</td>
+            <td class="scenario">Feed into a cron-based alerting script or Prometheus textfile collector when a native exporter is not available.</td>
+          </tr>
+          <tr>
+            <td>docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"</td>
+            <td>Custom output format showing only Name, CPU %, and Memory.</td>
+            <td class="scenario">Screen-share-friendly view during an incident call — less noise, more signal.</td>
+          </tr>
+          <tr>
+            <td>docker top &lt;container&gt;</td>
+            <td>Show the running processes inside a container (like <code>top</code> on the host but scoped to the container's PID namespace).</td>
+            <td class="scenario">Determine which subprocess inside a container is consuming CPU — especially useful when the container is a shell script that spawns children.</td>
+          </tr>
+          <tr>
+            <td>docker inspect &lt;container&gt;</td>
+            <td>Dump the full JSON object for a container: network settings, mounts, env vars, health check config, restart policy, resource limits.</td>
+            <td class="scenario">The authoritative source of truth for a container's configuration. When you suspect a misconfiguration (wrong mount path, missing env var, wrong network), start here.</td>
+          </tr>
+          <tr>
+            <td>docker inspect --format '{{.State.Health.Status}}' &lt;container&gt;</td>
+            <td>Extract a specific field from the inspect JSON using Go template syntax.</td>
+            <td class="scenario">Quickly check health check status (<code>healthy</code>/<code>unhealthy</code>/<code>starting</code>) in a script without parsing the full JSON.</td>
+          </tr>
+          <tr>
+            <td>docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' &lt;container&gt;</td>
+            <td>Extract the container's IP address(es) across all attached networks.</td>
+            <td class="scenario">Determine the container's IP for direct connectivity testing (bypassing port mappings) when debugging inter-container network failures.</td>
+          </tr>
+          <tr>
+            <td>docker diff &lt;container&gt;</td>
+            <td>Show files added (A), changed (C), or deleted (D) in the container's writable layer vs the image.</td>
+            <td class="scenario">Security audit — confirm that no unexpected files have been written to the container filesystem. Useful in forensics after a suspected compromise.</td>
+          </tr>
+          <tr>
+            <td>docker port &lt;container&gt;</td>
+            <td>List all port mappings for a container (host port → container port).</td>
+            <td class="scenario">Confirm that the expected ports are exposed and mapped correctly after a deployment or when investigating connectivity failures.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Housekeeping -->
+    <h2 id="m2-prune">Housekeeping &amp; Disk Reclamation</h2>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body">
+        <strong>Run prune commands with care in production.</strong> On shared build hosts, <code>docker system prune -a</code> removes <em>all</em> images not associated with a running container, including images needed for rapid rollback. Always review what will be removed using <code>--dry-run</code> (Docker 23+) or the <code>--filter until</code> option before executing destructive prune commands.
+      </div>
+    </div>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>docker system df</td>
+            <td>Show disk usage breakdown: images, containers, volumes, and build cache — with reclaimable sizes.</td>
+            <td class="scenario">Pre-prune assessment. Run this first to quantify the problem before deciding which prune command to use.</td>
+          </tr>
+          <tr>
+            <td>docker container prune</td>
+            <td>Remove all stopped containers. Prompts for confirmation.</td>
+            <td class="scenario">Routine host cleanup on CI runners after builds complete to prevent container ID exhaustion.</td>
+          </tr>
+          <tr>
+            <td>docker container prune -f</td>
+            <td>Remove all stopped containers without prompting. Force mode.</td>
+            <td class="scenario">Non-interactive scripts and cron jobs for automated host hygiene.</td>
+          </tr>
+          <tr>
+            <td>docker image prune</td>
+            <td>Remove only dangling images (layers with no tag and not referenced by any container).</td>
+            <td class="scenario">Safe, targeted cleanup after repeated builds. Reclaims space from intermediate layers without touching tagged images needed for rollback.</td>
+          </tr>
+          <tr>
+            <td>docker image prune -a --filter "until=72h"</td>
+            <td>Remove all images (not just dangling) that were created more than 72 hours ago and are not in use.</td>
+            <td class="scenario">Scheduled maintenance window cleanup on a build host where images older than 3 days are no longer needed for rollback.</td>
+          </tr>
+          <tr>
+            <td>docker volume prune</td>
+            <td>Remove all anonymous volumes not associated with a running or stopped container.</td>
+            <td class="scenario">Recover disk space consumed by orphaned database volumes left over from removed containers. <strong>Named volumes are preserved.</strong></td>
+          </tr>
+          <tr>
+            <td>docker volume prune --filter "label!=keep"</td>
+            <td>Prune volumes that do <em>not</em> carry a <code>keep</code> label.</td>
+            <td class="scenario">Fine-grained cleanup strategy: label critical volumes at creation time with <code>--label keep=true</code> to protect them from bulk prune operations.</td>
+          </tr>
+          <tr>
+            <td>docker network prune</td>
+            <td>Remove all user-defined networks not in use by any container.</td>
+            <td class="scenario">Tidy up after docker-compose teardowns that leave orphaned overlay or bridge networks.</td>
+          </tr>
+          <tr>
+            <td>docker builder prune</td>
+            <td>Remove BuildKit build cache.</td>
+            <td class="scenario">Reclaim build cache space on CI nodes where cache has grown large over many runs.</td>
+          </tr>
+          <tr>
+            <td>docker builder prune --keep-storage 5gb</td>
+            <td>Prune build cache but keep the most recent 5 GB (useful for preserving recent cache for faster rebuilds).</td>
+            <td class="scenario">Balance between disk reclamation and build speed. Keeps enough cache to accelerate common rebuild patterns.</td>
+          </tr>
+          <tr>
+            <td>docker system prune</td>
+            <td>Remove all stopped containers, dangling images, unused networks, and build cache in one operation.</td>
+            <td class="scenario">Comprehensive cleanup on dev/staging hosts. <strong>Does not remove volumes or non-dangling images by default.</strong></td>
+          </tr>
+          <tr>
+            <td>docker system prune -a --volumes</td>
+            <td>Nuclear option: removes everything not associated with a running container, including all images and all volumes.</td>
+            <td class="scenario">Decommissioning a host, or recovering a host that has run completely out of disk space. <strong>Ensure you have image manifests in a registry before running.</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><span class="comment"># Practical disk-reclamation workflow</span>
+<span class="comment"># Step 1: Assess</span>
+docker system df
+
+<span class="comment"># Step 2: Safe targeted cleanup (removes stopped containers + dangling images + unused networks)</span>
+docker system prune -f
+
+<span class="comment"># Step 3: If still tight — remove images older than 72h not in active use</span>
+docker image prune -a --filter "until=72h" -f
+
+<span class="comment"># Step 4: Remove orphaned anonymous volumes (careful — confirm named volumes are excluded)</span>
+docker volume ls -f dangling=true
+docker volume prune -f
+
+<span class="comment"># Step 5: Verify reclamation</span>
+docker system df</pre>
+  </section>
+
+  <!-- ═══════ MODULE 3 ═══════ -->
+  <section id="m3">
+    <div class="module-banner k8s">
+      <div>
+        <div class="module-banner-num">MODULE 3</div>
+        <div class="module-banner-title">Kubernetes — Cluster &amp; Node Operations</div>
+        <div class="module-banner-sub">Contexts · namespaces · node maintenance · cordon · drain · uncordon</div>
+      </div>
+    </div>
+
+    <!-- Contexts & Namespaces -->
+    <h2 id="m3-ctx">Contexts &amp; Namespaces</h2>
+    <p>Context and namespace mismatches cause the most expensive incidents — running a delete command against the wrong cluster. Adopt strict habits here.</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">☠</span>
+      <div class="callout-body">
+        <strong>Always verify your context before destructive commands.</strong> Use <code>kubectl config current-context</code> as the first line of every runbook. Consider tools like <a href="https://github.com/ahmetb/kubectx">kubectx/kubens</a> or the <code>PS1</code> kube-prompt to make context visible in your shell prompt at all times.
+      </div>
+    </div>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl config get-contexts</td>
+            <td>List all contexts in your kubeconfig with their cluster, user, and namespace.</td>
+            <td class="scenario">At the start of a shift or before any multi-cluster operation to confirm which clusters are available and which is active.</td>
+          </tr>
+          <tr>
+            <td>kubectl config current-context</td>
+            <td>Print the name of the currently active context.</td>
+            <td class="scenario">First command of every runbook. Confirm you are on the correct cluster before proceeding with any state-modifying operation.</td>
+          </tr>
+          <tr>
+            <td>kubectl config use-context &lt;context-name&gt;</td>
+            <td>Switch the active context to a different cluster/user/namespace combination.</td>
+            <td class="scenario">Switch between prod, staging, and dev clusters during a multi-cluster incident or cross-environment investigation.</td>
+          </tr>
+          <tr>
+            <td>kubectl config set-context --current --namespace=&lt;ns&gt;</td>
+            <td>Set the default namespace for all subsequent kubectl commands in the current context.</td>
+            <td class="scenario">Prevent accident of repeatedly omitting <code>-n &lt;ns&gt;</code> when working in a non-default namespace for an extended period. <strong>Reset to <code>default</code> when done.</strong></td>
+          </tr>
+          <tr>
+            <td>kubectl get namespaces</td>
+            <td>List all namespaces in the cluster with their status and age.</td>
+            <td class="scenario">Audit namespace sprawl. Identify stale namespaces from old feature branches or forgotten load tests that are consuming quota.</td>
+          </tr>
+          <tr>
+            <td>kubectl create namespace &lt;ns&gt;</td>
+            <td>Create a new namespace.</td>
+            <td class="scenario">Bootstrap a new team or environment namespace before applying their workloads and RBAC policies.</td>
+          </tr>
+          <tr>
+            <td>kubectl get all -n &lt;ns&gt;</td>
+            <td>List all core resource types (pods, services, deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, CronJobs) in a namespace.</td>
+            <td class="scenario">Rapid triage of a namespace's state during an incident — one command to see everything that could be broken.</td>
+          </tr>
+          <tr>
+            <td>kubectl api-resources --verbs=list --namespaced=true</td>
+            <td>List all API resource types that are namespace-scoped.</td>
+            <td class="scenario">When <code>get all</code> does not return certain resources (e.g., HPA, PDB, NetworkPolicy) because they are not part of the default resource group.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><span class="comment"># Shell alias — safe context switcher that shows a confirmation prompt</span>
+<span class="fn">kctx</span>() {
+  <span class="kw">echo</span> <span class="str">"Switching context to: $1"</span>
+  kubectl config use-context <span class="str">"$1"</span>
+  kubectl config current-context
+}
+
+<span class="comment"># kubens — set default namespace</span>
+kubectl config set-context --current --namespace=production
+
+<span class="comment"># Always reset after a focused session</span>
+kubectl config set-context --current --namespace=default</pre>
+
+    <!-- Node Management -->
+    <h2 id="m3-nodes">Node Management</h2>
+    <p>Node-level operations for routine maintenance, hardware replacement, and kernel upgrades. The cordon → drain → maintain → uncordon sequence is the safe pattern.</p>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl get nodes</td>
+            <td>List all nodes with their status, roles, Kubernetes version, and age.</td>
+            <td class="scenario">First step when pods cannot be scheduled. Identify <code>NotReady</code> nodes that may have lost kubelet connectivity or failed health checks.</td>
+          </tr>
+          <tr>
+            <td>kubectl get nodes -o wide</td>
+            <td>Extended view including internal/external IPs, OS image, kernel version, and container runtime.</td>
+            <td class="scenario">Identify nodes running old kernel versions before a patching campaign, or confirm which IPs belong to which nodes when debugging network policies.</td>
+          </tr>
+          <tr>
+            <td>kubectl describe node &lt;node-name&gt;</td>
+            <td>Full node detail: capacity, allocatable resources, current conditions, events, taints, and list of all pods scheduled on it.</td>
+            <td class="scenario">Diagnose a <code>NotReady</code> node — check the Conditions section for disk pressure, memory pressure, or PID pressure. Review Events for kubelet errors.</td>
+          </tr>
+          <tr>
+            <td>kubectl top nodes</td>
+            <td>Live CPU and memory consumption per node (requires Metrics Server to be running).</td>
+            <td class="scenario">Identify hot nodes during a traffic spike. A node at 95 % memory usage is the likely target of the next OOM kill — act before it happens.</td>
+          </tr>
+          <tr>
+            <td>kubectl top nodes --sort-by=memory</td>
+            <td>Sort node resource usage by memory consumption (descending).</td>
+            <td class="scenario">Quickly identify the most memory-pressured node in a cluster during a memory incident.</td>
+          </tr>
+          <tr>
+            <td>kubectl cordon &lt;node-name&gt;</td>
+            <td>Mark a node as <strong>unschedulable</strong>. Existing pods continue running; no new pods will be placed on this node.</td>
+            <td class="scenario"><strong>Step 1 of node maintenance.</strong> Use before draining to ensure the scheduler stops landing new pods on the node while you prepare to drain it.</td>
+          </tr>
+          <tr>
+            <td>kubectl drain &lt;node-name&gt; --ignore-daemonsets --delete-emptydir-data</td>
+            <td>Evict all non-DaemonSet pods from the node. DaemonSet pods are ignored. Pods using emptyDir will lose that data.</td>
+            <td class="scenario"><strong>Step 2 of node maintenance.</strong> Gracefully reschedule workloads to other nodes before applying OS patches, replacing hardware, or upgrading the node's kubelet. Always check for PodDisruptionBudgets — drain respects them by default.</td>
+          </tr>
+          <tr>
+            <td>kubectl drain &lt;node-name&gt; --ignore-daemonsets --delete-emptydir-data --grace-period=120</td>
+            <td>Drain with a 120-second grace period for each pod to terminate cleanly.</td>
+            <td class="scenario">When stateful services (JVM apps, databases) need more time for graceful shutdown than the default 30 seconds allows.</td>
+          </tr>
+          <tr>
+            <td>kubectl drain &lt;node-name&gt; --force --ignore-daemonsets</td>
+            <td>Force drain even when pods cannot be gracefully evicted (e.g., pods not managed by a controller, PDBs blocking eviction).</td>
+            <td class="scenario">Emergency node removal where you accept data loss risk — node is failing hardware and the cluster cannot wait for clean eviction.</td>
+          </tr>
+          <tr>
+            <td>kubectl uncordon &lt;node-name&gt;</td>
+            <td>Mark the node as schedulable again — the scheduler can now place new pods on it.</td>
+            <td class="scenario"><strong>Step 3 of node maintenance.</strong> Run after patching/rebooting the node and confirming kubelet is <code>Ready</code>. The scheduler will rebalance workloads organically over time.</td>
+          </tr>
+          <tr>
+            <td>kubectl taint nodes &lt;node-name&gt; key=value:NoSchedule</td>
+            <td>Add a taint that prevents pods without a matching toleration from being scheduled on the node.</td>
+            <td class="scenario">Reserve dedicated nodes for specific workloads (GPU jobs, high-memory services) or to quarantine a misbehaving node without fully cordoning it.</td>
+          </tr>
+          <tr>
+            <td>kubectl taint nodes &lt;node-name&gt; key=value:NoSchedule-</td>
+            <td>Remove a taint from a node (the trailing <code>-</code> is the removal syntax).</td>
+            <td class="scenario">Undo a quarantine taint after confirming the node issue is resolved and it is safe to receive general workloads again.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><span class="comment"># Safe node maintenance runbook (3-step procedure)</span>
+
+<span class="comment"># 1. Prevent new pods from landing on the node</span>
+kubectl cordon node-1.prod.internal
+
+<span class="comment"># 2. Drain existing workloads (respects PodDisruptionBudgets)</span>
+kubectl drain node-1.prod.internal \
+  --ignore-daemonsets \
+  --delete-emptydir-data \
+  --grace-period=120
+
+<span class="comment"># ... perform maintenance (kernel upgrade, hardware swap, etc.) ...</span>
+
+<span class="comment"># 3. Return node to service</span>
+kubectl uncordon node-1.prod.internal
+
+<span class="comment"># Verify the node is Ready and accepting workloads</span>
+kubectl get node node-1.prod.internal</pre>
+  </section>
+
+  <!-- ═══════ MODULE 4 ═══════ -->
+  <section id="m4">
+    <div class="module-banner k8s">
+      <div>
+        <div class="module-banner-num">MODULE 4</div>
+        <div class="module-banner-title">Kubernetes — Workload &amp; State Management</div>
+        <div class="module-banner-sub">Daily ops · rollouts · scaling · restart · rollback</div>
+      </div>
+    </div>
+
+    <!-- Daily Operations -->
+    <h2 id="m4-daily">Daily Operations</h2>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl get pods -n &lt;ns&gt;</td>
+            <td>List pods in a namespace with their status, restarts, and age.</td>
+            <td class="scenario">The most-used command in day-to-day operations. Check pod health after a deployment, during an incident, or after a node event.</td>
+          </tr>
+          <tr>
+            <td>kubectl get pods -n &lt;ns&gt; -o wide</td>
+            <td>Extended view with the node each pod is running on and its internal IP.</td>
+            <td class="scenario">Identify whether failing pods are all on the same node (node-level issue) or spread across nodes (application-level issue).</td>
+          </tr>
+          <tr>
+            <td>kubectl get pods -n &lt;ns&gt; --sort-by='.status.containerStatuses[0].restartCount'</td>
+            <td>Sort pods by restart count — highest restarters at the bottom.</td>
+            <td class="scenario">Quickly spot the most crash-looping pod in a namespace during a noisy incident with many pods restarting.</td>
+          </tr>
+          <tr>
+            <td>kubectl get pods -A --field-selector=status.phase!=Running</td>
+            <td>List pods across all namespaces that are not in the Running phase.</td>
+            <td class="scenario">Cluster-wide health sweep — identify Pending, Failed, or Evicted pods across all teams at a glance.</td>
+          </tr>
+          <tr>
+            <td>kubectl describe pod &lt;pod-name&gt; -n &lt;ns&gt;</td>
+            <td>Full pod detail: events, init container status, resource requests/limits, image, node, volumes, readiness/liveness probe config.</td>
+            <td class="scenario">Diagnose CrashLoopBackOff, ImagePullBackOff, Pending, or OOMKilled status. The <strong>Events</strong> section is the most valuable part during debugging.</td>
+          </tr>
+          <tr>
+            <td>kubectl get deployments -n &lt;ns&gt;</td>
+            <td>List deployments with desired/current/up-to-date/available replica counts.</td>
+            <td class="scenario">Post-deployment verification. The ready count must match desired before the deployment is considered successful.</td>
+          </tr>
+          <tr>
+            <td>kubectl describe deployment &lt;name&gt; -n &lt;ns&gt;</td>
+            <td>Deployment detail: strategy, replica sets, conditions, and events.</td>
+            <td class="scenario">Diagnose a deployment stuck in progress — check the Conditions for <code>Progressing=False</code> and the Events for the root cause.</td>
+          </tr>
+          <tr>
+            <td>kubectl get services -n &lt;ns&gt;</td>
+            <td>List services with their type, cluster IP, external IP, and target port.</td>
+            <td class="scenario">Verify that a LoadBalancer service has received an external IP from the cloud provider, or that a ClusterIP service is assigned.</td>
+          </tr>
+          <tr>
+            <td>kubectl apply -f &lt;manifest.yaml&gt;</td>
+            <td>Apply a manifest declaratively — creates or updates resources as needed.</td>
+            <td class="scenario">Standard GitOps deployment verb. Idempotent — safe to run repeatedly. Prefer over <code>create</code> in all production workflows.</td>
+          </tr>
+          <tr>
+            <td>kubectl apply -f &lt;manifest.yaml&gt; --dry-run=server</td>
+            <td>Validate the manifest against the live API server without making changes. Catches schema errors and admission webhook rejections.</td>
+            <td class="scenario">Pre-flight check in CI pipelines before applying to production. Catches invalid YAML, missing fields, and policy violations from OPA/Kyverno.</td>
+          </tr>
+          <tr>
+            <td>kubectl delete -f &lt;manifest.yaml&gt;</td>
+            <td>Delete all resources defined in a manifest file.</td>
+            <td class="scenario">Clean teardown of a specific workload (feature branch, load test environment) without having to know the individual resource names.</td>
+          </tr>
+          <tr>
+            <td>kubectl delete pod &lt;pod-name&gt; -n &lt;ns&gt;</td>
+            <td>Delete a pod. The controlling ReplicaSet or Deployment will immediately create a replacement.</td>
+            <td class="scenario">Force a pod replacement without restarting the Deployment. Useful when one replica in a set is misbehaving (stuck goroutines, bad local cache).</td>
+          </tr>
+          <tr>
+            <td>kubectl get endpoints &lt;service-name&gt; -n &lt;ns&gt;</td>
+            <td>Show the IP:port pairs that a Service resolves to (the healthy pods behind the service).</td>
+            <td class="scenario">Diagnose "service returns 502/503" — if endpoints list is empty, the selector is wrong or no pods match the label, not a networking issue.</td>
+          </tr>
+          <tr>
+            <td>kubectl get hpa -n &lt;ns&gt;</td>
+            <td>List HorizontalPodAutoscalers with current vs target metrics and min/max replicas.</td>
+            <td class="scenario">Understand why a deployment has an unexpected replica count. HPA may have scaled down or up independently of manual changes.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Rollouts & Scaling -->
+    <h2 id="m4-rollouts">Rollouts &amp; Scaling</h2>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl scale deployment &lt;name&gt; --replicas=10 -n &lt;ns&gt;</td>
+            <td>Immediately set the desired replica count for a Deployment.</td>
+            <td class="scenario">Manual scale-out during an unexpected traffic surge before HPA kicks in, or manual scale-in to reduce costs in a quiet period.</td>
+          </tr>
+          <tr>
+            <td>kubectl rollout status deployment/&lt;name&gt; -n &lt;ns&gt;</td>
+            <td>Watch and block until a rollout completes (all replicas updated and healthy) or reports an error.</td>
+            <td class="scenario">Gate the next step in a CI/CD pipeline. Do not mark a deploy as "done" until this command exits 0.</td>
+          </tr>
+          <tr>
+            <td>kubectl rollout status deployment/&lt;name&gt; -n &lt;ns&gt; --timeout=5m</td>
+            <td>Rollout status with a 5-minute timeout. Exits non-zero if the rollout does not complete in time.</td>
+            <td class="scenario">Protect CI pipelines from hanging indefinitely when a broken image causes pods to CrashLoop and the rollout never completes.</td>
+          </tr>
+          <tr>
+            <td>kubectl rollout history deployment/&lt;name&gt; -n &lt;ns&gt;</td>
+            <td>Show the revision history for a Deployment — revision number and change cause.</td>
+            <td class="scenario">Before a rollback, confirm which revision to target. Use <code>--record</code> flag on <code>apply</code> (deprecated) or annotate with <code>kubernetes.io/change-cause</code> for human-readable history.</td>
+          </tr>
+          <tr>
+            <td>kubectl rollout history deployment/&lt;name&gt; --revision=3 -n &lt;ns&gt;</td>
+            <td>Show the detailed spec of a specific revision — the exact image, environment variables, and resource settings at that revision.</td>
+            <td class="scenario">Confirm what version was running before the incident so you can validate the rollback target before executing it.</td>
+          </tr>
+          <tr>
+            <td>kubectl rollout undo deployment/&lt;name&gt; -n &lt;ns&gt;</td>
+            <td>Instantly roll back to the <strong>previous</strong> revision.</td>
+            <td class="scenario"><strong>Primary rollback command during an incident.</strong> When a bad deploy is in progress and you need to revert immediately — this is faster than re-running the pipeline.</td>
+          </tr>
+          <tr>
+            <td>kubectl rollout undo deployment/&lt;name&gt; --to-revision=3 -n &lt;ns&gt;</td>
+            <td>Roll back to a <strong>specific</strong> named revision.</td>
+            <td class="scenario">When "the last version" is also broken (back-to-back bad deployments) and you need to target a specific known-good revision from history.</td>
+          </tr>
+          <tr>
+            <td>kubectl rollout restart deployment/&lt;name&gt; -n &lt;ns&gt;</td>
+            <td>Trigger a rolling restart of all pods in a deployment without changing the image or config.</td>
+            <td class="scenario">Flush a bad in-memory cache, force config re-reads (when using ConfigMap mounts), or recover from goroutine leaks without a full re-deploy.</td>
+          </tr>
+          <tr>
+            <td>kubectl set image deployment/&lt;name&gt; &lt;container&gt;=&lt;image&gt;:&lt;tag&gt; -n &lt;ns&gt;</td>
+            <td>Update the image for a specific container in a Deployment imperatively (triggers a rolling update).</td>
+            <td class="scenario">Emergency hotfix deployment when the GitOps pipeline is too slow and you need to push a specific image tag immediately.</td>
+          </tr>
+          <tr>
+            <td>kubectl patch deployment &lt;name&gt; -p '{"spec":{"paused":true}}' -n &lt;ns&gt;</td>
+            <td>Pause a Deployment rollout. Changes accumulate without being applied.</td>
+            <td class="scenario">Batch multiple spec changes (image, env vars, resource limits) into a single rollout event to reduce disruption.</td>
+          </tr>
+          <tr>
+            <td>kubectl patch deployment &lt;name&gt; -p '{"spec":{"paused":false}}' -n &lt;ns&gt;</td>
+            <td>Resume a paused Deployment. All accumulated changes are applied as a single rollout.</td>
+            <td class="scenario">After batching changes on a paused deployment, resume to trigger one cohesive rolling update.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════ MODULE 5 ═══════ -->
+  <section id="m5">
+    <div class="module-banner k8s">
+      <div>
+        <div class="module-banner-num">MODULE 5</div>
+        <div class="module-banner-title">Kubernetes — Deep Debugging &amp; Logs</div>
+        <div class="module-banner-sub">Log aggregation · port-forward · exec · ephemeral containers · events</div>
+      </div>
+    </div>
+
+    <!-- Log Aggregation -->
+    <h2 id="m5-logs">Log Aggregation</h2>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl logs &lt;pod-name&gt; -n &lt;ns&gt;</td>
+            <td>Dump logs from a pod's primary container (first container in spec).</td>
+            <td class="scenario">The first log command in any pod investigation. If the pod has multiple containers, use <code>-c</code> to specify which one.</td>
+          </tr>
+          <tr>
+            <td>kubectl logs &lt;pod-name&gt; -c &lt;container&gt; -n &lt;ns&gt;</td>
+            <td>Logs from a specific named container within a multi-container pod.</td>
+            <td class="scenario">Sidecar architectures (Envoy proxy, Vault agent, log shipper) where the main app and the sidecar each have separate logs.</td>
+          </tr>
+          <tr>
+            <td>kubectl logs &lt;pod-name&gt; -n &lt;ns&gt; -f</td>
+            <td>Follow (stream) log output in real time.</td>
+            <td class="scenario">Watch application behaviour live during a load test, a specific user action, or a manually triggered event.</td>
+          </tr>
+          <tr>
+            <td>kubectl logs &lt;pod-name&gt; -n &lt;ns&gt; --tail=100</td>
+            <td>Show only the last 100 lines.</td>
+            <td class="scenario">When a pod has been running for days and you only need recent activity — avoids megabytes of historical output.</td>
+          </tr>
+          <tr>
+            <td>kubectl logs &lt;pod-name&gt; -n &lt;ns&gt; --since=1h</td>
+            <td>Show logs from the last 1 hour. Accepts <code>s</code>, <code>m</code>, <code>h</code>.</td>
+            <td class="scenario">Post-incident log scoping — limit output to the incident window to avoid analysis paralysis from unrelated log noise.</td>
+          </tr>
+          <tr>
+            <td>kubectl logs &lt;pod-name&gt; -n &lt;ns&gt; -p</td>
+            <td>Logs from the <strong>previously terminated</strong> container instance in the same pod.</td>
+            <td class="scenario"><strong>The most important flag for CrashLoopBackOff diagnosis.</strong> The current container may be alive but the crash happened in the previous instance. <code>-p</code> retrieves what was printed before the crash.</td>
+          </tr>
+          <tr>
+            <td>kubectl logs -l app=&lt;label-value&gt; -n &lt;ns&gt; --all-containers=true</td>
+            <td>Stream logs from <strong>all pods</strong> matching a label selector — including all containers within each pod.</td>
+            <td class="scenario">Aggregate logs from all replicas of a Deployment simultaneously. Essential when the error is intermittent and you cannot predict which replica will produce it next.</td>
+          </tr>
+          <tr>
+            <td>kubectl logs -l app=&lt;label-value&gt; -n &lt;ns&gt; -f --max-log-requests=20</td>
+            <td>Follow logs from up to 20 pods matching a label in parallel.</td>
+            <td class="scenario">Real-time streaming from multiple replicas during a canary deployment to compare behaviour between old and new pod versions.</td>
+          </tr>
+          <tr>
+            <td>kubectl logs &lt;pod-name&gt; -n &lt;ns&gt; --timestamps=true</td>
+            <td>Prepend RFC3339 timestamps to each log line.</td>
+            <td class="scenario">Correlate pod logs with external system events (database slow queries, CDN logs, ALB access logs) that use wall-clock timestamps.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Network Debugging -->
+    <h2 id="m5-net">Network Debugging &amp; Port Forwarding</h2>
+    <p>Bypass ingress controllers and service meshes entirely to test direct connectivity to a specific pod or service. The fastest way to isolate whether an issue is in the application or the network layer.</p>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl port-forward pod/&lt;pod-name&gt; 8080:8080 -n &lt;ns&gt;</td>
+            <td>Tunnel local port 8080 directly to port 8080 on the named pod, bypassing all services, ingresses, and load balancers.</td>
+            <td class="scenario">Confirm whether an application bug is real or an infrastructure routing issue. If the app responds correctly via port-forward but not via the service, the problem is in the service/ingress layer.</td>
+          </tr>
+          <tr>
+            <td>kubectl port-forward svc/&lt;service-name&gt; 5432:5432 -n &lt;ns&gt;</td>
+            <td>Tunnel to a Service (Kubernetes routes to a backing pod via the service's selector).</td>
+            <td class="scenario">Access an in-cluster database (Postgres, Redis, MySQL) from your local machine for debugging without exposing it externally.</td>
+          </tr>
+          <tr>
+            <td>kubectl port-forward deployment/&lt;name&gt; 9090:9090 -n &lt;ns&gt;</td>
+            <td>Tunnel to a pod selected by a Deployment (Kubernetes picks one replica).</td>
+            <td class="scenario">Access a Prometheus or metrics endpoint on one replica for manual scraping or dashboard setup without creating an Ingress.</td>
+          </tr>
+          <tr>
+            <td>kubectl port-forward pod/&lt;pod-name&gt; 8080:8080 -n &lt;ns&gt; --address 0.0.0.0</td>
+            <td>Bind the forwarded port to all interfaces, making it accessible from other hosts on the network.</td>
+            <td class="scenario">Share the tunnel with a colleague during pair debugging or make it accessible from a load testing tool on another machine in the same VPN.</td>
+          </tr>
+          <tr>
+            <td>kubectl run netdebug --rm -it --image=nicolaka/netshoot -n &lt;ns&gt; -- /bin/bash</td>
+            <td>Spin up a throwaway pod with a comprehensive network debugging toolkit (curl, dig, netstat, tcpdump, nmap, etc.) inside the cluster.</td>
+            <td class="scenario">Test DNS resolution, HTTP connectivity, TCP reachability, and network policies from <em>within the cluster network</em> — perspectives impossible to get from the host.</td>
+          </tr>
+          <tr>
+            <td>kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- curl -sv http://&lt;service-name&gt;.&lt;ns&gt;.svc.cluster.local/health</td>
+            <td>Make an HTTP request from one pod to another service using Kubernetes DNS, capturing headers and TLS info.</td>
+            <td class="scenario">Validate in-cluster DNS resolution and service-to-service HTTP connectivity without installing tools on the host machine.</td>
+          </tr>
+          <tr>
+            <td>kubectl exec &lt;pod&gt; -n &lt;ns&gt; -- nslookup &lt;service-name&gt;</td>
+            <td>DNS lookup for a Kubernetes service from inside a pod.</td>
+            <td class="scenario">Diagnose DNS-related service discovery failures. Confirm that the CoreDNS entry exists and resolves to the correct ClusterIP.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Interactive Debugging -->
+    <h2 id="m5-exec">Interactive Debugging &amp; Ephemeral Containers</h2>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body">
+        <strong>Distroless containers:</strong> Many production images use distroless base images (no shell, no package manager) for minimal attack surface. <code>kubectl exec</code> is useless here. <code>kubectl debug</code> with ephemeral containers is the solution — it attaches a debug sidecar to the running pod's process namespace without restarting it.
+      </div>
+    </div>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl exec -it &lt;pod-name&gt; -n &lt;ns&gt; -- /bin/bash</td>
+            <td>Open an interactive shell in the pod's primary container.</td>
+            <td class="scenario">Inspect the filesystem, test environment variables, or run diagnostic commands inside a container that has a shell available.</td>
+          </tr>
+          <tr>
+            <td>kubectl exec -it &lt;pod-name&gt; -c &lt;container&gt; -n &lt;ns&gt; -- /bin/sh</td>
+            <td>Exec into a specific named container in a multi-container pod.</td>
+            <td class="scenario">Debug a specific sidecar (e.g., the Envoy proxy container) without affecting the main application container.</td>
+          </tr>
+          <tr>
+            <td>kubectl exec &lt;pod-name&gt; -n &lt;ns&gt; -- env | sort</td>
+            <td>Print and sort all environment variables without entering interactive mode.</td>
+            <td class="scenario">Verify secret injection — confirm the expected keys are present and the values are not empty (avoid printing sensitive values in logs).</td>
+          </tr>
+          <tr>
+            <td>kubectl debug -it &lt;pod-name&gt; --image=busybox --target=&lt;container&gt; -n &lt;ns&gt;</td>
+            <td>Attach an ephemeral debug container sharing the process namespace of <code>&lt;container&gt;</code>. Can inspect its <code>/proc</code>, filesystem, and network stack.</td>
+            <td class="scenario"><strong>Debugging distroless or scratch-based containers</strong> that have no shell. The ephemeral container shares the PID namespace so you can inspect the running process's file descriptors, open sockets, and memory maps with tools from the debug image.</td>
+          </tr>
+          <tr>
+            <td>kubectl debug -it &lt;pod-name&gt; --image=nicolaka/netshoot --target=&lt;container&gt; -n &lt;ns&gt;</td>
+            <td>Attach a netshoot ephemeral container (full network toolkit) to a distroless pod.</td>
+            <td class="scenario">Run <code>tcpdump</code>, <code>ss</code>, or <code>strace</code> against a distroless production pod without restarting it and without embedding debug tools in the production image.</td>
+          </tr>
+          <tr>
+            <td>kubectl debug node/&lt;node-name&gt; -it --image=ubuntu -n &lt;ns&gt;</td>
+            <td>Spawn a privileged pod on a specific node that can see the host's processes and filesystem.</td>
+            <td class="scenario">Node-level debugging: inspect the kubelet's logs, examine the container runtime (containerd/cri-o), or investigate a kernel issue from within the cluster without SSH access to the node.</td>
+          </tr>
+          <tr>
+            <td>kubectl debug &lt;pod-name&gt; --copy-to=&lt;debug-pod-name&gt; --image=&lt;debug-image&gt; -n &lt;ns&gt;</td>
+            <td>Create a copy of a pod with the image replaced by a debug-capable image. Does not affect the original pod.</td>
+            <td class="scenario">When you need to test behaviour with a debug image but cannot tolerate any risk to the live pod. Useful for reproducing intermittent issues with full debugging tools.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Event Tracking -->
+    <h2 id="m5-events">Event Tracking</h2>
+    <p>Kubernetes events are the cluster's audit trail for scheduling, image pulls, volume mounts, probe failures, and more. They expire after ~1 hour by default — capture them early in an incident.</p>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl get events -n &lt;ns&gt;</td>
+            <td>List all events in a namespace with type (Normal/Warning), reason, object, and message.</td>
+            <td class="scenario">First step when pods are in Pending, CrashLoopBackOff, or OOMKilled states. The event usually tells you exactly why.</td>
+          </tr>
+          <tr>
+            <td>kubectl get events -n &lt;ns&gt; --sort-by='.lastTimestamp'</td>
+            <td>Sort events chronologically — most recent at the bottom.</td>
+            <td class="scenario">Establish a timeline of failures. See the sequence of events that led to the current broken state (e.g., ImagePullBackOff → OOMKilled → CrashLoopBackOff).</td>
+          </tr>
+          <tr>
+            <td>kubectl get events -n &lt;ns&gt; --field-selector reason=BackOff</td>
+            <td>Filter events by a specific reason code.</td>
+            <td class="scenario">Quickly count and isolate all BackOff events in a namespace when you suspect a widespread image pull or container start failure.</td>
+          </tr>
+          <tr>
+            <td>kubectl get events -n &lt;ns&gt; --field-selector type=Warning --sort-by='.lastTimestamp'</td>
+            <td>Show only Warning-level events, sorted chronologically.</td>
+            <td class="scenario">Cut through Normal events during an incident and focus only on conditions that represent problems.</td>
+          </tr>
+          <tr>
+            <td>kubectl get events -A --sort-by='.lastTimestamp' | tail -30</td>
+            <td>Show the 30 most recent events across the entire cluster.</td>
+            <td class="scenario">Cluster-wide incident triage — get a panoramic view of what is failing across all namespaces simultaneously.</td>
+          </tr>
+          <tr>
+            <td>kubectl describe pod &lt;pod-name&gt; -n &lt;ns&gt; | grep -A 20 Events:</td>
+            <td>Extract and display the Events section from a pod description.</td>
+            <td class="scenario">Fastest way to see events scoped to a single pod — especially useful when there are many events in the namespace and you only care about one pod.</td>
+          </tr>
+          <tr>
+            <td>kubectl get events -n &lt;ns&gt; -w</td>
+            <td>Watch the events stream live — new events appear as they are created.</td>
+            <td class="scenario">Monitor a deployment, a rolling restart, or a node drain operation in real time and see exactly what the control plane is doing step by step.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════ MODULE 6 ═══════ -->
+  <section id="m6">
+    <div class="module-banner k8s">
+      <div>
+        <div class="module-banner-num">MODULE 6</div>
+        <div class="module-banner-title">Kubernetes — Cleaning &amp; Housekeeping</div>
+        <div class="module-banner-sub">Stuck pods · bulk eviction cleanup · orphaned ReplicaSets</div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body">
+        <strong>Understand before deleting.</strong> Pods stuck in Terminating are often held by finalizers for good reason (PVC detachment, service mesh graceful shutdown). Identify <em>why</em> a pod is stuck before force-deleting it. Force deletion skips the finalizer lifecycle and can cause data inconsistency in stateful workloads.
+      </div>
+    </div>
+
+    <!-- Stuck Pods -->
+    <h2 id="m6-stuck">Clearing Stuck Terminating Pods</h2>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl get pods -n &lt;ns&gt; | grep Terminating</td>
+            <td>List pods currently stuck in the Terminating state.</td>
+            <td class="scenario">Audit step before cleanup — confirm which pods are actually stuck vs which are mid-graceful-shutdown and should be left alone.</td>
+          </tr>
+          <tr>
+            <td>kubectl delete pod &lt;pod-name&gt; -n &lt;ns&gt; --grace-period=0 --force</td>
+            <td>Bypass the grace period and immediately remove the pod record from the API server, even if the kubelet has not confirmed termination.</td>
+            <td class="scenario">Pod is stuck in Terminating and the node it ran on is dead or the kubelet is unreachable. The pod will never self-terminate — this removes the API object. <strong>The container process may still be running on the node.</strong></td>
+          </tr>
+          <tr>
+            <td>kubectl patch pod &lt;pod-name&gt; -p '{"metadata":{"finalizers":[]}}' --type=merge -n &lt;ns&gt;</td>
+            <td>Remove all finalizers from a pod, allowing the API server to proceed with deletion.</td>
+            <td class="scenario">A finalizer (e.g., from a service mesh, a storage driver, or a custom operator) is preventing deletion. Only safe when the finalizer's purpose (resource cleanup) has been completed out-of-band.</td>
+          </tr>
+          <tr>
+            <td>kubectl get pods -n &lt;ns&gt; --field-selector=status.phase=Failed -o name | xargs kubectl delete -n &lt;ns&gt;</td>
+            <td>Find all pods in Failed phase in a namespace and delete them.</td>
+            <td class="scenario">Post-incident cleanup of failed pods that are not managed by a controller (standalone pods) or were left orphaned after a failed Job.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><span class="comment"># Force-delete a stuck Terminating pod (use only when node is known unreachable)</span>
+kubectl delete pod &lt;pod-name&gt; -n &lt;ns&gt; --grace-period=0 --force
+
+<span class="comment"># If it's still stuck — the finalizer is the culprit. Remove it:</span>
+kubectl patch pod &lt;pod-name&gt; -n &lt;ns&gt; \
+  -p '{"metadata":{"finalizers":[]}}' \
+  --type=merge</pre>
+
+    <!-- Bulk Cleanup -->
+    <h2 id="m6-bulk">Bulk Cleanup of Failed &amp; Evicted Pods</h2>
+    <p>Over time, nodes under memory pressure evict pods, and failed Jobs leave pod carcasses. These consume etcd storage and create namespace noise that masks real problems.</p>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl get pods -A --field-selector=status.phase=Failed</td>
+            <td>List all Failed pods across all namespaces.</td>
+            <td class="scenario">Cluster-wide audit before cleanup. Understand the scale of the problem and which namespaces are most affected.</td>
+          </tr>
+          <tr>
+            <td>kubectl delete pods -n &lt;ns&gt; --field-selector=status.phase=Failed</td>
+            <td>Delete all Failed pods in a specific namespace.</td>
+            <td class="scenario">Namespace-scoped cleanup after a failed batch job run or a period of high eviction activity.</td>
+          </tr>
+          <tr>
+            <td>kubectl get pods -A --field-selector=status.phase=Failed -o json | jq -r '.items[] | .metadata.namespace + "/" + .metadata.name' | xargs -I{} bash -c 'ns=$(echo {} | cut -d/ -f1); pod=$(echo {} | cut -d/ -f2); kubectl delete pod $pod -n $ns'</td>
+            <td>Delete all Failed pods across every namespace in the cluster.</td>
+            <td class="scenario">Full cluster cleanup sweep after a widespread eviction event or a mass Job failure. Run in a maintenance window.</td>
+          </tr>
+          <tr>
+            <td>kubectl get pods -n &lt;ns&gt; -o json | jq -r '.items[] | select(.status.reason=="Evicted") | .metadata.name' | xargs kubectl delete pod -n &lt;ns&gt;</td>
+            <td>Find and delete all Evicted pods in a namespace by parsing the status reason field.</td>
+            <td class="scenario">After a node memory pressure event — evicted pods pile up in Terminated/Evicted state and do not self-clean. This reclaims etcd space and clears the pod listing noise.</td>
+          </tr>
+          <tr>
+            <td>kubectl get pods -A -o json | jq -r '.items[] | select(.status.reason=="Evicted") | [.metadata.namespace, .metadata.name] | @tsv' | while IFS=$'\t' read -r ns pod; do kubectl delete pod "$pod" -n "$ns"; done</td>
+            <td>Cluster-wide deletion of all Evicted pods across all namespaces.</td>
+            <td class="scenario">Large-scale post-incident sweep when evictions occurred across multiple namespaces simultaneously (e.g., after a cluster-wide memory spike or a node flap).</td>
+          </tr>
+          <tr>
+            <td>kubectl get pods -n &lt;ns&gt; | awk '/Error/{print $1}' | xargs kubectl delete pod -n &lt;ns&gt;</td>
+            <td>Delete pods in Error state using awk for lightweight field parsing.</td>
+            <td class="scenario">Scriptable, dependency-free cleanup for Error state pods on hosts where <code>jq</code> is not available.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><span class="comment"># Comprehensive eviction cleanup — safe one-liner for a single namespace</span>
+kubectl get pods -n production -o json \
+  | jq -r '.items[] | select(.status.reason=="Evicted") | .metadata.name' \
+  | xargs kubectl delete pod -n production
+
+<span class="comment"># Count evicted pods before deleting (audit step)</span>
+kubectl get pods -n production -o json \
+  | jq '[.items[] | select(.status.reason=="Evicted")] | length'</pre>
+
+    <!-- Orphaned ReplicaSets -->
+    <h2 id="m6-rs">Cleaning Up Orphaned ReplicaSets</h2>
+    <p>Kubernetes retains old ReplicaSets by default (controlled by <code>revisionHistoryLimit</code> on the Deployment — default 10). While this enables rollback, it creates clutter in large or long-running clusters. Zero-replica ReplicaSets beyond the history limit are safe to remove.</p>
+
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Description</th><th>Scenario</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>kubectl get rs -n &lt;ns&gt;</td>
+            <td>List all ReplicaSets in a namespace showing desired/current/ready counts.</td>
+            <td class="scenario">Identify how many old, zero-replica ReplicaSets have accumulated. Any RS with 0 desired, 0 current, 0 ready is orphaned.</td>
+          </tr>
+          <tr>
+            <td>kubectl get rs -n &lt;ns&gt; -o json | jq -r '.items[] | select(.spec.replicas==0) | .metadata.name'</td>
+            <td>List the names of all ReplicaSets with 0 desired replicas.</td>
+            <td class="scenario">Pre-cleanup audit — confirm which RS objects are safe to delete. Cross-reference with rollout history if rollback to specific revisions is needed.</td>
+          </tr>
+          <tr>
+            <td>kubectl get rs -n &lt;ns&gt; -o json | jq -r '.items[] | select(.spec.replicas==0) | .metadata.name' | xargs kubectl delete rs -n &lt;ns&gt;</td>
+            <td>Delete all zero-replica ReplicaSets in a namespace.</td>
+            <td class="scenario">Namespace housekeeping when rollback history is managed by a GitOps tool (ArgoCD, Flux) and old RS objects provide no rollback value.</td>
+          </tr>
+          <tr>
+            <td>kubectl patch deployment &lt;name&gt; -p '{"spec":{"revisionHistoryLimit":3}}' -n &lt;ns&gt;</td>
+            <td>Set the Deployment to retain only the last 3 ReplicaSet revisions. Older ones are automatically cleaned up.</td>
+            <td class="scenario"><strong>Preventive measure.</strong> Set this on all Deployments at creation time. 3 revisions provides adequate rollback depth without accumulating RS sprawl in long-lived clusters.</td>
+          </tr>
+          <tr>
+            <td>kubectl get rs -A -o json | jq '[.items[] | select(.spec.replicas==0)] | length'</td>
+            <td>Count all zero-replica ReplicaSets across the entire cluster.</td>
+            <td class="scenario">Cluster hygiene metric. If this number is in the hundreds, it is time to enforce <code>revisionHistoryLimit</code> at the namespace or admission controller level.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre><span class="comment"># Find and delete all zero-replica ReplicaSets in a namespace</span>
+kubectl get rs -n production -o json \
+  | jq -r '.items[] | select(.spec.replicas==0) | .metadata.name' \
+  | xargs --no-run-if-empty kubectl delete rs -n production
+
+<span class="comment"># Prevent future RS accumulation — cap history at 3 revisions</span>
+kubectl patch deployment my-app \
+  -p '{"spec":{"revisionHistoryLimit":3}}' \
+  -n production
+
+<span class="comment"># Cluster-wide count of orphaned ReplicaSets</span>
+kubectl get rs -A -o json \
+  | jq '[.items[] | select(.spec.replicas==0)] | length'</pre>
+
+    <hr class="divider">
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <strong>Operational hygiene checklist:</strong>
+        Set <code>revisionHistoryLimit: 3</code> on all Deployments in your base Helm charts or Kustomize patches.
+        Run eviction cleanup as a weekly CronJob in each namespace.
+        Use <code>kubectl get events -A --sort-by=.lastTimestamp | tail -50</code> as the first command at the start of every incident response.
+        Label all resources that must survive prune operations (<code>keep: "true"</code>).
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
