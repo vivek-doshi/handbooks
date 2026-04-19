@@ -223,6 +223,178 @@
     });
   }
 
+  function setupGroupedCardSections() {
+    const cardGrid = document.querySelector('.card-grid');
+
+    if (!cardGrid || cardGrid.dataset.grouped === 'true') {
+      return;
+    }
+
+    const cards = Array.from(cardGrid.querySelectorAll(':scope > .handbook-card'));
+
+    if (cards.length === 0) {
+      return;
+    }
+
+    const grouped = new Map();
+
+    cards.forEach(function (card) {
+      const tagElement = card.querySelector('.card-tag');
+      const tagLabel = tagElement ? tagElement.textContent.trim() : 'Other';
+      const key = tagLabel.toLowerCase();
+
+      card.dataset.tag = key;
+
+      if (!grouped.has(key)) {
+        grouped.set(key, { label: tagLabel, cards: [] });
+      }
+
+      grouped.get(key).cards.push(card);
+    });
+
+    const fragment = document.createDocumentFragment();
+
+    grouped.forEach(function (group, key) {
+      const section = document.createElement('section');
+      section.className = 'topic-group';
+      section.dataset.topicGroup = key;
+
+      const heading = document.createElement('button');
+      heading.type = 'button';
+      heading.className = 'topic-group-toggle';
+      heading.setAttribute('aria-expanded', 'true');
+      heading.innerHTML =
+        '<span class="topic-group-title">' + group.label + '</span>' +
+        '<span class="topic-group-meta">' +
+          '<span class="topic-group-count" data-topic-group-count>' + group.cards.length + ' handbooks</span>' +
+          '<span class="topic-group-chevron" aria-hidden="true">▾</span>' +
+        '</span>';
+
+      const groupGrid = document.createElement('div');
+      groupGrid.className = 'topic-group-grid';
+
+      group.cards.forEach(function (card) {
+        groupGrid.appendChild(card);
+      });
+
+      heading.addEventListener('click', function () {
+        const shouldExpand = section.classList.contains('is-collapsed');
+        section.classList.toggle('is-collapsed', !shouldExpand);
+        heading.setAttribute('aria-expanded', String(shouldExpand));
+      });
+
+      section.appendChild(heading);
+      section.appendChild(groupGrid);
+      fragment.appendChild(section);
+    });
+
+    cardGrid.replaceChildren(fragment);
+    cardGrid.classList.add('is-grouped');
+    cardGrid.dataset.grouped = 'true';
+
+    const filterMeta = document.querySelector('.topic-filter-meta');
+
+    if (filterMeta && !filterMeta.querySelector('[data-topic-group-actions]')) {
+      const actions = document.createElement('div');
+      actions.className = 'topic-group-actions';
+      actions.setAttribute('data-topic-group-actions', '');
+
+      const expandButton = document.createElement('button');
+      expandButton.type = 'button';
+      expandButton.className = 'topic-filter-clear';
+      expandButton.textContent = 'Expand all groups';
+
+      const collapseButton = document.createElement('button');
+      collapseButton.type = 'button';
+      collapseButton.className = 'topic-filter-clear';
+      collapseButton.textContent = 'Collapse all groups';
+
+      expandButton.addEventListener('click', function () {
+        cardGrid.querySelectorAll('.topic-group').forEach(function (groupSection) {
+          groupSection.classList.remove('is-collapsed');
+          const toggle = groupSection.querySelector('.topic-group-toggle');
+
+          if (toggle) {
+            toggle.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+
+      collapseButton.addEventListener('click', function () {
+        cardGrid.querySelectorAll('.topic-group').forEach(function (groupSection) {
+          if (groupSection.classList.contains('is-filter-visible')) {
+            groupSection.classList.remove('is-collapsed');
+          } else {
+            groupSection.classList.add('is-collapsed');
+          }
+
+          const toggle = groupSection.querySelector('.topic-group-toggle');
+
+          if (toggle) {
+            toggle.setAttribute('aria-expanded', String(!groupSection.classList.contains('is-collapsed')));
+          }
+        });
+      });
+
+      actions.appendChild(expandButton);
+      actions.appendChild(collapseButton);
+      filterMeta.appendChild(actions);
+    }
+
+    window.refreshTopicGroups = function () {
+      const groups = Array.from(cardGrid.querySelectorAll('.topic-group'));
+      let firstVisibleGroup = null;
+
+      groups.forEach(function (groupSection) {
+        const groupCards = Array.from(groupSection.querySelectorAll('.handbook-card'));
+        const visibleCount = groupCards.filter(function (card) {
+          return !card.classList.contains('is-hidden');
+        }).length;
+
+        const countElement = groupSection.querySelector('[data-topic-group-count]');
+        if (countElement) {
+          const noun = visibleCount === 1 ? 'handbook' : 'handbooks';
+          countElement.textContent = visibleCount + ' ' + noun;
+        }
+
+        const isVisible = visibleCount > 0;
+        groupSection.classList.toggle('is-filter-visible', isVisible);
+        groupSection.classList.toggle('is-hidden', !isVisible);
+
+        if (isVisible && !firstVisibleGroup) {
+          firstVisibleGroup = groupSection;
+        }
+      });
+
+      const visibleGroups = groups.filter(function (groupSection) {
+        return !groupSection.classList.contains('is-hidden');
+      });
+
+      if (visibleGroups.length <= 2) {
+        visibleGroups.forEach(function (groupSection) {
+          groupSection.classList.remove('is-collapsed');
+          const toggle = groupSection.querySelector('.topic-group-toggle');
+
+          if (toggle) {
+            toggle.setAttribute('aria-expanded', 'true');
+          }
+        });
+      } else if (firstVisibleGroup) {
+        visibleGroups.forEach(function (groupSection, index) {
+          const shouldExpand = index === 0;
+          groupSection.classList.toggle('is-collapsed', !shouldExpand);
+          const toggle = groupSection.querySelector('.topic-group-toggle');
+
+          if (toggle) {
+            toggle.setAttribute('aria-expanded', String(shouldExpand));
+          }
+        });
+      }
+    };
+
+    window.refreshTopicGroups();
+  }
+
   function setupTopicFilters() {
     const filterHost = document.querySelector('[data-topic-filters]');
     const filterCount = document.querySelector('[data-topic-filter-count]');
@@ -351,6 +523,10 @@
       syncUrl();
       updateCount(visibleCount);
       renderButtons();
+
+      if (typeof window.refreshTopicGroups === 'function') {
+        window.refreshTopicGroups();
+      }
     }
 
     filterHost.addEventListener('click', function (event) {
@@ -393,6 +569,7 @@
 
     setupTextNormalization();
     setupSectionNavigation();
+    setupGroupedCardSections();
     setupTopicFilters();
   });
 

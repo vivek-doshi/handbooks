@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM API Standards and Tooling Handbook</title>
+<link rel="stylesheet" href="styles/llm-api-standards-tooling-handbook.css">
+<link rel="stylesheet" href="styles/shared-ui.css">
+<link rel="stylesheet" href="styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">LLM API</div>
+    <div class="logo-sub">Standards and Tooling Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Start Here</div>
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#toc">Table of Contents</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 1</div>
+    <a class="nav-link" href="#module-1">Paradigm of LLM APIs</a>
+    <a class="nav-link" href="#api-landscape">API Landscape</a>
+    <a class="nav-link" href="#de-facto-standard">De Facto Standard</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 2</div>
+    <a class="nav-link" href="#module-2">OpenAI API Standard</a>
+    <a class="nav-link" href="#openai-payload">Payload Structure</a>
+    <a class="nav-link" href="#openai-code">Python SDK Code</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 3</div>
+    <a class="nav-link" href="#module-3">Anthropic Messages API</a>
+    <a class="nav-link" href="#anthropic-payload">Payload Structure</a>
+    <a class="nav-link" href="#anthropic-code">Python SDK Code</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 4</div>
+    <a class="nav-link" href="#module-4">Tool Calling Divide</a>
+    <a class="nav-link" href="#openai-tools">OpenAI Tool Format</a>
+    <a class="nav-link" href="#anthropic-tools">Anthropic Tool Format</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 5</div>
+    <a class="nav-link" href="#module-5">Agnostic Wrapper</a>
+    <a class="nav-link" href="#router-problem">The Problem</a>
+    <a class="nav-link" href="#router-implementation">Implementation</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Module 6</div>
+    <a class="nav-link" href="#module-6">Pitfalls and Anti-Patterns</a>
+    <a class="nav-link" href="#pitfall-streaming">Ignoring Streaming</a>
+    <a class="nav-link" href="#pitfall-schema">Hardcoding Schemas</a>
+    <a class="nav-link" href="#pitfall-tool-results">Tool Result Handling</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <div class="hero-kicker">Enterprise Integration Reference</div>
+    <h1>LLM API Standards and Tooling Handbook</h1>
+    <p class="u-hero-subtle">A production-ready guide to OpenAI and Anthropic API standards, tool-calling formats, and architecture patterns that reduce lock-in while keeping developer velocity high.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">Raw JSON First</span>
+      <span class="badge badge-green">Python SDK Examples</span>
+      <span class="badge badge-amber">Vendor-Agnostic Design</span>
+      <span class="badge badge-purple">April 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">i</span>
+    <div class="callout-body"><strong>How to use this handbook:</strong> every module starts with the exact wire payload sent over HTTP, then shows how Python SDKs abstract that payload. This is the fastest way to understand both API behavior and production debugging.</div>
+  </div>
+
+  <section id="toc">
+    <h2>Table of Contents</h2>
+    <p>This handbook is organized around six enterprise implementation modules. The sequence moves from API fundamentals to architecture and common integration failures.</p>
+
+    <div class="card-grid card-grid-2 toc-grid">
+      <article class="card toc-card current">
+        <div class="toc-meta">
+          <span class="tag">Module 1</span>
+          <span class="toc-status">Included</span>
+        </div>
+        <div class="card-title">The Paradigm of LLM APIs</div>
+        <div class="card-body">Why standards matter, what lock-in looks like, and why /v1/chat/completions became the practical common language.</div>
+      </article>
+
+      <article class="card toc-card">
+        <div class="toc-meta">
+          <span class="tag">Module 2</span>
+          <span class="toc-status">Included</span>
+        </div>
+        <div class="card-title">OpenAI API Standard</div>
+        <div class="card-body">Message roles, payload anatomy, and Python SDK usage with flexible role ordering.</div>
+      </article>
+
+      <article class="card toc-card">
+        <div class="toc-meta">
+          <span class="tag">Module 3</span>
+          <span class="toc-status">Included</span>
+        </div>
+        <div class="card-title">Anthropic Messages API</div>
+        <div class="card-body">Top-level system prompt design, strict alternation, and implementation details in Python.</div>
+      </article>
+
+      <article class="card toc-card">
+        <div class="toc-meta">
+          <span class="tag">Module 4</span>
+          <span class="toc-status">Included</span>
+        </div>
+        <div class="card-title">Tool Calling Formats</div>
+        <div class="card-body">OpenAI function/tool calling versus Anthropic tool definitions and output behavior.</div>
+      </article>
+
+      <article class="card toc-card">
+        <div class="toc-meta">
+          <span class="tag">Module 5</span>
+          <span class="toc-status">Included</span>
+        </div>
+        <div class="card-title">Agnostic Wrapper Pattern</div>
+        <div class="card-body">Factory-based router design and LiteLLM translation to avoid provider-specific rewrites.</div>
+      </article>
+
+      <article class="card toc-card">
+        <div class="toc-meta">
+          <span class="tag">Module 6</span>
+          <span class="toc-status">Included</span>
+        </div>
+        <div class="card-title">Pitfalls and Anti-Patterns</div>
+        <div class="card-body">Streaming gaps, schema drift, and incorrect tool-result handoff patterns that break agents.</div>
+      </article>
+    </div>
+  </section>
+
+  <section id="module-1">
+    <h2>Module 1: The Paradigm of LLM APIs</h2>
+    <p>When teams integrate LLMs, they are not just calling a model. They are establishing a long-term contract between product behavior, infrastructure, and vendor capability. API standards matter because they define how quickly you can switch providers, integrate new models, or roll back during incidents.</p>
+
+    <h3 id="api-landscape">The API Landscape</h3>
+    <p>Think of LLM APIs like electrical sockets. If every country had a unique plug shape, device makers would ship custom adapters for each region. That is exactly what happens when each model provider has a unique payload format: your application code becomes a stack of adapters, fragile parsers, and duplicated logic.</p>
+    <p>In enterprise systems, vendor lock-in is not only a pricing risk. It is also an operational risk. If procurement, latency, compliance, or safety requirements change, your architecture should allow provider migration with minimal code churn.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Concern</th><th>Without Standardization</th><th>With Standardization</th></tr>
+        <tr><td><strong>Cost control</strong></td><td>Model switch requires rewrites</td><td>Model switch is often a config change</td></tr>
+        <tr><td><strong>Incident response</strong></td><td>Hard to fail over across providers</td><td>Fallback routing is easier</td></tr>
+        <tr><td><strong>Team onboarding</strong></td><td>Provider-specific mental models</td><td>Shared API semantics across teams</td></tr>
+      </table>
+    </div>
+
+    <h3 id="de-facto-standard">The De Facto Standard</h3>
+    <p>The OpenAI chat-completions shape, especially <code>/v1/chat/completions</code> and the <code>messages</code> array, became the de facto standard because it is simple, expressive, and easy to proxy. Open-source inference servers such as vLLM, Ollama, and llama.cpp adopted compatible endpoints so developers could reuse clients and existing prompts.</p>
+    <p>In practice, this means many systems talk OpenAI-format JSON even when the backend model is not from OpenAI at all. This has the same effect as SQL in databases: each engine has differences, but a shared shape dramatically lowers adoption friction.</p>
+  </section>
+
+  <section id="module-2">
+    <h2>Module 2: The OpenAI API Standard</h2>
+
+    <h3 id="openai-payload">The Payload Structure (Raw JSON)</h3>
+    <p>At the wire level, the request body is JSON. The core object is <code>messages</code>, an ordered list representing conversation turns. Each item has a <code>role</code> and <code>content</code>. The three core roles are:</p>
+    <ul class="bullet">
+      <li><strong>system</strong>: policy, tone, constraints, and behavioral instructions.</li>
+      <li><strong>user</strong>: user intent and query.</li>
+      <li><strong>assistant</strong>: prior model responses, useful for continuation and grounding.</li>
+    </ul>
+
+    <pre><code>{
+  "model": "gpt-4o-mini",
+  "temperature": 0.2,
+  "max_tokens": 400,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an enterprise support assistant. Be concise and accurate."
+    },
+    {
+      "role": "user",
+      "content": "Summarize the SLA policy for API retries."
+    }
+  ]
+}</code></pre>
+
+    <h3 id="openai-code">The Code (Python SDK)</h3>
+    <pre><code>import os
+from typing import Optional
+
+from openai import OpenAI
+
+
+def get_openai_chat_reply(user_prompt: str) -> str:
+    """Send a standard chat completion request and return assistant text."""
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0.2,
+        max_tokens=400,
+        messages=[
+            {"role": "system", "content": "You are an enterprise support assistant."},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+
+    content: Optional[str] = response.choices[0].message.content
+    return content or ""
+
+
+if __name__ == "__main__":
+    answer = get_openai_chat_reply("Summarize the SLA policy for API retries.")
+    print(answer)</code></pre>
+
+    <div class="callout success">
+      <span class="callout-icon">+</span>
+      <div class="callout-body"><strong>Key characteristic:</strong> OpenAI-format APIs are highly flexible. Multiple <code>system</code> messages are allowed, and roles can repeat (for example several <code>assistant</code> turns), which is convenient for prompt layering and replaying conversation state.</div>
+    </div>
+  </section>
+
+  <section id="module-3">
+    <h2>Module 3: The Anthropic API Standard (Messages API)</h2>
+
+    <h3 id="anthropic-payload">The Payload Structure (Raw JSON)</h3>
+    <p>Anthropic's Messages API also uses a turn list, but the system instruction is defined at the top-level <code>system</code> field, not inside the <code>messages</code> array.</p>
+
+    <pre><code>{
+  "model": "claude-3-5-sonnet-20240620",
+  "max_tokens": 400,
+  "temperature": 0.2,
+  "system": "You are an enterprise support assistant. Be concise and accurate.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Summarize the SLA policy for API retries."
+    }
+  ]
+}</code></pre>
+
+    <h3>The Core Differences from OpenAI</h3>
+    <ol>
+      <li><strong>System prompt location:</strong> Anthropic keeps <code>system</code> top-level; OpenAI places system instructions inside <code>messages</code>.</li>
+      <li><strong>Strict alternation:</strong> Anthropic enforces user/assistant alternation in <code>messages</code>. You cannot arbitrarily repeat roles without normalization.</li>
+    </ol>
+
+    <h3 id="anthropic-code">The Code (Python SDK)</h3>
+    <pre><code>import os
+from typing import List
+
+from anthropic import Anthropic
+from anthropic.types import MessageParam
+
+
+def get_anthropic_reply(user_prompt: str) -> str:
+    """Call Anthropic Messages API and return plain text output."""
+    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    messages: List[MessageParam] = [
+        {"role": "user", "content": user_prompt}
+    ]
+
+    response = client.messages.create(
+        model="claude-3-5-sonnet-20240620",
+        max_tokens=400,
+        temperature=0.2,
+        system="You are an enterprise support assistant.",
+        messages=messages,
+    )
+
+    text_blocks = [block.text for block in response.content if block.type == "text"]
+    return "\n".join(text_blocks)
+
+
+if __name__ == "__main__":
+    answer = get_anthropic_reply("Summarize the SLA policy for API retries.")
+    print(answer)</code></pre>
+  </section>
+
+  <section id="module-4">
+    <h2>Module 4: The Tool Calling Formats (The Big Divide)</h2>
+    <h3>Why Tools Matter</h3>
+    <p>In enterprise systems, free-form text is not enough. Agents must call systems of record, workflow engines, and policy services using structured input. Tool calling turns "chat" into "controlled execution."</p>
+    <p>Analogy: a tool call is like a purchase order form. A phone call saying "buy servers" is ambiguous, but a structured order with fields, validation, and IDs can be audited and automated.</p>
+
+    <h3 id="openai-tools">OpenAI Tool Format</h3>
+    <p>OpenAI defines tools in a <code>tools</code> array and controls execution behavior using <code>tool_choice</code>.</p>
+
+    <pre><code>{
+  "model": "gpt-4o-mini",
+  "messages": [
+    {"role": "system", "content": "You are a weather assistant."},
+    {"role": "user", "content": "Will it rain in Seattle tomorrow?"}
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get weather forecast by city and date.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {"type": "string"},
+            "date": {"type": "string", "description": "ISO date, YYYY-MM-DD"}
+          },
+          "required": ["city", "date"],
+          "additionalProperties": false
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}</code></pre>
+
+    <p>When the model chooses a tool, it returns <code>tool_calls</code> on the assistant message:</p>
+
+    <pre><code>{
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_123",
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "arguments": "{\"city\":\"Seattle\",\"date\":\"2026-04-21\"}"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}</code></pre>
+
+    <h3 id="anthropic-tools">Anthropic Tool Format</h3>
+    <p>Anthropic declares tools with <code>name</code>, <code>description</code>, and <code>input_schema</code>. Tool requests appear as <code>tool_use</code> content blocks.</p>
+
+    <pre><code>{
+  "model": "claude-3-5-sonnet-20240620",
+  "max_tokens": 500,
+  "system": "You are a weather assistant.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Will it rain in Seattle tomorrow?"
+    }
+  ],
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Get weather forecast by city and date.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "city": {"type": "string"},
+          "date": {"type": "string"}
+        },
+        "required": ["city", "date"]
+      }
+    }
+  ]
+}</code></pre>
+
+    <p>Typical response shape includes a <code>tool_use</code> block and may include text blocks. Some Claude variants also emit XML-like reasoning markers such as <code>&lt;thinking&gt;...&lt;/thinking&gt;</code> in text output before tool usage. Treat those as model text, not structured API fields.</p>
+
+    <pre><code>{
+  "content": [
+    {
+      "type": "text",
+      "text": "&lt;thinking&gt;I should call weather data first.&lt;/thinking&gt;"
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ABC",
+      "name": "get_weather",
+      "input": {
+        "city": "Seattle",
+        "date": "2026-04-21"
+      }
+    }
+  ],
+  "stop_reason": "tool_use"
+}</code></pre>
+  </section>
+
+  <section id="module-5">
+    <h2>Module 5: Building an Agnostic Wrapper (Enterprise Architecture)</h2>
+
+    <h3 id="router-problem">The Problem</h3>
+    <p>If your code directly depends on provider-specific request and response shapes, moving from GPT-4o to Claude 3.5 Sonnet for cost, latency, or policy reasons becomes a refactor project. Every team touching prompts, tools, and telemetry must rewrite integration code.</p>
+    <p>Analogy: this is like writing SQL directly against one vendor's proprietary syntax in every file. It works until procurement or platform strategy changes.</p>
+
+    <h3>The Solution: LLM Router/Wrapper</h3>
+    <p>Use one internal request contract and route it through adapters. The wrapper normalizes message formats, tool schemas, and response parsing. Your app calls the wrapper, not raw vendor APIs.</p>
+
+    <h3 id="router-implementation">Implementation Option A: Factory Pattern (Conceptual)</h3>
+    <pre><code>import json
+import os
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Dict, List
+
+from anthropic import Anthropic
+from openai import OpenAI
+
+
+@dataclass
+class ChatRequest:
+    model: str
+    messages: List[Dict[str, Any]]
+    temperature: float = 0.2
+    max_tokens: int = 500
+
+
+class LlmProvider(ABC):
+    @abstractmethod
+    def complete(self, request: ChatRequest) -> str:
+        raise NotImplementedError
+
+
+class OpenAIProvider(LlmProvider):
+    def __init__(self) -> None:
+        self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+    def complete(self, request: ChatRequest) -> str:
+        response = self.client.chat.completions.create(
+            model=request.model,
+            messages=request.messages,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+        )
+        return response.choices[0].message.content or ""
+
+
+class AnthropicProvider(LlmProvider):
+    def __init__(self) -> None:
+        self.client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    def complete(self, request: ChatRequest) -> str:
+        # Normalize OpenAI-style messages into Anthropic expectations.
+        system_messages = [m["content"] for m in request.messages if m["role"] == "system"]
+        system_prompt = "\n".join(system_messages) if system_messages else ""
+        non_system_messages = [m for m in request.messages if m["role"] != "system"]
+
+        response = self.client.messages.create(
+            model=request.model,
+            system=system_prompt,
+            messages=non_system_messages,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+        )
+        return "\n".join(block.text for block in response.content if block.type == "text")
+
+
+class LlmProviderFactory:
+    @staticmethod
+    def create(provider: str) -> LlmProvider:
+        if provider == "openai":
+            return OpenAIProvider()
+        if provider == "anthropic":
+            return AnthropicProvider()
+        raise ValueError(f"Unsupported provider: {provider}")
+
+
+if __name__ == "__main__":
+    request = ChatRequest(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are concise."},
+            {"role": "user", "content": "Explain exponential backoff in two bullets."},
+        ],
+    )
+
+    provider = LlmProviderFactory.create("openai")
+    print(provider.complete(request))</code></pre>
+
+    <h3>Implementation Option B: LiteLLM Translation Layer</h3>
+    <p>LiteLLM is an industry-standard library for routing and translating OpenAI-style requests to multiple providers.</p>
+
+    <pre><code>import os
+from typing import Any, Dict, List
+
+from litellm import completion
+
+
+def run_with_litellm(messages: List[Dict[str, str]]) -> str:
+    """Send OpenAI-formatted messages to an Anthropic model via LiteLLM."""
+    os.environ["ANTHROPIC_API_KEY"] = os.environ["ANTHROPIC_API_KEY"]
+
+    response = completion(
+        model="anthropic/claude-3-5-sonnet-20240620",
+        messages=messages,
+        temperature=0.2,
+        max_tokens=500,
+    )
+
+    content: str = response["choices"][0]["message"]["content"]
+    return content
+
+
+if __name__ == "__main__":
+    text = run_with_litellm([
+        {"role": "system", "content": "You are concise."},
+        {"role": "user", "content": "List three API governance checks."},
+    ])
+    print(text)</code></pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">!</span>
+      <div class="callout-body"><strong>Enterprise note:</strong> a router is also the right place to centralize retries, timeout budgets, request IDs, telemetry, redaction, and model-level policy controls.</div>
+    </div>
+  </section>
+
+  <section id="module-6">
+    <h2>Module 6: Common Pitfalls and Anti-Patterns</h2>
+
+    <h3 id="pitfall-streaming">1) Ignoring Streaming</h3>
+    <p>Blocking calls for long generations increase latency and often cause frontend or gateway timeouts. Streaming improves perceived responsiveness because the UI starts rendering tokens immediately.</p>
+
+    <pre><code># Raw request shape (OpenAI)
+{
+  "model": "gpt-4o-mini",
+  "stream": true,
+  "messages": [
+    {"role": "user", "content": "Generate a 1200-word architecture proposal."}
+  ]
+}</code></pre>
+
+    <pre><code>import os
+from typing import Iterator
+
+from openai import OpenAI
+
+
+def stream_openai_text(prompt: str) -> Iterator[str]:
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+    stream = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+    )
+
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta
+
+
+if __name__ == "__main__":
+    for token in stream_openai_text("Generate a 1200-word architecture proposal."):
+        print(token, end="", flush=True)</code></pre>
+
+    <h3 id="pitfall-schema">2) Hardcoding Schemas</h3>
+    <p>Manually writing JSON schemas for tools is error-prone and drifts from your actual function signature. Use Pydantic to generate schemas from typed models and keep one source of truth.</p>
+
+    <pre><code>import json
+from pydantic import BaseModel, Field
+
+
+class GetWeatherInput(BaseModel):
+    city: str = Field(description="City name, for example Seattle")
+    date: str = Field(description="ISO date in YYYY-MM-DD format")
+
+
+def openai_tool_definition() -> dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get weather forecast by city and date.",
+            "parameters": GetWeatherInput.model_json_schema(),
+        },
+    }
+
+
+if __name__ == "__main__":
+    print(json.dumps(openai_tool_definition(), indent=2))</code></pre>
+
+    <h3 id="pitfall-tool-results">3) Failing to Handle Tool Results Correctly</h3>
+    <p>A tool call is only half the loop. You must execute the tool and send the result back in the provider's expected format, or the model cannot continue reasoning with fresh data.</p>
+
+    <h4>OpenAI Tool Result Handoff</h4>
+    <pre><code># After receiving assistant.tool_calls[0]
+{
+  "role": "tool",
+  "tool_call_id": "call_123",
+  "content": "{\"temperature_c\": 9, \"condition\": \"rain\"}"
+}</code></pre>
+
+    <h4>Anthropic Tool Result Handoff</h4>
+    <pre><code>{
+  "role": "user",
+  "content": [
+    {
+      "type": "tool_result",
+      "tool_use_id": "toolu_01ABC",
+      "content": "{\"temperature_c\": 9, \"condition\": \"rain\"}"
+    }
+  ]
+}</code></pre>
+
+    <pre><code>import json
+import os
+from typing import Any, Dict
+
+from anthropic import Anthropic
+from openai import OpenAI
+
+
+def run_tool_and_continue_openai() -> str:
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    messages = [
+        {"role": "system", "content": "You are a weather assistant."},
+        {"role": "user", "content": "Will it rain in Seattle tomorrow?"},
+    ]
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get weather forecast by city and date.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "city": {"type": "string"},
+                        "date": {"type": "string"}
+                    },
+                    "required": ["city", "date"],
+                },
+            },
+        }
+    ]
+
+    first = client.chat.completions.create(model="gpt-4o-mini", messages=messages, tools=tools)
+    tool_call = first.choices[0].message.tool_calls[0]
+    args: Dict[str, Any] = json.loads(tool_call.function.arguments)
+
+    # Simulated tool execution.
+    tool_result = {"city": args["city"], "date": args["date"], "condition": "rain", "temperature_c": 9}
+
+    messages.append(first.choices[0].message.model_dump())
+    messages.append(
+        {
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "content": json.dumps(tool_result),
+        }
+    )
+
+    final = client.chat.completions.create(model="gpt-4o-mini", messages=messages, tools=tools)
+    return final.choices[0].message.content or ""
+
+
+def run_tool_and_continue_anthropic() -> str:
+    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    tools = [
+        {
+            "name": "get_weather",
+            "description": "Get weather forecast by city and date.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"city": {"type": "string"}, "date": {"type": "string"}},
+                "required": ["city", "date"],
+            },
+        }
+    ]
+
+    first = client.messages.create(
+        model="claude-3-5-sonnet-20240620",
+        max_tokens=500,
+        system="You are a weather assistant.",
+        tools=tools,
+        messages=[{"role": "user", "content": "Will it rain in Seattle tomorrow?"}],
+    )
+
+    tool_use_block = next(block for block in first.content if block.type == "tool_use")
+    tool_input = dict(tool_use_block.input)
+    tool_result = {
+        "city": tool_input["city"],
+        "date": tool_input["date"],
+        "condition": "rain",
+        "temperature_c": 9,
+    }
+
+    final = client.messages.create(
+        model="claude-3-5-sonnet-20240620",
+        max_tokens=500,
+        system="You are a weather assistant.",
+        tools=tools,
+        messages=[
+            {"role": "user", "content": "Will it rain in Seattle tomorrow?"},
+            {"role": "assistant", "content": [block.model_dump() for block in first.content]},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use_block.id,
+                        "content": json.dumps(tool_result),
+                    }
+                ],
+            },
+        ],
+    )
+
+    return "\n".join(block.text for block in final.content if block.type == "text")
+</code></pre>
+
+    <div class="callout info">
+      <span class="callout-icon">i</span>
+      <div class="callout-body"><strong>Operational checklist:</strong> validate schema once, stream where possible, enforce timeout and retry budgets, and always close the tool loop by posting structured results back to the model.</div>
+    </div>
+  </section>
+</main>
+
+<script src="scripts/handbook-ui.js"></script>
+</body>
+</html>
