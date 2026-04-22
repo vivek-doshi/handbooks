@@ -28,6 +28,50 @@
     applyTheme(nextTheme);
   }
 
+  function createThemeToggleButton() {
+    const button = document.createElement('button');
+    button.className = 'floating-button theme-toggle';
+    button.type = 'button';
+    button.setAttribute('data-theme-toggle', '');
+    button.innerHTML =
+      '<span class="sr-only">Toggle theme</span>' +
+      '<svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>' +
+      '</svg>' +
+      '<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<circle cx="12" cy="12" r="4"></circle>' +
+        '<path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>' +
+      '</svg>';
+
+    return button;
+  }
+
+  function ensureFloatingActions() {
+    if (!document.body) {
+      return;
+    }
+
+    let floatingActions = document.querySelector('.floating-actions');
+
+    if (!floatingActions) {
+      floatingActions = document.createElement('div');
+      floatingActions.className = 'floating-actions';
+      floatingActions.innerHTML =
+        '<a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">' +
+          '<span class="sr-only">Back to handbooks index</span>' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M15 18 9 12l6-6"></path>' +
+            '<path d="M9 12h10"></path>' +
+          '</svg>' +
+        '</a>';
+      document.body.appendChild(floatingActions);
+    }
+
+    if (!floatingActions.querySelector('[data-theme-toggle]')) {
+      floatingActions.appendChild(createThemeToggleButton());
+    }
+  }
+
   function setupTextNormalization() {
     if (!document.body || !document.body.hasAttribute('data-fix-mojibake')) {
       return;
@@ -563,6 +607,9 @@
   applyTheme(resolveTheme());
 
   document.addEventListener('DOMContentLoaded', function () {
+    ensureFloatingActions();
+    applyTheme(root.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
+
     document.querySelectorAll('[data-theme-toggle]').forEach((toggle) => {
       toggle.addEventListener('click', toggleTheme);
     });
