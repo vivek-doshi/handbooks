@@ -300,13 +300,13 @@
 
     grouped.forEach(function (group, key) {
       const section = document.createElement('section');
-      section.className = 'topic-group';
+      section.className = 'topic-group is-collapsed';
       section.dataset.topicGroup = key;
 
       const heading = document.createElement('button');
       heading.type = 'button';
       heading.className = 'topic-group-toggle';
-      heading.setAttribute('aria-expanded', 'true');
+      heading.setAttribute('aria-expanded', 'false');
       heading.innerHTML =
         '<span class="topic-group-title">' + group.label + '</span>' +
         '<span class="topic-group-meta">' +
@@ -387,6 +387,7 @@
 
     window.refreshTopicGroups = function () {
       const groups = Array.from(cardGrid.querySelectorAll('.topic-group'));
+      const hasActiveFilters = cardGrid.dataset.hasActiveFilters === 'true';
       let firstVisibleGroup = null;
 
       groups.forEach(function (groupSection) {
@@ -414,7 +415,16 @@
         return !groupSection.classList.contains('is-hidden');
       });
 
-      if (visibleGroups.length <= 2) {
+      if (!hasActiveFilters) {
+        visibleGroups.forEach(function (groupSection) {
+          groupSection.classList.add('is-collapsed');
+          const toggle = groupSection.querySelector('.topic-group-toggle');
+
+          if (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      } else if (visibleGroups.length <= 2) {
         visibleGroups.forEach(function (groupSection) {
           groupSection.classList.remove('is-collapsed');
           const toggle = groupSection.querySelector('.topic-group-toggle');
@@ -554,6 +564,7 @@
 
     function applyFilter() {
       let visibleCount = 0;
+      const groupedGrid = document.querySelector('.card-grid');
 
       cards.forEach(function (card) {
         const matches = selectedFilters.size === 0 || selectedFilters.has(card.dataset.tag);
@@ -563,6 +574,10 @@
           visibleCount += 1;
         }
       });
+
+      if (groupedGrid) {
+        groupedGrid.dataset.hasActiveFilters = selectedFilters.size > 0 ? 'true' : 'false';
+      }
 
       syncUrl();
       updateCount(visibleCount);
