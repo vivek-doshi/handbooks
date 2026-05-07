@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Evaluation & Testing Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:        #0e0f11;
+  --ink2:       #161820;
+  --ink3:       #1d2030;
+  --ink4:       #252840;
+  --paper:      #f4f1eb;
+  --paper2:     #eceae3;
+  --paper3:     #e4e1d9;
+  --line:       rgba(14,15,17,0.1);
+  --line2:      rgba(14,15,17,0.18);
+  --text:       #1a1c28;
+  --text2:      #4a4e6a;
+  --muted:      #8a8fa8;
+  --violet:     #5c4fff;
+  --violet-dim: rgba(92,79,255,0.1);
+  --violet-glow:rgba(92,79,255,0.15);
+  --coral:      #ff5a3d;
+  --coral-dim:  rgba(255,90,61,0.1);
+  --teal:       #00a896;
+  --teal-dim:   rgba(0,168,150,0.1);
+  --amber:      #e8963b;
+  --amber-dim:  rgba(232,150,59,0.1);
+  --lime:       #6dbf4a;
+  --lime-dim:   rgba(109,191,74,0.1);
+  --navy:       #1e2560;
+  --mono:       'DM Mono', monospace;
+  --display:    'Fraunces', serif;
+  --body:       'DM Sans', sans-serif;
+  --sidebar-w:  272px;
+  --top-h:      56px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+
+/* ─── GRAIN OVERLAY ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 256px;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: var(--ink);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+}
+.topbar-left { display: flex; align-items: center; gap: 18px; }
+.topbar-mark {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--ink); background: var(--violet);
+  padding: 4px 14px;
+}
+.topbar-title {
+  font-family: var(--display); font-size: 16px; font-weight: 600;
+  font-style: italic; color: var(--paper); letter-spacing: -0.3px;
+}
+.topbar-right {
+  display: flex; align-items: center; gap: 20px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: rgba(244,241,235,0.4);
+}
+.topbar-version { color: var(--violet); }
+
+/* ─── LAYOUT ─── */
+.layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); position: relative; z-index: 1; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto;
+  background: var(--ink2);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  padding: 8px 0 48px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+
+.sb-brand {
+  padding: 20px 22px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 8px;
+}
+.sb-code { font-family: var(--mono); font-size: 10px; color: var(--violet); letter-spacing: 2px; margin-bottom: 3px; }
+.sb-tagline { font-family: var(--display); font-size: 12px; font-style: italic; color: rgba(244,241,235,0.35); }
+
+.nav-group { margin-bottom: 2px; }
+.nav-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(244,241,235,0.22); padding: 14px 22px 5px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 0;
+  padding: 7px 22px; text-decoration: none;
+  color: rgba(244,241,235,0.45); font-size: 12.5px;
+  border-left: 2px solid transparent;
+  transition: all 0.15s; position: relative;
+  font-family: var(--body);
+}
+.nav-link:hover { color: rgba(244,241,235,0.8); background: rgba(255,255,255,0.04); border-left-color: rgba(255,255,255,0.15); }
+.nav-link.active { color: var(--paper); border-left-color: var(--violet); background: rgba(92,79,255,0.12); }
+.nav-num {
+  font-family: var(--mono); font-size: 9px; color: rgba(244,241,235,0.22);
+  width: 24px; flex-shrink: 0;
+}
+.nav-link.active .nav-num { color: var(--violet); }
+
+/* ─── MAIN ─── */
+.main { flex: 1; min-width: 0; padding: 52px 68px 100px; max-width: 1020px; }
+
+/* ─── HERO ─── */
+.hero {
+  margin-bottom: 72px;
+  padding: 60px 0 52px;
+  border-bottom: 1px solid var(--line2);
+  position: relative;
+}
+.hero-overline {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--violet); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-overline::after { content: ''; flex: 1; height: 1px; background: var(--violet-dim); max-width: 80px; }
+.hero h1 {
+  font-family: var(--display); font-size: 68px; font-weight: 700;
+  line-height: 0.92; letter-spacing: -2px; color: var(--text);
+  margin-bottom: 28px;
+}
+.hero h1 em { color: var(--violet); font-style: italic; }
+.hero-sub {
+  font-size: 16px; color: var(--text2); max-width: 600px;
+  line-height: 1.75; margin-bottom: 32px; font-weight: 300;
+}
+.hero-axiom {
+  font-family: var(--display); font-size: 15px; font-style: italic;
+  color: var(--text2); border-left: 3px solid var(--violet);
+  padding: 12px 20px; margin-bottom: 32px;
+  background: var(--violet-dim);
+}
+.tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+  text-transform: uppercase; padding: 5px 14px;
+  border: 1px solid; border-radius: 2px;
+}
+.tag-v { color: var(--violet); border-color: rgba(92,79,255,0.35);  background: var(--violet-dim); }
+.tag-c { color: var(--coral);  border-color: rgba(255,90,61,0.35);  background: var(--coral-dim); }
+.tag-t { color: var(--teal);   border-color: rgba(0,168,150,0.35);  background: var(--teal-dim); }
+.tag-a { color: var(--amber);  border-color: rgba(232,150,59,0.35); background: var(--amber-dim); }
+.tag-l { color: var(--lime);   border-color: rgba(109,191,74,0.35); background: var(--lime-dim); }
+
+/* ─── SECTIONS ─── */
+section { margin-bottom: 76px; scroll-margin-top: calc(var(--top-h) + 24px); }
+
+.section-header {
+  display: flex; align-items: flex-start; gap: 18px;
+  margin-bottom: 28px; padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 60px; height: 2px; background: var(--violet);
+}
+.sec-num {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  padding-top: 5px; width: 36px; flex-shrink: 0;
+}
+.sec-title h2 {
+  font-family: var(--display); font-size: 28px; font-weight: 700;
+  letter-spacing: -0.5px; color: var(--text); line-height: 1.1;
+}
+.sec-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px; margin-top: 5px; }
+
+/* ─── PROSE ─── */
+.prose { color: var(--text2); font-size: 14.5px; line-height: 1.8; margin-bottom: 18px; }
+.prose strong { color: var(--text); font-weight: 600; }
+.prose em { font-family: var(--display); font-style: italic; color: var(--text); }
+
+/* ─── CARDS ─── */
+.card {
+  background: white; border: 1px solid var(--line);
+  padding: 24px 26px; margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(14,15,17,0.04);
+  transition: box-shadow 0.2s;
+}
+.card:hover { box-shadow: 0 4px 16px rgba(14,15,17,0.08); }
+.card-v { border-top: 3px solid var(--violet); }
+.card-c { border-top: 3px solid var(--coral); }
+.card-t { border-top: 3px solid var(--teal); }
+.card-a { border-top: 3px solid var(--amber); }
+.card-l { border-top: 3px solid var(--lime); }
+
+.card-title {
+  font-family: var(--display); font-size: 16px; font-weight: 600;
+  color: var(--text); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 10px; letter-spacing: -0.3px;
+}
+.card-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 2px;
+}
+.lbl-v { color: var(--violet); background: var(--violet-dim); border: 1px solid rgba(92,79,255,0.2); }
+.lbl-c { color: var(--coral);  background: var(--coral-dim);  border: 1px solid rgba(255,90,61,0.2); }
+.lbl-t { color: var(--teal);   background: var(--teal-dim);   border: 1px solid rgba(0,168,150,0.2); }
+.lbl-a { color: var(--amber);  background: var(--amber-dim);  border: 1px solid rgba(232,150,59,0.2); }
+.lbl-l { color: var(--lime);   background: var(--lime-dim);   border: 1px solid rgba(109,191,74,0.2); }
+
+.card p, .card li { color: var(--text2); font-size: 13.5px; line-height: 1.7; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; }
+
+/* ─── GRID ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+/* ─── CODE ─── */
+.code-wrap {
+  background: var(--ink); border: 1px solid rgba(255,255,255,0.06);
+  margin: 18px 0; font-family: var(--mono);
+  box-shadow: 0 4px 24px rgba(14,15,17,0.12);
+}
+.code-top {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 18px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+}
+.code-lang { font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--violet); }
+.copy-btn {
+  font-size: 10px; background: none; border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(244,241,235,0.35); padding: 2px 10px; cursor: pointer;
+  font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase;
+  transition: all 0.2s;
+}
+.copy-btn:hover { color: var(--violet); border-color: var(--violet); }
+.code-body {
+  padding: 20px 22px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.8; white-space: pre; tab-size: 4; color: rgba(244,241,235,0.65);
+}
+.code-body::-webkit-scrollbar { height: 3px; }
+.code-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+.kw  { color: #c792ea; }
+.st  { color: #c3e88d; }
+.nm  { color: #f78c6c; }
+.cm  { color: rgba(244,241,235,0.28); font-style: italic; }
+.fn  { color: #82aaff; }
+.at  { color: #89ddff; }
+.op  { color: rgba(244,241,235,0.4); }
+.hl  { display: block; margin: 0 -22px; padding: 0 22px; background: rgba(92,79,255,0.08); border-left: 2px solid var(--violet); }
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--violet-dim); color: var(--violet);
+  padding: 1px 7px; border: 1px solid rgba(92,79,255,0.2);
+}
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 14px; padding: 15px 20px;
+  margin: 18px 0; border-left: 3px solid; font-size: 13.5px;
+}
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.call-note    { background: rgba(92,79,255,0.06);   border-color: var(--violet); }
+.call-tip     { background: rgba(0,168,150,0.06);   border-color: var(--teal); }
+.call-warn    { background: rgba(232,150,59,0.07);  border-color: var(--amber); }
+.call-danger  { background: rgba(255,90,61,0.06);   border-color: var(--coral); }
+.call-math    { background: rgba(109,191,74,0.06);  border-color: var(--lime); }
+
+/* ─── TABLES ─── */
+.tbl-wrap { margin: 18px 0; overflow-x: auto; border: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; background: white; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: var(--ink); color: rgba(244,241,235,0.7);
+  font-family: var(--mono); font-size: 9.5px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500;
+}
+td {
+  padding: 11px 16px; border-bottom: 1px solid var(--line);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(92,79,255,0.03); }
+.ok  { color: var(--teal);   font-weight: 600; font-family: var(--mono); font-size: 11px; }
+.bad { color: var(--coral);  font-weight: 600; font-family: var(--mono); font-size: 11px; }
+.mid { color: var(--amber);  font-weight: 600; font-family: var(--mono); font-size: 11px; }
+
+/* ─── METRIC SCORECARDS ─── */
+.scorecard-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0; }
+.scorecard {
+  background: white; border: 1px solid var(--line);
+  padding: 18px 16px; text-align: center;
+  box-shadow: 0 1px 3px rgba(14,15,17,0.04);
+}
+.sc-val {
+  font-family: var(--display); font-size: 38px; font-weight: 700;
+  line-height: 1; margin-bottom: 6px; letter-spacing: -1px;
+}
+.sc-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+}
+.sc-sub { font-size: 11.5px; color: var(--muted); }
+.sc-v { color: var(--violet); }
+.sc-t { color: var(--teal); }
+.sc-c { color: var(--coral); }
+.sc-a { color: var(--amber); }
+
+/* ─── FORMULA BOX ─── */
+.formula {
+  background: var(--ink); color: var(--paper);
+  padding: 20px 24px; margin: 16px 0;
+  border-left: 4px solid var(--violet);
+  font-family: var(--mono); font-size: 13px;
+  overflow-x: auto;
+}
+.formula-label {
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--violet); margin-bottom: 10px; font-family: var(--mono);
+}
+.formula-main { color: var(--paper); line-height: 2; }
+.formula-var { color: #89ddff; }
+.formula-val { color: #f78c6c; }
+.formula-note { color: rgba(244,241,235,0.35); font-style: italic; font-size: 11px; margin-top: 8px; }
+
+/* ─── HEADING ─── */
+h3 {
+  font-family: var(--display); font-size: 19px; font-weight: 600;
+  color: var(--text); margin: 30px 0 12px; letter-spacing: -0.3px;
+}
+h4 {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin: 20px 0 8px;
+}
+
+/* ─── PIPELINE FLOW ─── */
+.pipeline {
+  display: flex; align-items: center; gap: 0;
+  margin: 20px 0; overflow-x: auto;
+  background: white; border: 1px solid var(--line);
+  padding: 20px 24px;
+}
+.pipe-step {
+  flex-shrink: 0; text-align: center; min-width: 100px;
+  padding: 12px 14px;
+  background: var(--paper2); border: 1px solid var(--line);
+}
+.pipe-step-sub { font-family: var(--mono); font-size: 8.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+.pipe-step-name { font-family: var(--display); font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.2; }
+.pipe-arrow { color: var(--muted); font-size: 18px; margin: 0 8px; flex-shrink: 0; }
+.pipe-active { background: var(--violet-dim); border-color: rgba(92,79,255,0.3); }
+.pipe-active .pipe-step-name { color: var(--violet); }
+.pipe-active .pipe-step-sub { color: var(--violet); }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 3px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .grid-2, .grid-3, .scorecard-row { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 44px; }
+  .pipeline { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-mark">Eval Lab</span>
+    <span class="topbar-title">LLM Evaluation & Testing</span>
+  </div>
+  <div class="topbar-right">
+    <span>DOC-LLMEVAL-2025</span>
+    <span class="topbar-version">v2.0</span>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-code">// LLMEVAL-001</div>
+    <div class="sb-tagline">Measure what matters, ship with confidence</div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Foundations</div>
+    <a class="nav-link active" href="#overview" ><span class="nav-num">01</span>Why Eval Matters</a>
+    <a class="nav-link"        href="#taxonomy"  ><span class="nav-num">02</span>Evaluation Taxonomy</a>
+    <a class="nav-link"        href="#rag-primer"><span class="nav-num">03</span>RAG Eval Primer</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Frameworks</div>
+    <a class="nav-link" href="#ragas"    ><span class="nav-num">04</span>RAGAS</a>
+    <a class="nav-link" href="#trulens"  ><span class="nav-num">05</span>TruLens</a>
+    <a class="nav-link" href="#deepeval" ><span class="nav-num">06</span>DeepEval</a>
+    <a class="nav-link" href="#other"    ><span class="nav-num">07</span>HELM, Evals, LangSmith</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Metrics Deep-Dive</div>
+    <a class="nav-link" href="#retrieval"  ><span class="nav-num">08</span>Retrieval Metrics</a>
+    <a class="nav-link" href="#generation" ><span class="nav-num">09</span>Generation Metrics</a>
+    <a class="nav-link" href="#llm-judge"  ><span class="nav-num">10</span>LLM-as-Judge</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Operations</div>
+    <a class="nav-link" href="#dataset"    ><span class="nav-num">11</span>Dataset Construction</a>
+    <a class="nav-link" href="#regression" ><span class="nav-num">12</span>Regression Testing</a>
+    <a class="nav-link" href="#ci"         ><span class="nav-num">13</span>CI/CD Integration</a>
+    <a class="nav-link" href="#dashboard"  ><span class="nav-num">14</span>Dashboards & Alerting</a>
+    <a class="nav-link" href="#maturity"   ><span class="nav-num">15</span>Eval Maturity Model</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-overline">LLM Evaluation Field Handbook</div>
+    <h1>Prove Your RAG<br>Is Getting <em>Better</em></h1>
+    <p class="hero-sub">A rigorous engineering guide to LLM evaluation — covering RAGAS, TruLens, DeepEval, the mathematics behind retrieval and generation metrics, and how to wire it all into CI/CD so quality regressions never ship.</p>
+    <blockquote class="hero-axiom">"You can't improve what you can't measure. In LLM systems, this is a mathematical statement, not a platitude."</blockquote>
+    <div class="tags">
+      <span class="tag tag-v">RAGAS</span>
+      <span class="tag tag-c">TruLens</span>
+      <span class="tag tag-t">DeepEval</span>
+      <span class="tag tag-a">LLM-as-Judge</span>
+      <span class="tag tag-l">RAG Eval</span>
+      <span class="tag tag-v">NIST AI RMF</span>
+    </div>
+  </div>
+
+  <!-- 01 WHY EVAL -->
+  <section id="overview">
+    <div class="section-header">
+      <div class="sec-num">01</div>
+      <div class="sec-title">
+        <h2>Why Evaluation Matters</h2>
+        <div class="sec-sub">// THE PROBLEM WITH VIBES-BASED DEVELOPMENT</div>
+      </div>
+    </div>
+
+    <p class="prose">LLM systems fail silently. A prompt change that improves one query type degrades five others. A new retriever version gets better recall but retrieves noisier chunks. Without systematic evaluation, you are flying blind — "it seems better" is not a shipping criterion.</p>
+
+    <p class="prose">The evaluation gap is the defining engineering challenge of LLM development. Traditional software has deterministic outputs you can assert against. LLMs produce probabilistic, open-ended text — requiring a new discipline that combines <strong>information retrieval theory, NLP metrics, and statistical testing</strong>.</p>
+
+    <div class="grid-3">
+      <div class="card card-v">
+        <div class="card-title">Offline Evaluation</div>
+        <p>Run against a held-out labeled dataset before deployment. Catches regressions before users see them. Gives you a reproducible benchmark. Fast feedback loop in CI.</p>
+      </div>
+      <div class="card card-t">
+        <div class="card-title">Online Evaluation</div>
+        <p>Monitor real production traffic with automated quality signals. Detects distribution shift, emerging failure modes, and per-user degradation that offline sets can't anticipate.</p>
+      </div>
+      <div class="card card-a">
+        <div class="card-title">Human Evaluation</div>
+        <p>The ground truth. Use for calibrating automated metrics, adjudicating edge cases, and building preference datasets. Expensive — use strategically, not as a primary loop.</p>
+      </div>
+    </div>
+
+    <div class="callout call-note">
+      <span>📐</span>
+      <div class="callout-body"><strong>The evaluation triad:</strong> Every LLM eval system must track three things simultaneously — <strong>quality</strong> (does it answer correctly?), <strong>safety</strong> (does it avoid harmful outputs?), and <strong>cost/latency</strong> (is it fast and cheap enough?). Optimizing one without tracking the others produces systems that degrade on the ignored dimensions.</div>
+    </div>
+  </section>
+
+  <!-- 02 TAXONOMY -->
+  <section id="taxonomy">
+    <div class="section-header">
+      <div class="sec-num">02</div>
+      <div class="sec-title">
+        <h2>Evaluation Taxonomy</h2>
+        <div class="sec-sub">// WHAT ARE YOU ACTUALLY MEASURING</div>
+      </div>
+    </div>
+
+    <p class="prose">Not all eval metrics are created equal. The choice of metric depends on what component you're evaluating, what failure mode you're guarding against, and whether you have ground-truth labels available.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Metric Type</th><th>Requires Ground Truth?</th><th>What It Measures</th><th>Typical Tools</th></tr>
+        <tr>
+          <td><strong>Reference-based</strong></td>
+          <td><span class="ok">YES</span></td>
+          <td>Similarity of generated output to a gold-standard answer (BLEU, ROUGE, BERTScore, Exact Match)</td>
+          <td>NLTK, HuggingFace evaluate</td>
+        </tr>
+        <tr>
+          <td><strong>Reference-free</strong></td>
+          <td><span class="bad">NO</span></td>
+          <td>Internal quality signals: faithfulness, coherence, toxicity — evaluated without a gold answer</td>
+          <td>RAGAS, TruLens, DeepEval</td>
+        </tr>
+        <tr>
+          <td><strong>LLM-as-Judge</strong></td>
+          <td><span class="mid">OPTIONAL</span></td>
+          <td>A strong LLM (GPT-4, Claude) scores the response on defined rubrics. Flexible, scalable, expensive</td>
+          <td>OpenAI Evals, LangSmith, any RAGAS</td>
+        </tr>
+        <tr>
+          <td><strong>Retrieval-specific</strong></td>
+          <td><span class="ok">YES</span></td>
+          <td>Precision, Recall, NDCG, MRR — measures whether the right chunks were retrieved</td>
+          <td>BEIR, RAGAS, custom IR pipelines</td>
+        </tr>
+        <tr>
+          <td><strong>Task-specific</strong></td>
+          <td><span class="ok">YES</span></td>
+          <td>Custom metrics for your domain: F1 on entity extraction, accuracy on MCQ, slot-fill rate for agents</td>
+          <td>DeepEval, custom, HELM</td>
+        </tr>
+        <tr>
+          <td><strong>Safety / Red-team</strong></td>
+          <td><span class="bad">NO</span></td>
+          <td>Jailbreak resistance, hallucination rate on known-false claims, PII leakage, bias metrics</td>
+          <td>Garak, PromptBench, AI Fairness 360</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout call-warn">
+      <span>⚠</span>
+      <div class="callout-body"><strong>The BLEU trap:</strong> BLEU and ROUGE were designed for machine translation and summarization in the early 2000s. They measure n-gram overlap, which correlates poorly with quality for modern open-ended LLM outputs. A response that is semantically identical but uses different phrasing scores near zero. <strong>Do not use BLEU/ROUGE as primary metrics for RAG QA</strong> — use BERTScore, semantic similarity, or LLM-as-judge instead.</div>
+    </div>
+  </section>
+
+  <!-- 03 RAG PRIMER -->
+  <section id="rag-primer">
+    <div class="section-header">
+      <div class="sec-num">03</div>
+      <div class="sec-title">
+        <h2>RAG Evaluation Primer</h2>
+        <div class="sec-sub">// THE FOUR FAILURE MODES OF A RAG PIPELINE</div>
+      </div>
+    </div>
+
+    <p class="prose">Retrieval-Augmented Generation has two independently-failing components — the <strong>retriever</strong> and the <strong>generator</strong>. A bug in either produces wrong answers but in very different ways. You need metrics that isolate each component, plus end-to-end metrics that evaluate the full pipeline.</p>
+
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-step-sub">Input</div>
+        <div class="pipe-step-name">User Query</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step pipe-active">
+        <div class="pipe-step-sub">Retriever</div>
+        <div class="pipe-step-name">Chunk Selection</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-step-sub">Context</div>
+        <div class="pipe-step-name">Retrieved Chunks</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step pipe-active">
+        <div class="pipe-step-sub">Generator</div>
+        <div class="pipe-step-name">LLM Response</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-step-sub">Output</div>
+        <div class="pipe-step-name">Final Answer</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-c">
+        <div class="card-title">Retriever Failure Modes <span class="card-label lbl-c">Upstream</span></div>
+        <ul>
+          <li><strong>Low precision:</strong> Retrieved chunks are irrelevant noise — LLM hallucinates to fill gaps</li>
+          <li><strong>Low recall:</strong> Relevant chunks are missing — LLM can't answer even with perfect generation</li>
+          <li><strong>Wrong ordering:</strong> Most relevant chunk is position 5/5 — lost-in-the-middle failure</li>
+          <li><strong>Chunk granularity:</strong> Chunks too large (dilution) or too small (missing context)</li>
+        </ul>
+      </div>
+      <div class="card card-v">
+        <div class="card-title">Generator Failure Modes <span class="card-label lbl-v">Downstream</span></div>
+        <ul>
+          <li><strong>Hallucination:</strong> Claims facts not present in retrieved context</li>
+          <li><strong>Context ignorance:</strong> Ignores retrieved context, answers from parametric memory</li>
+          <li><strong>Faithfulness:</strong> Contradicts or misrepresents what the context says</li>
+          <li><strong>Verbosity / conciseness:</strong> Answers are padded or missing key detail</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>The Core Evaluation Triangle</h3>
+    <div class="scorecard-row">
+      <div class="scorecard">
+        <div class="sc-label">Faithfulness</div>
+        <div class="sc-val sc-v">F</div>
+        <div class="sc-sub">% of claims in answer that are grounded in retrieved context</div>
+      </div>
+      <div class="scorecard">
+        <div class="sc-label">Answer Relevance</div>
+        <div class="sc-val sc-t">AR</div>
+        <div class="sc-sub">How completely and precisely the answer addresses the query</div>
+      </div>
+      <div class="scorecard">
+        <div class="sc-label">Context Precision</div>
+        <div class="sc-val sc-c">CP</div>
+        <div class="sc-sub">What fraction of retrieved chunks are actually relevant</div>
+      </div>
+      <div class="scorecard">
+        <div class="sc-label">Context Recall</div>
+        <div class="sc-val sc-a">CR</div>
+        <div class="sc-sub">What fraction of needed info was present in retrieved context</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 RAGAS -->
+  <section id="ragas">
+    <div class="section-header">
+      <div class="sec-num">04</div>
+      <div class="sec-title">
+        <h2>RAGAS</h2>
+        <div class="sec-sub">// RETRIEVAL AUGMENTED GENERATION ASSESSMENT</div>
+      </div>
+    </div>
+
+    <p class="prose">RAGAS (<em>Retrieval Augmented Generation Assessment</em>) is the most widely-adopted framework for reference-free RAG evaluation. It uses an LLM evaluator to score your RAG pipeline across four core metrics without requiring manually-labeled gold answers — making it practical to run at scale.</p>
+
+    <div class="callout call-math">
+      <span>∑</span>
+      <div class="callout-body"><strong>Reference-free by design:</strong> RAGAS's key insight is that you can evaluate RAG quality using only three inputs — the <strong>question</strong>, the <strong>retrieved context</strong>, and the <strong>generated answer</strong>. No ground-truth required for Faithfulness and Answer Relevance. Context Recall does require a ground-truth answer as proxy for "all necessary information."</div>
+    </div>
+
+    <h3>The Four RAGAS Metrics</h3>
+
+    <div class="formula">
+      <div class="formula-label">Metric 1 — Faithfulness</div>
+      <div class="formula-main"><span class="formula-var">Faithfulness</span> = <span class="formula-val">|verified_claims|</span> / <span class="formula-val">|total_claims_in_answer|</span></div>
+      <div class="formula-note">Decompose answer into atomic claims. LLM judge verifies each claim against retrieved context. Score = fraction verifiable. Ranges [0, 1]. A score below 0.8 indicates significant hallucination.</div>
+    </div>
+
+    <div class="formula">
+      <div class="formula-label">Metric 2 — Answer Relevance</div>
+      <div class="formula-main"><span class="formula-var">AR</span> = <span class="formula-val">mean</span>( cosine_similarity( embed(<span class="formula-var">q</span>), embed(<span class="formula-var">q̂ᵢ</span>) ) ) for i in 1..n</div>
+      <div class="formula-note">Generate n synthetic questions from the answer. Embed the original query and each synthetic question. Mean cosine similarity = how well the answer "covers" the query. Low score = off-topic or incomplete.</div>
+    </div>
+
+    <div class="formula">
+      <div class="formula-label">Metric 3 — Context Precision</div>
+      <div class="formula-main"><span class="formula-var">CP@k</span> = Σᵢ₌₁ᵏ (<span class="formula-var">Precisionᵢ</span> × <span class="formula-var">relevantᵢ</span>) / |relevant_chunks_in_top_k|</div>
+      <div class="formula-note">Weighted precision that rewards relevant chunks appearing at higher positions. Penalizes retrievers that bury the relevant chunk at position k. Equivalent to Average Precision in IR literature.</div>
+    </div>
+
+    <div class="formula">
+      <div class="formula-label">Metric 4 — Context Recall</div>
+      <div class="formula-main"><span class="formula-var">CR</span> = |<span class="formula-var">ground_truth_sentences_attributed_to_context</span>| / |<span class="formula-var">ground_truth_sentences</span>|</div>
+      <div class="formula-note">Decompose the ground-truth answer into sentences. LLM judge checks if each sentence can be attributed to at least one retrieved chunk. Requires a ground-truth answer.</div>
+    </div>
+
+    <h3>Installation & Quick Start</h3>
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — RAGAS Quick Start</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> ragas <span class="kw">import</span> evaluate
+<span class="kw">from</span> ragas.metrics <span class="kw">import</span> (
+    faithfulness,
+    answer_relevancy,
+    context_precision,
+    context_recall,
+    answer_correctness,    <span class="cm"># requires ground truth</span>
+    answer_similarity,     <span class="cm"># semantic similarity to ground truth</span>
+)
+<span class="kw">from</span> datasets <span class="kw">import</span> Dataset
+
+<span class="cm"># Build your evaluation dataset</span>
+<span class="cm"># Each row: question, answer, contexts (list of chunks), ground_truth</span>
+eval_data = {
+    <span class="st">"question"</span>:     [<span class="st">"What is the return policy?"</span>, ...],
+    <span class="st">"answer"</span>:       [<span class="st">"Returns accepted within 30 days..."</span>, ...],
+    <span class="st">"contexts"</span>:     [[<span class="st">"Our return policy states..."</span>, <span class="st">"Items must be..."</span>], ...],
+    <span class="st">"ground_truth"</span>: [<span class="st">"Returns are accepted within 30 days of purchase"</span>, ...],
+}
+
+dataset = Dataset.<span class="fn">from_dict</span>(eval_data)
+
+<span class="cm"># Run evaluation (uses gpt-4 as judge by default)</span>
+result = <span class="fn">evaluate</span>(
+    dataset=dataset,
+    metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+    llm=<span class="fn">ChatOpenAI</span>(model=<span class="st">"gpt-4o"</span>),          <span class="cm"># or Claude, Gemini</span>
+    embeddings=<span class="fn">OpenAIEmbeddings</span>(),
+    raise_exceptions=<span class="kw">False</span>,
+    show_progress=<span class="kw">True</span>,
+)
+
+<span class="cm"># Results as pandas DataFrame</span>
+df = result.<span class="fn">to_pandas</span>()
+<span class="kw">print</span>(result)
+<span class="cm"># {'faithfulness': 0.87, 'answer_relevancy': 0.91,</span>
+<span class="cm">#  'context_precision': 0.82, 'context_recall': 0.79}</span></div>
+    </div>
+
+    <h3>RAGAS Score Interpretation</h3>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Metric</th><th>≥ 0.9 (Excellent)</th><th>0.7–0.9 (Acceptable)</th><th>&lt; 0.7 (Needs Work)</th><th>Primary Root Cause</th></tr>
+        <tr>
+          <td><strong>Faithfulness</strong></td>
+          <td><span class="ok">Minimal hallucination</span></td>
+          <td><span class="mid">Some ungrounded claims</span></td>
+          <td><span class="bad">High hallucination rate</span></td>
+          <td>Weak system prompt, too-short context, aggressive summarization</td>
+        </tr>
+        <tr>
+          <td><strong>Answer Relevancy</strong></td>
+          <td><span class="ok">On-topic, complete</span></td>
+          <td><span class="mid">Partially addressed</span></td>
+          <td><span class="bad">Off-topic / vague</span></td>
+          <td>Poor retrieval, bad prompt structure, over-verbose LLM</td>
+        </tr>
+        <tr>
+          <td><strong>Context Precision</strong></td>
+          <td><span class="ok">Retriever very precise</span></td>
+          <td><span class="mid">Some noise in context</span></td>
+          <td><span class="bad">Too much irrelevant noise</span></td>
+          <td>Low similarity threshold, bad chunking, wrong embedding model</td>
+        </tr>
+        <tr>
+          <td><strong>Context Recall</strong></td>
+          <td><span class="ok">All info retrieved</span></td>
+          <td><span class="mid">Most info present</span></td>
+          <td><span class="bad">Key info missing</span></td>
+          <td>top-k too small, chunks too large, suboptimal embedding</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- 05 TRULENS -->
+  <section id="trulens">
+    <div class="section-header">
+      <div class="sec-num">05</div>
+      <div class="sec-title">
+        <h2>TruLens</h2>
+        <div class="sec-sub">// FEEDBACK FUNCTIONS & THE RAG TRIAD</div>
+      </div>
+    </div>
+
+    <p class="prose">TruLens (by TruEra) takes a different architectural approach from RAGAS — it instruments your LLM application at the function level, logging every LLM call, and attaches <em>feedback functions</em> that score interactions. This makes it ideal for continuous monitoring of production systems.</p>
+
+    <div class="grid-2">
+      <div class="card card-v">
+        <div class="card-title">TruLens RAG Triad <span class="card-label lbl-v">Core Model</span></div>
+        <p>TruLens maps its feedback functions explicitly to three relationships in a RAG pipeline:</p>
+        <ul>
+          <li><strong>Answer Relevance:</strong> Answer ↔ Question — does the answer address the question?</li>
+          <li><strong>Context Relevance:</strong> Context ↔ Question — does the retrieved context match what was asked?</li>
+          <li><strong>Groundedness:</strong> Answer ↔ Context — is the answer grounded in (not hallucinated from) the context?</li>
+        </ul>
+      </div>
+      <div class="card card-t">
+        <div class="card-title">Continuous Recording <span class="card-label lbl-t">Production</span></div>
+        <p>TruLens wraps your chain/app in a <code>TruChain</code> or <code>TruLlama</code> recorder. Every call is stored in a local SQLite (or cloud) database with full input/output traces, latency, token cost, and computed feedback scores. Inspect in the TruLens dashboard or query programmatically.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — TruLens RAG Triad Setup</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> trulens.core <span class="kw">import</span> TruSession, Feedback
+<span class="kw">from</span> trulens.providers.openai <span class="kw">import</span> OpenAI <span class="kw">as</span> TruOpenAI
+<span class="kw">from</span> trulens.apps.langchain <span class="kw">import</span> TruChain
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+session = <span class="fn">TruSession</span>()          <span class="cm"># stores results in local SQLite</span>
+
+provider = <span class="fn">TruOpenAI</span>(model_engine=<span class="st">"gpt-4o"</span>)  <span class="cm"># LLM-as-judge provider</span>
+
+<span class="cm"># ── Define the three feedback functions ──────────────────────</span>
+
+<span class="cm"># 1. Context Relevance: each chunk vs the query</span>
+f_context_relevance = (
+    <span class="fn">Feedback</span>(provider.context_relevance_with_cot_reasons, name=<span class="st">"Context Relevance"</span>)
+    .<span class="fn">on_input</span>()          <span class="cm"># question</span>
+    .<span class="fn">on</span>(<span class="fn">TruChain</span>.<span class="fn">select_context</span>())  <span class="cm"># each retrieved chunk</span>
+    .<span class="fn">aggregate</span>(np.mean)   <span class="cm"># mean over all chunks</span>
+)
+
+<span class="cm"># 2. Groundedness: answer claims vs context</span>
+f_groundedness = (
+    <span class="fn">Feedback</span>(provider.groundedness_measure_with_cot_reasons, name=<span class="st">"Groundedness"</span>)
+    .<span class="fn">on</span>(<span class="fn">TruChain</span>.<span class="fn">select_context</span>().<span class="fn">collect</span>())  <span class="cm"># all chunks as list</span>
+    .<span class="fn">on_output</span>()                                <span class="cm"># final answer</span>
+)
+
+<span class="cm"># 3. Answer Relevance: answer vs question</span>
+f_answer_relevance = (
+    <span class="fn">Feedback</span>(provider.relevance_with_cot_reasons, name=<span class="st">"Answer Relevance"</span>)
+    .<span class="fn">on_input_output</span>()
+)
+
+<span class="cm"># ── Wrap your LangChain RAG chain ────────────────────────────</span>
+tru_recorder = <span class="fn">TruChain</span>(
+    your_langchain_rag_chain,       <span class="cm"># your existing chain</span>
+    app_name=<span class="st">"product-qa-rag"</span>,
+    app_version=<span class="st">"v2.3.1"</span>,          <span class="cm"># version tag for regression tracking</span>
+    feedbacks=[f_context_relevance, f_groundedness, f_answer_relevance],
+)
+
+<span class="cm"># ── Run evaluation ───────────────────────────────────────────</span>
+<span class="kw">with</span> tru_recorder <span class="kw">as</span> recording:
+    <span class="kw">for</span> question <span class="kw">in</span> eval_questions:
+        response = your_langchain_rag_chain.<span class="fn">invoke</span>({<span class="st">"query"</span>: question})
+
+<span class="cm"># View results</span>
+session.<span class="fn">get_leaderboard</span>()       <span class="cm"># compare across app_version tags</span>
+session.<span class="fn">run_dashboard</span>()         <span class="cm"># launch local Streamlit dashboard</span></div>
+    </div>
+
+    <h3>TruLens Leaderboard — Version Comparison</h3>
+    <p class="prose">The TruLens leaderboard pattern is the key mechanism for proving improvement. Tag each experiment with a version string and compare across runs — the leaderboard shows all three RAG triad scores plus latency and cost per version.</p>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — Programmatic Regression Check</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># Compare v2.3.1 against v2.3.0 baseline</span>
+leaderboard = session.<span class="fn">get_leaderboard</span>(app_ids=[<span class="st">"product-qa-rag"</span>])
+<span class="kw">print</span>(leaderboard[[<span class="st">"app_version"</span>, <span class="st">"Groundedness"</span>, <span class="st">"Answer Relevance"</span>, <span class="st">"Context Relevance"</span>, <span class="st">"latency"</span>, <span class="st">"total_cost"</span>]])
+
+<span class="cm"># app_version  Groundedness  Answer Relevance  Context Relevance  latency  total_cost</span>
+<span class="cm"># v2.3.0       0.74          0.82              0.71               1.23s    $0.0042</span>
+<span class="cm"># v2.3.1       0.91          0.88              0.85               1.31s    $0.0045  ← improved</span>
+
+<span class="cm"># Fail CI if any metric regresses more than 5% from baseline</span>
+baseline = leaderboard[leaderboard[<span class="st">"app_version"</span>] == <span class="st">"v2.3.0"</span>].iloc[<span class="nm">0</span>]
+current  = leaderboard[leaderboard[<span class="st">"app_version"</span>] == <span class="st">"v2.3.1"</span>].iloc[<span class="nm">0</span>]
+
+threshold = <span class="nm">0.05</span>
+<span class="kw">for</span> metric <span class="kw">in</span> [<span class="st">"Groundedness"</span>, <span class="st">"Answer Relevance"</span>, <span class="st">"Context Relevance"</span>]:
+    delta = current[metric] - baseline[metric]
+    <span class="kw">if</span> delta &lt; -threshold:
+        <span class="kw">raise</span> <span class="fn">AssertionError</span>(<span class="fn">f</span><span class="st">"{metric} regressed by {delta:.2%} — blocking merge"</span>)</div>
+    </div>
+  </section>
+
+  <!-- 06 DEEPEVAL -->
+  <section id="deepeval">
+    <div class="section-header">
+      <div class="sec-num">06</div>
+      <div class="sec-title">
+        <h2>DeepEval</h2>
+        <div class="sec-sub">// PYTEST FOR LLM SYSTEMS</div>
+      </div>
+    </div>
+
+    <p class="prose">DeepEval takes a testing-first philosophy — it integrates directly with <code>pytest</code> and provides a rich library of LLM-specific metrics as assert-able test cases. Think of it as "unit tests for your prompts." It covers RAG metrics, conversational metrics, agentic task metrics, and safety checks in a single framework.</p>
+
+    <div class="grid-3">
+      <div class="card card-v">
+        <div class="card-title">G-Eval <span class="card-label lbl-v">Flexible</span></div>
+        <p>Define custom evaluation criteria in plain English. The LLM judge generates an evaluation chain-of-thought, then produces a score 0–10. Best for domain-specific quality attributes without coding a custom metric.</p>
+      </div>
+      <div class="card card-t">
+        <div class="card-title">DAG Metrics <span class="card-label lbl-t">Agentic</span></div>
+        <p>Evaluate multi-step agent tasks using a Directed Acyclic Graph of expected tool calls and intermediate states. Measures task completion rate, trajectory correctness, and efficiency.</p>
+      </div>
+      <div class="card card-a">
+        <div class="card-title">Conversational <span class="card-label lbl-a">Multi-turn</span></div>
+        <p>Role-consistency, knowledge retention across turns, and conversation completeness for chatbot applications. Goes beyond single-turn RAG evaluation.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — DeepEval Pytest Integration</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># test_rag_quality.py  — run with: deepeval test run test_rag_quality.py</span>
+
+<span class="kw">import</span> pytest
+<span class="kw">from</span> deepeval <span class="kw">import</span> assert_test
+<span class="kw">from</span> deepeval.test_case <span class="kw">import</span> LLMTestCase, LLMTestCaseParams
+<span class="kw">from</span> deepeval.metrics <span class="kw">import</span> (
+    FaithfulnessMetric,
+    AnswerRelevancyMetric,
+    ContextualPrecisionMetric,
+    ContextualRecallMetric,
+    HallucinationMetric,
+    ToxicityMetric,
+    GEval,
+)
+
+
+<span class="at">@pytest.mark.parametrize</span>(<span class="st">"test_case"</span>, load_test_cases(<span class="st">"eval_dataset.json"</span>))
+<span class="kw">def</span> <span class="fn">test_rag_pipeline</span>(test_case):
+    <span class="cm"># Run your RAG pipeline on the test case</span>
+    result = rag_pipeline.<span class="fn">query</span>(test_case.input)
+
+    llm_test_case = <span class="fn">LLMTestCase</span>(
+        input=test_case.input,
+        actual_output=result.answer,
+        expected_output=test_case.expected,        <span class="cm"># ground truth (optional)</span>
+        retrieval_context=result.retrieved_chunks,
+        context=test_case.reference_documents,
+    )
+
+    <span class="fn">assert_test</span>(llm_test_case, [
+        <span class="fn">FaithfulnessMetric</span>(threshold=<span class="nm">0.85</span>, model=<span class="st">"gpt-4o"</span>),
+        <span class="fn">AnswerRelevancyMetric</span>(threshold=<span class="nm">0.80</span>),
+        <span class="fn">ContextualPrecisionMetric</span>(threshold=<span class="nm">0.75</span>),
+        <span class="fn">ContextualRecallMetric</span>(threshold=<span class="nm">0.75</span>),
+        <span class="fn">HallucinationMetric</span>(threshold=<span class="nm">0.15</span>),     <span class="cm"># hallucination RATE — lower is better</span>
+        <span class="fn">ToxicityMetric</span>(threshold=<span class="nm">0.05</span>),
+    ])
+
+
+<span class="cm"># Custom G-Eval — domain-specific quality criterion</span>
+conciseness_metric = <span class="fn">GEval</span>(
+    name=<span class="st">"Conciseness"</span>,
+    model=<span class="st">"gpt-4o"</span>,
+    evaluation_params=[LLMTestCaseParams.INPUT, LLMTestCaseParams.ACTUAL_OUTPUT],
+    evaluation_steps=[
+        <span class="st">"Check that the answer does not contain unnecessary padding or repetition"</span>,
+        <span class="st">"Verify the answer directly addresses the question without preamble"</span>,
+        <span class="st">"Confirm key information is present without verbosity"</span>,
+    ],
+    threshold=<span class="nm">0.7</span>,
+)
+
+
+<span class="kw">def</span> <span class="fn">test_conciseness</span>():
+    test_case = <span class="fn">LLMTestCase</span>(
+        input=<span class="st">"What is the capital of France?"</span>,
+        actual_output=rag_pipeline.<span class="fn">query</span>(<span class="st">"What is the capital of France?"</span>).answer,
+    )
+    <span class="fn">assert_test</span>(test_case, [conciseness_metric])</div>
+    </div>
+
+    <div class="callout call-tip">
+      <span>▸</span>
+      <div class="callout-body"><strong>DeepEval CLI:</strong> <code>deepeval test run</code> integrates with CI and outputs structured JSON results. Use <code>deepeval login</code> to sync results to the Confident AI cloud dashboard for trend tracking. The <code>--fail-or-exit-on-metric</code> flag fails the test suite if a specific metric drops below threshold — ideal for PR gates.</div>
+    </div>
+  </section>
+
+  <!-- 07 OTHER FRAMEWORKS -->
+  <section id="other">
+    <div class="section-header">
+      <div class="sec-num">07</div>
+      <div class="sec-title">
+        <h2>HELM, OpenAI Evals, LangSmith</h2>
+        <div class="sec-sub">// CHOOSING THE RIGHT TOOL FOR THE JOB</div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Framework</th><th>Best For</th><th>Approach</th><th>Self-hosted?</th><th>RAG Native?</th></tr>
+        <tr>
+          <td><strong>RAGAS</strong></td>
+          <td>RAG evaluation, fast offline benchmarking</td>
+          <td>Reference-free LLM-as-judge</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="ok">YES</span></td>
+        </tr>
+        <tr>
+          <td><strong>TruLens</strong></td>
+          <td>Production monitoring, experiment tracking</td>
+          <td>Feedback functions + recording</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="ok">YES</span></td>
+        </tr>
+        <tr>
+          <td><strong>DeepEval</strong></td>
+          <td>Test-driven development, CI integration</td>
+          <td>Pytest plugin, 30+ metrics</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="ok">YES</span></td>
+        </tr>
+        <tr>
+          <td><strong>HELM</strong></td>
+          <td>Multi-model benchmarking, academic comparison</td>
+          <td>Task-based standardized scenarios</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="mid">PARTIAL</span></td>
+        </tr>
+        <tr>
+          <td><strong>OpenAI Evals</strong></td>
+          <td>Custom task evals, fine-tune validation</td>
+          <td>YAML-based eval definitions, completions API</td>
+          <td><span class="mid">PARTIAL</span></td>
+          <td><span class="mid">PARTIAL</span></td>
+        </tr>
+        <tr>
+          <td><strong>LangSmith</strong></td>
+          <td>Full LLM ops: tracing + eval + monitoring</td>
+          <td>Cloud trace store + eval runners</td>
+          <td><span class="bad">NO</span></td>
+          <td><span class="ok">YES</span></td>
+        </tr>
+        <tr>
+          <td><strong>Phoenix (Arize)</strong></td>
+          <td>ML observability, embedding drift</td>
+          <td>OpenTelemetry traces + eval functions</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="ok">YES</span></td>
+        </tr>
+        <tr>
+          <td><strong>PromptFoo</strong></td>
+          <td>Prompt regression testing, red-teaming</td>
+          <td>Config-driven comparisons across providers</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="mid">PARTIAL</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout call-note">
+      <span>📐</span>
+      <div class="callout-body"><strong>Recommended stack:</strong> Use <strong>DeepEval</strong> for CI/CD test gates (fast, pytest-native), <strong>RAGAS</strong> for periodic benchmark runs against your labeled evaluation set, and <strong>Phoenix or LangSmith</strong> for production trace monitoring. You don't need to pick one — they complement each other.</div>
+    </div>
+  </section>
+
+  <!-- 08 RETRIEVAL METRICS -->
+  <section id="retrieval">
+    <div class="section-header">
+      <div class="sec-num">08</div>
+      <div class="sec-title">
+        <h2>Retrieval Metrics Deep-Dive</h2>
+        <div class="sec-sub">// THE MATHEMATICS OF FINDING THE RIGHT CHUNK</div>
+      </div>
+    </div>
+
+    <p class="prose">Before evaluating the generator, validate the retriever in isolation. These metrics come from classical Information Retrieval and have precise mathematical definitions. Use the BEIR benchmark for zero-shot evaluation of your embedding model.</p>
+
+    <div class="formula">
+      <div class="formula-label">Precision@k — What fraction of top-k retrieved docs are relevant?</div>
+      <div class="formula-main"><span class="formula-var">Precision@k</span> = |<span class="formula-var">relevant_docs</span> ∩ <span class="formula-var">retrieved_top_k</span>| / <span class="formula-val">k</span></div>
+      <div class="formula-note">Use when the cost of irrelevant context is high (LLM gets confused by noise). A retriever with P@5=0.6 means 3 of 5 retrieved chunks are relevant.</div>
+    </div>
+
+    <div class="formula">
+      <div class="formula-label">Recall@k — What fraction of all relevant docs are in top-k?</div>
+      <div class="formula-main"><span class="formula-var">Recall@k</span> = |<span class="formula-var">relevant_docs</span> ∩ <span class="formula-var">retrieved_top_k</span>| / |<span class="formula-var">all_relevant_docs</span>|</div>
+      <div class="formula-note">Use when missing relevant context is catastrophic (can't answer without it). For QA, recall is typically more important than precision — retrieve more, let the LLM filter.</div>
+    </div>
+
+    <div class="formula">
+      <div class="formula-label">Mean Reciprocal Rank — How high is the FIRST relevant doc?</div>
+      <div class="formula-main"><span class="formula-var">MRR</span> = (1/|Q|) × Σᵢ (1 / <span class="formula-var">rankᵢ</span>)</div>
+      <div class="formula-note">rankᵢ = position of first relevant document for query i. MRR penalizes systems that bury the answer at position 4 or 5. Critical for "lost-in-the-middle" detection.</div>
+    </div>
+
+    <div class="formula">
+      <div class="formula-label">NDCG@k — Normalized Discounted Cumulative Gain (graded relevance)</div>
+      <div class="formula-main"><span class="formula-var">DCG@k</span> = Σᵢ₌₁ᵏ (<span class="formula-var">relevanceᵢ</span>) / log₂(i + 1)     <span class="formula-var">NDCG@k</span> = <span class="formula-var">DCG@k</span> / <span class="formula-var">IDCG@k</span></div>
+      <div class="formula-note">IDCG = ideal DCG (perfect ranking). NDCG supports graded relevance (0=irrelevant, 1=somewhat, 2=highly relevant). The log₂ denominator discounts lower positions — getting relevant docs to rank 1 matters more than rank 5.</div>
+    </div>
+
+    <h3>Retriever Benchmarking with BEIR</h3>
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — BEIR Zero-shot Eval</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> beir <span class="kw">import</span> util, LoggingHandler
+<span class="kw">from</span> beir.datasets.data_loader <span class="kw">import</span> GenericDataLoader
+<span class="kw">from</span> beir.retrieval.evaluation <span class="kw">import</span> EvaluateRetrieval
+<span class="kw">from</span> beir.retrieval <span class="kw">import</span> models
+<span class="kw">from</span> beir.retrieval.search.dense <span class="kw">import</span> DenseRetrievalExactSearch <span class="kw">as</span> DRES
+
+<span class="cm"># Load a BEIR dataset (e.g., FIQA for financial QA, NFCorpus for medical)</span>
+url = <span class="st">"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/fiqa.zip"</span>
+data_path = util.<span class="fn">download_and_unzip</span>(url, <span class="st">"datasets"</span>)
+corpus, queries, qrels = GenericDataLoader.<span class="fn">load</span>(data_path)
+
+<span class="cm"># Swap in your embedding model</span>
+model = <span class="fn">DRES</span>(models.<span class="fn">SentenceBERT</span>(<span class="st">"BAAI/bge-large-en-v1.5"</span>), batch_size=<span class="nm">16</span>)
+retriever = <span class="fn">EvaluateRetrieval</span>(model, score_function=<span class="st">"cos_sim"</span>, k_values=[<span class="nm">1</span>, <span class="nm">3</span>, <span class="nm">5</span>, <span class="nm">10</span>])
+results = retriever.<span class="fn">retrieve</span>(corpus, queries)
+
+ndcg, _map, recall, precision = retriever.<span class="fn">evaluate</span>(qrels, results, retriever.k_values)
+<span class="kw">print</span>(<span class="st">"NDCG@10:"</span>, ndcg[<span class="st">"NDCG@10"</span>])    <span class="cm"># 0.412 (BGE-large on FIQA)</span>
+<span class="kw">print</span>(<span class="st">"Recall@5:"</span>, recall[<span class="st">"Recall@5"</span>])  <span class="cm"># 0.589</span></div>
+    </div>
+  </section>
+
+  <!-- 09 GENERATION METRICS -->
+  <section id="generation">
+    <div class="section-header">
+      <div class="sec-num">09</div>
+      <div class="sec-title">
+        <h2>Generation Metrics Deep-Dive</h2>
+        <div class="sec-sub">// BEYOND BLEU — SEMANTIC SIMILARITY AND NLI</div>
+      </div>
+    </div>
+
+    <p class="prose">Generation quality metrics fall into two families: <strong>lexical</strong> (token overlap — fast, cheap, poor correlation with quality) and <strong>semantic</strong> (embedding/model-based — expensive, strong correlation). Use semantic metrics for production evaluation.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Metric</th><th>Method</th><th>Requires GT?</th><th>Correlation w/ Human</th><th>Cost</th></tr>
+        <tr>
+          <td><strong>BLEU</strong></td>
+          <td>n-gram precision vs reference</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="bad">Low (QA)</span></td>
+          <td>Free</td>
+        </tr>
+        <tr>
+          <td><strong>ROUGE-L</strong></td>
+          <td>Longest common subsequence</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="mid">Medium (summ.)</span></td>
+          <td>Free</td>
+        </tr>
+        <tr>
+          <td><strong>BERTScore</strong></td>
+          <td>Contextual embedding similarity (F1)</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="ok">High</span></td>
+          <td>Low (local model)</td>
+        </tr>
+        <tr>
+          <td><strong>Semantic Similarity</strong></td>
+          <td>Cosine sim of sentence embeddings</td>
+          <td><span class="ok">YES</span></td>
+          <td><span class="ok">High</span></td>
+          <td>Low (local model)</td>
+        </tr>
+        <tr>
+          <td><strong>NLI Entailment</strong></td>
+          <td>NLI model: does context entail answer?</td>
+          <td><span class="bad">NO</span></td>
+          <td><span class="ok">High</span></td>
+          <td>Low (local model)</td>
+        </tr>
+        <tr>
+          <td><strong>LLM-as-Judge</strong></td>
+          <td>GPT-4/Claude rates on rubric</td>
+          <td><span class="mid">OPTIONAL</span></td>
+          <td><span class="ok">Very High</span></td>
+          <td>High ($)</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="formula">
+      <div class="formula-label">BERTScore — token-level precision, recall, F1 using BERT embeddings</div>
+      <div class="formula-main">
+<span class="formula-var">P_BERT</span> = (1/|ŷ|) × Σ_{ŷₜ ∈ ŷ} max_{yₜ ∈ y} cosine(ŷₜ, yₜ)
+<span class="formula-var">R_BERT</span> = (1/|y|) × Σ_{yₜ ∈ y} max_{ŷₜ ∈ ŷ} cosine(yₜ, ŷₜ)
+<span class="formula-var">F_BERT</span> = 2 × (P_BERT × R_BERT) / (P_BERT + R_BERT)
+      </div>
+      <div class="formula-note">ŷ = generated tokens, y = reference tokens. Each token is matched to its closest semantic counterpart in the other sequence. F_BERT ≥ 0.85 on DeBERTa typically indicates high quality.</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — Generation Metrics Suite</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> bert_score <span class="kw">import</span> score <span class="kw">as</span> bertscore
+<span class="kw">from</span> sentence_transformers <span class="kw">import</span> SentenceTransformer, util <span class="kw">as</span> st_util
+<span class="kw">from</span> transformers <span class="kw">import</span> pipeline
+
+<span class="cm"># ── BERTScore ─────────────────────────────────────────────────</span>
+predictions = [<span class="st">"The return window is 30 days from purchase."</span>]
+references  = [<span class="st">"Items can be returned within 30 days of the purchase date."</span>]
+
+P, R, F1 = <span class="fn">bertscore</span>(predictions, references, model_type=<span class="st">"microsoft/deberta-xlarge-mnli"</span>)
+<span class="kw">print</span>(<span class="fn">f</span><span class="st">"BERTScore F1: {F1.mean():.4f}"</span>)   <span class="cm"># → 0.9341</span>
+
+<span class="cm"># ── Semantic Similarity ───────────────────────────────────────</span>
+embedder = <span class="fn">SentenceTransformer</span>(<span class="st">"BAAI/bge-large-en-v1.5"</span>)
+emb_pred = embedder.<span class="fn">encode</span>(predictions, convert_to_tensor=<span class="kw">True</span>)
+emb_ref  = embedder.<span class="fn">encode</span>(references,  convert_to_tensor=<span class="kw">True</span>)
+sim = st_util.<span class="fn">cos_sim</span>(emb_pred, emb_ref)
+<span class="kw">print</span>(<span class="fn">f</span><span class="st">"Semantic Similarity: {sim.item():.4f}"</span>)   <span class="cm"># → 0.9627</span>
+
+<span class="cm"># ── NLI Entailment (reference-free faithfulness) ───────────────</span>
+nli = <span class="fn">pipeline</span>(<span class="st">"text-classification"</span>, model=<span class="st">"cross-encoder/nli-deberta-v3-small"</span>)
+context  = <span class="st">"Our return policy allows returns within 30 days of purchase."</span>
+answer   = <span class="st">"You have 30 days to return any item."</span>
+
+result = nli(<span class="fn">f</span><span class="st">"{context} [SEP] {answer}"</span>)[<span class="nm">0</span>]
+<span class="kw">print</span>(result)   <span class="cm"># {'label': 'ENTAILMENT', 'score': 0.9812}</span>
+<span class="cm"># ENTAILMENT = answer is grounded in context  ✓</span>
+<span class="cm"># CONTRADICTION = answer contradicts context  ✗ (hallucination)</span>
+<span class="cm"># NEUTRAL = answer is neither supported nor contradicted</span></div>
+    </div>
+  </section>
+
+  <!-- 10 LLM JUDGE -->
+  <section id="llm-judge">
+    <div class="section-header">
+      <div class="sec-num">10</div>
+      <div class="sec-title">
+        <h2>LLM-as-Judge</h2>
+        <div class="sec-sub">// USING AI TO EVALUATE AI — RESPONSIBLY</div>
+      </div>
+    </div>
+
+    <p class="prose">LLM-as-judge is currently the highest-quality scalable evaluation method. A strong judge model (GPT-4o, Claude 3.5 Sonnet) evaluates responses against a structured rubric. The quality of your evaluation is determined by the quality of your rubric — vague rubrics produce noisy, unreliable scores.</p>
+
+    <div class="grid-2">
+      <div class="card card-c">
+        <div class="card-title">LLM Judge Failure Modes <span class="card-label lbl-c">Know These</span></div>
+        <ul>
+          <li><strong>Verbosity bias:</strong> Longer answers score higher regardless of quality</li>
+          <li><strong>Self-preference:</strong> GPT-4 prefers GPT-4 outputs; Claude prefers Claude outputs</li>
+          <li><strong>Position bias:</strong> In pairwise evals, Option A scores higher if listed first</li>
+          <li><strong>Sycophancy:</strong> Agrees with user opinion expressed in the prompt</li>
+          <li><strong>Format sensitivity:</strong> Score changes based on bullet vs. prose presentation</li>
+        </ul>
+      </div>
+      <div class="card card-l">
+        <div class="card-title">Mitigations <span class="card-label lbl-l">Best Practices</span></div>
+        <ul>
+          <li><strong>Chain-of-thought:</strong> Ask judge to reason step-by-step before scoring</li>
+          <li><strong>Calibration examples:</strong> Include 2–3 scored examples (few-shot) in system prompt</li>
+          <li><strong>Score swapping:</strong> Run pairwise eval twice, swap A/B positions, take mean</li>
+          <li><strong>Use different judge than generator</strong> — avoid self-evaluation</li>
+          <li><strong>Validate against human labels</strong> — measure judge-human correlation (target ≥ 0.75 Spearman)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — Production-Grade LLM Judge</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># High-quality rubric with chain-of-thought scoring</span>
+JUDGE_SYSTEM_PROMPT = <span class="st">"""You are an expert evaluator for a customer support RAG system.
+Evaluate the assistant's response on FAITHFULNESS — the degree to which
+every factual claim in the response is directly supported by the provided context.
+
+Scoring rubric:
+  5 — Every claim is explicitly supported by the context. No extrapolation.
+  4 — Nearly all claims supported; one minor inference beyond the context.
+  3 — Most claims supported; one unsupported factual claim present.
+  2 — Several claims not grounded in context; noticeable hallucination.
+  1 — Response contains significant fabricated information.
+
+Calibration examples:
+  Context: "Shipping takes 3-5 business days."
+  Response: "Your order will arrive in 3 to 5 business days."
+  Score: 5 — Direct restatement, fully grounded.
+
+  Context: "Shipping takes 3-5 business days."
+  Response: "Your order ships from our Chicago warehouse in 3-5 days."
+  Score: 2 — 'Chicago warehouse' is fabricated.
+
+You MUST respond with valid JSON only: {"reasoning": "...", "score": N}"""</span>
+
+<span class="kw">def</span> <span class="fn">judge_faithfulness</span>(question: str, context: str, answer: str) -> dict:
+    response = openai_client.chat.completions.<span class="fn">create</span>(
+        model=<span class="st">"gpt-4o"</span>,
+        messages=[
+            {<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: JUDGE_SYSTEM_PROMPT},
+            {<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: <span class="fn">f</span><span class="st">"""
+Question: {question}
+Context: {context}
+Response to evaluate: {answer}
+
+Evaluate faithfulness. Respond with JSON only."""</span>},
+        ],
+        temperature=<span class="nm">0.0</span>,   <span class="cm"># deterministic — critical for reproducibility</span>
+        response_format={<span class="st">"type"</span>: <span class="st">"json_object"</span>},
+    )
+    <span class="kw">return</span> json.<span class="fn">loads</span>(response.choices[<span class="nm">0</span>].message.content)
+
+<span class="cm"># Returns: {"reasoning": "The answer states '30 days' which matches...", "score": 5}</span></div>
+    </div>
+  </section>
+
+  <!-- 11 DATASET CONSTRUCTION -->
+  <section id="dataset">
+    <div class="section-header">
+      <div class="sec-num">11</div>
+      <div class="sec-title">
+        <h2>Evaluation Dataset Construction</h2>
+        <div class="sec-sub">// GARBAGE IN, GARBAGE OUT — YOUR EVAL SET IS YOUR SPEC</div>
+      </div>
+    </div>
+
+    <p class="prose">Your evaluation dataset defines what "quality" means for your system. A weak eval set gives you false confidence. A strong eval set is the most valuable artifact in your LLM development process — treat it like production code: version it, review it, maintain it.</p>
+
+    <div class="grid-2">
+      <div class="card card-v">
+        <div class="card-title">Synthetic Generation (RAGAS TestsetGenerator)</div>
+        <p>Bootstrap your eval set from your own document corpus. RAGAS generates question/answer pairs from your documents using an LLM, covering simple factual, multi-context reasoning, and conditional question types. Rapid start — validate samples before trusting scores.</p>
+      </div>
+      <div class="card card-t">
+        <div class="card-title">Real User Queries (Production Mining)</div>
+        <p>Sample real queries from production logs. These represent actual user intent distribution — far more valuable than synthetic. Label a random sample weekly. 200 labeled examples is a practical minimum for statistically meaningful metrics.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — Synthetic Eval Set via RAGAS</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> ragas.testset <span class="kw">import</span> TestsetGenerator
+<span class="kw">from</span> ragas.testset.evolutions <span class="kw">import</span> simple, reasoning, multi_context
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> DirectoryLoader
+
+<span class="cm"># Load your knowledge base documents</span>
+loader = <span class="fn">DirectoryLoader</span>(<span class="st">"./docs"</span>, glob=<span class="st">"**/*.md"</span>)
+documents = loader.<span class="fn">load</span>()
+
+generator = <span class="fn">TestsetGenerator</span>.<span class="fn">with_openai</span>(
+    generator_llm=<span class="st">"gpt-4o"</span>,
+    critic_llm=<span class="st">"gpt-4o"</span>,          <span class="cm"># critic filters low-quality questions</span>
+    embeddings=<span class="st">"text-embedding-3-small"</span>,
+)
+
+testset = generator.<span class="fn">generate_with_langchain_docs</span>(
+    documents,
+    test_size=<span class="nm">200</span>,
+    distributions={
+        simple:        <span class="nm">0.5</span>,    <span class="cm"># 50% direct factual questions</span>
+        reasoning:     <span class="nm">0.25</span>,   <span class="cm"># 25% multi-hop reasoning</span>
+        multi_context: <span class="nm">0.25</span>,   <span class="cm"># 25% require multiple chunks</span>
+    },
+    with_debugging_logs=<span class="kw">True</span>,
+)
+
+df = testset.<span class="fn">to_pandas</span>()
+df.<span class="fn">to_csv</span>(<span class="st">"eval_dataset_v1.csv"</span>, index=<span class="kw">False</span>)
+
+<span class="cm"># Schema: question | contexts | ground_truth | evolution_type | metadata</span>
+<span class="cm"># IMPORTANT: Human review minimum 10% of samples before using as ground truth</span></div>
+    </div>
+
+    <div class="callout call-danger">
+      <span>⚠</span>
+      <div class="callout-body"><strong>Eval set contamination:</strong> Never tune prompts or hyperparameters against your primary eval set — that's the test set, not the validation set. Use a three-way split: <strong>dev set</strong> for iteration, <strong>validation set</strong> for go/no-go decisions on each PR, <strong>test set</strong> for quarterly benchmarks and external reporting only. Contamination makes your metrics meaningless.</div>
+    </div>
+  </section>
+
+  <!-- 12 REGRESSION TESTING -->
+  <section id="regression">
+    <div class="section-header">
+      <div class="sec-num">12</div>
+      <div class="sec-title">
+        <h2>Regression Testing</h2>
+        <div class="sec-sub">// PROVING IMPROVEMENT MATHEMATICALLY</div>
+      </div>
+    </div>
+
+    <p class="prose">A higher score on a new version doesn't prove improvement unless it's statistically significant. Random variation in LLM outputs and in the LLM judge means small deltas are noise. Use statistical tests to distinguish signal from variance.</p>
+
+    <div class="formula">
+      <div class="formula-label">Paired t-test — Is the score difference significant?</div>
+      <div class="formula-main"><span class="formula-var">t</span> = (x̄_diff) / (s_diff / √n)     where   <span class="formula-var">x̄_diff</span> = mean(scoreᵢ_new − scoreᵢ_old)</div>
+      <div class="formula-note">Use paired t-test (same queries, two versions) for continuous metrics (faithfulness, relevance). p &lt; 0.05 with n ≥ 50 is a reasonable threshold. Use Wilcoxon signed-rank test for non-normal distributions.</div>
+    </div>
+
+    <div class="formula">
+      <div class="formula-label">McNemar's Test — Pass/fail metric comparisons (binary)</div>
+      <div class="formula-main"><span class="formula-var">χ²</span> = (b − c)² / (b + c)     where b = v1 pass &amp; v2 fail count, c = v1 fail &amp; v2 pass count</div>
+      <div class="formula-note">Use for binary metrics (passed threshold / failed threshold). Compares two classifiers on the same test set. χ² &gt; 3.84 → p &lt; 0.05 for 1 degree of freedom.</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — Statistical Regression Test</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> scipy <span class="kw">import</span> stats
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+<span class="kw">def</span> <span class="fn">check_regression</span>(
+    scores_baseline: list[float],
+    scores_new: list[float],
+    metric_name: str,
+    alpha: float = <span class="nm">0.05</span>,
+    regression_threshold: float = <span class="nm">0.03</span>,   <span class="cm"># alert if delta &lt; -3%</span>
+    improvement_threshold: float = <span class="nm">0.03</span>,  <span class="cm"># celebrate if delta &gt; +3%</span>
+) -> dict:
+    <span class="cm"># Paired t-test (same questions, both versions)</span>
+    t_stat, p_value = stats.<span class="fn">ttest_rel</span>(scores_new, scores_baseline)
+    delta = np.<span class="fn">mean</span>(scores_new) - np.<span class="fn">mean</span>(scores_baseline)
+    significant = p_value &lt; alpha
+
+    result = {
+        <span class="st">"metric"</span>:      metric_name,
+        <span class="st">"baseline"</span>:    np.<span class="fn">mean</span>(scores_baseline),
+        <span class="st">"new"</span>:         np.<span class="fn">mean</span>(scores_new),
+        <span class="st">"delta"</span>:       delta,
+        <span class="st">"p_value"</span>:     p_value,
+        <span class="st">"significant"</span>: significant,
+        <span class="st">"verdict"</span>:     <span class="st">"UNKNOWN"</span>,
+    }
+
+    <span class="kw">if</span> significant <span class="kw">and</span> delta &lt; -regression_threshold:
+        result[<span class="st">"verdict"</span>] = <span class="st">"❌ REGRESSION — block merge"</span>
+    <span class="kw">elif</span> significant <span class="kw">and</span> delta > improvement_threshold:
+        result[<span class="st">"verdict"</span>] = <span class="st">"✅ IMPROVEMENT — safe to ship"</span>
+    <span class="kw">elif</span> <span class="kw">not</span> significant:
+        result[<span class="st">"verdict"</span>] = <span class="st">"⚪ NO SIGNIFICANT CHANGE"</span>
+    <span class="kw">else</span>:
+        result[<span class="st">"verdict"</span>] = <span class="st">"🟡 MARGINAL — review manually"</span>
+
+    <span class="kw">return</span> result
+
+<span class="cm"># Example output:</span>
+<span class="cm"># metric: faithfulness | baseline: 0.841 | new: 0.891 | delta: +0.050</span>
+<span class="cm"># p_value: 0.0031 | significant: True | verdict: ✅ IMPROVEMENT</span></div>
+    </div>
+  </section>
+
+  <!-- 13 CI/CD -->
+  <section id="ci">
+    <div class="section-header">
+      <div class="sec-num">13</div>
+      <div class="sec-title">
+        <h2>CI/CD Integration</h2>
+        <div class="sec-sub">// EVAL GATES THAT BLOCK REGRESSIONS FROM SHIPPING</div>
+      </div>
+    </div>
+
+    <p class="prose">Eval as a CI gate means every pull request that touches prompts, retriever configuration, embedding models, or chunking logic must pass a defined eval threshold before it can merge. This transforms eval from an ad-hoc activity into a quality guarantee.</p>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">YAML — GitHub Actions Eval Pipeline</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body">name: LLM Eval Gate
+
+<span class="at">on</span>:
+  pull_request:
+    paths:
+      - <span class="st">'src/prompts/**'</span>
+      - <span class="st">'src/retriever/**'</span>
+      - <span class="st">'config/rag_config.yaml'</span>
+      - <span class="st">'requirements.txt'</span>
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: <span class="nm">30</span>
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with: { python-version: <span class="st">'3.11'</span> }
+
+      - name: Install dependencies
+        run: pip install -r requirements-eval.txt
+
+      <span class="cm"># Fast smoke tests — run on every PR (< 5 min, 30 queries)</span>
+      - name: DeepEval smoke test
+        run: deepeval test run tests/eval/smoke/ --exit-on-first-failure
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      <span class="cm"># Full regression suite — run only if smoke passes (< 20 min, 200 queries)</span>
+      - name: Full RAGAS regression evaluation
+        run: |
+          python scripts/run_ragas_eval.py \
+            --dataset eval_data/validation_set_v3.json \
+            --baseline-version ${{ github.base_ref }} \
+            --output results/ragas_${{ github.sha }}.json
+
+      - name: Check regression thresholds
+        run: |
+          python scripts/check_thresholds.py \
+            --results results/ragas_${{ github.sha }}.json \
+            --thresholds config/eval_thresholds.yaml
+        <span class="cm"># Exits non-zero if any metric regresses > threshold → blocks merge</span>
+
+      - name: Comment results on PR
+        uses: actions/github-script@v7
+        <span class="kw">if</span>: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('results/ragas_${{ github.sha }}.json'));
+            const body = formatResultsTable(results);  <span class="cm">// helper function</span>
+            github.rest.issues.createComment({ issue_number: context.issue.number, body });</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">YAML — Eval Thresholds Config</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># config/eval_thresholds.yaml</span>
+<span class="cm"># HARD BLOCK: metric must not drop below absolute floor</span>
+<span class="at">absolute_floors</span>:
+  faithfulness:        <span class="nm">0.80</span>    <span class="cm"># never ship below 80% faithfulness</span>
+  answer_relevancy:    <span class="nm">0.75</span>
+  context_precision:   <span class="nm">0.70</span>
+  context_recall:      <span class="nm">0.70</span>
+  toxicity_rate:       <span class="nm">0.02</span>   <span class="cm"># max 2% toxic outputs</span>
+
+<span class="cm"># REGRESSION BLOCK: metric must not drop more than N% vs baseline</span>
+<span class="at">regression_tolerances</span>:
+  faithfulness:        <span class="nm">0.03</span>   <span class="cm"># 3% regression tolerance</span>
+  answer_relevancy:    <span class="nm">0.04</span>
+  context_precision:   <span class="nm">0.05</span>
+  context_recall:      <span class="nm">0.05</span>
+  p50_latency_ms:      <span class="nm">200</span>    <span class="cm"># 200ms latency regression tolerance</span>
+  cost_per_query_usd:  <span class="nm">0.002</span>  <span class="cm"># $0.002 cost regression tolerance</span>
+
+<span class="cm"># NOTIFICATION ONLY (warn but don't block)</span>
+<span class="at">soft_warnings</span>:
+  ndcg_at_5:           <span class="nm">0.01</span>   <span class="cm"># 1% retrieval degradation triggers Slack alert</span></div>
+    </div>
+  </section>
+
+  <!-- 14 DASHBOARDS -->
+  <section id="dashboard">
+    <div class="section-header">
+      <div class="sec-num">14</div>
+      <div class="sec-title">
+        <h2>Dashboards & Alerting</h2>
+        <div class="sec-sub">// PRODUCTION QUALITY MONITORING</div>
+      </div>
+    </div>
+
+    <p class="prose">Offline eval catches regressions before release. Online monitoring catches degradation after release — distribution shift, new query types, seasonal patterns, upstream model changes. Both are required for a production LLM system.</p>
+
+    <div class="grid-2">
+      <div class="card card-v">
+        <div class="card-title">Key Production Metrics to Track</div>
+        <ul>
+          <li><strong>Rolling faithfulness score</strong> (1-hour window) — primary quality signal</li>
+          <li><strong>Null-answer rate</strong> — "I don't know" responses = retrieval failure</li>
+          <li><strong>User negative feedback rate</strong> — thumbs-down as proxy signal</li>
+          <li><strong>P95 latency per component</strong> — embed, retrieve, generate separately</li>
+          <li><strong>Token cost per query</strong> — prompt + completion token spend</li>
+          <li><strong>Context utilization</strong> — % of retrieved context referenced in answer</li>
+        </ul>
+      </div>
+      <div class="card card-a">
+        <div class="card-title">Alerting Thresholds</div>
+        <ul>
+          <li><strong>P0 — Immediate page:</strong> Faithfulness &lt; 0.65 over 30-min window</li>
+          <li><strong>P1 — Slack alert:</strong> Faithfulness drops 15% vs 7-day rolling baseline</li>
+          <li><strong>P2 — Daily digest:</strong> Cost per query increases &gt;20% vs prior week</li>
+          <li><strong>Weekly review:</strong> RAGAS full eval run against validation set, trend chart</li>
+          <li><strong>Monthly:</strong> Human eval sample of 50 queries, calibrate automated metrics</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-lang">Python — Phoenix OpenTelemetry Instrumentation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">import</span> phoenix <span class="kw">as</span> px
+<span class="kw">from</span> phoenix.otel <span class="kw">import</span> register
+<span class="kw">from</span> openinference.instrumentation.openai <span class="kw">import</span> OpenAIInstrumentor
+<span class="kw">from</span> openinference.instrumentation.langchain <span class="kw">import</span> LangChainInstrumentor
+
+<span class="cm"># Start Phoenix server (or connect to hosted Arize Phoenix)</span>
+session = px.<span class="fn">launch_app</span>()   <span class="cm"># starts at http://localhost:6006</span>
+
+<span class="cm"># Register OpenTelemetry tracer — instruments all LLM calls automatically</span>
+tracer_provider = <span class="fn">register</span>(
+    project_name=<span class="st">"product-qa-rag-prod"</span>,
+    endpoint=<span class="st">"http://localhost:4317"</span>,
+)
+<span class="fn">OpenAIInstrumentor</span>().<span class="fn">instrument</span>(tracer_provider=tracer_provider)
+<span class="fn">LangChainInstrumentor</span>().<span class="fn">instrument</span>(tracer_provider=tracer_provider)
+
+<span class="cm"># From now on, every LLM call is automatically traced.
+# No code changes to your application required.
+#
+# Phoenix captures:
+#   - Full prompt + completion text
+#   - Retrieved chunks with scores
+#   - Latency per span (embed / retrieve / generate)
+#   - Token counts and estimated cost
+#   - User feedback (if you add feedback spans)
+
+# Run eval on traced data — evaluate production sample</span>
+<span class="kw">from</span> phoenix.evals <span class="kw">import</span> (
+    HallucinationEvaluator,
+    QAEvaluator,
+    RelevanceEvaluator,
+    run_evals,
+)
+
+ds = px.<span class="fn">Client</span>().<span class="fn">get_spans_dataframe</span>(project_name=<span class="st">"product-qa-rag-prod"</span>)
+hallucination_eval, qa_eval, relevance_eval = <span class="fn">run_evals</span>(
+    dataframe=ds,
+    evaluators=[<span class="fn">HallucinationEvaluator</span>(), <span class="fn">QAEvaluator</span>(), <span class="fn">RelevanceEvaluator</span>()],
+    provide_explanation=<span class="kw">True</span>,
+)</div>
+    </div>
+  </section>
+
+  <!-- 15 MATURITY MODEL -->
+  <section id="maturity">
+    <div class="section-header">
+      <div class="sec-num">15</div>
+      <div class="sec-title">
+        <h2>Eval Maturity Model</h2>
+        <div class="sec-sub">// WHERE ARE YOU, AND WHAT TO BUILD NEXT</div>
+      </div>
+    </div>
+
+    <p class="prose">Eval infrastructure matures progressively. Organizations that try to build everything at once ship nothing. Start with manual evaluation, add offline automation, then layer production monitoring. Each stage enables the next.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Stage</th><th>Name</th><th>Capabilities</th><th>Primary Tooling</th><th>KPI</th></tr>
+        <tr>
+          <td style="color:var(--muted); font-family:var(--mono); font-size:11px;">01</td>
+          <td><strong>Ad-hoc</strong></td>
+          <td>Manual review of outputs. "Looks good to me." No reproducibility. No tracking.</td>
+          <td>Spreadsheet, notebooks</td>
+          <td>Vibes</td>
+        </tr>
+        <tr>
+          <td style="color:var(--amber); font-family:var(--mono); font-size:11px;">02</td>
+          <td><strong>Benchmarked</strong></td>
+          <td>Labeled eval set exists. Can run RAGAS offline. Track scores per version manually.</td>
+          <td>RAGAS, CSV, notebooks</td>
+          <td>RAGAS score per version</td>
+        </tr>
+        <tr>
+          <td style="color:var(--violet); font-family:var(--mono); font-size:11px;">03</td>
+          <td><strong>Automated</strong></td>
+          <td>Eval runs in CI on every PR. Merge blocked on regression. Scores tracked in DB.</td>
+          <td>DeepEval + GH Actions + TruLens</td>
+          <td>Zero regressions shipped</td>
+        </tr>
+        <tr>
+          <td style="color:var(--teal); font-family:var(--mono); font-size:11px;">04</td>
+          <td><strong>Monitored</strong></td>
+          <td>Production trace monitoring. Online eval on sampled traffic. Automated alerts.</td>
+          <td>Phoenix, LangSmith, Arize</td>
+          <td>MTTD &lt; 30 min for quality drops</td>
+        </tr>
+        <tr>
+          <td style="color:var(--lime); font-family:var(--mono); font-size:11px;">05</td>
+          <td><strong>Self-improving</strong></td>
+          <td>Automated failure analysis. Eval data mined from production disagreements. Feedback loop to training data curation.</td>
+          <td>Custom + RLHF pipeline</td>
+          <td>Weekly eval score trend &gt; 0</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout call-tip">
+      <span>▸</span>
+      <div class="callout-body"><strong>Reference implementations &amp; further reading:</strong> <code>github.com/explodinggradients/ragas</code> · <code>github.com/truera/trulens</code> · <code>github.com/confident-ai/deepeval</code> · <code>github.com/Arize-ai/phoenix</code> · BEIR benchmark: <code>github.com/beir-cellar/beir</code> · MTEB (embedding model leaderboard): <code>huggingface.co/spaces/mteb/leaderboard</code> · HELM: <code>crfm.stanford.edu/helm</code> · Garak (LLM safety eval): <code>github.com/leondz/garak</code></div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-body');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'copied';
+    btn.style.color = 'var(--teal)';
+    btn.style.borderColor = 'var(--teal)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-56px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
