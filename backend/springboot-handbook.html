@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spring Boot — Developer Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,800;1,9..144,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/shared-ui.css">
+<style>
+:root {
+  --black:      #080a0e;
+  --black2:     #0d1018;
+  --black3:     #131720;
+  --black4:     #181d28;
+  --black5:     #1f2535;
+  --border:     rgba(255,255,255,0.07);
+  --border2:    rgba(255,255,255,0.13);
+  --text:       #dde4f0;
+  --text2:      #8c9ab5;
+  --muted:      #424f65;
+  --leaf:       #6fcf97;   /* Spring green */
+  --leaf-dim:   #3d9960;
+  --leaf-glow:  rgba(111,207,151,0.11);
+  --leaf-glow2: rgba(111,207,151,0.06);
+  --orange:     #f0a05a;
+  --orange-dim: rgba(240,160,90,0.12);
+  --blue:       #5b9cf6;
+  --blue-dim:   rgba(91,156,246,0.11);
+  --purple:     #b98cf5;
+  --purple-dim: rgba(185,140,245,0.1);
+  --red:        #f07070;
+  --red-dim:    rgba(240,112,112,0.1);
+  --teal:       #5ce0d8;
+  --teal-dim:   rgba(92,224,216,0.09);
+  --mono:       'Fira Code', monospace;
+  --body:       'DM Sans', sans-serif;
+  --display:    'Fraunces', serif;
+  --sidebar-w:  268px;
+  --top-h:      54px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--black);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14.5px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* subtle dot grid background */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: radial-gradient(circle, rgba(111,207,151,0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(8,10,14,0.97);
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  backdrop-filter: blur(12px);
+}
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-leaf {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: linear-gradient(135deg, #2d8653 0%, #6fcf97 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+}
+.logo-text {
+  font-family: var(--display); font-size: 18px; font-weight: 800;
+  color: var(--text); font-style: italic; letter-spacing: -0.5px;
+}
+.logo-text span { color: var(--leaf); font-style: normal; }
+.topbar-right {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+.tb-badge {
+  padding: 3px 11px; border-radius: 3px;
+  font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+  font-family: var(--mono);
+}
+.tb-green  { background: var(--leaf-glow);   color: var(--leaf);   border: 1px solid rgba(111,207,151,0.3); }
+.tb-orange { background: var(--orange-dim);  color: var(--orange); border: 1px solid rgba(240,160,90,0.3); }
+.pulse-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--leaf); box-shadow: 0 0 6px var(--leaf);
+  animation: pulse 2.5s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+/* ─── LAYOUT ─── */
+.layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); position: relative; z-index: 1; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--black2);
+  border-right: 1px solid var(--border);
+  padding-bottom: 60px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sb-top {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--leaf-glow2) 0%, transparent 100%);
+}
+.sb-version {
+  font-family: var(--mono); font-size: 10px; color: var(--leaf);
+  letter-spacing: 2px; margin-bottom: 4px;
+}
+.sb-tagline { font-size: 11px; color: var(--muted); font-style: italic; }
+
+.nav-group {
+  padding: 16px 20px 4px;
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+}
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 20px;
+  text-decoration: none; font-size: 13px;
+  color: var(--text2);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-link .nl-num {
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  width: 20px; flex-shrink: 0;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); border-left-color: var(--border2); }
+.nav-link.active { color: var(--leaf); border-left-color: var(--leaf); background: var(--leaf-glow); }
+.nav-link.active .nl-num { color: var(--leaf-dim); }
+
+/* ─── MAIN ─── */
+.main { flex: 1; min-width: 0; padding: 52px 64px 100px; max-width: 1000px; }
+
+/* ─── HERO ─── */
+.hero {
+  margin-bottom: 72px; padding: 56px 60px;
+  background: var(--black3);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(111,207,151,0.1) 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(91,156,246,0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero-corner-accent {
+  position: absolute; top: 0; right: 0;
+  width: 120px; height: 120px;
+  background: linear-gradient(225deg, rgba(111,207,151,0.1) 0%, transparent 60%);
+  border-bottom-left-radius: 120px;
+}
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+  color: var(--leaf); text-transform: uppercase; margin-bottom: 20px;
+  display: inline-flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::before { content: '//'; opacity: 0.4; }
+.hero h1 {
+  font-family: var(--display); font-size: 72px; font-weight: 800;
+  line-height: 0.9; letter-spacing: -2px;
+  color: var(--text); margin-bottom: 10px;
+}
+.hero h1 .accent { color: var(--leaf); font-style: italic; }
+.hero h1 .sub { font-size: 42px; font-weight: 300; color: var(--text2); display: block; margin-top: 6px; }
+.hero-tagline {
+  font-family: var(--mono); font-size: 12px; color: var(--leaf);
+  border-left: 3px solid var(--leaf);
+  padding: 10px 16px; background: var(--leaf-glow);
+  display: inline-block; margin: 22px 0;
+}
+.hero-desc { color: var(--text2); font-size: 15px; max-width: 560px; line-height: 1.8; margin-bottom: 28px; }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 5px 14px; border: 1px solid; border-radius: 2px;
+}
+.ch-green  { color: var(--leaf);   border-color: rgba(111,207,151,0.4); background: var(--leaf-glow); }
+.ch-orange { color: var(--orange); border-color: rgba(240,160,90,0.4);  background: var(--orange-dim); }
+.ch-blue   { color: var(--blue);   border-color: rgba(91,156,246,0.4);  background: var(--blue-dim); }
+.ch-purple { color: var(--purple); border-color: rgba(185,140,245,0.4); background: var(--purple-dim); }
+.ch-teal   { color: var(--teal);   border-color: rgba(92,224,216,0.4);  background: var(--teal-dim); }
+
+/* ─── SECTIONS ─── */
+section { margin-bottom: 76px; scroll-margin-top: calc(var(--top-h) + 24px); }
+.sec-header {
+  display: flex; align-items: flex-start; gap: 16px;
+  margin-bottom: 28px; padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.sec-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 72px; height: 1px; background: var(--leaf);
+}
+.sec-num {
+  font-family: var(--mono); font-size: 11px; color: var(--leaf);
+  margin-top: 5px; flex-shrink: 0; width: 36px;
+}
+.sec-titles h2 {
+  font-family: var(--display); font-size: 32px; font-weight: 800;
+  color: var(--text); line-height: 1; letter-spacing: -0.5px;
+}
+.sec-titles .sec-sub {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  letter-spacing: 1.5px; margin-top: 6px;
+}
+
+/* ─── PROSE ─── */
+.prose { color: var(--text2); font-size: 14.5px; line-height: 1.8; margin-bottom: 18px; }
+.prose strong { color: var(--text); font-weight: 600; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--black3); border: 1px solid var(--border);
+  padding: 22px 24px; margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
+.card-green  { border-left: 3px solid var(--leaf); }
+.card-orange { border-left: 3px solid var(--orange); }
+.card-blue   { border-left: 3px solid var(--blue); }
+.card-purple { border-left: 3px solid var(--purple); }
+.card-red    { border-left: 3px solid var(--red); }
+.card-teal   { border-left: 3px solid var(--teal); }
+
+.card-title {
+  font-family: var(--display); font-size: 17px; font-weight: 700;
+  color: var(--text); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 10px;
+  font-style: italic;
+}
+.tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 2px;
+  font-style: normal;
+}
+.tag-green  { color: var(--leaf);   background: var(--leaf-glow);   border: 1px solid rgba(111,207,151,0.3); }
+.tag-orange { color: var(--orange); background: var(--orange-dim);  border: 1px solid rgba(240,160,90,0.3); }
+.tag-blue   { color: var(--blue);   background: var(--blue-dim);    border: 1px solid rgba(91,156,246,0.3); }
+.tag-purple { color: var(--purple); background: var(--purple-dim);  border: 1px solid rgba(185,140,245,0.3); }
+.tag-red    { color: var(--red);    background: var(--red-dim);     border: 1px solid rgba(240,112,112,0.3); }
+.tag-teal   { color: var(--teal);   background: var(--teal-dim);    border: 1px solid rgba(92,224,216,0.3); }
+
+.card p, .card li { color: var(--text2); font-size: 13.5px; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; line-height: 1.65; }
+.card ul li strong { color: var(--text); }
+
+/* ─── GRID ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+
+/* ─── CODE ─── */
+.code-wrap {
+  background: #060810; border: 1px solid var(--border2);
+  margin: 18px 0; position: relative;
+  font-family: var(--mono);
+  border-radius: 2px;
+}
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 18px;
+  background: rgba(111,207,151,0.04);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang {
+  font-size: 10px; font-weight: 600; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--leaf);
+}
+.copy-btn {
+  font-size: 10px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--leaf); border-color: var(--leaf); }
+.code-block {
+  padding: 20px 22px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.8; white-space: pre; tab-size: 4; color: #7a8fa8;
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); }
+/* syntax */
+.kw  { color: #b98cf5; }
+.st  { color: #6fcf97; }
+.cm  { color: #354560; font-style: italic; }
+.fn  { color: #5b9cf6; }
+.cl  { color: #5ce0d8; }
+.nu  { color: #f0a05a; }
+.an  { color: #f0a05a; }       /* annotation */
+.hl  { background: rgba(111,207,151,0.06); display: block; margin: 0 -22px; padding: 0 22px; border-left: 2px solid var(--leaf); }
+
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(111,207,151,0.09); color: var(--leaf);
+  padding: 2px 7px; border: 1px solid rgba(111,207,151,0.2);
+  border-radius: 2px;
+}
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 14px;
+  padding: 14px 18px; margin: 18px 0;
+  border-left: 3px solid; font-size: 13.5px;
+  border-radius: 0 2px 2px 0;
+}
+.callout-icon { flex-shrink: 0; font-size: 15px; margin-top: 2px; }
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.callout.tip     { background: rgba(111,207,151,0.05);  border-color: var(--leaf); }
+.callout.note    { background: rgba(91,156,246,0.06);   border-color: var(--blue); }
+.callout.warn    { background: rgba(240,160,90,0.06);   border-color: var(--orange); }
+.callout.danger  { background: rgba(240,112,112,0.06);  border-color: var(--red); }
+
+/* ─── TABLES ─── */
+.table-wrap { border: 1px solid var(--border); margin: 18px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: rgba(111,207,151,0.05);
+  color: var(--leaf); font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+td code { font-size: 11px; }
+td strong { color: var(--text); }
+
+/* ─── H3, H4 ─── */
+h3 {
+  font-family: var(--display); font-size: 20px; font-weight: 700;
+  color: var(--text); margin: 30px 0 12px;
+  display: flex; align-items: center; gap: 10px;
+  font-style: italic;
+}
+h3::before { content: '//'; font-family: var(--mono); font-size: 12px; color: var(--leaf); font-style: normal; }
+h4 {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--muted);
+  margin: 22px 0 8px;
+}
+
+/* ─── ANNOTATION FLOW ─── */
+.annotation-block {
+  position: relative; margin: 20px 0;
+}
+.annotation-line {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.annotation-line:last-child { border-bottom: none; }
+.ann-num {
+  font-family: var(--mono); font-size: 10px; color: var(--leaf);
+  width: 22px; flex-shrink: 0; padding-top: 2px;
+}
+.ann-label {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  color: var(--text); min-width: 160px; flex-shrink: 0;
+}
+.ann-desc { font-size: 13px; color: var(--text2); }
+
+/* ─── COMPARE ─── */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--border); margin: 18px 0; }
+.cmp-col {}
+.cmp-header {
+  padding: 10px 18px; font-family: var(--mono); font-size: 10px;
+  font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.cmp-bad  .cmp-header { background: var(--red-dim);    color: var(--red);  border-right: 1px solid var(--border); }
+.cmp-good .cmp-header { background: var(--leaf-glow);  color: var(--leaf); }
+.cmp-bad  { border-right: 1px solid var(--border); }
+.cmp-body { padding: 14px 18px; }
+.cmp-body li { font-size: 13px; color: var(--text2); margin-bottom: 5px; padding-left: 2px; }
+.cmp-body ul { padding-left: 16px; }
+
+/* ─── LIFECYCLE STEPS ─── */
+.lifecycle { display: flex; gap: 0; margin: 20px 0; overflow-x: auto; }
+.lc-step {
+  flex: 1; padding: 18px 14px; text-align: center;
+  background: var(--black3); border: 1px solid var(--border);
+  border-right: none; min-width: 100px; position: relative;
+}
+.lc-step:last-child { border-right: 1px solid var(--border); }
+.lc-step::after {
+  content: '→'; position: absolute; right: -10px; top: 50%; transform: translateY(-50%);
+  color: var(--leaf); font-size: 14px; z-index: 2;
+}
+.lc-step:last-child::after { display: none; }
+.lc-num { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 6px; }
+.lc-name { font-family: var(--display); font-size: 13px; font-weight: 700; color: var(--text); font-style: italic; }
+.lc-sub  { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.lc-green  { border-top: 2px solid var(--leaf); }
+.lc-blue   { border-top: 2px solid var(--blue); }
+.lc-orange { border-top: 2px solid var(--orange); }
+.lc-purple { border-top: 2px solid var(--purple); }
+.lc-teal   { border-top: 2px solid var(--teal); }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .grid-2, .grid-3, .compare { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 48px; }
+  .hero { padding: 36px 28px; }
+  .lifecycle { flex-direction: column; }
+  .lc-step { border-right: 1px solid var(--border); border-bottom: none; }
+  .lc-step::after { content: '↓'; right: auto; bottom: -12px; top: auto; left: 50%; transform: translateX(-50%); }
+}
+</style>
+</head>
+<body>
+<div class="floating-actions">
+  <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"></path><path d="M9 12h10"></path></svg>
+  </a>
+</div>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">
+      <div class="logo-leaf">🌱</div>
+      <div class="logo-text">Spring <span>Boot</span></div>
+    </div>
+    <span style="color:var(--muted); font-size:12px;">Developer Handbook</span>
+  </div>
+  <div class="topbar-right">
+    <span class="tb-badge tb-green">Beginner → Intermediate</span>
+    <span class="tb-badge tb-orange">Spring Boot 3.x</span>
+    <div class="pulse-dot"></div>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-top">
+    <div class="sb-version">// SB-HANDBOOK-001</div>
+    <div class="sb-tagline">Build faster. Deploy confident.</div>
+  </div>
+
+  <div class="nav-group">Getting Started</div>
+  <a class="nav-link active" href="#intro"      ><span class="nl-num">01</span>What is Spring Boot?</a>
+  <a class="nav-link"        href="#setup"      ><span class="nl-num">02</span>Project Setup</a>
+  <a class="nav-link"        href="#structure"  ><span class="nl-num">03</span>Project Structure</a>
+
+  <div class="nav-group">Core Concepts</div>
+  <a class="nav-link"  href="#ioc"       ><span class="nl-num">04</span>IoC &amp; Dependency Injection</a>
+  <a class="nav-link"  href="#beans"     ><span class="nl-num">05</span>Beans &amp; Annotations</a>
+  <a class="nav-link"  href="#config"    ><span class="nl-num">06</span>Configuration</a>
+
+  <div class="nav-group">Web Layer</div>
+  <a class="nav-link"  href="#rest"      ><span class="nl-num">07</span>REST Controllers</a>
+  <a class="nav-link"  href="#requests"  ><span class="nl-num">08</span>Request Handling</a>
+  <a class="nav-link"  href="#validation"><span class="nl-num">09</span>Validation &amp; Error Handling</a>
+
+  <div class="nav-group">Data Layer</div>
+  <a class="nav-link"  href="#jpa"       ><span class="nl-num">10</span>Spring Data JPA</a>
+  <a class="nav-link"  href="#queries"   ><span class="nl-num">11</span>Queries &amp; Repositories</a>
+  <a class="nav-link"  href="#migrations"><span class="nl-num">12</span>Database Migrations</a>
+
+  <div class="nav-group">Services &amp; Quality</div>
+  <a class="nav-link"  href="#services"  ><span class="nl-num">13</span>Service Layer Pattern</a>
+  <a class="nav-link"  href="#testing"   ><span class="nl-num">14</span>Testing</a>
+  <a class="nav-link"  href="#security"  ><span class="nl-num">15</span>Spring Security Basics</a>
+
+  <div class="nav-group">Production</div>
+  <a class="nav-link"  href="#actuator"  ><span class="nl-num">16</span>Actuator &amp; Observability</a>
+  <a class="nav-link"  href="#deploy"    ><span class="nl-num">17</span>Packaging &amp; Deployment</a>
+  <a class="nav-link"  href="#patterns"  ><span class="nl-num">18</span>Patterns &amp; Pitfalls</a>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-corner-accent"></div>
+  <div class="hero-eyebrow">Developer Field Handbook</div>
+  <h1><span class="accent">Spring</span> Boot<span class="sub">from first bean to production</span></h1>
+  <div class="hero-tagline">// Convention over configuration. Opinionated. Production-ready.</div>
+  <p class="hero-desc">A practical guide for developers learning Spring Boot — from wiring your first REST endpoint to writing tests, managing databases with JPA, and shipping a containerized service. No XML required.</p>
+  <div class="chip-row">
+    <span class="chip ch-green">Spring Boot 3.x</span>
+    <span class="chip ch-orange">Java 17+</span>
+    <span class="chip ch-blue">REST APIs</span>
+    <span class="chip ch-purple">Spring Data JPA</span>
+    <span class="chip ch-teal">Spring Security</span>
+  </div>
+</div>
+
+<!-- ══ 01 INTRO ══ -->
+<section id="intro">
+  <div class="sec-header">
+    <div class="sec-num">01</div>
+    <div class="sec-titles">
+      <h2>What is Spring Boot?</h2>
+      <div class="sec-sub">// FOUNDATION AND PHILOSOPHY</div>
+    </div>
+  </div>
+
+  <p class="prose">Spring Boot is an opinionated framework built on top of the <strong>Spring Framework</strong>. It auto-configures your application based on the dependencies on your classpath, embeds a web server (Tomcat by default), and gets you from zero to running in minutes — without XML, without boilerplate application server config, without manual wiring.</p>
+
+  <div class="grid-3">
+    <div class="card card-green">
+      <div class="card-title">Auto-Configuration</div>
+      <p>Spring Boot detects what's on your classpath and configures beans automatically. Add <code>spring-boot-starter-web</code> and Tomcat is configured. Add a JPA dependency and a DataSource is wired. You override what you need, ignore the rest.</p>
+    </div>
+    <div class="card card-blue">
+      <div class="card-title">Starters</div>
+      <p>Starters are curated dependency bundles. Instead of hunting compatible versions of 8 libraries, you pull one starter. <code>spring-boot-starter-data-jpa</code> brings in Hibernate, Spring Data, and JDBC driver support — pre-wired and version-matched.</p>
+    </div>
+    <div class="card card-purple">
+      <div class="card-title">Embedded Server</div>
+      <p>Your application is a standalone JAR — the server lives inside it. No WAR deployment, no separate Tomcat install. Run with <code>java -jar app.jar</code>. Switch to Jetty or Undertow by excluding Tomcat and adding a different starter.</p>
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="cmp-col cmp-bad">
+      <div class="cmp-header">✕ Traditional Spring</div>
+      <div class="cmp-body"><ul>
+        <li>Manual XML or Java config for every bean</li>
+        <li>Manage library version compatibility yourself</li>
+        <li>Deploy WAR to external app server</li>
+        <li>Configure DataSource, Transaction Manager, MVC manually</li>
+        <li>Hundreds of lines of boilerplate before business logic</li>
+      </ul></div>
+    </div>
+    <div class="cmp-col cmp-good">
+      <div class="cmp-header">✓ Spring Boot</div>
+      <div class="cmp-body"><ul>
+        <li>Auto-configured from classpath and properties</li>
+        <li>Starters manage version-compatible dependency trees</li>
+        <li>Embedded server — run as plain JAR</li>
+        <li>DataSource, Hibernate, MVC configured automatically</li>
+        <li>Focus on business logic from line one</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 02 SETUP ══ -->
+<section id="setup">
+  <div class="sec-header">
+    <div class="sec-num">02</div>
+    <div class="sec-titles">
+      <h2>Project Setup</h2>
+      <div class="sec-sub">// INITIALIZR AND DEPENDENCIES</div>
+    </div>
+  </div>
+
+  <p class="prose">The fastest way to start is <strong>start.spring.io</strong> — Spring Initializr generates a ready-to-run project. Select your build tool, Java version, and starters. Below is a typical <code>pom.xml</code> for a REST API with a database.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">XML — pom.xml (Maven)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm">&lt;!-- Parent handles all Spring Boot version management --&gt;</span>
+<span class="an">&lt;parent&gt;</span>
+    &lt;groupId&gt;<span class="st">org.springframework.boot</span>&lt;/groupId&gt;
+    &lt;artifactId&gt;<span class="st">spring-boot-starter-parent</span>&lt;/artifactId&gt;
+    &lt;version&gt;<span class="nu">3.2.5</span>&lt;/version&gt;
+&lt;/parent&gt;
+
+<span class="an">&lt;dependencies&gt;</span>
+    <span class="cm">&lt;!-- Web: REST controllers, embedded Tomcat, Jackson JSON --&gt;</span>
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;<span class="st">spring-boot-starter-web</span>&lt;/artifactId&gt;
+    &lt;/dependency&gt;
+
+    <span class="cm">&lt;!-- Data: Spring Data JPA + Hibernate --&gt;</span>
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;<span class="st">spring-boot-starter-data-jpa</span>&lt;/artifactId&gt;
+    &lt;/dependency&gt;
+
+    <span class="cm">&lt;!-- Validation: @Valid, @NotNull, @Size --&gt;</span>
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;<span class="st">spring-boot-starter-validation</span>&lt;/artifactId&gt;
+    &lt;/dependency&gt;
+
+    <span class="cm">&lt;!-- DB driver (H2 for dev, swap to Postgres in prod) --&gt;</span>
+    &lt;dependency&gt;
+        &lt;groupId&gt;com.h2database&lt;/groupId&gt;
+        &lt;artifactId&gt;<span class="st">h2</span>&lt;/artifactId&gt;
+        &lt;scope&gt;runtime&lt;/scope&gt;
+    &lt;/dependency&gt;
+
+    <span class="cm">&lt;!-- Testing: JUnit 5, Mockito, MockMvc --&gt;</span>
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;<span class="st">spring-boot-starter-test</span>&lt;/artifactId&gt;
+        &lt;scope&gt;test&lt;/scope&gt;
+    &lt;/dependency&gt;
+&lt;/dependencies&gt;</div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Main Application Class</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@SpringBootApplication</span>  <span class="cm">// = @Configuration + @EnableAutoConfiguration + @ComponentScan</span>
+<span class="kw">public class</span> <span class="cl">BookstoreApplication</span> {
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+<span class="hl">        SpringApplication.<span class="fn">run</span>(BookstoreApplication.<span class="kw">class</span>, args);
+</span>    }
+    <span class="cm">// That's it. Spring Boot wires everything else from the classpath.</span>
+}</div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">▸</span>
+    <div class="callout-body"><strong>Dev Tools:</strong> Add <code>spring-boot-devtools</code> as a dependency during development. It enables automatic restarts when classpath files change — no manual restart loop. It's automatically excluded from production builds.</div>
+  </div>
+</section>
+
+<!-- ══ 03 STRUCTURE ══ -->
+<section id="structure">
+  <div class="sec-header">
+    <div class="sec-num">03</div>
+    <div class="sec-titles">
+      <h2>Project Structure</h2>
+      <div class="sec-sub">// CONVENTIONAL PACKAGE LAYOUT</div>
+    </div>
+  </div>
+
+  <p class="prose">Spring Boot doesn't enforce a folder structure, but the layered architecture below is the community standard. Each layer has a clear responsibility. Keeping them separate makes testing, maintenance, and onboarding dramatically easier.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Directory Layout</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block">src/
+├── main/
+│   ├── java/com/example/bookstore/
+│   │   ├── <span class="cl">BookstoreApplication.java</span>   <span class="cm">// entry point</span>
+│   │   │
+│   │   ├── controller/                 <span class="cm">// @RestController — HTTP layer</span>
+│   │   │   └── <span class="cl">BookController.java</span>
+│   │   │
+│   │   ├── service/                    <span class="cm">// @Service — business logic</span>
+│   │   │   └── <span class="cl">BookService.java</span>
+│   │   │
+│   │   ├── repository/                 <span class="cm">// @Repository — data access</span>
+│   │   │   └── <span class="cl">BookRepository.java</span>
+│   │   │
+│   │   ├── model/                      <span class="cm">// @Entity — JPA domain objects</span>
+│   │   │   └── <span class="cl">Book.java</span>
+│   │   │
+│   │   ├── dto/                        <span class="cm">// Data Transfer Objects (API shapes)</span>
+│   │   │   ├── <span class="cl">BookRequest.java</span>
+│   │   │   └── <span class="cl">BookResponse.java</span>
+│   │   │
+│   │   └── exception/                  <span class="cm">// Custom exceptions + global handler</span>
+│   │       ├── <span class="cl">BookNotFoundException.java</span>
+│   │       └── <span class="cl">GlobalExceptionHandler.java</span>
+│   │
+│   └── resources/
+│       ├── <span class="st">application.yml</span>             <span class="cm">// config (db, port, logging)</span>
+│       ├── <span class="st">application-dev.yml</span>         <span class="cm">// profile-specific overrides</span>
+│       └── db/migration/               <span class="cm">// Flyway migration scripts</span>
+│           └── <span class="st">V1__init.sql</span>
+│
+└── test/
+    └── java/com/example/bookstore/
+        ├── controller/ <span class="cl">BookControllerTest.java</span>
+        └── service/    <span class="cl">BookServiceTest.java</span></div>
+  </div>
+
+  <div class="lifecycle">
+    <div class="lc-step lc-green">
+      <div class="lc-num">HTTP IN</div>
+      <div class="lc-name">Controller</div>
+      <div class="lc-sub">Map routes, parse input, return responses</div>
+    </div>
+    <div class="lc-step lc-blue">
+      <div class="lc-num">BUSINESS</div>
+      <div class="lc-name">Service</div>
+      <div class="lc-sub">Orchestrate logic, transactions, rules</div>
+    </div>
+    <div class="lc-step lc-purple">
+      <div class="lc-num">DATA</div>
+      <div class="lc-name">Repository</div>
+      <div class="lc-sub">Query & persist via JPA</div>
+    </div>
+    <div class="lc-step lc-teal">
+      <div class="lc-num">STORAGE</div>
+      <div class="lc-name">Database</div>
+      <div class="lc-sub">PostgreSQL, MySQL, H2…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 04 IOC ══ -->
+<section id="ioc">
+  <div class="sec-header">
+    <div class="sec-num">04</div>
+    <div class="sec-titles">
+      <h2>IoC &amp; Dependency Injection</h2>
+      <div class="sec-sub">// THE HEART OF SPRING</div>
+    </div>
+  </div>
+
+  <p class="prose">Inversion of Control (IoC) means Spring manages object creation and wiring — not your code. You declare what you need via <strong>Dependency Injection</strong> and Spring provides it. This decouples components, makes testing trivial, and keeps classes focused on one responsibility.</p>
+
+  <div class="grid-2">
+    <div class="card card-green">
+      <div class="card-title">Constructor Injection <span class="tag tag-green">Recommended</span></div>
+      <p>Inject dependencies via the constructor. Makes dependencies explicit, supports immutability (<code>final</code> fields), and makes the class easy to test without a Spring context — just pass mocks to the constructor.</p>
+    </div>
+    <div class="card card-red">
+      <div class="card-title">Field Injection <span class="tag tag-red">Avoid</span></div>
+      <p>Using <code>@Autowired</code> directly on a field. Hides dependencies, makes testing harder (requires reflection or a Spring context), and breaks with <code>final</code>. Lombok's <code>@RequiredArgsConstructor</code> makes constructor injection painless.</p>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Constructor Injection (correct way)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><an class="an">@Service</an>
+<span class="kw">public class</span> <span class="cl">BookService</span> {
+
+    <span class="kw">private final</span> <span class="cl">BookRepository</span> bookRepository;
+    <span class="kw">private final</span> <span class="cl">NotificationService</span> notificationService;
+
+    <span class="cm">// Spring sees ONE constructor — auto-wires without @Autowired</span>
+<span class="hl">    <span class="kw">public</span> <span class="fn">BookService</span>(<span class="cl">BookRepository</span> bookRepository,
+                       <span class="cl">NotificationService</span> notificationService) {
+        <span class="kw">this</span>.bookRepository = bookRepository;
+        <span class="kw">this</span>.notificationService = notificationService;
+    }
+</span>
+    <span class="cm">// With Lombok — exactly equivalent, less noise:</span>
+    <span class="cm">// @RequiredArgsConstructor on the class generates this constructor</span>
+}</div>
+  </div>
+</section>
+
+<!-- ══ 05 BEANS ══ -->
+<section id="beans">
+  <div class="sec-header">
+    <div class="sec-num">05</div>
+    <div class="sec-titles">
+      <h2>Beans &amp; Core Annotations</h2>
+      <div class="sec-sub">// WHAT SPRING MANAGES AND HOW</div>
+    </div>
+  </div>
+
+  <p class="prose">A <strong>bean</strong> is any object managed by the Spring ApplicationContext. You declare beans by annotating classes. Spring instantiates them, injects their dependencies, and manages their lifecycle.</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Annotation</th><th>Used On</th><th>Purpose</th></tr>
+      <tr><td><code>@SpringBootApplication</code></td><td>Main class</td><td>Enables auto-config, component scanning, configuration</td></tr>
+      <tr><td><code>@Component</code></td><td>Any class</td><td>Generic Spring-managed bean</td></tr>
+      <tr><td><code>@Service</code></td><td>Service layer class</td><td>Semantic alias for @Component — marks business logic</td></tr>
+      <tr><td><code>@Repository</code></td><td>Data access class</td><td>Alias + wraps SQL exceptions into Spring's DataAccessException</td></tr>
+      <tr><td><code>@RestController</code></td><td>HTTP handler class</td><td>@Controller + @ResponseBody — JSON returned from every method</td></tr>
+      <tr><td><code>@Configuration</code></td><td>Config class</td><td>Declares @Bean methods — factory for Spring beans</td></tr>
+      <tr><td><code>@Bean</code></td><td>Method in @Configuration</td><td>Return value registered as a Spring bean</td></tr>
+      <tr><td><code>@Autowired</code></td><td>Constructor / field</td><td>Injects a dependency (optional on single-constructor classes)</td></tr>
+      <tr><td><code>@Value</code></td><td>Field / param</td><td>Injects a value from properties: <code>@Value("${app.name}")</code></td></tr>
+      <tr><td><code>@Profile</code></td><td>Class / method</td><td>Activate bean only for specific profiles (dev, prod)</td></tr>
+    </table>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — @Configuration with @Bean</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@Configuration</span>
+<span class="kw">public class</span> <span class="cl">AppConfig</span> {
+
+    <span class="cm">// Declare a bean for a third-party class you can't annotate directly</span>
+    <span class="an">@Bean</span>
+    <span class="kw">public</span> <span class="cl">ObjectMapper</span> <span class="fn">objectMapper</span>() {
+        <span class="kw">return new</span> <span class="cl">ObjectMapper</span>()
+            .<span class="fn">registerModule</span>(<span class="kw">new</span> <span class="cl">JavaTimeModule</span>())
+            .<span class="fn">disable</span>(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
+
+    <span class="cm">// Profile-specific bean — only loaded when profile = "dev"</span>
+    <span class="an">@Bean</span>
+    <span class="an">@Profile</span>(<span class="st">"dev"</span>)
+    <span class="kw">public</span> <span class="cl">DataSource</span> <span class="fn">h2DataSource</span>() {
+        <span class="kw">return new</span> <span class="cl">EmbeddedDatabaseBuilder</span>()
+            .<span class="fn">setType</span>(EmbeddedDatabaseType.H2)
+            .<span class="fn">build</span>();
+    }
+}</div>
+  </div>
+</section>
+
+<!-- ══ 06 CONFIG ══ -->
+<section id="config">
+  <div class="sec-header">
+    <div class="sec-num">06</div>
+    <div class="sec-titles">
+      <h2>Configuration</h2>
+      <div class="sec-sub">// APPLICATION.YML AND PROFILES</div>
+    </div>
+  </div>
+
+  <p class="prose">Spring Boot reads <code>application.yml</code> (or <code>.properties</code>) from <code>src/main/resources</code>. Profiles let you maintain different configs for development, staging, and production without changing code.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — application.yml</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># application.yml — base config (all environments)</span>
+<span class="cl">spring:</span>
+  <span class="cl">application:</span>
+    <span class="an">name:</span> <span class="st">bookstore-api</span>
+
+  <span class="cl">datasource:</span>
+    <span class="an">url:</span>      <span class="st">${DB_URL:jdbc:h2:mem:devdb}</span>     <span class="cm"># env var with fallback</span>
+    <span class="an">username:</span> <span class="st">${DB_USER:sa}</span>
+    <span class="an">password:</span> <span class="st">${DB_PASS:}</span>
+
+  <span class="cl">jpa:</span>
+    <span class="an">hibernate:</span>
+      <span class="an">ddl-auto:</span> <span class="st">validate</span>            <span class="cm"># NEVER 'create' or 'update' in prod</span>
+    <span class="an">show-sql:</span> <span class="kw">false</span>
+    <span class="cl">properties:</span>
+      <span class="cl">hibernate:</span>
+        <span class="an">format_sql:</span> <span class="kw">true</span>
+
+<span class="cl">server:</span>
+  <span class="an">port:</span> <span class="nu">8080</span>
+
+<span class="cl">logging:</span>
+  <span class="cl">level:</span>
+    <span class="an">com.example.bookstore:</span> <span class="st">DEBUG</span>
+    <span class="an">org.springframework.web:</span> <span class="st">INFO</span>
+
+<span class="cm"># Custom properties — bind to @ConfigurationProperties class</span>
+<span class="cl">bookstore:</span>
+  <span class="an">max-results-per-page:</span> <span class="nu">50</span>
+  <span class="an">cache-ttl-minutes:</span>     <span class="nu">10</span></div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — @ConfigurationProperties (type-safe config binding)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@ConfigurationProperties</span>(prefix = <span class="st">"bookstore"</span>)
+<span class="an">@Component</span>
+<span class="kw">public class</span> <span class="cl">BookstoreProperties</span> {
+<span class="hl">    <span class="kw">private int</span> maxResultsPerPage = <span class="nu">20</span>;   <span class="cm">// default if not set</span>
+    <span class="kw">private int</span> cacheTtlMinutes = <span class="nu">5</span>;
+</span>
+    <span class="cm">// getters + setters (or use Lombok @Data)</span>
+}
+
+<span class="cm">// Inject and use:</span>
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">BookService</span> {
+    <span class="kw">private final</span> <span class="cl">BookstoreProperties</span> props;
+    <span class="cm">// props.getMaxResultsPerPage() → 50 (from yml)</span>
+}</div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body"><strong>ddl-auto in production:</strong> Never use <code>spring.jpa.hibernate.ddl-auto: create</code> or <code>update</code> on a production database. Use <code>validate</code> (checks schema matches entities) or <code>none</code>, and manage schema with Flyway or Liquibase migrations.</div>
+  </div>
+</section>
+
+<!-- ══ 07 REST ══ -->
+<section id="rest">
+  <div class="sec-header">
+    <div class="sec-num">07</div>
+    <div class="sec-titles">
+      <h2>REST Controllers</h2>
+      <div class="sec-sub">// BUILDING HTTP ENDPOINTS</div>
+    </div>
+  </div>
+
+  <p class="prose"><code>@RestController</code> combines <code>@Controller</code> and <code>@ResponseBody</code>, meaning every method's return value is serialized to JSON automatically. Map HTTP methods to Java methods with <code>@GetMapping</code>, <code>@PostMapping</code>, <code>@PutMapping</code>, and <code>@DeleteMapping</code>.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Full REST Controller</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@RestController</span>
+<span class="an">@RequestMapping</span>(<span class="st">"/api/v1/books"</span>)
+<span class="an">@RequiredArgsConstructor</span>   <span class="cm">// Lombok — generates constructor injection</span>
+<span class="kw">public class</span> <span class="cl">BookController</span> {
+
+    <span class="kw">private final</span> <span class="cl">BookService</span> bookService;
+
+    <span class="cm">// GET /api/v1/books</span>
+    <span class="an">@GetMapping</span>
+    <span class="kw">public</span> <span class="cl">ResponseEntity</span>&lt;<span class="cl">List</span>&lt;<span class="cl">BookResponse</span>&gt;&gt; <span class="fn">getAllBooks</span>(
+            <span class="an">@RequestParam</span>(defaultValue = <span class="st">"0"</span>) <span class="kw">int</span> page,
+            <span class="an">@RequestParam</span>(defaultValue = <span class="st">"20"</span>) <span class="kw">int</span> size) {
+        <span class="kw">return</span> <span class="cl">ResponseEntity</span>.<span class="fn">ok</span>(bookService.<span class="fn">findAll</span>(page, size));
+    }
+
+    <span class="cm">// GET /api/v1/books/{id}</span>
+    <span class="an">@GetMapping</span>(<span class="st">"/{id}"</span>)
+    <span class="kw">public</span> <span class="cl">ResponseEntity</span>&lt;<span class="cl">BookResponse</span>&gt; <span class="fn">getBook</span>(<span class="an">@PathVariable</span> <span class="cl">Long</span> id) {
+        <span class="kw">return</span> <span class="cl">ResponseEntity</span>.<span class="fn">ok</span>(bookService.<span class="fn">findById</span>(id));
+    }
+
+    <span class="cm">// POST /api/v1/books</span>
+    <span class="an">@PostMapping</span>
+    <span class="kw">public</span> <span class="cl">ResponseEntity</span>&lt;<span class="cl">BookResponse</span>&gt; <span class="fn">createBook</span>(
+<span class="hl">            <span class="an">@Valid</span> <span class="an">@RequestBody</span> <span class="cl">BookRequest</span> request) {
+</span>        <span class="cl">BookResponse</span> created = bookService.<span class="fn">create</span>(request);
+        <span class="cl">URI</span> location = <span class="cl">ServletUriComponentsBuilder</span>
+            .<span class="fn">fromCurrentRequest</span>()
+            .<span class="fn">path</span>(<span class="st">"/{id}"</span>)
+            .<span class="fn">buildAndExpand</span>(created.<span class="fn">getId</span>())
+            .<span class="fn">toUri</span>();
+        <span class="kw">return</span> <span class="cl">ResponseEntity</span>.<span class="fn">created</span>(location).<span class="fn">body</span>(created);  <span class="cm">// 201 Created</span>
+    }
+
+    <span class="cm">// PUT /api/v1/books/{id}</span>
+    <span class="an">@PutMapping</span>(<span class="st">"/{id}"</span>)
+    <span class="kw">public</span> <span class="cl">ResponseEntity</span>&lt;<span class="cl">BookResponse</span>&gt; <span class="fn">updateBook</span>(
+            <span class="an">@PathVariable</span> <span class="cl">Long</span> id,
+            <span class="an">@Valid</span> <span class="an">@RequestBody</span> <span class="cl">BookRequest</span> request) {
+        <span class="kw">return</span> <span class="cl">ResponseEntity</span>.<span class="fn">ok</span>(bookService.<span class="fn">update</span>(id, request));
+    }
+
+    <span class="cm">// DELETE /api/v1/books/{id}</span>
+    <span class="an">@DeleteMapping</span>(<span class="st">"/{id}"</span>)
+    <span class="kw">public</span> <span class="cl">ResponseEntity</span>&lt;<span class="cl">Void</span>&gt; <span class="fn">deleteBook</span>(<span class="an">@PathVariable</span> <span class="cl">Long</span> id) {
+        bookService.<span class="fn">delete</span>(id);
+        <span class="kw">return</span> <span class="cl">ResponseEntity</span>.<span class="fn">noContent</span>().<span class="fn">build</span>();  <span class="cm">// 204 No Content</span>
+    }
+}</div>
+  </div>
+</section>
+
+<!-- ══ 08 REQUESTS ══ -->
+<section id="requests">
+  <div class="sec-header">
+    <div class="sec-num">08</div>
+    <div class="sec-titles">
+      <h2>Request Handling</h2>
+      <div class="sec-sub">// EXTRACTING DATA FROM HTTP REQUESTS</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Annotation</th><th>Source</th><th>Example</th></tr>
+      <tr><td><code>@PathVariable</code></td><td>URL path segment</td><td><code>GET /books/{id}</code> → <code>@PathVariable Long id</code></td></tr>
+      <tr><td><code>@RequestParam</code></td><td>Query string</td><td><code>GET /books?page=2&amp;size=10</code></td></tr>
+      <tr><td><code>@RequestBody</code></td><td>JSON request body</td><td><code>POST /books</code> with JSON payload</td></tr>
+      <tr><td><code>@RequestHeader</code></td><td>HTTP header</td><td><code>@RequestHeader("X-API-Key") String key</code></td></tr>
+      <tr><td><code>@CookieValue</code></td><td>Cookie</td><td><code>@CookieValue("sessionId") String session</code></td></tr>
+      <tr><td><code>@ModelAttribute</code></td><td>Form data / multiple params</td><td>Binds form fields to a POJO</td></tr>
+    </table>
+  </div>
+
+  <h3>DTOs — never expose your entities directly</h3>
+  <p class="prose">Return DTOs (Data Transfer Objects) from your controllers, not JPA entities. Entities may contain sensitive fields, lazy-loaded associations, or Hibernate proxy objects that serialize poorly. DTOs give you full control over the API contract.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Request and Response DTOs</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm">// Input DTO — what the client sends</span>
+<span class="kw">public record</span> <span class="cl">BookRequest</span>(
+    <span class="an">@NotBlank</span>(message = <span class="st">"Title is required"</span>)
+    <span class="cl">String</span> title,
+
+    <span class="an">@NotBlank</span>
+    <span class="cl">String</span> author,
+
+    <span class="an">@NotNull</span>
+    <span class="an">@DecimalMin</span>(<span class="st">"0.01"</span>)
+    <span class="cl">BigDecimal</span> price,
+
+    <span class="an">@ISBN</span>   <span class="cm">// validates ISBN format</span>
+    <span class="cl">String</span> isbn
+) {}
+
+<span class="cm">// Output DTO — what the API returns</span>
+<span class="kw">public record</span> <span class="cl">BookResponse</span>(
+    <span class="cl">Long</span> id,
+    <span class="cl">String</span> title,
+    <span class="cl">String</span> author,
+    <span class="cl">BigDecimal</span> price,
+    <span class="cl">String</span> isbn,
+    <span class="cl">LocalDateTime</span> createdAt
+) {
+    <span class="cm">// Static factory — convert entity to DTO</span>
+    <span class="kw">public static</span> <span class="cl">BookResponse</span> <span class="fn">from</span>(<span class="cl">Book</span> book) {
+        <span class="kw">return new</span> <span class="cl">BookResponse</span>(book.<span class="fn">getId</span>(), book.<span class="fn">getTitle</span>(),
+            book.<span class="fn">getAuthor</span>(), book.<span class="fn">getPrice</span>(), book.<span class="fn">getIsbn</span>(), book.<span class="fn">getCreatedAt</span>());
+    }
+}</div>
+  </div>
+</section>
+
+<!-- ══ 09 VALIDATION ══ -->
+<section id="validation">
+  <div class="sec-header">
+    <div class="sec-num">09</div>
+    <div class="sec-titles">
+      <h2>Validation &amp; Error Handling</h2>
+      <div class="sec-sub">// @VALID, BEAN VALIDATION, GLOBAL EXCEPTION HANDLER</div>
+    </div>
+  </div>
+
+  <p class="prose">Spring Boot integrates Bean Validation (Jakarta Validation). Add <code>@Valid</code> before a <code>@RequestBody</code> parameter and Spring automatically validates the object — returning a 400 if any constraint fails. Customize error responses with a <code>@ControllerAdvice</code>.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Global Exception Handler</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@RestControllerAdvice</span>   <span class="cm">// applies to all @RestController classes</span>
+<span class="kw">public class</span> <span class="cl">GlobalExceptionHandler</span> {
+
+    <span class="cm">// 400 — Validation failures (@Valid)</span>
+    <span class="an">@ExceptionHandler</span>(<span class="cl">MethodArgumentNotValidException</span>.<span class="kw">class</span>)
+    <span class="an">@ResponseStatus</span>(<span class="cl">HttpStatus</span>.BAD_REQUEST)
+    <span class="kw">public</span> <span class="cl">Map</span>&lt;<span class="cl">String</span>, <span class="cl">Object</span>&gt; <span class="fn">handleValidation</span>(<span class="cl">MethodArgumentNotValidException</span> ex) {
+        <span class="cl">Map</span>&lt;<span class="cl">String</span>, <span class="cl">String</span>&gt; fieldErrors = <span class="kw">new</span> <span class="cl">LinkedHashMap</span>&lt;&gt;();
+        ex.<span class="fn">getBindingResult</span>().<span class="fn">getFieldErrors</span>().<span class="fn">forEach</span>(err ->
+            fieldErrors.<span class="fn">put</span>(err.<span class="fn">getField</span>(), err.<span class="fn">getDefaultMessage</span>()));
+        <span class="kw">return</span> <span class="cl">Map</span>.<span class="fn">of</span>(<span class="st">"status"</span>, <span class="nu">400</span>, <span class="st">"errors"</span>, fieldErrors);
+    }
+
+    <span class="cm">// 404 — Custom not-found exception</span>
+    <span class="an">@ExceptionHandler</span>(<span class="cl">BookNotFoundException</span>.<span class="kw">class</span>)
+    <span class="an">@ResponseStatus</span>(<span class="cl">HttpStatus</span>.NOT_FOUND)
+    <span class="kw">public</span> <span class="cl">Map</span>&lt;<span class="cl">String</span>, <span class="cl">Object</span>&gt; <span class="fn">handleNotFound</span>(<span class="cl">BookNotFoundException</span> ex) {
+        <span class="kw">return</span> <span class="cl">Map</span>.<span class="fn">of</span>(<span class="st">"status"</span>, <span class="nu">404</span>, <span class="st">"message"</span>, ex.<span class="fn">getMessage</span>());
+    }
+
+    <span class="cm">// 500 — Catch-all for unexpected errors</span>
+    <span class="an">@ExceptionHandler</span>(<span class="cl">Exception</span>.<span class="kw">class</span>)
+    <span class="an">@ResponseStatus</span>(<span class="cl">HttpStatus</span>.INTERNAL_SERVER_ERROR)
+    <span class="kw">public</span> <span class="cl">Map</span>&lt;<span class="cl">String</span>, <span class="cl">Object</span>&gt; <span class="fn">handleGeneral</span>(<span class="cl">Exception</span> ex) {
+        <span class="kw">return</span> <span class="cl">Map</span>.<span class="fn">of</span>(<span class="st">"status"</span>, <span class="nu">500</span>, <span class="st">"message"</span>, <span class="st">"An unexpected error occurred"</span>);
+        <span class="cm">// Never expose ex.getMessage() in production — reveals internals</span>
+    }
+}</div>
+  </div>
+
+  <div class="callout danger">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body"><strong>Never expose stack traces:</strong> Spring Boot's default error response at <code>/error</code> includes the exception message and sometimes a stack trace. Disable this in production with <code>server.error.include-stacktrace=never</code> and <code>server.error.include-message=never</code> in your production profile.</div>
+  </div>
+</section>
+
+<!-- ══ 10 JPA ══ -->
+<section id="jpa">
+  <div class="sec-header">
+    <div class="sec-num">10</div>
+    <div class="sec-titles">
+      <h2>Spring Data JPA</h2>
+      <div class="sec-sub">// ENTITIES AND THE REPOSITORY PATTERN</div>
+    </div>
+  </div>
+
+  <p class="prose">Spring Data JPA removes the boilerplate of writing DAO classes. Define an interface extending <code>JpaRepository</code> and Spring generates the implementation at runtime. All CRUD operations — <code>save</code>, <code>findById</code>, <code>findAll</code>, <code>delete</code> — are available out of the box.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — JPA Entity</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@Entity</span>
+<span class="an">@Table</span>(name = <span class="st">"books"</span>)
+<span class="kw">public class</span> <span class="cl">Book</span> {
+
+    <span class="an">@Id</span>
+    <span class="an">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)
+    <span class="kw">private</span> <span class="cl">Long</span> id;
+
+    <span class="an">@Column</span>(nullable = <span class="kw">false</span>, length = <span class="nu">255</span>)
+    <span class="kw">private</span> <span class="cl">String</span> title;
+
+    <span class="an">@Column</span>(nullable = <span class="kw">false</span>)
+    <span class="kw">private</span> <span class="cl">String</span> author;
+
+    <span class="an">@Column</span>(precision = <span class="nu">10</span>, scale = <span class="nu">2</span>)
+    <span class="kw">private</span> <span class="cl">BigDecimal</span> price;
+
+    <span class="an">@Column</span>(unique = <span class="kw">true</span>, length = <span class="nu">13</span>)
+    <span class="kw">private</span> <span class="cl">String</span> isbn;
+
+<span class="hl">    <span class="an">@CreationTimestamp</span>   <span class="cm">// Hibernate sets this on INSERT</span>
+    <span class="kw">private</span> <span class="cl">LocalDateTime</span> createdAt;
+</span>
+    <span class="an">@ManyToOne</span>(fetch = FetchType.LAZY)   <span class="cm">// LAZY — don't auto-join unless needed</span>
+    <span class="an">@JoinColumn</span>(name = <span class="st">"category_id"</span>)
+    <span class="kw">private</span> <span class="cl">Category</span> category;
+
+    <span class="cm">// getters + setters (or use Lombok @Getter @Setter)</span>
+}</div>
+  </div>
+
+  <div class="callout note">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>FetchType.LAZY:</strong> Always use <code>LAZY</code> for <code>@OneToMany</code> and <code>@ManyToOne</code> associations. <code>EAGER</code> loading (the default for <code>@ManyToOne</code>) fires additional SQL queries automatically, even when you don't need the associated data — a common source of N+1 query problems.</div>
+  </div>
+</section>
+
+<!-- ══ 11 QUERIES ══ -->
+<section id="queries">
+  <div class="sec-header">
+    <div class="sec-num">11</div>
+    <div class="sec-titles">
+      <h2>Queries &amp; Repositories</h2>
+      <div class="sec-sub">// DERIVED QUERIES, JPQL, AND NATIVE SQL</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Repository with query methods</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@Repository</span>
+<span class="kw">public interface</span> <span class="cl">BookRepository</span> <span class="kw">extends</span> <span class="cl">JpaRepository</span>&lt;<span class="cl">Book</span>, <span class="cl">Long</span>&gt; {
+
+    <span class="cm">// 1. Derived query — Spring generates SQL from the method name</span>
+    <span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">findByAuthorIgnoreCase</span>(<span class="cl">String</span> author);
+    <span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">findByPriceLessThanEqual</span>(<span class="cl">BigDecimal</span> maxPrice);
+    <span class="cl">Optional</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">findByIsbn</span>(<span class="cl">String</span> isbn);
+    <span class="kw">boolean</span> <span class="fn">existsByIsbn</span>(<span class="cl">String</span> isbn);
+
+    <span class="cm">// 2. JPQL — object-oriented query language, references entity/field names</span>
+    <span class="an">@Query</span>(<span class="st">"SELECT b FROM Book b WHERE b.title LIKE %:keyword% OR b.author LIKE %:keyword%"</span>)
+    <span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">search</span>(<span class="an">@Param</span>(<span class="st">"keyword"</span>) <span class="cl">String</span> keyword);
+
+    <span class="cm">// 3. Native SQL — escape hatch when JPA won't do</span>
+    <span class="an">@Query</span>(value = <span class="st">"SELECT * FROM books WHERE price BETWEEN :min AND :max ORDER BY price"</span>,
+           nativeQuery = <span class="kw">true</span>)
+    <span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">findInPriceRange</span>(<span class="an">@Param</span>(<span class="st">"min"</span>) <span class="cl">BigDecimal</span> min,
+                                  <span class="an">@Param</span>(<span class="st">"max"</span>) <span class="cl">BigDecimal</span> max);
+
+    <span class="cm">// 4. Pagination — built-in with Pageable</span>
+    <span class="cl">Page</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">findByCategory_Name</span>(<span class="cl">String</span> categoryName, <span class="cl">Pageable</span> pageable);
+
+    <span class="cm">// 5. Custom update with @Modifying</span>
+    <span class="an">@Modifying</span>
+    <span class="an">@Query</span>(<span class="st">"UPDATE Book b SET b.price = b.price * :factor WHERE b.category.id = :catId"</span>)
+    <span class="kw">int</span> <span class="fn">applyPriceMultiplier</span>(<span class="an">@Param</span>(<span class="st">"factor"</span>) <span class="cl">BigDecimal</span> factor,
+                               <span class="an">@Param</span>(<span class="st">"catId"</span>) <span class="cl">Long</span> catId);
+}</div>
+  </div>
+
+  <h3>Using Pageable</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Pagination in Service</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm">// Service method</span>
+<span class="kw">public</span> <span class="cl">Page</span>&lt;<span class="cl">BookResponse</span>&gt; <span class="fn">findAll</span>(<span class="kw">int</span> page, <span class="kw">int</span> size) {
+    <span class="cl">Pageable</span> pageable = <span class="cl">PageRequest</span>.<span class="fn">of</span>(page, size, <span class="cl">Sort</span>.<span class="fn">by</span>(<span class="st">"title"</span>).<span class="fn">ascending</span>());
+    <span class="kw">return</span> bookRepository.<span class="fn">findAll</span>(pageable).<span class="fn">map</span>(<span class="cl">BookResponse</span>::<span class="fn">from</span>);
+}
+
+<span class="cm">// Controller maps it — Page&lt;T&gt; serializes to JSON with metadata:</span>
+<span class="cm">// { "content": [...], "totalElements": 143, "totalPages": 8,</span>
+<span class="cm">//   "number": 0, "size": 20, "first": true, "last": false }</span></div>
+  </div>
+</section>
+
+<!-- ══ 12 MIGRATIONS ══ -->
+<section id="migrations">
+  <div class="sec-header">
+    <div class="sec-num">12</div>
+    <div class="sec-titles">
+      <h2>Database Migrations</h2>
+      <div class="sec-sub">// FLYWAY — VERSION-CONTROLLED SCHEMAS</div>
+    </div>
+  </div>
+
+  <p class="prose">Never let Hibernate manage your production schema with <code>ddl-auto</code>. Use <strong>Flyway</strong> for version-controlled, repeatable database migrations. Add <code>spring-boot-starter-flyway</code> and Spring Boot auto-runs migrations at startup.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">SQL — Flyway migration files</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm">-- src/main/resources/db/migration/V1__init.sql</span>
+<span class="kw">CREATE TABLE</span> categories (
+    id          <span class="cl">BIGSERIAL</span>     <span class="kw">PRIMARY KEY</span>,
+    name        <span class="cl">VARCHAR</span>(<span class="nu">100</span>)  <span class="kw">NOT NULL UNIQUE</span>,
+    created_at  <span class="cl">TIMESTAMP</span>     <span class="kw">DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="kw">CREATE TABLE</span> books (
+    id          <span class="cl">BIGSERIAL</span>       <span class="kw">PRIMARY KEY</span>,
+    title       <span class="cl">VARCHAR</span>(<span class="nu">255</span>)   <span class="kw">NOT NULL</span>,
+    author      <span class="cl">VARCHAR</span>(<span class="nu">255</span>)   <span class="kw">NOT NULL</span>,
+    price       <span class="cl">DECIMAL</span>(<span class="nu">10</span>,<span class="nu">2</span>)  <span class="kw">NOT NULL</span>,
+    isbn        <span class="cl">VARCHAR</span>(<span class="nu">13</span>)    <span class="kw">UNIQUE</span>,
+    category_id <span class="cl">BIGINT</span>          <span class="kw">REFERENCES</span> categories(id),
+    created_at  <span class="cl">TIMESTAMP</span>      <span class="kw">DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="cm">-- src/main/resources/db/migration/V2__add_book_index.sql</span>
+<span class="kw">CREATE INDEX</span> idx_books_author <span class="kw">ON</span> books(author);
+<span class="kw">CREATE INDEX</span> idx_books_price  <span class="kw">ON</span> books(price);
+
+<span class="cm">-- Naming: V{version}__{description}.sql</span>
+<span class="cm">-- Once run, migration files are IMMUTABLE — never edit a ran migration</span></div>
+  </div>
+</section>
+
+<!-- ══ 13 SERVICES ══ -->
+<section id="services">
+  <div class="sec-header">
+    <div class="sec-num">13</div>
+    <div class="sec-titles">
+      <h2>Service Layer Pattern</h2>
+      <div class="sec-sub">// BUSINESS LOGIC AND TRANSACTIONS</div>
+    </div>
+  </div>
+
+  <p class="prose">The service layer is where business logic lives. Controllers delegate to services; services call repositories. <code>@Transactional</code> ensures database operations within a method run in a single transaction — if anything fails, everything rolls back.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Service with @Transactional</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@Service</span>
+<span class="an">@RequiredArgsConstructor</span>
+<span class="an">@Transactional</span>(readOnly = <span class="kw">true</span>)  <span class="cm">// default: read-only (optimization)</span>
+<span class="kw">public class</span> <span class="cl">BookService</span> {
+
+    <span class="kw">private final</span> <span class="cl">BookRepository</span> bookRepository;
+
+    <span class="kw">public</span> <span class="cl">Page</span>&lt;<span class="cl">BookResponse</span>&gt; <span class="fn">findAll</span>(<span class="kw">int</span> page, <span class="kw">int</span> size) {
+        <span class="kw">return</span> bookRepository.<span class="fn">findAll</span>(<span class="cl">PageRequest</span>.<span class="fn">of</span>(page, size))
+                              .<span class="fn">map</span>(<span class="cl">BookResponse</span>::<span class="fn">from</span>);
+    }
+
+    <span class="kw">public</span> <span class="cl">BookResponse</span> <span class="fn">findById</span>(<span class="cl">Long</span> id) {
+        <span class="kw">return</span> bookRepository.<span class="fn">findById</span>(id)
+            .<span class="fn">map</span>(<span class="cl">BookResponse</span>::<span class="fn">from</span>)
+            .<span class="fn">orElseThrow</span>(() -> <span class="kw">new</span> <span class="cl">BookNotFoundException</span>(<span class="st">"Book not found: "</span> + id));
+    }
+
+    <span class="an">@Transactional</span>   <span class="cm">// write operation — overrides class-level readOnly</span>
+    <span class="kw">public</span> <span class="cl">BookResponse</span> <span class="fn">create</span>(<span class="cl">BookRequest</span> request) {
+        <span class="kw">if</span> (bookRepository.<span class="fn">existsByIsbn</span>(request.isbn())) {
+            <span class="kw">throw new</span> <span class="cl">IllegalArgumentException</span>(<span class="st">"ISBN already exists"</span>);
+        }
+        <span class="cl">Book</span> book = <span class="kw">new</span> <span class="cl">Book</span>();
+        book.<span class="fn">setTitle</span>(request.title());
+        book.<span class="fn">setAuthor</span>(request.author());
+        book.<span class="fn">setPrice</span>(request.price());
+        book.<span class="fn">setIsbn</span>(request.isbn());
+<span class="hl">        <span class="kw">return</span> <span class="cl">BookResponse</span>.<span class="fn">from</span>(bookRepository.<span class="fn">save</span>(book));
+</span>    }
+
+    <span class="an">@Transactional</span>
+    <span class="kw">public void</span> <span class="fn">delete</span>(<span class="cl">Long</span> id) {
+        <span class="kw">if</span> (!bookRepository.<span class="fn">existsById</span>(id)) {
+            <span class="kw">throw new</span> <span class="cl">BookNotFoundException</span>(<span class="st">"Book not found: "</span> + id);
+        }
+        bookRepository.<span class="fn">deleteById</span>(id);
+    }
+}</div>
+  </div>
+</section>
+
+<!-- ══ 14 TESTING ══ -->
+<section id="testing">
+  <div class="sec-header">
+    <div class="sec-num">14</div>
+    <div class="sec-titles">
+      <h2>Testing</h2>
+      <div class="sec-sub">// UNIT TESTS, SLICE TESTS, INTEGRATION TESTS</div>
+    </div>
+  </div>
+
+  <p class="prose">Spring Boot provides test annotations that load only the slices you need — avoiding a full application context when you don't need one. <code>@WebMvcTest</code> for controllers, <code>@DataJpaTest</code> for repositories, and <code>@SpringBootTest</code> for full integration tests.</p>
+
+  <div class="grid-3">
+    <div class="card card-blue">
+      <div class="card-title">Unit Tests <span class="tag tag-blue">Fastest</span></div>
+      <p>Test a single class in isolation. Mock all dependencies with Mockito. No Spring context. Run in milliseconds. The bulk of your test suite.</p>
+    </div>
+    <div class="card card-orange">
+      <div class="card-title">Slice Tests <span class="tag tag-orange">Targeted</span></div>
+      <p><code>@WebMvcTest</code> loads only the web layer. <code>@DataJpaTest</code> loads only JPA. Faster than full context, more integration than pure unit tests.</p>
+    </div>
+    <div class="card card-purple">
+      <div class="card-title">Integration Tests <span class="tag tag-purple">Slowest</span></div>
+      <p><code>@SpringBootTest</code> loads the full application context. Use Testcontainers for a real database. Validates the entire stack together.</p>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Unit Test (Service)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@ExtendWith</span>(<span class="cl">MockitoExtension</span>.<span class="kw">class</span>)
+<span class="kw">class</span> <span class="cl">BookServiceTest</span> {
+
+    <span class="an">@Mock</span>
+    <span class="kw">private</span> <span class="cl">BookRepository</span> bookRepository;
+
+    <span class="an">@InjectMocks</span>
+    <span class="kw">private</span> <span class="cl">BookService</span> bookService;
+
+    <span class="an">@Test</span>
+    <span class="kw">void</span> <span class="fn">findById_existingBook_returnsResponse</span>() {
+        <span class="cm">// Arrange</span>
+        <span class="cl">Book</span> book = <span class="kw">new</span> <span class="cl">Book</span>();
+        book.<span class="fn">setId</span>(<span class="nu">1L</span>); book.<span class="fn">setTitle</span>(<span class="st">"Clean Code"</span>); book.<span class="fn">setAuthor</span>(<span class="st">"Martin"</span>);
+        <span class="fn">when</span>(bookRepository.<span class="fn">findById</span>(<span class="nu">1L</span>)).<span class="fn">thenReturn</span>(<span class="cl">Optional</span>.<span class="fn">of</span>(book));
+
+        <span class="cm">// Act</span>
+        <span class="cl">BookResponse</span> result = bookService.<span class="fn">findById</span>(<span class="nu">1L</span>);
+
+        <span class="cm">// Assert</span>
+        <span class="fn">assertThat</span>(result.title()).<span class="fn">isEqualTo</span>(<span class="st">"Clean Code"</span>);
+        <span class="fn">verify</span>(bookRepository).<span class="fn">findById</span>(<span class="nu">1L</span>);
+    }
+
+    <span class="an">@Test</span>
+    <span class="kw">void</span> <span class="fn">findById_missingBook_throwsException</span>() {
+        <span class="fn">when</span>(bookRepository.<span class="fn">findById</span>(<span class="nu">99L</span>)).<span class="fn">thenReturn</span>(<span class="cl">Optional</span>.<span class="fn">empty</span>());
+<span class="hl">        <span class="fn">assertThatThrownBy</span>(() -> bookService.<span class="fn">findById</span>(<span class="nu">99L</span>))
+            .<span class="fn">isInstanceOf</span>(<span class="cl">BookNotFoundException</span>.<span class="kw">class</span>);
+</span>    }
+}</div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — @WebMvcTest (Controller Slice)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@WebMvcTest</span>(<span class="cl">BookController</span>.<span class="kw">class</span>)
+<span class="kw">class</span> <span class="cl">BookControllerTest</span> {
+
+    <span class="an">@Autowired</span> <span class="kw">private</span> <span class="cl">MockMvc</span> mockMvc;
+    <span class="an">@MockBean</span>  <span class="kw">private</span> <span class="cl">BookService</span> bookService;
+    <span class="an">@Autowired</span> <span class="kw">private</span> <span class="cl">ObjectMapper</span> objectMapper;
+
+    <span class="an">@Test</span>
+    <span class="kw">void</span> <span class="fn">getBook_found_returns200</span>() <span class="kw">throws</span> <span class="cl">Exception</span> {
+        <span class="cl">BookResponse</span> resp = <span class="kw">new</span> <span class="cl">BookResponse</span>(<span class="nu">1L</span>, <span class="st">"Clean Code"</span>, <span class="st">"Martin"</span>,
+            <span class="kw">new</span> <span class="cl">BigDecimal</span>(<span class="st">"39.99"</span>), <span class="kw">null</span>, <span class="kw">null</span>);
+        <span class="fn">when</span>(bookService.<span class="fn">findById</span>(<span class="nu">1L</span>)).<span class="fn">thenReturn</span>(resp);
+
+        mockMvc.<span class="fn">perform</span>(<span class="fn">get</span>(<span class="st">"/api/v1/books/1"</span>))
+               .<span class="fn">andExpect</span>(<span class="fn">status</span>().<span class="fn">isOk</span>())
+               .<span class="fn">andExpect</span>(<span class="fn">jsonPath</span>(<span class="st">"$.title"</span>).<span class="fn">value</span>(<span class="st">"Clean Code"</span>))
+               .<span class="fn">andExpect</span>(<span class="fn">jsonPath</span>(<span class="st">"$.author"</span>).<span class="fn">value</span>(<span class="st">"Martin"</span>));
+    }
+}</div>
+  </div>
+</section>
+
+<!-- ══ 15 SECURITY ══ -->
+<section id="security">
+  <div class="sec-header">
+    <div class="sec-num">15</div>
+    <div class="sec-titles">
+      <h2>Spring Security Basics</h2>
+      <div class="sec-sub">// SECURING YOUR API</div>
+    </div>
+  </div>
+
+  <p class="prose">Add <code>spring-boot-starter-security</code> and <em>every endpoint requires authentication immediately</em>. Configure the security rules in a <code>SecurityFilterChain</code> bean. For REST APIs, stateless JWT-based auth is the standard.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — SecurityFilterChain (Stateless JWT)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="an">@Configuration</span>
+<span class="an">@EnableWebSecurity</span>
+<span class="kw">public class</span> <span class="cl">SecurityConfig</span> {
+
+    <span class="an">@Bean</span>
+    <span class="kw">public</span> <span class="cl">SecurityFilterChain</span> <span class="fn">filterChain</span>(<span class="cl">HttpSecurity</span> http) <span class="kw">throws</span> <span class="cl">Exception</span> {
+        <span class="kw">return</span> http
+            .<span class="fn">csrf</span>(<span class="cl">AbstractHttpConfigurer</span>::<span class="fn">disable</span>)         <span class="cm">// stateless API — no CSRF</span>
+            .<span class="fn">sessionManagement</span>(sm -> sm
+                .<span class="fn">sessionCreationPolicy</span>(<span class="cl">SessionCreationPolicy</span>.STATELESS))
+            .<span class="fn">authorizeHttpRequests</span>(auth -> auth
+                .<span class="fn">requestMatchers</span>(<span class="st">"/api/v1/auth/**"</span>).<span class="fn">permitAll</span>()  <span class="cm">// public endpoints</span>
+                .<span class="fn">requestMatchers</span>(<span class="cl">HttpMethod</span>.GET, <span class="st">"/api/v1/books/**"</span>).<span class="fn">permitAll</span>()
+<span class="hl">                .<span class="fn">requestMatchers</span>(<span class="st">"/api/v1/admin/**"</span>).<span class="fn">hasRole</span>(<span class="st">"ADMIN"</span>)  <span class="cm">// role-guarded</span>
+</span>                .<span class="fn">anyRequest</span>().<span class="fn">authenticated</span>()          <span class="cm">// everything else needs auth</span>
+            )
+            .<span class="fn">addFilterBefore</span>(jwtAuthFilter, <span class="cl">UsernamePasswordAuthenticationFilter</span>.<span class="kw">class</span>)
+            .<span class="fn">build</span>();
+    }
+
+    <span class="an">@Bean</span>
+    <span class="kw">public</span> <span class="cl">PasswordEncoder</span> <span class="fn">passwordEncoder</span>() {
+        <span class="kw">return new</span> <span class="cl">BCryptPasswordEncoder</span>();  <span class="cm">// always use BCrypt for passwords</span>
+    }
+}</div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">▸</span>
+    <div class="callout-body"><strong>Method-level security:</strong> Enable <code>@EnableMethodSecurity</code> on your config class to use <code>@PreAuthorize("hasRole('ADMIN')")</code> directly on service methods — a fine-grained alternative to URL-level rules that keeps authorization logic close to the business logic it protects.</div>
+  </div>
+</section>
+
+<!-- ══ 16 ACTUATOR ══ -->
+<section id="actuator">
+  <div class="sec-header">
+    <div class="sec-num">16</div>
+    <div class="sec-titles">
+      <h2>Actuator &amp; Observability</h2>
+      <div class="sec-sub">// HEALTH, METRICS, AND MONITORING</div>
+    </div>
+  </div>
+
+  <p class="prose">Spring Boot Actuator exposes production-ready endpoints for health checks, metrics, and application info. Add <code>spring-boot-starter-actuator</code>. By default only <code>/actuator/health</code> and <code>/actuator/info</code> are exposed — configure carefully.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Actuator configuration</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cl">management:</span>
+  <span class="cl">endpoints:</span>
+    <span class="cl">web:</span>
+      <span class="an">exposure:</span>
+        <span class="an">include:</span> <span class="st">health,info,metrics,prometheus</span>  <span class="cm"># expose only what you need</span>
+        <span class="cm"># NEVER include 'env' or 'heapdump' in production</span>
+
+  <span class="cl">endpoint:</span>
+    <span class="cl">health:</span>
+      <span class="an">show-details:</span> <span class="st">when-authorized</span>   <span class="cm"># DB, disk, external services</span>
+
+  <span class="cl">metrics:</span>
+    <span class="cl">tags:</span>
+      <span class="an">application:</span> <span class="st">${spring.application.name}</span>
+      <span class="an">environment:</span> <span class="st">${APP_ENV:development}</span>
+
+<span class="cm"># Result:</span>
+<span class="cm"># GET /actuator/health  → {"status":"UP","components":{...}}</span>
+<span class="cm"># GET /actuator/metrics → list of available metric names</span>
+<span class="cm"># GET /actuator/metrics/http.server.requests → request count, duration</span>
+<span class="cm"># GET /actuator/prometheus → Prometheus scrape format</span></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Endpoint</th><th>URL</th><th>Useful For</th></tr>
+      <tr><td><strong>health</strong></td><td><code>/actuator/health</code></td><td>Kubernetes liveness/readiness probes</td></tr>
+      <tr><td><strong>info</strong></td><td><code>/actuator/info</code></td><td>App version, git commit, build info</td></tr>
+      <tr><td><strong>metrics</strong></td><td><code>/actuator/metrics/{name}</code></td><td>JVM, HTTP, custom Micrometer metrics</td></tr>
+      <tr><td><strong>prometheus</strong></td><td><code>/actuator/prometheus</code></td><td>Prometheus scrape target for Grafana dashboards</td></tr>
+      <tr><td><strong>loggers</strong></td><td><code>/actuator/loggers</code></td><td>Change log levels at runtime without restart</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ══ 17 DEPLOY ══ -->
+<section id="deploy">
+  <div class="sec-header">
+    <div class="sec-num">17</div>
+    <div class="sec-titles">
+      <h2>Packaging &amp; Deployment</h2>
+      <div class="sec-sub">// JAR, DOCKER, AND ENVIRONMENT CONFIG</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Dockerfile — Multi-stage build</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Stage 1: Build</span>
+<span class="kw">FROM</span> eclipse-temurin:<span class="st">21-jdk-alpine</span> <span class="kw">AS</span> build
+<span class="kw">WORKDIR</span> /app
+<span class="kw">COPY</span> .mvn/ .mvn/
+<span class="kw">COPY</span> mvnw pom.xml ./
+<span class="kw">RUN</span> ./mvnw dependency:go-offline <span class="cm"># cache deps layer</span>
+<span class="kw">COPY</span> src ./src
+<span class="kw">RUN</span> ./mvnw package -DskipTests
+
+<span class="cm"># Stage 2: Runtime — lean image, no JDK</span>
+<span class="kw">FROM</span> eclipse-temurin:<span class="st">21-jre-alpine</span>
+<span class="kw">WORKDIR</span> /app
+
+<span class="cm"># Use layered JAR for better Docker cache utilization</span>
+<span class="kw">ARG</span> JAR_FILE=target/*.jar
+<span class="kw">COPY</span> --from=build /app/${JAR_FILE} app.jar
+
+<span class="cm"># Non-root user for security</span>
+<span class="kw">RUN</span> addgroup -S spring && adduser -S spring -G spring
+<span class="kw">USER</span> spring:spring
+
+<span class="kw">EXPOSE</span> <span class="nu">8080</span>
+
+<span class="kw">ENTRYPOINT</span> [<span class="st">"java"</span>,
+             <span class="st">"-XX:+UseContainerSupport"</span>,
+             <span class="st">"-XX:MaxRAMPercentage=75.0"</span>,
+             <span class="st">"-jar"</span>,
+             <span class="st">"app.jar"</span>]</div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — application-prod.yml (production profile)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Activated with: -Dspring.profiles.active=prod  OR  SPRING_PROFILES_ACTIVE=prod</span>
+<span class="cl">spring:</span>
+  <span class="cl">datasource:</span>
+    <span class="an">url:</span>      <span class="st">${DB_URL}</span>           <span class="cm"># required env vars — no fallback in prod</span>
+    <span class="an">username:</span> <span class="st">${DB_USER}</span>
+    <span class="an">password:</span> <span class="st">${DB_PASS}</span>
+    <span class="cl">hikari:</span>
+      <span class="an">maximum-pool-size:</span> <span class="nu">20</span>
+      <span class="an">minimum-idle:</span>      <span class="nu">5</span>
+  <span class="cl">jpa:</span>
+    <span class="an">show-sql:</span> <span class="kw">false</span>
+    <span class="cl">hibernate:</span>
+      <span class="an">ddl-auto:</span> <span class="st">validate</span>
+
+<span class="cl">server:</span>
+  <span class="cl">error:</span>
+    <span class="an">include-stacktrace:</span> <span class="st">never</span>
+    <span class="an">include-message:</span>    <span class="st">never</span>
+
+<span class="cl">logging:</span>
+  <span class="cl">level:</span>
+    <span class="an">root:</span> <span class="st">WARN</span>
+    <span class="an">com.example.bookstore:</span> <span class="st">INFO</span></div>
+  </div>
+</section>
+
+<!-- ══ 18 PATTERNS ══ -->
+<section id="patterns">
+  <div class="sec-header">
+    <div class="sec-num">18</div>
+    <div class="sec-titles">
+      <h2>Patterns &amp; Common Pitfalls</h2>
+      <div class="sec-sub">// WHAT TRIPS UP BEGINNERS</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-red">
+      <div class="card-title">Common Pitfalls <span class="tag tag-red">Avoid</span></div>
+      <ul>
+        <li><strong>Field injection</strong> — use constructor injection</li>
+        <li><strong>Exposing entities as API responses</strong> — use DTOs</li>
+        <li><strong>ddl-auto: update in production</strong> — use Flyway</li>
+        <li><strong>N+1 queries</strong> — LAZY + JOIN FETCH or projections</li>
+        <li><strong>No @Transactional on write operations</strong> — data may not persist</li>
+        <li><strong>Catching and swallowing exceptions</strong> — use @ControllerAdvice</li>
+        <li><strong>Logging secrets/tokens</strong> — review all log statements</li>
+        <li><strong>Hardcoded passwords in application.yml</strong> — use env vars</li>
+        <li><strong>Missing input validation</strong> — always use @Valid</li>
+        <li><strong>Returning 200 for created resources</strong> — use 201 with Location</li>
+      </ul>
+    </div>
+    <div class="card card-green">
+      <div class="card-title">Best Practices <span class="tag tag-green">Follow</span></div>
+      <ul>
+        <li><strong>Layer separation</strong> — Controller → Service → Repository</li>
+        <li><strong>Constructor injection</strong> with final fields</li>
+        <li><strong>Record DTOs</strong> for immutable request/response objects</li>
+        <li><strong>@Transactional(readOnly=true)</strong> at class level; override for writes</li>
+        <li><strong>Custom exceptions</strong> + GlobalExceptionHandler</li>
+        <li><strong>Profiles</strong> for dev/staging/prod configuration</li>
+        <li><strong>Flyway</strong> for schema migrations</li>
+        <li><strong>Pagination</strong> on all list endpoints (never return unbounded lists)</li>
+        <li><strong>Actuator health</strong> wired to K8s readiness/liveness probes</li>
+        <li><strong>Secrets from environment variables</strong>, not config files</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Solving the N+1 Problem</h3>
+  <p class="prose">The N+1 problem occurs when fetching N books also fires N extra queries to fetch each book's category. Fix it with a <code>JOIN FETCH</code> in JPQL or with an <code>@EntityGraph</code>.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Java — Fix N+1 with JOIN FETCH</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm">// ❌ N+1: each book triggers a SELECT for its category</span>
+<span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; books = bookRepository.<span class="fn">findAll</span>();  <span class="cm">// 1 query + N queries for categories</span>
+
+<span class="cm">// ✅ Fix 1: JPQL JOIN FETCH — single query</span>
+<span class="an">@Query</span>(<span class="st">"SELECT b FROM Book b JOIN FETCH b.category"</span>)
+<span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">findAllWithCategory</span>();
+
+<span class="cm">// ✅ Fix 2: @EntityGraph — declarative eager loading</span>
+<span class="an">@EntityGraph</span>(attributePaths = {<span class="st">"category"</span>})
+<span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">findAll</span>();
+
+<span class="cm">// ✅ Fix 3: Projections — only fetch what you need</span>
+<span class="kw">public interface</span> <span class="cl">BookSummary</span> {
+    <span class="cl">String</span> <span class="fn">getTitle</span>();
+    <span class="cl">String</span> <span class="fn">getAuthor</span>();
+    <span class="cl">BigDecimal</span> <span class="fn">getPrice</span>();
+    <span class="cm">// No category — no extra join at all</span>
+}
+<span class="cl">List</span>&lt;<span class="cl">BookSummary</span>&gt; <span class="fn">findAllProjectedBy</span>();  <span class="cm">// SELECT title, author, price only</span></div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">▸</span>
+    <div class="callout-body"><strong>Enable SQL logging in dev:</strong> Set <code>spring.jpa.show-sql: true</code> and <code>spring.jpa.properties.hibernate.format_sql: true</code> during development to see every query. Use <code>p6spy</code> or <code>datasource-proxy</code> to also see bind parameters. Review the output — N+1 patterns are immediately visible when you look at the logs.</div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Topic</th><th>Quick Reference</th></tr>
+      <tr><td><strong>HTTP Status codes</strong></td><td>200 OK · 201 Created · 204 No Content · 400 Bad Request · 401 Unauthorized · 403 Forbidden · 404 Not Found · 422 Unprocessable · 500 Internal Server Error</td></tr>
+      <tr><td><strong>Common starters</strong></td><td><code>web</code> · <code>data-jpa</code> · <code>security</code> · <code>validation</code> · <code>test</code> · <code>actuator</code> · <code>cache</code> · <code>mail</code> · <code>data-redis</code></td></tr>
+      <tr><td><strong>Useful Spring annotations</strong></td><td><code>@Scheduled</code> (cron jobs) · <code>@Async</code> (async methods) · <code>@Cacheable</code> (caching) · <code>@EventListener</code> (app events)</td></tr>
+      <tr><td><strong>Test annotations</strong></td><td><code>@SpringBootTest</code> · <code>@WebMvcTest</code> · <code>@DataJpaTest</code> · <code>@MockBean</code> · <code>@TestPropertySource</code></td></tr>
+      <tr><td><strong>Reference docs</strong></td><td><code>docs.spring.io/spring-boot</code> · <code>start.spring.io</code> · <code>spring.io/guides</code> · <code>baeldung.com/spring-boot</code></td></tr>
+    </table>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = 'var(--leaf)';
+    btn.style.borderColor = 'var(--leaf)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-54px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+<script src="../scripts/handbook-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vector Databases — Enterprise Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/shared-ui.css">
+<style>
+:root {
+  --bg-base:#0c0e14;--bg-surface:#12151f;--bg-card:#181c28;--bg-code:#0e1117;--bg-sidebar:#10131b;
+  --border:#1f2535;--border-accent:#2e3a58;
+  --text-primary:#e8ecf5;--text-secondary:#8b95b0;--text-muted:#4a5570;
+  --blue:#4f8ef7;--cyan:#22d3ee;--green:#34d399;--orange:#fb923c;--purple:#a78bfa;--yellow:#fbbf24;--red:#f87171;--pink:#f472b6;--teal:#2dd4bf;
+  --hl-kw:#a78bfa;--hl-st:#34d399;--hl-nm:#fb923c;--hl-cm:#4a5570;--hl-fn:#4f8ef7;--hl-cl:#22d3ee;
+  --sidebar-w:270px;--top-h:58px;--r:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg-base);color:var(--text-primary);line-height:1.7;font-size:15px}
+
+.topbar{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--top-h);background:rgba(12,14,20,.96);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.topbar-logo{display:flex;align-items:center;gap:12px;font-family:'Sora',sans-serif;font-size:17px;font-weight:700;color:var(--text-primary);text-decoration:none}
+.logo-icon{width:32px;height:32px;border-radius:7px;background:linear-gradient(135deg,#1e3a8a 0%,#4f8ef7 100%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace}
+.logo-sub{color:var(--text-secondary);font-weight:400;font-size:13px;margin-left:4px}
+.topbar-meta{display:flex;align-items:center;gap:10px}
+.badge{font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:.5px;font-weight:500}
+.b-blue{background:rgba(79,142,247,.15);color:var(--blue);border:1px solid rgba(79,142,247,.35)}
+.b-purple{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.35)}
+.b-green{background:rgba(52,211,153,.12);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+
+.layout{display:flex;margin-top:var(--top-h);min-height:calc(100vh - var(--top-h))}
+.sidebar{width:var(--sidebar-w);flex-shrink:0;position:sticky;top:var(--top-h);height:calc(100vh - var(--top-h));overflow-y:auto;background:var(--bg-sidebar);border-right:1px solid var(--border);padding:20px 0 40px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:4px}
+.sb-group{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);padding:12px 18px 5px}
+.sb-link{display:flex;align-items:center;gap:9px;padding:7px 18px;text-decoration:none;color:var(--text-secondary);font-size:13px;border-left:3px solid transparent;transition:all .18s;line-height:1.3}
+.sb-link:hover{color:var(--text-primary);background:rgba(255,255,255,.04);border-left-color:var(--border-accent)}
+.sb-link.active{color:var(--blue);background:rgba(79,142,247,.08);border-left-color:var(--blue);font-weight:500}
+.sb-link .ic{font-size:14px;width:16px;text-align:center}
+
+.main{flex:1;min-width:0;padding:48px 56px 80px;max-width:980px}
+
+.hero{margin-bottom:60px;padding:44px 48px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 0%,rgba(79,142,247,.12) 0%,transparent 55%),radial-gradient(ellipse at 5% 100%,rgba(34,211,238,.07) 0%,transparent 50%);pointer-events:none}
+.hero-tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.hero-tag::before{content:'//';opacity:.45}
+.hero h1{font-family:'Sora',sans-serif;font-size:36px;font-weight:700;line-height:1.15;letter-spacing:-1px;margin-bottom:16px;background:linear-gradient(135deg,#e8ecf5 30%,#4f8ef7 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{color:var(--text-secondary);font-size:15px;max-width:600px;line-height:1.7}
+.hero-chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.chip{font-family:'JetBrains Mono',monospace;font-size:12px;padding:5px 13px;border-radius:6px;border:1px solid}
+.chip-blue{color:var(--blue);border-color:rgba(79,142,247,.35);background:rgba(79,142,247,.08)}
+.chip-cyan{color:var(--cyan);border-color:rgba(34,211,238,.35);background:rgba(34,211,238,.08)}
+.chip-purple{color:var(--purple);border-color:rgba(167,139,250,.35);background:rgba(167,139,250,.08)}
+.chip-green{color:var(--green);border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08)}
+.chip-teal{color:var(--teal);border-color:rgba(45,212,191,.35);background:rgba(45,212,191,.08)}
+.chip-orange{color:var(--orange);border-color:rgba(251,146,60,.35);background:rgba(251,146,60,.08)}
+.chip-pink{color:var(--pink);border-color:rgba(244,114,182,.35);background:rgba(244,114,182,.08)}
+
+.section{margin-bottom:62px;scroll-margin-top:calc(var(--top-h) + 20px)}
+.sec-hdr{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+.sec-icon{width:38px;height:38px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.ico-blue{background:rgba(79,142,247,.15)}
+.ico-cyan{background:rgba(34,211,238,.15)}
+.ico-purple{background:rgba(167,139,250,.15)}
+.ico-green{background:rgba(52,211,153,.15)}
+.ico-orange{background:rgba(251,146,60,.15)}
+.ico-teal{background:rgba(45,212,191,.15)}
+.ico-pink{background:rgba(244,114,182,.15)}
+.ico-yellow{background:rgba(251,191,36,.15)}
+.ico-red{background:rgba(248,113,113,.15)}
+.sec-title h2{font-family:'Sora',sans-serif;font-size:21px;font-weight:700;letter-spacing:-.3px}
+.sec-title .sub{font-size:13px;color:var(--text-muted);margin-top:2px}
+.sec-div{height:1px;background:linear-gradient(to right,var(--border),transparent);margin-bottom:26px}
+
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:20px 24px;margin-bottom:14px}
+.card-title{font-family:'Sora',sans-serif;font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.d-blue{background:var(--blue)}.d-cyan{background:var(--cyan)}.d-green{background:var(--green)}.d-orange{background:var(--orange)}.d-purple{background:var(--purple)}.d-teal{background:var(--teal)}.d-pink{background:var(--pink)}.d-yellow{background:var(--yellow)}.d-red{background:var(--red)}
+.card p,.card li{color:var(--text-secondary);font-size:13.5px}
+.card ul{padding-left:18px}
+.card ul li{margin-bottom:4px}
+
+.code-wrap{background:var(--bg-code);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin:14px 0;font-family:'JetBrains Mono',monospace}
+.code-hdr{display:flex;justify-content:space-between;align-items:center;padding:9px 18px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--border)}
+.code-lang{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted)}
+.copy-btn{font-size:11px;color:var(--text-muted);background:none;border:1px solid var(--border);border-radius:4px;padding:3px 10px;cursor:pointer;font-family:inherit;transition:all .2s}
+.copy-btn:hover{color:var(--blue);border-color:var(--blue)}
+.code-block{padding:16px 20px;overflow-x:auto;font-size:13px;line-height:1.7;white-space:pre;tab-size:4}
+.kw{color:var(--hl-kw)}.st{color:var(--hl-st)}.nm{color:var(--hl-nm)}.cm{color:var(--hl-cm);font-style:italic}.fn{color:var(--hl-fn)}.cl{color:var(--hl-cl)}.im{color:var(--pink)}.at{color:var(--yellow)}.op{color:var(--text-muted)}
+
+.info-box{display:flex;gap:14px;padding:14px 18px;border-radius:var(--r);margin:14px 0;border-left:4px solid}
+.ib-tip{background:rgba(52,211,153,.07);border-color:var(--green)}
+.ib-note{background:rgba(79,142,247,.07);border-color:var(--blue)}
+.ib-warn{background:rgba(251,146,60,.07);border-color:var(--orange)}
+.ib-perf{background:rgba(167,139,250,.07);border-color:var(--purple)}
+.ib-new{background:rgba(34,211,238,.07);border-color:var(--cyan)}
+.ib-danger{background:rgba(248,113,113,.07);border-color:var(--red)}
+.ib-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.ib-content{font-size:13.5px;color:var(--text-secondary);line-height:1.6}
+.ib-content strong{color:var(--text-primary)}
+
+code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:rgba(79,142,247,.1);color:var(--blue);padding:2px 7px;border-radius:4px;border:1px solid rgba(79,142,247,.2)}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+.ref-table{width:100%;border-collapse:collapse;margin:14px 0}
+.ref-table th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);padding:9px 14px;text-align:left;background:rgba(255,255,255,.03);border-bottom:1px solid var(--border)}
+.ref-table td{padding:10px 14px;font-size:13.5px;color:var(--text-secondary);border-bottom:1px solid rgba(31,37,53,.6);vertical-align:top}
+.ref-table tr:last-child td{border-bottom:none}
+.ref-table tr:hover td{background:rgba(255,255,255,.018)}
+.ref-table td code{font-size:11.5px}
+.mn{color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:12.5px}
+
+.db-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:18px}
+.db-card-hdr{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:14px}
+.db-badge{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:3px 9px;border-radius:4px;letter-spacing:.5px;flex-shrink:0;margin-top:3px}
+.db-title{font-family:'Sora',sans-serif;font-size:17px;font-weight:700;margin-bottom:4px}
+.db-sub{font-size:13px;color:var(--text-secondary)}
+.db-body{padding:18px 22px}
+.db-body .section p{color:var(--text-secondary);font-size:13.5px;margin-bottom:10px}
+
+.tag-row{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
+.tag{font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 9px;border-radius:4px;border:1px solid}
+
+.perf-bar{margin:6px 0}
+.perf-label{font-size:12px;color:var(--text-muted);margin-bottom:4px;font-family:'JetBrains Mono',monospace;display:flex;justify-content:space-between}
+.bar-track{height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .3s}
+
+.cmp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin:14px 0}
+.cmp-col{border-right:1px solid var(--border)}
+.cmp-col:last-child{border-right:none}
+.cmp-hdr{padding:12px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--border);font-family:'Sora',sans-serif;font-size:13px;font-weight:600}
+.cmp-row{padding:9px 14px;border-bottom:1px solid rgba(31,37,53,.5);font-size:12.5px;color:var(--text-secondary)}
+.cmp-row:last-child{border-bottom:none}
+.cmp-lbl{background:rgba(255,255,255,.02);color:var(--text-muted);font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.5px}
+.ok{color:var(--green)}.warn{color:var(--orange)}.na{color:var(--text-muted)}
+
+.section p{color:var(--text-secondary);margin-bottom:12px;font-size:14px}
+h3{font-family:'Sora',sans-serif;font-size:16px;font-weight:600;color:var(--text-primary);margin:26px 0 10px}
+h4{font-size:13.5px;font-weight:600;color:var(--text-secondary);margin:18px 0 7px}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-accent);border-radius:6px}
+
+@media(max-width:900px){.sidebar{display:none}.main{padding:30px 22px 60px}.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}.cmp-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="floating-actions">
+  <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"></path><path d="M9 12h10"></path></svg>
+  </a>
+</div>
+
+<header class="topbar">
+  <a class="topbar-logo" href="#">
+    <div class="logo-icon">vec</div>
+    <span>Vector DB</span>
+    <span class="logo-sub">Enterprise Handbook</span>
+  </a>
+  <div class="topbar-meta">
+    <span class="badge b-blue">RAG & Semantic Search</span>
+    <span class="badge b-purple">ANN Internals</span>
+    <span class="badge b-green">Production Patterns</span>
+  </div>
+</header>
+
+<div class="layout">
+
+<aside class="sidebar">
+  <div class="sb-group">Foundations</div>
+  <a href="#intro"      class="sb-link active"><span class="ic">📐</span> What is a Vector DB?</a>
+  <a href="#ann"        class="sb-link"><span class="ic">🔬</span> ANN Index Internals</a>
+  <a href="#distance"   class="sb-link"><span class="ic">📏</span> Distance Metrics</a>
+  <a href="#embeddings" class="sb-link"><span class="ic">🧬</span> Embeddings Primer</a>
+  <div class="sb-group">Deep Dives</div>
+  <a href="#pinecone"   class="sb-link"><span class="ic">🌲</span> Pinecone</a>
+  <a href="#milvus"     class="sb-link"><span class="ic">🐳</span> Milvus</a>
+  <a href="#qdrant"     class="sb-link"><span class="ic">🔷</span> Qdrant</a>
+  <a href="#pgvector"   class="sb-link"><span class="ic">🐘</span> pgvector</a>
+  <div class="sb-group">Patterns</div>
+  <a href="#compare"    class="sb-link"><span class="ic">⚖️</span> Head-to-Head</a>
+  <a href="#rag"        class="sb-link"><span class="ic">📡</span> Advanced RAG</a>
+  <a href="#filtering"  class="sb-link"><span class="ic">🔽</span> Filtered Search</a>
+  <a href="#chunking"   class="sb-link"><span class="ic">✂️</span> Chunking & Ingestion</a>
+  <a href="#production" class="sb-link"><span class="ic">🚀</span> Production Ops</a>
+  <a href="#cheatsheet" class="sb-link"><span class="ic">🗒️</span> Cheat Sheet</a>
+</aside>
+
+<main class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Similarity Search & Retrieval Infrastructure</div>
+  <h1>Vector Databases<br>Enterprise Handbook</h1>
+  <p>A practitioner's deep-dive into Pinecone, Milvus, Qdrant, and pgvector — covering ANN index internals, distance metrics, RAG pipelines, filtered search, and production operations for teams building on embeddings.</p>
+  <div class="hero-chips">
+    <span class="chip chip-blue">HNSW & IVF-Flat</span>
+    <span class="chip chip-purple">Pinecone</span>
+    <span class="chip chip-cyan">Milvus</span>
+    <span class="chip chip-teal">Qdrant</span>
+    <span class="chip chip-green">pgvector</span>
+    <span class="chip chip-orange">Advanced RAG</span>
+    <span class="chip chip-pink">Hybrid Search</span>
+  </div>
+</div>
+
+<!-- ══ INTRO ══ -->
+<section class="section" id="intro">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-blue">📐</div>
+    <div class="sec-title"><h2>What is a Vector Database?</h2><div class="sub">Semantic similarity at scale — the shift from exact to approximate matching</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <p>A vector database stores, indexes, and queries high-dimensional float arrays — <strong>embeddings</strong> — produced by neural models. Unlike SQL where you filter on equality or range, vector DBs answer <em>nearest-neighbor</em> queries: "find the 10 vectors most similar to this query vector." This is the engine behind semantic search, RAG, recommendation, anomaly detection, and multimodal retrieval.</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title"><span class="dot d-blue"></span>Exact vs Approximate</div>
+      <p>Exact k-NN is O(n·d) — scanning 10M 1536-dim vectors takes ~1 second. ANN indexes trade a small recall loss (1–5%) for 100–1000× speedups.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-purple"></span>Metadata Filtering</div>
+      <p>Real workloads combine vector similarity with structured predicates: <code>doc_type='legal' AND year>2022</code>. How a DB handles this conjunction is the key differentiator.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-green"></span>Hybrid Search</div>
+      <p>Sparse (BM25/TF-IDF keyword) + dense (embedding) retrieval fused via RRF or weighted sum. Outperforms either alone, especially for rare terms and exact matches.</p>
+    </div>
+  </div>
+
+  <div class="info-box ib-note">
+    <div class="ib-icon">ℹ️</div>
+    <div class="ib-content"><strong>Dimensionality note:</strong> OpenAI <code>text-embedding-3-small</code> → 1536 dims. Cohere Embed v3 → 1024 dims. E5-large → 1024 dims. BGE-M3 supports matryoshka embeddings (truncate to 512/256). Smaller dims = faster queries and less memory but lower recall. Most production workloads use 768–1536.</div>
+  </div>
+</section>
+
+<!-- ══ ANN ══ -->
+<section class="section" id="ann">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-purple">🔬</div>
+    <div class="sec-title"><h2>ANN Index Internals</h2><div class="sub">HNSW, IVF-Flat, IVF-PQ, ScaNN, DiskANN — how the sausage is made</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <h3>HNSW — Hierarchical Navigable Small World</h3>
+  <p>The workhorse of most modern vector DBs. A multi-layer graph where each layer is a randomly thinned version of the one below. Search starts at the top (sparse, long-range connections) and greedily descends, increasing resolution each layer. Insert-time cost is O(log n); query cost is O(log n) with constant depending on <code>ef</code>.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot d-purple"></span>Key Parameters</div>
+      <ul>
+        <li><code>M</code> — max edges per node (16–64). Higher = better recall, more RAM and build time.</li>
+        <li><code>ef_construction</code> — beam width during build (100–500). Larger = higher quality graph, slower build.</li>
+        <li><code>ef_search</code> — beam width at query time. Tune this at runtime for the recall/latency tradeoff.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-blue"></span>Memory Profile</div>
+      <ul>
+        <li>Overhead: ~(M × 8 bytes) per vector for graph edges, plus raw vectors.</li>
+        <li>1M vectors × 1536 dims × float32 = ~6 GB raw. HNSW graph adds ~20–40%.</li>
+        <li>HNSW lives <em>entirely in RAM</em> — if the index doesn't fit, you need DiskANN (Qdrant) or IVF-PQ compression.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>IVF-Flat — Inverted File Index</h3>
+  <p>Clusters vectors into <code>nlist</code> Voronoi cells at build time (k-means). At query time, probe the <code>nprobe</code> nearest centroids and do exact search within those cells only. Naturally shardable; faster builds than HNSW on very large datasets. Milvus defaults to IVF-Flat for large collections.</p>
+
+  <div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">python — Milvus IVF-Flat config</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Build: nlist = sqrt(n) is the classic heuristic</span>
+index_params = {
+    <span class="st">"index_type"</span>: <span class="st">"IVF_FLAT"</span>,
+    <span class="st">"metric_type"</span>: <span class="st">"COSINE"</span>,
+    <span class="st">"params"</span>: {<span class="st">"nlist"</span>: <span class="nm">1024</span>}   <span class="cm"># cluster count</span>
+}
+
+<span class="cm"># Query: nprobe = 10–20% of nlist for 95%+ recall</span>
+search_params = {<span class="st">"metric_type"</span>: <span class="st">"COSINE"</span>, <span class="st">"params"</span>: {<span class="st">"nprobe"</span>: <span class="nm">128</span>}}</div>
+  </div>
+
+  <h3>IVF-PQ — Product Quantization</h3>
+  <p>Compresses vectors 4–32× by splitting each d-dim vector into <code>m</code> sub-vectors and replacing each with a codebook index. Drastically reduces memory but hurts recall. Typical use: 100M+ vectors where HNSW OOMs. Milvus, Faiss, and pgvector all support PQ.</p>
+
+  <h3>DiskANN — SSD-Resident Graphs</h3>
+  <p>Microsoft Research's algorithm (2019) for billion-scale datasets that don't fit in RAM. Stores graph edges on SSD, uses DRAM only for compressed in-memory cache. Qdrant implements DiskANN via its on-disk payload + HNSW hybrid. Latency is higher (~2–5ms vs sub-ms for in-memory) but cost/vector is 10–20× lower.</p>
+
+  <h3>ScaNN — Google's Asymmetric Hashing</h3>
+  <p>Used internally by Google; open-sourced in 2020. Produces the best recall/latency tradeoff on standard ANN benchmarks (ann-benchmarks.com) but is C++-only with a Python wrapper. Pinecone's proprietary index likely draws inspiration here. Not directly available in Milvus/Qdrant.</p>
+
+  <div class="ref-table">
+    <thead><tr><th>Index</th><th>Build Speed</th><th>Query Speed</th><th>RAM Usage</th><th>Best For</th></tr></thead>
+    <tbody>
+      <tr><td class="mn">HNSW</td><td>Slow (O(n log n))</td><td>⚡ Fastest</td><td>High (in-RAM)</td><td>&lt;50M vecs, low-latency</td></tr>
+      <tr><td class="mn">IVF-Flat</td><td>Fast</td><td>Fast</td><td>Medium</td><td>Batch workloads, sharded clusters</td></tr>
+      <tr><td class="mn">IVF-PQ</td><td>Fast</td><td>Fast</td><td>⚡ Very low</td><td>100M+ vecs, memory-constrained</td></tr>
+      <tr><td class="mn">DiskANN</td><td>Slow</td><td>Medium (~3ms)</td><td>⚡ Very low</td><td>Billion-scale, cost-sensitive</td></tr>
+      <tr><td class="mn">Flat (brute)</td><td>None</td><td>Slow (exact)</td><td>Low</td><td>&lt;100K vecs, baseline, testing</td></tr>
+    </tbody>
+  </div>
+</section>
+
+<!-- ══ DISTANCE ══ -->
+<section class="section" id="distance">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-cyan">📏</div>
+    <div class="sec-title"><h2>Distance Metrics</h2><div class="sub">Cosine, dot product, Euclidean — when each applies</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title"><span class="dot d-blue"></span>Cosine Similarity</div>
+      <p>Measures angle between vectors, ignoring magnitude. Best for text embeddings where magnitude encodes word frequency artifacts. Most embedding models are trained with cosine loss. Range: [-1, 1].</p>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:8px">sim(A,B) = (A·B) / (||A|| × ||B||)</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-purple"></span>Dot Product</div>
+      <p>Equivalent to cosine on unit-normalized vectors (most modern models). Preferred in Pinecone because it's 30% faster than full cosine (skips the norm division). If your model normalizes outputs, use dot product.</p>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:8px">sim(A,B) = Σ Aᵢ × Bᵢ</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-green"></span>Euclidean (L2)</div>
+      <p>Geometric distance in embedding space. Better than cosine for image/multimodal embeddings and when absolute position in latent space matters. Used by CLIP, image embeddings. Range: [0, ∞).</p>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:8px">d(A,B) = √Σ(Aᵢ - Bᵢ)²</p>
+    </div>
+  </div>
+
+  <div class="info-box ib-warn">
+    <div class="ib-icon">⚠️</div>
+    <div class="ib-content"><strong>Metric mismatch is a silent killer.</strong> Indexing with cosine but querying with L2 (or vice versa) returns valid-looking but semantically wrong results. Always match the metric to the model's training objective — check the model card. OpenAI and Cohere models: cosine/dot product. CLIP: L2. Binary quantized models: Hamming distance.</div>
+  </div>
+</section>
+
+<!-- ══ EMBEDDINGS ══ -->
+<section class="section" id="embeddings">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-teal">🧬</div>
+    <div class="sec-title"><h2>Embeddings Primer</h2><div class="sub">Choosing the right model for your retrieval task</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="ref-table">
+    <thead><tr><th>Model</th><th>Dims</th><th>Context</th><th>MTEB Score</th><th>Best For</th></tr></thead>
+    <tbody>
+      <tr><td class="mn">text-embedding-3-large</td><td>3072</td><td>8191 tok</td><td>64.6</td><td>Highest quality, OpenAI workloads</td></tr>
+      <tr><td class="mn">text-embedding-3-small</td><td>1536</td><td>8191 tok</td><td>62.3</td><td>Balance of cost + quality</td></tr>
+      <tr><td class="mn">Cohere embed-v3-english</td><td>1024</td><td>512 tok</td><td>64.5</td><td>High recall, Cohere platform</td></tr>
+      <tr><td class="mn">BAAI/bge-large-en-v1.5</td><td>1024</td><td>512 tok</td><td>63.9</td><td>Open-source, self-hosted</td></tr>
+      <tr><td class="mn">BAAI/bge-m3</td><td>1024</td><td>8192 tok</td><td>62.7</td><td>Multilingual, hybrid (dense+sparse)</td></tr>
+      <tr><td class="mn">nomic-embed-text-v1.5</td><td>768</td><td>8192 tok</td><td>62.4</td><td>Long-context, open weights</td></tr>
+      <tr><td class="mn">gte-Qwen2-7B</td><td>3584</td><td>32768 tok</td><td>70.2</td><td>SOTA, heavy, self-hosted GPU</td></tr>
+    </tbody>
+  </div>
+
+  <div class="info-box ib-perf">
+    <div class="ib-icon">⚡</div>
+    <div class="ib-content"><strong>Matryoshka embeddings:</strong> Models like <code>text-embedding-3-*</code> and <code>bge-m3</code> support truncating to smaller dims (e.g., 256) with acceptable quality loss. Use a tiered strategy: retrieve 100 candidates at 256 dims cheaply, then re-rank with full 1536-dim cosine on the top 20. This yields 3–4× cost reduction at &lt;2% recall loss.</div>
+  </div>
+</section>
+
+<!-- ══ PINECONE ══ -->
+<section class="section" id="pinecone">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-green">🌲</div>
+    <div class="sec-title"><h2>Pinecone</h2><div class="sub">Managed serverless vector database — zero ops, pay per use</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="db-card">
+    <div class="db-card-hdr">
+      <div class="db-badge" style="background:rgba(52,211,153,.15);color:var(--green);border:1px solid rgba(52,211,153,.3)">MANAGED SaaS</div>
+      <div>
+        <div class="db-title">Pinecone</div>
+        <div class="db-sub">Proprietary index (likely ScaNN-inspired), serverless + pod-based tiers, sparse-dense hybrid natively supported since 2024</div>
+        <div class="tag-row">
+          <span class="tag" style="color:var(--green);border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.07)">Serverless</span>
+          <span class="tag" style="color:var(--blue);border-color:rgba(79,142,247,.3);background:rgba(79,142,247,.07)">Hybrid Search</span>
+          <span class="tag" style="color:var(--purple);border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07)">Namespaces</span>
+          <span class="tag" style="color:var(--orange);border-color:rgba(251,146,60,.3);background:rgba(251,146,60,.07)">Metadata Filters</span>
+        </div>
+      </div>
+    </div>
+    <div class="db-body">
+
+      <h3>Core Concepts</h3>
+      <p><strong>Indexes</strong> are the top-level unit — a named collection with a fixed dimension and metric. Serverless indexes auto-scale; pod indexes provision explicit hardware (s1, p1, p2). <strong>Namespaces</strong> provide logical partitioning within an index — ideal for multi-tenancy (one namespace per user/org). Queries are always namespace-scoped.</p>
+
+      <div class="code-wrap">
+        <div class="code-hdr"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+        <div class="code-block"><span class="kw">from</span> <span class="cl">pinecone</span> <span class="kw">import</span> <span class="cl">Pinecone</span>, <span class="cl">ServerlessSpec</span>
+
+pc = <span class="cl">Pinecone</span>(api_key=<span class="st">"..."</span>)
+
+<span class="cm"># Create serverless index</span>
+pc.<span class="fn">create_index</span>(
+    name=<span class="st">"knowledge-base"</span>,
+    dimension=<span class="nm">1536</span>,
+    metric=<span class="st">"cosine"</span>,          <span class="cm"># cosine | dotproduct | euclidean</span>
+    spec=<span class="cl">ServerlessSpec</span>(cloud=<span class="st">"aws"</span>, region=<span class="st">"us-east-1"</span>)
+)
+idx = pc.<span class="fn">Index</span>(<span class="st">"knowledge-base"</span>)
+
+<span class="cm"># Upsert (create or update by ID)</span>
+idx.<span class="fn">upsert</span>(
+    vectors=[
+        {<span class="st">"id"</span>: <span class="st">"doc-001"</span>, <span class="st">"values"</span>: embedding, <span class="st">"metadata"</span>: {<span class="st">"source"</span>: <span class="st">"legal"</span>, <span class="st">"year"</span>: <span class="nm">2024</span>}},
+    ],
+    namespace=<span class="st">"tenant-acme"</span>
+)
+
+<span class="cm"># Filtered semantic search</span>
+results = idx.<span class="fn">query</span>(
+    vector=query_embedding,
+    top_k=<span class="nm">10</span>,
+    namespace=<span class="st">"tenant-acme"</span>,
+    filter={<span class="st">"source"</span>: {<span class="st">"$eq"</span>: <span class="st">"legal"</span>}, <span class="st">"year"</span>: {<span class="st">"$gte"</span>: <span class="nm">2023</span>}},
+    include_metadata=<span class="kw">True</span>
+)</div>
+      </div>
+
+      <h3>Hybrid Search (Sparse + Dense)</h3>
+      <div class="code-wrap">
+        <div class="code-hdr"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+        <div class="code-block"><span class="kw">from</span> <span class="cl">pinecone_text.sparse</span> <span class="kw">import</span> <span class="cl">BM25Encoder</span>
+
+bm25 = <span class="cl">BM25Encoder</span>().<span class="fn">default</span>()  <span class="cm"># pre-trained on MS MARCO</span>
+
+<span class="cm"># Upsert with both sparse + dense vectors</span>
+idx.<span class="fn">upsert</span>(vectors=[{
+    <span class="st">"id"</span>: <span class="st">"doc-42"</span>,
+    <span class="st">"values"</span>: dense_embedding,           <span class="cm"># float list</span>
+    <span class="st">"sparse_values"</span>: bm25.<span class="fn">encode_documents</span>([text])[<span class="nm">0</span>],  <span class="cm"># {indices, values}</span>
+    <span class="st">"metadata"</span>: {<span class="st">"text"</span>: text}
+}])
+
+<span class="cm"># Hybrid query — alpha controls dense/sparse balance</span>
+<span class="cm"># alpha=1.0 → pure dense, alpha=0.0 → pure BM25</span>
+results = idx.<span class="fn">query</span>(
+    vector=dense_q,
+    sparse_vector=bm25.<span class="fn">encode_queries</span>([query])[<span class="nm">0</span>],
+    top_k=<span class="nm">10</span>,
+    alpha=<span class="nm">0.75</span>   <span class="cm"># 75% dense / 25% keyword</span>
+)</div>
+      </div>
+
+      <div class="info-box ib-warn">
+        <div class="ib-icon">⚠️</div>
+        <div class="ib-content"><strong>Serverless cold start:</strong> Serverless indexes can experience 200–500ms cold-start latency after inactivity. For latency-critical workloads (&lt;50ms p99), use pod-based indexes or keep the index warm with a scheduled ping. Serverless billing: per read/write unit, not provisioned capacity.</div>
+      </div>
+
+      <h3>Metadata Filter Caveats</h3>
+      <p>Pinecone performs post-ANN filtering — it retrieves <code>top_k × K</code> candidates internally, then applies the filter. If your filter is highly selective (only 1% of vectors match), you may get fewer than <code>top_k</code> results. Workaround: use a larger internal fetch multiplier via <code>top_k</code> or consider namespace-level partitioning for high-selectivity filters.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ MILVUS ══ -->
+<section class="section" id="milvus">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-cyan">🐳</div>
+    <div class="sec-title"><h2>Milvus</h2><div class="sub">Open-source, cloud-native, billion-scale — the Kubernetes of vector DBs</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="db-card">
+    <div class="db-card-hdr">
+      <div class="db-badge" style="background:rgba(34,211,238,.12);color:var(--cyan);border:1px solid rgba(34,211,238,.3)">OPEN SOURCE</div>
+      <div>
+        <div class="db-title">Milvus 2.x</div>
+        <div class="db-sub">Decoupled storage/compute architecture, Pulsar message queue, FAISS-backed indexes, Zilliz Cloud managed option</div>
+        <div class="tag-row">
+          <span class="tag" style="color:var(--cyan);border-color:rgba(34,211,238,.3);background:rgba(34,211,238,.07)">Distributed</span>
+          <span class="tag" style="color:var(--blue);border-color:rgba(79,142,247,.3);background:rgba(79,142,247,.07)">HNSW / IVF-PQ</span>
+          <span class="tag" style="color:var(--purple);border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07)">Partitions</span>
+          <span class="tag" style="color:var(--green);border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.07)">Scalar Index</span>
+        </div>
+      </div>
+    </div>
+    <div class="db-body">
+
+      <h3>Architecture</h3>
+      <p>Milvus separates storage (MinIO/S3), query nodes (ANN execution), data nodes (WAL → object store flush), and coordination (etcd). This allows independent scaling of each tier. For teams &lt;10M vectors, <code>Milvus Lite</code> (single binary, no dependencies) or <code>docker compose</code> standalone suffices.</p>
+
+      <div class="code-wrap">
+        <div class="code-hdr"><span class="code-lang">python — pymilvus</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+        <div class="code-block"><span class="kw">from</span> <span class="cl">pymilvus</span> <span class="kw">import</span> (<span class="cl">MilvusClient</span>, <span class="cl">DataType</span>, <span class="cl">CollectionSchema</span>,
+                       <span class="cl">FieldSchema</span>, <span class="cl">utility</span>)
+
+client = <span class="cl">MilvusClient</span>(uri=<span class="st">"http://localhost:19530"</span>)
+
+<span class="cm"># Define schema with primary key + vector + scalar fields</span>
+schema = <span class="cl">CollectionSchema</span>(fields=[
+    <span class="cl">FieldSchema</span>(name=<span class="st">"id"</span>,     dtype=<span class="cl">DataType</span>.INT64,          is_primary=<span class="kw">True</span>, auto_id=<span class="kw">True</span>),
+    <span class="cl">FieldSchema</span>(name=<span class="st">"vector"</span>, dtype=<span class="cl">DataType</span>.FLOAT_VECTOR, dim=<span class="nm">1536</span>),
+    <span class="cl">FieldSchema</span>(name=<span class="st">"source"</span>, dtype=<span class="cl">DataType</span>.VARCHAR,       max_length=<span class="nm">64</span>),
+    <span class="cl">FieldSchema</span>(name=<span class="st">"year"</span>,   dtype=<span class="cl">DataType</span>.INT32),
+], description=<span class="st">"Knowledge base"</span>, enable_dynamic_field=<span class="kw">True</span>)
+
+client.<span class="fn">create_collection</span>(collection_name=<span class="st">"kb"</span>, schema=schema)
+
+<span class="cm"># Build HNSW index on the vector field</span>
+client.<span class="fn">create_index</span>(<span class="st">"kb"</span>, <span class="st">"vector"</span>, index_params={
+    <span class="st">"index_type"</span>: <span class="st">"HNSW"</span>,
+    <span class="st">"metric_type"</span>: <span class="st">"COSINE"</span>,
+    <span class="st">"params"</span>: {<span class="st">"M"</span>: <span class="nm">16</span>, <span class="st">"efConstruction"</span>: <span class="nm">200</span>}
+})
+
+<span class="cm"># Also create scalar index for fast pre-filtering</span>
+client.<span class="fn">create_index</span>(<span class="st">"kb"</span>, <span class="st">"source"</span>, index_params={<span class="st">"index_type"</span>: <span class="st">"Trie"</span>})
+client.<span class="fn">create_index</span>(<span class="st">"kb"</span>, <span class="st">"year"</span>,   index_params={<span class="st">"index_type"</span>: <span class="st">"INVERTED"</span>})
+client.<span class="fn">load_collection</span>(<span class="st">"kb"</span>)
+
+<span class="cm"># Insert</span>
+client.<span class="fn">insert</span>(<span class="st">"kb"</span>, [
+    {<span class="st">"vector"</span>: embedding, <span class="st">"source"</span>: <span class="st">"legal"</span>, <span class="st">"year"</span>: <span class="nm">2024</span>, <span class="st">"text"</span>: chunk_text}
+])
+
+<span class="cm"># Filtered ANN search</span>
+results = client.<span class="fn">search</span>(
+    collection_name=<span class="st">"kb"</span>,
+    data=[query_vec],
+    anns_field=<span class="st">"vector"</span>,
+    limit=<span class="nm">10</span>,
+    filter=<span class="st">'source == "legal" and year >= 2023'</span>,
+    output_fields=[<span class="st">"source"</span>, <span class="st">"year"</span>, <span class="st">"text"</span>],
+    search_params={<span class="st">"metric_type"</span>: <span class="st">"COSINE"</span>, <span class="st">"params"</span>: {<span class="st">"ef"</span>: <span class="nm">200</span>}}
+)</div>
+      </div>
+
+      <h3>Partitions & Partition Keys</h3>
+      <div class="code-wrap">
+        <div class="code-hdr"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+        <div class="code-block"><span class="cm"># Partition key — Milvus routes vectors to sub-indexes automatically</span>
+<span class="cm"># Use for high-cardinality tenant isolation (each tenant = its own HNSW sub-graph)</span>
+<span class="cl">FieldSchema</span>(name=<span class="st">"tenant_id"</span>, dtype=<span class="cl">DataType</span>.VARCHAR,
+            max_length=<span class="nm">64</span>, is_partition_key=<span class="kw">True</span>)
+
+<span class="cm"># Search is automatically scoped to the matching partition</span>
+results = client.<span class="fn">search</span>(..., filter=<span class="st">'tenant_id == "acme"'</span>)</div>
+      </div>
+
+      <div class="info-box ib-perf">
+        <div class="ib-icon">⚡</div>
+        <div class="ib-content"><strong>Milvus filtering modes:</strong> Milvus 2.4+ uses a hybrid filtering strategy — for high-selectivity filters it switches to <em>filtered HNSW</em> (iterates the graph, skips non-matching nodes); for low-selectivity it post-filters after ANN. Scalar indexes (Trie for strings, INVERTED for numerics) are critical — without them, filters degrade to O(n) scans.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ QDRANT ══ -->
+<section class="section" id="qdrant">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-blue">🔷</div>
+    <div class="sec-title"><h2>Qdrant</h2><div class="sub">Rust-native, payload-first filtering, sparse + dense, on-disk HNSW</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="db-card">
+    <div class="db-card-hdr">
+      <div class="db-badge" style="background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.3)">OPEN SOURCE · RUST</div>
+      <div>
+        <div class="db-title">Qdrant</div>
+        <div class="db-sub">HNSW with filtered graph traversal baked in, WAL, quantization (scalar/product/binary), Qdrant Cloud managed</div>
+        <div class="tag-row">
+          <span class="tag" style="color:var(--purple);border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07)">Filtered HNSW</span>
+          <span class="tag" style="color:var(--blue);border-color:rgba(79,142,247,.3);background:rgba(79,142,247,.07)">Quantization</span>
+          <span class="tag" style="color:var(--teal);border-color:rgba(45,212,191,.3);background:rgba(45,212,191,.07)">Sparse Vectors</span>
+          <span class="tag" style="color:var(--green);border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.07)">On-disk HNSW</span>
+        </div>
+      </div>
+    </div>
+    <div class="db-body">
+
+      <h3>Key Differentiator: Payload Indexing</h3>
+      <p>Qdrant's filtering is a first-class index citizen, not an afterthought. Payload fields can be indexed with keyword, integer, float, text, datetime, or geo index types. The HNSW graph traversal itself checks payload conditions during graph walks — this means filtered search recall is near-identical to unfiltered, even for highly selective filters.</p>
+
+      <div class="code-wrap">
+        <div class="code-hdr"><span class="code-lang">python — qdrant-client</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+        <div class="code-block"><span class="kw">from</span> <span class="cl">qdrant_client</span> <span class="kw">import</span> <span class="cl">QdrantClient</span>, <span class="cl">models</span>
+
+client = <span class="cl">QdrantClient</span>(host=<span class="st">"localhost"</span>, port=<span class="nm">6333</span>)
+
+<span class="cm"># Create collection with named vectors + on-disk HNSW</span>
+client.<span class="fn">create_collection</span>(
+    collection_name=<span class="st">"knowledge"</span>,
+    vectors_config={
+        <span class="st">"dense"</span>: <span class="cl">models.VectorParams</span>(size=<span class="nm">1536</span>, distance=<span class="cl">models.Distance</span>.COSINE,
+                                        on_disk=<span class="kw">True</span>),   <span class="cm"># HNSW on SSD</span>
+    },
+    sparse_vectors_config={
+        <span class="st">"sparse"</span>: <span class="cl">models.SparseVectorParams</span>()          <span class="cm"># BM42 / SPLADE</span>
+    },
+    hnsw_config=<span class="cl">models.HnswConfigDiff</span>(m=<span class="nm">16</span>, ef_construct=<span class="nm">200</span>, on_disk=<span class="kw">True</span>),
+    quantization_config=<span class="cl">models.ScalarQuantization</span>(
+        scalar=<span class="cl">models.ScalarQuantizationConfig</span>(
+            type=<span class="cl">models.ScalarType</span>.INT8,   <span class="cm"># 4× memory reduction</span>
+            quantile=<span class="nm">0.99</span>,
+            always_ram=<span class="kw">True</span>               <span class="cm"># keep quantized vecs in RAM</span>
+        )
+    )
+)
+
+<span class="cm"># Index payload fields for fast pre-filtering</span>
+client.<span class="fn">create_payload_index</span>(<span class="st">"knowledge"</span>, <span class="st">"source"</span>,   <span class="cl">models.PayloadSchemaType</span>.KEYWORD)
+client.<span class="fn">create_payload_index</span>(<span class="st">"knowledge"</span>, <span class="st">"year"</span>,     <span class="cl">models.PayloadSchemaType</span>.INTEGER)
+
+<span class="cm"># Upsert points</span>
+client.<span class="fn">upsert</span>(collection_name=<span class="st">"knowledge"</span>, points=[
+    <span class="cl">models.PointStruct</span>(id=<span class="nm">1</span>,
+        vector={<span class="st">"dense"</span>: dense_vec, <span class="st">"sparse"</span>: <span class="cl">models.SparseVector</span>(indices=[...], values=[...])},
+        payload={<span class="st">"source"</span>: <span class="st">"legal"</span>, <span class="st">"year"</span>: <span class="nm">2024</span>, <span class="st">"text"</span>: chunk}
+    )
+])
+
+<span class="cm"># Hybrid search — dense + sparse fused via RRF</span>
+results = client.<span class="fn">query_points</span>(
+    collection_name=<span class="st">"knowledge"</span>,
+    prefetch=[
+        <span class="cl">models.Prefetch</span>(query=dense_vec,   using=<span class="st">"dense"</span>,  limit=<span class="nm">50</span>),
+        <span class="cl">models.Prefetch</span>(query=<span class="cl">models.SparseVector</span>(indices=qi, values=qv),
+                         using=<span class="st">"sparse"</span>, limit=<span class="nm">50</span>),
+    ],
+    query=<span class="cl">models.FusionQuery</span>(fusion=<span class="cl">models.Fusion</span>.RRF),
+    query_filter=<span class="cl">models.Filter</span>(must=[
+        <span class="cl">models.FieldCondition</span>(key=<span class="st">"source"</span>, match=<span class="cl">models.MatchValue</span>(value=<span class="st">"legal"</span>)),
+        <span class="cl">models.FieldCondition</span>(key=<span class="st">"year"</span>,   range=<span class="cl">models.Range</span>(gte=<span class="nm">2023</span>)),
+    ]),
+    limit=<span class="nm">10</span>
+)</div>
+      </div>
+
+      <h3>Quantization Options</h3>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title"><span class="dot d-blue"></span>Scalar (INT8)</div>
+          <p>4× memory reduction, &lt;2% recall loss. Best default for most workloads. Keep quantized vectors in RAM, raw on disk.</p>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot d-purple"></span>Product (PQ)</div>
+          <p>8–32× reduction, 3–8% recall loss. Use for billion-scale collections. Requires rescoring enabled.</p>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot d-cyan"></span>Binary</div>
+          <p>64× reduction. Sub-1ms queries. Use only with binary-aware models (e.g., Cohere binary embeddings). Hamming distance.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PGVECTOR ══ -->
+<section class="section" id="pgvector">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-orange">🐘</div>
+    <div class="sec-title"><h2>pgvector</h2><div class="sub">Vector search inside PostgreSQL — SQL joins, ACID, zero new infra</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="db-card">
+    <div class="db-card-hdr">
+      <div class="db-badge" style="background:rgba(251,146,60,.12);color:var(--orange);border:1px solid rgba(251,146,60,.3)">POSTGRES EXTENSION</div>
+      <div>
+        <div class="db-title">pgvector 0.7+</div>
+        <div class="db-sub">HNSW + IVFFlat indexes, half-precision (halfvec), binary vectors (bit), sparsevec for BM25, full SQL interface</div>
+        <div class="tag-row">
+          <span class="tag" style="color:var(--orange);border-color:rgba(251,146,60,.3);background:rgba(251,146,60,.07)">HNSW</span>
+          <span class="tag" style="color:var(--green);border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.07)">ACID Transactions</span>
+          <span class="tag" style="color:var(--blue);border-color:rgba(79,142,247,.3);background:rgba(79,142,247,.07)">SQL Joins</span>
+          <span class="tag" style="color:var(--purple);border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07)">halfvec</span>
+        </div>
+      </div>
+    </div>
+    <div class="db-body">
+
+      <h3>Setup & Index Creation</h3>
+      <div class="code-wrap">
+        <div class="code-hdr"><span class="code-lang">sql</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+        <div class="code-block"><span class="cm">-- Install extension (once per database)</span>
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> vector;
+
+<span class="cm">-- Table with vector column (1536-dim)</span>
+<span class="kw">CREATE TABLE</span> documents (
+    id         <span class="fn">BIGSERIAL PRIMARY KEY</span>,
+    content    <span class="kw">TEXT</span>          <span class="kw">NOT NULL</span>,
+    source     <span class="kw">VARCHAR</span>(<span class="nm">64</span>)  <span class="kw">NOT NULL</span>,
+    year       <span class="kw">INTEGER</span>,
+    embedding  <span class="fn">VECTOR</span>(<span class="nm">1536</span>), <span class="cm">-- float32</span>
+    emb_half   <span class="fn">HALFVEC</span>(<span class="nm">1536</span>) <span class="kw">GENERATED ALWAYS AS</span> (embedding::<span class="fn">halfvec</span>(<span class="nm">1536</span>)) <span class="kw">STORED</span>
+);
+
+<span class="cm">-- HNSW index (pgvector 0.5+) — best for low-latency queries</span>
+<span class="cm">-- Use maintenance_work_mem to speed up builds (e.g., SET maintenance_work_mem='2GB')</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> documents <span class="kw">USING</span> hnsw (embedding <span class="fn">vector_cosine_ops</span>)
+    <span class="kw">WITH</span> (m = <span class="nm">16</span>, ef_construction = <span class="nm">64</span>);
+
+<span class="cm">-- IVFFlat — faster builds, lower RAM, but lower recall</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> documents <span class="kw">USING</span> ivfflat (embedding <span class="fn">vector_cosine_ops</span>)
+    <span class="kw">WITH</span> (lists = <span class="nm">1000</span>);  <span class="cm">-- lists ≈ sqrt(row count)</span>
+
+<span class="cm">-- Regular B-tree indexes for filtering</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> documents (source);
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> documents (year);</div>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-hdr"><span class="code-lang">sql — query patterns</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+        <div class="code-block"><span class="cm">-- Top-10 nearest neighbors (cosine)</span>
+<span class="kw">SELECT</span> id, content, <span class="nm">1</span> - (embedding <=> $<span class="nm">1</span>) <span class="kw">AS</span> score
+<span class="kw">FROM</span> documents
+<span class="kw">ORDER BY</span> embedding <=> $<span class="nm">1</span>   <span class="cm">-- <=> cosine, <-> L2, <#> dot product</span>
+<span class="kw">LIMIT</span> <span class="nm">10</span>;
+
+<span class="cm">-- Filtered search (pre-filter on source+year, then vector sort)</span>
+<span class="kw">SET</span> enable_seqscan = off;     <span class="cm">-- force index use during testing</span>
+<span class="kw">SELECT</span> id, content, embedding <=> $<span class="nm">1</span> <span class="kw">AS</span> dist
+<span class="kw">FROM</span> documents
+<span class="kw">WHERE</span> source = <span class="st">'legal'</span>
+  <span class="kw">AND</span> year >= <span class="nm">2023</span>
+<span class="kw">ORDER BY</span> embedding <=> $<span class="nm">1</span>
+<span class="kw">LIMIT</span> <span class="nm">10</span>;
+
+<span class="cm">-- Tune ef_search at session level (higher = more recall, slower)</span>
+<span class="kw">SET</span> hnsw.ef_search = <span class="nm">200</span>;
+
+<span class="cm">-- Half-precision index for 2× memory saving (pgvector 0.7+)</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> documents <span class="kw">USING</span> hnsw (emb_half <span class="fn">halfvec_cosine_ops</span>)
+    <span class="kw">WITH</span> (m = <span class="nm">16</span>, ef_construction = <span class="nm">64</span>);
+
+<span class="cm">-- Hybrid: vector similarity + full-text + structured filter in ONE query</span>
+<span class="kw">SELECT</span> d.id, d.content,
+       ts_rank(to_tsvector(d.content), plainto_tsquery($<span class="nm">2</span>)) <span class="kw">AS</span> bm25,
+       d.embedding <=> $<span class="nm">1</span> <span class="kw">AS</span> vec_dist
+<span class="kw">FROM</span> documents d
+<span class="kw">WHERE</span> source = <span class="st">'legal'</span>
+  <span class="kw">AND</span> to_tsvector(d.content) @@ plainto_tsquery($<span class="nm">2</span>)
+<span class="kw">ORDER BY</span> (<span class="nm">0.7</span> * (d.embedding <=> $<span class="nm">1</span>)) + (<span class="nm">0.3</span> / (ts_rank(...) + <span class="nm">1</span>))
+<span class="kw">LIMIT</span> <span class="nm">10</span>;</div>
+      </div>
+
+      <div class="info-box ib-danger">
+        <div class="ib-icon">🔴</div>
+        <div class="ib-content"><strong>pgvector filtering trap:</strong> PostgreSQL's query planner may choose to do a sequential scan + filter before touching the HNSW index when the WHERE clause is highly selective. This bypasses the ANN index entirely and returns exact results — which sounds good but is 100–1000× slower on large tables. Use <code>EXPLAIN ANALYZE</code> to verify index usage, and consider partial indexes: <code>CREATE INDEX ... WHERE source = 'legal'</code>.</div>
+      </div>
+
+      <h3>Python with psycopg3 / SQLAlchemy</h3>
+      <div class="code-wrap">
+        <div class="code-hdr"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+        <div class="code-block"><span class="kw">from</span> <span class="cl">pgvector.psycopg</span> <span class="kw">import</span> <span class="fn">register_vector</span>
+<span class="kw">import</span> <span class="cl">psycopg</span>, numpy <span class="kw">as</span> np
+
+<span class="kw">with</span> psycopg.<span class="fn">connect</span>(dsn) <span class="kw">as</span> conn:
+    <span class="fn">register_vector</span>(conn)
+    <span class="cm"># Insert</span>
+    conn.<span class="fn">execute</span>(<span class="st">"INSERT INTO documents (content, source, year, embedding) VALUES (%s,%s,%s,%s)"</span>,
+                 (text, <span class="st">"legal"</span>, <span class="nm">2024</span>, np.<span class="fn">array</span>(embedding)))
+    <span class="cm"># Query</span>
+    rows = conn.<span class="fn">execute</span>(<span class="st">"SELECT id, content FROM documents ORDER BY embedding <=> %s LIMIT %s"</span>,
+                         (np.<span class="fn">array</span>(query_vec), <span class="nm">10</span>)).<span class="fn">fetchall</span>()</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ COMPARE ══ -->
+<section class="section" id="compare">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-yellow">⚖️</div>
+    <div class="sec-title"><h2>Head-to-Head Comparison</h2><div class="sub">Choosing the right database for your use case</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="cmp-grid">
+    <div class="cmp-col">
+      <div class="cmp-hdr" style="color:var(--text-muted)">Dimension</div>
+      <div class="cmp-row cmp-lbl">Index type</div>
+      <div class="cmp-row cmp-lbl">Max scale</div>
+      <div class="cmp-row cmp-lbl">Filtering</div>
+      <div class="cmp-row cmp-lbl">Hybrid search</div>
+      <div class="cmp-row cmp-lbl">Multi-tenancy</div>
+      <div class="cmp-row cmp-lbl">Quantization</div>
+      <div class="cmp-row cmp-lbl">Ops burden</div>
+      <div class="cmp-row cmp-lbl">SQL joins</div>
+      <div class="cmp-row cmp-lbl">Transactions</div>
+      <div class="cmp-row cmp-lbl">Pricing model</div>
+      <div class="cmp-row cmp-lbl">Best for</div>
+    </div>
+    <div class="cmp-col">
+      <div class="cmp-hdr" style="color:var(--green)">🌲 Pinecone</div>
+      <div class="cmp-row">Proprietary</div>
+      <div class="cmp-row">100B+ (pods)</div>
+      <div class="cmp-row"><span class="warn">Post-ANN</span></div>
+      <div class="cmp-row"><span class="ok">Native</span></div>
+      <div class="cmp-row"><span class="ok">Namespaces</span></div>
+      <div class="cmp-row na">None exposed</div>
+      <div class="cmp-row"><span class="ok">Zero</span></div>
+      <div class="cmp-row"><span class="na">No</span></div>
+      <div class="cmp-row"><span class="na">No</span></div>
+      <div class="cmp-row">Per R/W unit</div>
+      <div class="cmp-row">SaaS, zero-ops teams</div>
+    </div>
+    <div class="cmp-col">
+      <div class="cmp-hdr" style="color:var(--cyan)">🐳 Milvus</div>
+      <div class="cmp-row">HNSW, IVF-PQ, DiskANN</div>
+      <div class="cmp-row">Billion+</div>
+      <div class="cmp-row"><span class="ok">Scalar index</span></div>
+      <div class="cmp-row"><span class="ok">BGE-M3 native</span></div>
+      <div class="cmp-row"><span class="ok">Partition keys</span></div>
+      <div class="cmp-row"><span class="ok">IVF-PQ, binary</span></div>
+      <div class="cmp-row"><span class="warn">Medium (K8s)</span></div>
+      <div class="cmp-row"><span class="na">No</span></div>
+      <div class="cmp-row"><span class="na">Eventual</span></div>
+      <div class="cmp-row">Open source / Zilliz</div>
+      <div class="cmp-row">Billion-scale self-hosted</div>
+    </div>
+    <div class="cmp-col">
+      <div class="cmp-hdr" style="color:var(--purple)">🔷 Qdrant</div>
+      <div class="cmp-row">HNSW (filtered)</div>
+      <div class="cmp-row">100M–1B+</div>
+      <div class="cmp-row"><span class="ok">In-graph</span></div>
+      <div class="cmp-row"><span class="ok">RRF / linear</span></div>
+      <div class="cmp-row"><span class="ok">Collections</span></div>
+      <div class="cmp-row"><span class="ok">SQ8, PQ, binary</span></div>
+      <div class="cmp-row">Low (single bin)</div>
+      <div class="cmp-row"><span class="na">No</span></div>
+      <div class="cmp-row"><span class="na">WAL only</span></div>
+      <div class="cmp-row">Open source / Cloud</div>
+      <div class="cmp-row">High-filter workloads</div>
+    </div>
+  </div>
+
+  <div class="cmp-grid" style="margin-top:0">
+    <div class="cmp-col">
+      <div class="cmp-hdr" style="color:var(--text-muted)">Dimension</div>
+      <div class="cmp-row cmp-lbl">Index type</div>
+      <div class="cmp-row cmp-lbl">Max scale</div>
+      <div class="cmp-row cmp-lbl">Filtering</div>
+      <div class="cmp-row cmp-lbl">Hybrid search</div>
+      <div class="cmp-row cmp-lbl">Multi-tenancy</div>
+      <div class="cmp-row cmp-lbl">Ops burden</div>
+      <div class="cmp-row cmp-lbl">SQL joins</div>
+      <div class="cmp-row cmp-lbl">Transactions</div>
+      <div class="cmp-row cmp-lbl">Best for</div>
+    </div>
+    <div class="cmp-col" style="grid-column: span 3">
+      <div class="cmp-hdr" style="color:var(--orange)">🐘 pgvector</div>
+      <div class="cmp-row">HNSW + IVFFlat (Postgres native)</div>
+      <div class="cmp-row">~50M vecs comfortably; larger needs partitioning</div>
+      <div class="cmp-row"><span class="warn">Planner may bypass ANN — verify with EXPLAIN</span></div>
+      <div class="cmp-row">Combine with tsvector for BM25 in one query</div>
+      <div class="cmp-row">Row-level security + schemas (native Postgres)</div>
+      <div class="cmp-row"><span class="ok">None if you run Postgres already</span></div>
+      <div class="cmp-row"><span class="ok">Full SQL — JOIN with users, orders, anything</span></div>
+      <div class="cmp-row"><span class="ok">Full ACID</span></div>
+      <div class="cmp-row">Teams already on Postgres, strong relational requirements, &lt;50M vectors</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ ADVANCED RAG ══ -->
+<section class="section" id="rag">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-pink">📡</div>
+    <div class="sec-title"><h2>Advanced RAG Patterns</h2><div class="sub">Beyond naive retrieval — re-ranking, multi-stage, HyDE, parent-child</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <h3>Two-Stage Retrieval (Embed → Re-rank)</h3>
+  <p>The workhorse of production RAG. Stage 1: retrieve 50–100 candidates cheaply via ANN. Stage 2: re-rank with a cross-encoder (Cohere Rerank, BGE-Reranker, Jina Reranker) that reads both query and document jointly, producing far more accurate relevance scores. Final context: top 5–10 from re-ranker.</p>
+
+  <div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">python — two-stage RAG</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="kw">import</span> <span class="cl">cohere</span>
+
+co = <span class="cl">cohere.Client</span>(<span class="st">"..."</span>)
+
+<span class="cm"># Stage 1: ANN retrieval — broad net</span>
+candidates = vector_db.<span class="fn">query</span>(query_embedding, top_k=<span class="nm">80</span>)
+docs = [(c.id, c.metadata[<span class="st">"text"</span>]) <span class="kw">for</span> c <span class="kw">in</span> candidates.matches]
+
+<span class="cm"># Stage 2: Cross-encoder re-ranking</span>
+reranked = co.rerank(
+    query=user_query,
+    documents=[d <span class="kw">for</span> _, d <span class="kw">in</span> docs],
+    model=<span class="st">"rerank-english-v3.0"</span>,
+    top_n=<span class="nm">5</span>
+)
+
+context_chunks = [docs[r.index][<span class="nm">1</span>] <span class="kw">for</span> r <span class="kw">in</span> reranked.results]</div>
+  </div>
+
+  <h3>HyDE — Hypothetical Document Embeddings</h3>
+  <p>Use the LLM to generate a hypothetical answer to the query, embed that answer (not the query), then retrieve using the answer's embedding. Dramatically improves recall for knowledge-gap queries where the user doesn't know the vocabulary of the answer domain.</p>
+
+  <div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Generate hypothetical answer</span>
+hyde_prompt = <span class="st">f"Write a short, authoritative passage that answers: {user_query}"</span>
+hypothetical_doc = llm.<span class="fn">generate</span>(hyde_prompt, max_tokens=<span class="nm">256</span>)
+
+<span class="cm"># Embed the hypothetical answer, not the query</span>
+hyde_embedding = embed.<span class="fn">encode</span>(hypothetical_doc)
+
+<span class="cm"># Retrieve using the hypothetical embedding</span>
+results = vector_db.<span class="fn">query</span>(hyde_embedding, top_k=<span class="nm">20</span>)</div>
+  </div>
+
+  <h3>Parent-Child Chunking</h3>
+  <p>Store small child chunks (128–256 tokens) for precise embedding, but return the full parent chunk (512–1024 tokens) to the LLM for context. Child chunks have sharper semantic signal; parent chunks give the LLM enough context to generate coherent answers.</p>
+
+  <div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Index child chunks with parent_id in metadata</span>
+<span class="kw">for</span> parent <span class="kw">in</span> parent_chunks:
+    <span class="kw">for</span> child <span class="kw">in</span> <span class="fn">split_children</span>(parent, size=<span class="nm">256</span>):
+        vector_db.<span class="fn">upsert</span>([{
+            <span class="st">"id"</span>: child.id,
+            <span class="st">"values"</span>: <span class="fn">embed</span>(child.text),
+            <span class="st">"metadata"</span>: {<span class="st">"text"</span>: child.text, <span class="st">"parent_id"</span>: parent.id}
+        }])
+
+<span class="cm"># At query time: retrieve children, fetch parents</span>
+child_hits = vector_db.<span class="fn">query</span>(query_vec, top_k=<span class="nm">10</span>, include_metadata=<span class="kw">True</span>)
+parent_ids = <span class="fn">list</span>({h.metadata[<span class="st">"parent_id"</span>] <span class="kw">for</span> h <span class="kw">in</span> child_hits.matches})
+context = [parent_store[pid].text <span class="kw">for</span> pid <span class="kw">in</span> parent_ids]  <span class="cm"># deduped parent text</span></div>
+  </div>
+
+  <h3>Query Routing & Decomposition</h3>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot d-blue"></span>Query Routing</div>
+      <p>Use a lightweight classifier (or LLM with structured output) to route queries to the appropriate collection or retrieval strategy. Example: route "show me the org chart" to a structured DB, "explain our refund policy" to the vector store.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-purple"></span>Query Decomposition</div>
+      <p>Break complex multi-part questions into sub-queries, retrieve separately, then merge before generation. Example: "Compare our Q3 revenue with industry average" → retrieve internal Q3 docs + retrieve industry benchmark docs separately.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FILTERING ══ -->
+<section class="section" id="filtering">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-cyan">🔽</div>
+    <div class="sec-title"><h2>Filtered Search Deep-Dive</h2><div class="sub">Pre-filter, post-filter, in-graph — each has different recall characteristics</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title"><span class="dot d-green"></span>Pre-filtering</div>
+      <p>Apply metadata filter first (get matching doc IDs), then do ANN search <em>only within that subset</em>. Exact recall but may degrade to brute-force scan if the subset is small. Milvus with scalar index, Qdrant with payload index.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-orange"></span>Post-filtering</div>
+      <p>Do full ANN search (top K × multiplier), then filter results. Can return fewer than K results if filter is very selective. Pinecone uses this approach. Mitigation: increase <code>top_k</code> with a multiplier (e.g., 10× the desired results).</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-purple"></span>In-graph (HNSW)</div>
+      <p>Filter is evaluated <em>during</em> graph traversal — non-matching nodes are skipped. Qdrant's approach. Near-identical recall to unfiltered HNSW. Requires payload indexes; degrades without them.</p>
+    </div>
+  </div>
+
+  <div class="info-box ib-tip">
+    <div class="ib-icon">✅</div>
+    <div class="ib-content"><strong>Multi-tenancy pattern:</strong> For strict tenant isolation (tenants must never see each other's data), use namespace (Pinecone), partition key (Milvus), or a separate collection per tenant (Qdrant). Metadata filter alone is insufficient — a misconfigured filter leaks data. For soft multi-tenancy (performance isolation is acceptable, strict separation is not required), metadata filter is fine.</div>
+  </div>
+</section>
+
+<!-- ══ CHUNKING ══ -->
+<section class="section" id="chunking">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-teal">✂️</div>
+    <div class="sec-title"><h2>Chunking & Ingestion Pipelines</h2><div class="sub">The most underrated factor in RAG quality</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot d-blue"></span>Fixed-size with Overlap</div>
+      <p>Simplest approach. Chunk every N tokens with a K-token overlap to avoid splitting mid-sentence. Works well for homogeneous corpora (legal docs, support tickets). N=512, overlap=50 is a common baseline.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-purple"></span>Semantic Chunking</div>
+      <p>Split on semantic boundaries: embed consecutive sentences, detect cosine distance spikes (breakpoints), split there. Langchain and LlamaIndex both implement this. Better recall on heterogeneous documents.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-green"></span>Recursive Character Split</div>
+      <p>Try splitting by <code>\n\n</code>, then <code>\n</code>, then <code>. </code>, then space — backing off to smaller separators until chunks fit the target size. The LangChain default. Good general-purpose approach for unstructured text.</p>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-orange"></span>Document-aware Splitting</div>
+      <p>Use document structure: split Markdown on headers, PDFs on page boundaries, code on function/class definitions. Preserves semantic coherence. Use <code>unstructured.io</code> or custom parsers for PDFs.</p>
+    </div>
+  </div>
+
+  <h3>Ingestion Pipeline Pattern</h3>
+  <div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">python — async batch ingestion</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="kw">import</span> <span class="cl">asyncio</span>
+<span class="kw">from</span> <span class="cl">itertools</span> <span class="kw">import</span> <span class="fn">batched</span>
+
+<span class="kw">async def</span> <span class="fn">ingest_documents</span>(docs: list[dict], batch_size: int = <span class="nm">100</span>):
+    <span class="kw">for</span> batch <span class="kw">in</span> <span class="fn">batched</span>(docs, batch_size):
+        texts = [d[<span class="st">"text"</span>] <span class="kw">for</span> d <span class="kw">in</span> batch]
+
+        <span class="cm"># Embed in parallel (rate-limited)</span>
+        embeddings = <span class="kw">await</span> embed_client.<span class="fn">aembed</span>(texts)
+
+        vectors = [
+            {<span class="st">"id"</span>: d[<span class="st">"id"</span>], <span class="st">"values"</span>: emb,
+             <span class="st">"metadata"</span>: {<span class="st">"text"</span>: d[<span class="st">"text"</span>], <span class="st">"source"</span>: d[<span class="st">"source"</span>], <span class="st">"year"</span>: d[<span class="st">"year"</span>]}}
+            <span class="kw">for</span> d, emb <span class="kw">in</span> <span class="fn">zip</span>(batch, embeddings)
+        ]
+        idx.<span class="fn">upsert</span>(vectors=vectors, namespace=<span class="st">"prod"</span>)
+
+<span class="cm"># Handle document updates: always upsert (never insert) — idempotent</span>
+<span class="cm"># Delete + re-ingest stale chunks when source doc changes</span>
+<span class="cm"># Store doc hash → chunk IDs mapping to detect staleness</span></div>
+  </div>
+
+  <div class="info-box ib-note">
+    <div class="ib-icon">ℹ️</div>
+    <div class="ib-content"><strong>Embed the metadata too.</strong> Prepend key metadata to the chunk text before embedding: <code>f"[Source: Legal | Year: 2024]\n{chunk_text}"</code>. This encodes metadata into the vector itself, improving semantic alignment when queries mention source-type terms. Don't rely solely on metadata filters for this.</div>
+  </div>
+</section>
+
+<!-- ══ PRODUCTION ══ -->
+<section class="section" id="production">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-red">🚀</div>
+    <div class="sec-title"><h2>Production Operations</h2><div class="sub">Observability, capacity planning, index maintenance, backup</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot d-red"></span>Key Metrics to Track</div>
+      <ul>
+        <li><strong>Query latency p50/p95/p99</strong> — alert if p99 &gt; 200ms</li>
+        <li><strong>Recall@K</strong> — measure offline vs exact-search ground truth, alert if drops &gt;2%</li>
+        <li><strong>Index memory utilization</strong> — HNSW OOM is a hard crash, not degraded service</li>
+        <li><strong>Write throughput / upsert lag</strong> — Milvus/Qdrant buffer writes before indexing</li>
+        <li><strong>Embedding API error rate + latency</strong> — upstream bottleneck for ingestion</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-orange"></span>Capacity Planning</div>
+      <ul>
+        <li>RAM for HNSW: <code>n_vectors × dims × 4 bytes × 1.3</code> (30% graph overhead)</li>
+        <li>1M × 1536-dim float32 = ~7.8 GB RAM with HNSW graph</li>
+        <li>With INT8 quantization: ~2.2 GB (3.5× reduction)</li>
+        <li>With halfvec (pgvector): ~4 GB (2× reduction)</li>
+        <li>Budget 2× headroom for index rebuilds and peak traffic</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Index Maintenance</h3>
+  <div class="code-wrap">
+    <div class="code-hdr"><span class="code-lang">sql / python — maintenance ops</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm">-- pgvector: re-index after heavy inserts (fixes fragmented HNSW graph)</span>
+<span class="kw">REINDEX INDEX CONCURRENTLY</span> idx_documents_hnsw;
+
+<span class="cm">-- pgvector: vacuum to reclaim space from deleted vectors</span>
+<span class="kw">VACUUM ANALYZE</span> documents;
+
+<span class="cm">-- Qdrant: optimize segments (merges small segments, rebuilds quantized index)</span>
+<span class="kw">import</span> <span class="cl">httpx</span>
+httpx.<span class="fn">post</span>(<span class="st">"http://localhost:6333/collections/knowledge/index"</span>)
+
+<span class="cm">-- Milvus: compact + flush before query benchmarks</span>
+client.<span class="fn">flush</span>([<span class="st">"kb"</span>])
+utility.<span class="fn">do_bulk_insert</span>(<span class="st">"kb"</span>)  <span class="cm"># compact small segments</span></div>
+  </div>
+
+  <h3>Blue-Green Index Deployment</h3>
+  <p>For zero-downtime re-indexing (when switching models or re-chunking), build the new index in parallel under a new name (<code>kb-v2</code>), run query shadowing (send traffic to both, compare results), then atomically switch the application pointer. Keep <code>kb-v1</code> for 24 hours as a rollback target.</p>
+
+  <div class="info-box ib-perf">
+    <div class="ib-icon">⚡</div>
+    <div class="ib-content"><strong>Cost optimization:</strong> Use tiered storage — hot (recent, frequently accessed) vectors in RAM-backed HNSW; cold (archived, rarely accessed) vectors in DiskANN (Qdrant on-disk) or a compressed IVF-PQ index. Route queries by document timestamp. This typically reduces infrastructure costs by 40–60% at 100M+ vector scale.</div>
+  </div>
+</section>
+
+<!-- ══ CHEATSHEET ══ -->
+<section class="section" id="cheatsheet">
+  <div class="sec-hdr">
+    <div class="sec-icon ico-yellow">🗒️</div>
+    <div class="sec-title"><h2>Cheat Sheet</h2><div class="sub">Quick reference — decision tree, operators, parameter table</div></div>
+  </div>
+  <div class="sec-div"></div>
+
+  <h3>Decision Tree: Which DB?</h3>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot d-green"></span>Use Pinecone if…</div>
+      <ul>
+        <li>You want zero infrastructure management</li>
+        <li>You need hybrid (sparse+dense) natively</li>
+        <li>You're building a prototype or SaaS product fast</li>
+        <li>You need per-tenant namespace isolation without config overhead</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-cyan"></span>Use Milvus if…</div>
+      <ul>
+        <li>You need billion-scale self-hosted with full control</li>
+        <li>You need IVF-PQ compression for memory-constrained infra</li>
+        <li>You're already running Kubernetes</li>
+        <li>You need multiple index types per collection (e.g., dense + sparse + scalar)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-purple"></span>Use Qdrant if…</div>
+      <ul>
+        <li>Your workload has highly selective metadata filters (&lt;5% match)</li>
+        <li>You need quantization (INT8/binary) for memory savings</li>
+        <li>You want a single binary with no external dependencies</li>
+        <li>You need on-disk HNSW for low-cost large-scale deployment</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot d-orange"></span>Use pgvector if…</div>
+      <ul>
+        <li>You're already running PostgreSQL and &lt;50M vectors</li>
+        <li>You need SQL JOINs between vectors and your relational data</li>
+        <li>You need ACID transactions over vector updates</li>
+        <li>You want to minimize infrastructure surface area</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Operator Quick Reference</h3>
+  <div class="ref-table">
+    <thead><tr><th>DB</th><th>Cosine</th><th>L2</th><th>Dot Product</th><th>Filter syntax sample</th></tr></thead>
+    <tbody>
+      <tr><td>Pinecone</td><td><code>metric="cosine"</code></td><td><code>metric="euclidean"</code></td><td><code>metric="dotproduct"</code></td><td><code>{"year": {"$gte": 2023}}</code></td></tr>
+      <tr><td>Milvus</td><td><code>metric_type="COSINE"</code></td><td><code>metric_type="L2"</code></td><td><code>metric_type="IP"</code></td><td><code>'year >= 2023 and src == "legal"'</code></td></tr>
+      <tr><td>Qdrant</td><td><code>Distance.COSINE</code></td><td><code>Distance.EUCLID</code></td><td><code>Distance.DOT</code></td><td><code>FieldCondition(key="year", range=Range(gte=2023))</code></td></tr>
+      <tr><td>pgvector</td><td><code>&lt;=&gt; (vector_cosine_ops)</code></td><td><code>&lt;-&gt; (vector_l2_ops)</code></td><td><code>&lt;#&gt; (vector_ip_ops)</code></td><td><code>WHERE year >= 2023 AND src = 'legal'</code></td></tr>
+    </tbody>
+  </div>
+
+  <h3>HNSW Parameter Reference</h3>
+  <div class="ref-table">
+    <thead><tr><th>Parameter</th><th>Pinecone</th><th>Milvus</th><th>Qdrant</th><th>pgvector</th><th>Recommended</th></tr></thead>
+    <tbody>
+      <tr><td>Max connections (M)</td><td>Managed</td><td><code>M</code></td><td><code>m</code></td><td><code>m</code></td><td>16–32 (higher = better recall, more RAM)</td></tr>
+      <tr><td>Build beam width</td><td>Managed</td><td><code>efConstruction</code></td><td><code>ef_construct</code></td><td><code>ef_construction</code></td><td>100–400 (don't go below 64)</td></tr>
+      <tr><td>Query beam width</td><td>Managed</td><td><code>ef</code> in search_params</td><td><code>ef</code> in SearchParams</td><td><code>hnsw.ef_search</code></td><td>40–200 (tune for recall/latency)</td></tr>
+    </tbody>
+  </div>
+
+  <div class="info-box ib-note">
+    <div class="ib-icon">📚</div>
+    <div class="ib-content"><strong>Further reading:</strong> <code>ann-benchmarks.com</code> for recall/latency comparisons. <code>huggingface.co/spaces/mteb/leaderboard</code> for embedding model rankings. <code>qdrant.tech/articles</code> and <code>milvus.io/blog</code> for engineering deep-dives. For RAG evaluation, use RAGAS or TruLens to measure faithfulness, answer relevancy, and context precision.</div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'copied!';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(() => { btn.textContent = 'copy'; btn.style.color = ''; btn.style.borderColor = ''; }, 1800);
+  });
+}
+const sections = document.querySelectorAll('.section');
+const links = document.querySelectorAll('.sb-link');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting)
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+  });
+}, { rootMargin: '-60px 0px -70% 0px' });
+sections.forEach(s => obs.observe(s));
+</script>
+<script src="../scripts/handbook-ui.js"></script>
+</body>
+</html>

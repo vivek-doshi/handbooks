@@ -1,0 +1,1724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Software Architecture Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/shared-ui.css">
+<style>
+:root {
+  --ink:        #0a0b0d;
+  --ink2:       #111318;
+  --ink3:       #181c24;
+  --ink4:       #1e2330;
+  --border:     rgba(255,255,255,0.06);
+  --border2:    rgba(255,255,255,0.11);
+  --text:       #dde3ee;
+  --text2:      #8a94aa;
+  --muted:      #3e4760;
+  --gold:       #e8a838;
+  --gold-lt:    #f5c96a;
+  --gold-dim:   rgba(232,168,56,0.12);
+  --gold-glow:  rgba(232,168,56,0.22);
+  --blue:       #5b9cf6;
+  --blue-dim:   rgba(91,156,246,0.1);
+  --green:      #3ecf8e;
+  --green-dim:  rgba(62,207,142,0.1);
+  --red:        #f06055;
+  --red-dim:    rgba(240,96,85,0.1);
+  --violet:     #9f7aea;
+  --violet-dim: rgba(159,122,234,0.1);
+  --teal:       #38bdf8;
+  --teal-dim:   rgba(56,189,248,0.1);
+  --rose:       #fb7185;
+  --rose-dim:   rgba(251,113,133,0.1);
+  --amber:      #f59e0b;
+  --amber-dim:  rgba(245,158,11,0.1);
+  --sidebar-w:  270px;
+  --top-h:      56px;
+  --mono:       'Fira Code', monospace;
+  --display:    'Playfair Display', Georgia, serif;
+  --body:       'Outfit', system-ui, sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: var(--body);
+  background: var(--ink);
+  color: var(--text);
+  line-height: 1.7;
+  font-size: 14.5px;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  height: var(--top-h);
+  background: rgba(10,11,13,0.96);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 0 28px;
+}
+.tl {
+  display:flex; align-items:center; gap:13px;
+  font-family: var(--display); font-size:17px; font-weight:700;
+  color:var(--text); text-decoration:none; letter-spacing:-0.2px;
+}
+.tl-icon {
+  width:34px; height:34px; border-radius:7px;
+  background: linear-gradient(135deg, var(--gold) 0%, #c47f15 100%);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:800; color:#0a0b0d;
+  font-family: var(--mono); box-shadow: 0 0 24px var(--gold-glow);
+  letter-spacing:0;
+}
+.tl-sub { color:var(--muted); font-weight:400; font-size:12.5px; font-family:var(--body); }
+.topbar-tags { display:flex; gap:8px; }
+.tag {
+  font-family:var(--mono); font-size:10px; font-weight:600;
+  padding:3px 10px; border-radius:20px; letter-spacing:0.4px;
+}
+.tag-g { background:var(--gold-dim); color:var(--gold); border:1px solid rgba(232,168,56,0.28); }
+.tag-b { background:var(--blue-dim); color:var(--blue); border:1px solid rgba(91,156,246,0.25); }
+.tag-v { background:var(--violet-dim); color:var(--violet); border:1px solid rgba(159,122,234,0.25); }
+
+/* ── LAYOUT ── */
+.wrap { display:flex; margin-top:var(--top-h); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width:var(--sidebar-w); flex-shrink:0;
+  position:sticky; top:var(--top-h);
+  height:calc(100vh - var(--top-h));
+  overflow-y:auto;
+  background: var(--ink2);
+  border-right:1px solid var(--border);
+  padding:20px 0 48px;
+  scrollbar-width:thin; scrollbar-color:var(--muted) transparent;
+}
+.sidebar::-webkit-scrollbar { width:3px; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--muted); border-radius:2px; }
+.sg { margin-bottom:4px; }
+.sg-title {
+  font-family:var(--mono); font-size:9px; font-weight:600;
+  letter-spacing:2px; text-transform:uppercase;
+  color:var(--muted); padding:12px 18px 4px;
+}
+.sl {
+  display:flex; align-items:center; gap:9px;
+  padding:7px 18px; text-decoration:none;
+  color:var(--text2); font-size:12.5px;
+  border-left:2px solid transparent;
+  transition:all 0.15s; line-height:1.3;
+}
+.sl:hover { color:var(--text); background:rgba(255,255,255,0.03); border-left-color:var(--border2); }
+.sl.active { color:var(--gold); background:var(--gold-dim); border-left-color:var(--gold); font-weight:500; }
+.sl .si { font-size:12px; width:16px; text-align:center; flex-shrink:0; }
+
+/* ── MAIN ── */
+.main { flex:1; min-width:0; padding:52px 60px 100px; max-width:1000px; }
+
+/* ── HERO ── */
+.hero {
+  margin-bottom:70px; padding:58px 60px;
+  background:var(--ink3); border:1px solid var(--border);
+  border-radius:16px; position:relative; overflow:hidden;
+}
+.hero::before {
+  content:''; position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse at 95% -5%,  rgba(232,168,56,0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 5%  105%, rgba(91,156,246,0.09) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%,  rgba(159,122,234,0.04) 0%, transparent 70%);
+  pointer-events:none;
+}
+.hero-eyebrow {
+  font-family:var(--mono); font-size:10px; letter-spacing:3px;
+  text-transform:uppercase; color:var(--gold); margin-bottom:20px;
+  display:flex; align-items:center; gap:10px;
+}
+.hero-eyebrow::before { content:'§'; opacity:0.5; font-size:14px; }
+.hero h1 {
+  font-family: var(--display); font-size:52px; font-weight:900;
+  line-height:1.05; letter-spacing:-1px; margin-bottom:20px;
+  background: linear-gradient(135deg, #e8e8f0 20%, var(--gold-lt) 70%, var(--gold) 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.hero p { color:var(--text2); font-size:16px; max-width:620px; line-height:1.8; }
+.hero-pills { display:flex; gap:10px; flex-wrap:wrap; margin-top:28px; }
+.pill {
+  font-family:var(--mono); font-size:11px; font-weight:500;
+  padding:5px 14px; border-radius:6px; border:1px solid;
+}
+.pill-g  { color:var(--gold);   border-color:rgba(232,168,56,0.35); background:var(--gold-dim); }
+.pill-b  { color:var(--blue);   border-color:rgba(91,156,246,0.3);  background:var(--blue-dim); }
+.pill-v  { color:var(--violet); border-color:rgba(159,122,234,0.3); background:var(--violet-dim); }
+.pill-gr { color:var(--green);  border-color:rgba(62,207,142,0.3);  background:var(--green-dim); }
+.pill-t  { color:var(--teal);   border-color:rgba(56,189,248,0.3);  background:var(--teal-dim); }
+.pill-r  { color:var(--rose);   border-color:rgba(251,113,133,0.3); background:var(--rose-dim); }
+
+/* ── SECTIONS ── */
+.section { margin-bottom:72px; scroll-margin-top:calc(var(--top-h) + 20px); }
+.sh { display:flex; align-items:center; gap:14px; margin-bottom:22px; }
+.si-box {
+  width:42px; height:42px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; flex-shrink:0;
+}
+.si-g  { background:rgba(232,168,56,0.13); }
+.si-b  { background:rgba(91,156,246,0.12); }
+.si-v  { background:rgba(159,122,234,0.12); }
+.si-gr { background:rgba(62,207,142,0.12); }
+.si-t  { background:rgba(56,189,248,0.12); }
+.si-r  { background:rgba(251,113,133,0.12); }
+.si-a  { background:rgba(245,158,11,0.12); }
+.si-rd { background:rgba(240,96,85,0.12); }
+
+.sh-text h2 {
+  font-family:var(--display); font-size:22px; font-weight:800;
+  letter-spacing:-0.3px; color:var(--text);
+}
+.sh-text .ssub { font-size:12.5px; color:var(--muted); margin-top:3px; font-family:var(--mono); }
+.divider { height:1px; background:linear-gradient(to right, rgba(232,168,56,0.2), transparent); margin-bottom:24px; }
+
+/* ── CARDS ── */
+.card {
+  background:var(--ink3); border:1px solid var(--border);
+  border-radius:10px; padding:20px 24px; margin-bottom:14px;
+  transition:border-color 0.2s;
+}
+.card:hover { border-color:var(--border2); }
+.card-t {
+  font-family:var(--body); font-size:14px; font-weight:700;
+  color:var(--text); margin-bottom:8px;
+  display:flex; align-items:center; gap:9px;
+}
+.dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.d-g  { background:var(--gold); }
+.d-b  { background:var(--blue); }
+.d-v  { background:var(--violet); }
+.d-gr { background:var(--green); }
+.d-t  { background:var(--teal); }
+.d-r  { background:var(--rose); }
+.d-rd { background:var(--red); }
+.d-a  { background:var(--amber); }
+
+.card p, .card li { color:var(--text2); font-size:13.5px; line-height:1.65; }
+.card ul { padding-left:18px; }
+.card ul li { margin-bottom:5px; }
+
+/* ── PATTERN CARD ── */
+.pat-card {
+  border:1px solid var(--border);
+  border-radius:12px; overflow:hidden; margin-bottom:20px;
+  background:var(--ink3);
+}
+.pat-header {
+  padding:22px 28px 18px;
+  display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+  border-bottom:1px solid var(--border);
+}
+.pat-name {
+  font-family: var(--display); font-size:20px; font-weight:800;
+  color:var(--text); margin-bottom:4px;
+}
+.pat-tag {
+  font-family:var(--mono); font-size:10px; font-weight:600;
+  padding:3px 10px; border-radius:12px; white-space:nowrap;
+  margin-top:4px; display:inline-block;
+}
+.pt-g  { background:var(--gold-dim);   color:var(--gold);   border:1px solid rgba(232,168,56,0.25); }
+.pt-b  { background:var(--blue-dim);   color:var(--blue);   border:1px solid rgba(91,156,246,0.22); }
+.pt-v  { background:var(--violet-dim); color:var(--violet); border:1px solid rgba(159,122,234,0.22); }
+.pt-gr { background:var(--green-dim);  color:var(--green);  border:1px solid rgba(62,207,142,0.22); }
+.pt-t  { background:var(--teal-dim);   color:var(--teal);   border:1px solid rgba(56,189,248,0.22); }
+.pt-r  { background:var(--rose-dim);   color:var(--rose);   border:1px solid rgba(251,113,133,0.22); }
+
+.pat-body { padding:22px 28px; }
+.pat-desc { color:var(--text2); font-size:14px; line-height:1.75; margin-bottom:20px; }
+.pat-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.pat-section-t {
+  font-family:var(--mono); font-size:9.5px; font-weight:600;
+  letter-spacing:1.5px; text-transform:uppercase;
+  color:var(--muted); margin-bottom:8px;
+}
+.pat-list { list-style:none; padding:0; }
+.pat-list li {
+  font-size:13px; color:var(--text2); padding:4px 0;
+  border-bottom:1px solid rgba(255,255,255,0.04); line-height:1.5;
+}
+.pat-list li:last-child { border-bottom:none; }
+.pat-list li::before { content:'›'; color:var(--gold); margin-right:7px; font-weight:700; }
+.pat-list.bad li::before { content:'✕'; color:var(--red); }
+.pat-list.good li::before { content:'✓'; color:var(--green); }
+.pat-list.warn li::before { content:'⚠'; color:var(--amber); }
+.complexity-row { display:flex; align-items:center; gap:16px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); flex-wrap:wrap; }
+.cx-item { display:flex; align-items:center; gap:8px; }
+.cx-label { font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; }
+.cx-bar { display:flex; gap:3px; }
+.cx-seg { width:20px; height:6px; border-radius:2px; background:var(--muted); opacity:0.2; }
+.cx-seg.on { opacity:1; }
+.cx-seg.gold { background:var(--gold); }
+.cx-seg.blue { background:var(--blue); }
+.cx-seg.red  { background:var(--red); }
+.cx-seg.green { background:var(--green); }
+
+/* ── ANTI-PATTERN BLOCK ── */
+.anti-block {
+  background: rgba(240,96,85,0.05);
+  border:1px solid rgba(240,96,85,0.18);
+  border-radius:10px; padding:18px 22px; margin:12px 0;
+}
+.anti-header {
+  display:flex; align-items:center; gap:10px; margin-bottom:10px;
+}
+.anti-badge {
+  font-family:var(--mono); font-size:9.5px; font-weight:700;
+  background:rgba(240,96,85,0.15); color:var(--red);
+  border:1px solid rgba(240,96,85,0.25);
+  padding:2px 9px; border-radius:10px; letter-spacing:0.5px;
+}
+.anti-name { font-size:14px; font-weight:700; color:var(--text); }
+.anti-desc { font-size:13px; color:var(--text2); line-height:1.65; }
+.fix-block {
+  background: rgba(62,207,142,0.05);
+  border:1px solid rgba(62,207,142,0.15);
+  border-radius:8px; padding:12px 16px; margin-top:10px;
+}
+.fix-label { font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--green); margin-bottom:5px; }
+.fix-text { font-size:13px; color:var(--text2); line-height:1.6; }
+
+/* ── CALLOUT ── */
+.callout {
+  display:flex; gap:14px; border-radius:9px;
+  padding:14px 18px; margin:14px 0; font-size:13.5px; line-height:1.65;
+}
+.callout-body { color:var(--text2); }
+.callout-body strong { color:var(--text); }
+.ci { flex-shrink:0; font-size:15px; margin-top:1px; }
+.c-tip   { background:var(--green-dim);  border:1px solid rgba(62,207,142,0.2); }
+.c-warn  { background:var(--amber-dim);  border:1px solid rgba(245,158,11,0.22); }
+.c-info  { background:var(--blue-dim);   border:1px solid rgba(91,156,246,0.2); }
+.c-trend { background:var(--gold-dim);   border:1px solid rgba(232,168,56,0.25); }
+.c-danger{ background:var(--red-dim);    border:1px solid rgba(240,96,85,0.2); }
+
+/* ── INLINE CODE ── */
+code {
+  font-family:var(--mono); font-size:11.5px;
+  background:var(--gold-dim); color:var(--gold-lt);
+  padding:2px 7px; border-radius:4px;
+  border:1px solid rgba(232,168,56,0.2);
+}
+
+/* ── TABLES ── */
+.tw { overflow-x:auto; margin:14px 0; border-radius:10px; border:1px solid var(--border); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th {
+  text-align:left; padding:10px 16px;
+  background:var(--ink3);
+  color:var(--text); font-weight:700; font-size:11px;
+  text-transform:uppercase; letter-spacing:0.08em;
+  border-bottom:1px solid var(--border2);
+  font-family:var(--mono);
+}
+td { padding:11px 16px; border-bottom:1px solid var(--border); color:var(--text2); vertical-align:top; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(255,255,255,0.015); }
+.ok  { color:var(--green); font-weight:600; }
+.no  { color:var(--red); font-weight:600; }
+.ma  { color:var(--gold); font-weight:600; }
+.na  { color:var(--muted); }
+.check-cell { text-align:center; }
+
+/* ── CHECKLIST ── */
+.checklist { margin:16px 0; }
+.cl-step {
+  display:flex; gap:18px; margin-bottom:10px;
+  background:var(--ink3); border:1px solid var(--border);
+  border-radius:10px; padding:18px 22px;
+  transition:border-color 0.18s;
+}
+.cl-step:hover { border-color:var(--border2); }
+.cl-num {
+  width:36px; height:36px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:12px; font-weight:700;
+  flex-shrink:0; border:2px solid var(--gold); color:var(--gold);
+  background:var(--gold-dim);
+}
+.cl-content { flex:1; }
+.cl-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:5px; }
+.cl-desc  { font-size:13px; color:var(--text2); line-height:1.65; margin-bottom:10px; }
+.cl-items { list-style:none; padding:0; display:flex; flex-direction:column; gap:3px; }
+.cl-items li { font-size:12.5px; color:var(--text2); display:flex; align-items:flex-start; gap:7px; }
+.cl-items li::before { content:'↳'; color:var(--gold); font-weight:700; flex-shrink:0; margin-top:1px; }
+.cl-pitfall {
+  background:var(--red-dim); border:1px solid rgba(240,96,85,0.18);
+  border-radius:6px; padding:8px 12px; margin-top:10px;
+}
+.cl-pitfall-l { font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--red); margin-bottom:3px; }
+.cl-pitfall p { font-size:12.5px; color:var(--text2); line-height:1.55; }
+
+/* ── TREND BLOCK ── */
+.trend-card {
+  background: linear-gradient(135deg, rgba(232,168,56,0.07) 0%, rgba(91,156,246,0.04) 100%);
+  border:1px solid rgba(232,168,56,0.2);
+  border-radius:14px; padding:28px 32px; margin:20px 0;
+}
+.trend-label {
+  font-family:var(--mono); font-size:9.5px; font-weight:700;
+  letter-spacing:2px; text-transform:uppercase; color:var(--gold);
+  margin-bottom:12px; display:flex; align-items:center; gap:8px;
+}
+.trend-label::before { content:'◆'; font-size:8px; }
+.trend-h { font-family:var(--display); font-size:22px; font-weight:800; color:var(--text); margin-bottom:12px; }
+.trend-body { color:var(--text2); font-size:14px; line-height:1.8; }
+
+/* ── BFF DIAGRAM ── */
+.bff-diagram {
+  background:var(--ink3); border:1px solid var(--border);
+  border-radius:12px; padding:28px; margin:16px 0;
+}
+.bff-row { display:flex; justify-content:center; gap:16px; margin-bottom:14px; flex-wrap:wrap; }
+.bff-client {
+  background:var(--ink4); border:1px solid var(--border2);
+  border-radius:8px; padding:10px 16px; text-align:center;
+  font-size:12px; font-weight:600; color:var(--text);
+  min-width:90px;
+}
+.bff-client .bff-icon { font-size:20px; display:block; margin-bottom:4px; }
+.bff-arrow { display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--muted); margin-bottom:4px; }
+.bff-mid { display:flex; justify-content:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.bff-box {
+  border-radius:8px; padding:10px 18px; text-align:center;
+  font-size:11.5px; font-weight:600; min-width:100px;
+}
+.bff-box-web { background:var(--blue-dim); border:1px solid rgba(91,156,246,0.3); color:var(--blue); }
+.bff-box-mob { background:var(--green-dim); border:1px solid rgba(62,207,142,0.3); color:var(--green); }
+.bff-box-3p  { background:var(--violet-dim); border:1px solid rgba(159,122,234,0.3); color:var(--violet); }
+.bff-arrow2 { display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--muted); margin-bottom:14px; }
+.bff-services { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+.bff-svc {
+  background:var(--ink4); border:1px solid var(--border);
+  border-radius:8px; padding:8px 14px;
+  font-size:11px; color:var(--text2); font-family:var(--mono);
+}
+
+/* ── GRID ── */
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+
+/* ── PROSE ── */
+.section p { color:var(--text2); margin-bottom:14px; font-size:14px; line-height:1.78; }
+h3 { font-family:var(--display); font-size:17px; font-weight:800; color:var(--text); margin:28px 0 12px; }
+h4 { font-size:11.5px; font-weight:700; color:var(--muted); margin:20px 0 8px; font-family:var(--mono); letter-spacing:1px; text-transform:uppercase; }
+
+/* ── REF LINKS ── */
+.ref-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px; margin:14px 0; }
+.ref-card {
+  background:var(--ink3); border:1px solid var(--border);
+  border-radius:9px; padding:14px 18px; transition:border-color 0.18s;
+}
+.ref-card:hover { border-color:var(--gold); }
+.ref-cat { font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.ref-card ul { list-style:none; padding:0; display:flex; flex-direction:column; gap:5px; }
+.ref-card ul li a { color:var(--blue); text-decoration:none; font-size:13px; }
+.ref-card ul li a:hover { color:var(--gold); text-decoration:underline; }
+.ref-card ul li::before { content:'↗'; color:var(--muted); margin-right:6px; font-size:11px; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--muted); border-radius:4px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width:900px) {
+  .sidebar { display:none; }
+  .main { padding:28px 18px 60px; }
+  .g2,.g3,.g4 { grid-template-columns:1fr; }
+  .pat-grid { grid-template-columns:1fr; }
+  .hero { padding:32px 26px; }
+  .hero h1 { font-size:34px; }
+}
+</style>
+</head>
+<body>
+<div class="floating-actions">
+  <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"></path><path d="M9 12h10"></path></svg>
+  </a>
+</div>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <a class="tl" href="#">
+    <div class="tl-icon">Λ</div>
+    <span>Architecture Handbook</span>
+    <span class="tl-sub">Patterns & Anti-Patterns</span>
+  </a>
+  <div class="topbar-tags">
+    <span class="tag tag-g">Patterns</span>
+    <span class="tag tag-b">Anti-Patterns</span>
+    <span class="tag tag-v">Industry Trends</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sg">
+    <div class="sg-title">Introduction</div>
+    <a class="sl active" href="#overview"><span class="si">🗺</span> Overview</a>
+    <a class="sl" href="#decision"><span class="si">⚖️</span> How to Choose</a>
+  </div>
+  <div class="sg">
+    <div class="sg-title">Core Patterns</div>
+    <a class="sl" href="#monolith"><span class="si">🧱</span> Monolith</a>
+    <a class="sl" href="#modular-monolith"><span class="si">🏗️</span> Modular Monolith</a>
+    <a class="sl" href="#microservices"><span class="si">🔬</span> Microservices</a>
+    <a class="sl" href="#event-driven"><span class="si">⚡</span> Event-Driven</a>
+    <a class="sl" href="#serverless"><span class="si">☁️</span> Serverless</a>
+    <a class="sl" href="#bff"><span class="si">🔀</span> BFF Pattern</a>
+    <a class="sl" href="#cqrs"><span class="si">📋</span> CQRS / Event Sourcing</a>
+    <a class="sl" href="#layered"><span class="si">📚</span> Layered / Hexagonal</a>
+  </div>
+  <div class="sg">
+    <div class="sg-title">Anti-Patterns</div>
+    <a class="sl" href="#anti-general"><span class="si">🚫</span> General Anti-Patterns</a>
+    <a class="sl" href="#anti-micro"><span class="si">⚠️</span> Microservice Pitfalls</a>
+  </div>
+  <div class="sg">
+    <div class="sg-title">Industry Trends</div>
+    <a class="sl" href="#trend-shift"><span class="si">📈</span> The Great Shift</a>
+    <a class="sl" href="#trend-principles"><span class="si">🧭</span> Guiding Principles</a>
+  </div>
+  <div class="sg">
+    <div class="sg-title">Design Process</div>
+    <a class="sl" href="#checklist"><span class="si">✅</span> Architecture Checklist</a>
+    <a class="sl" href="#refs"><span class="si">📚</span> Reference Links</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">Software Architecture Handbook</div>
+  <h1>Patterns,<br>Anti-Patterns<br>&amp; the Art of Choice</h1>
+  <p>A practitioner's guide to the major architectural styles — when to reach for each, the traps each one hides, and the evolving industry consensus on what actually works at scale.</p>
+  <div class="hero-pills">
+    <span class="pill pill-g">Monolith</span>
+    <span class="pill pill-v">Modular Monolith</span>
+    <span class="pill pill-b">Microservices</span>
+    <span class="pill pill-gr">Event-Driven</span>
+    <span class="pill pill-t">Serverless</span>
+    <span class="pill pill-r">BFF</span>
+    <span class="pill pill-g">CQRS</span>
+    <span class="pill pill-b">Hexagonal</span>
+  </div>
+</div>
+
+<!-- ═══ OVERVIEW ═══ -->
+<section class="section" id="overview">
+  <div class="sh">
+    <div class="si-box si-g">🗺</div>
+    <div class="sh-text">
+      <h2>Overview</h2>
+      <div class="ssub">// why architecture decisions are the most expensive ones you'll make</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <p>Architecture decisions are the ones that are hardest to reverse. Choosing how to decompose your system — how it communicates, how data flows, how teams are organised around it — shapes every engineering decision that follows. Get it wrong and you spend years fighting your own infrastructure instead of building product.</p>
+
+  <p>There is no universally correct architecture. Every pattern is a set of tradeoffs. The goal of this handbook is to make those tradeoffs explicit so your team can make deliberate, informed choices instead of defaulting to the industry fashion of the moment.</p>
+
+  <div class="callout c-trend">
+    <span class="ci">◆</span>
+    <div class="callout-body"><strong>2024 Industry Reality:</strong> After a decade of microservices evangelism, major engineering organisations — including Amazon, Shopify, Stack Overflow, and Basecamp — are publicly discussing consolidation back to simpler, modular architectures. The lesson isn't that microservices are bad; it's that they require organisational maturity most teams don't have.</div>
+  </div>
+
+  <div class="g3" style="margin-top:20px;">
+    <div class="card">
+      <div class="card-t"><span class="dot d-g"></span>Complexity Budget</div>
+      <p>Every architectural decision spends from your team's complexity budget. Distributed systems, eventual consistency, and service meshes are expensive. Spend wisely.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-b"></span>Conway's Law</div>
+      <p>Your architecture will mirror your team structure — and vice versa. You can't deploy a microservices architecture with a 5-person team and expect it to work.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-v"></span>Reversibility</div>
+      <p>Prefer architectures you can migrate out of. A monolith that's well-structured can be extracted into services later. A distributed mess cannot easily be collapsed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW TO CHOOSE ═══ -->
+<section class="section" id="decision">
+  <div class="sh">
+    <div class="si-box si-b">⚖️</div>
+    <div class="sh-text">
+      <h2>How to Choose an Architecture</h2>
+      <div class="ssub">// the questions that actually drive the right decision</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Question</th><th>Lean Simpler</th><th>Lean Distributed</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Team size</strong></td><td class="ok">1–25 engineers</td><td class="ma">25–100+ engineers</td></tr>
+        <tr><td><strong>Domain clarity</strong></td><td class="ok">New / exploratory product</td><td class="ma">Well-understood, stable domain</td></tr>
+        <tr><td><strong>Deployment frequency</strong></td><td class="ok">Weekly or less</td><td class="ma">Multiple times per day per team</td></tr>
+        <tr><td><strong>Scale requirements</strong></td><td class="ok">&lt;10k RPS, single region</td><td class="ma">Global, massive, independent scale</td></tr>
+        <tr><td><strong>Regulatory isolation</strong></td><td class="na">Shared data model is fine</td><td class="ma">Hard data boundaries required</td></tr>
+        <tr><td><strong>Technology diversity</strong></td><td class="ok">Single language/stack is fine</td><td class="ma">Legitimately need different runtimes</td></tr>
+        <tr><td><strong>Operational maturity</strong></td><td class="ok">Small or growing ops team</td><td class="ma">Mature platform / SRE capability</td></tr>
+        <tr><td><strong>Time to market</strong></td><td class="ok">Speed is #1 priority now</td><td class="na">Long-term autonomy matters more</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-warn">
+    <span class="ci">⚠️</span>
+    <div class="callout-body"><strong>The startup trap:</strong> Most early-stage teams over-engineer. If you can't clearly articulate <em>which</em> part of your system needs to scale independently and <em>why</em>, you don't need microservices yet. You need a working product.</div>
+  </div>
+</section>
+
+<!-- ═══ MONOLITH ═══ -->
+<section class="section" id="monolith">
+  <div class="sh">
+    <div class="si-box si-g">🧱</div>
+    <div class="sh-text">
+      <h2>The Monolith</h2>
+      <div class="ssub">// the original, still powerful</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="pat-card">
+    <div class="pat-header">
+      <div>
+        <div class="pat-name">Monolithic Architecture</div>
+        <span class="pat-tag pt-g">Traditional</span>
+        <span class="pat-tag pt-b" style="margin-left:6px;">Battle-Tested</span>
+      </div>
+      <div style="text-align:right;">
+        <div class="complexity-row" style="justify-content:flex-end;">
+          <div class="cx-item">
+            <span class="cx-label">Complexity</span>
+            <div class="cx-bar">
+              <div class="cx-seg green on"></div>
+              <div class="cx-seg"></div><div class="cx-seg"></div><div class="cx-seg"></div><div class="cx-seg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pat-body">
+      <p class="pat-desc">All application logic — UI, business logic, data access — lives in a single deployable unit. One codebase, one process, one deployment. Shares a single database. Despite its reputation as "legacy," a well-written monolith outperforms a poorly-written distributed system in almost every practical dimension.</p>
+      <div class="pat-grid">
+        <div>
+          <div class="pat-section-t">✓ Use When</div>
+          <ul class="pat-list good">
+            <li>Small team (under 15 engineers)</li>
+            <li>Exploring product-market fit</li>
+            <li>Domain is unclear or evolving</li>
+            <li>Limited operational resources</li>
+            <li>Need fast iteration cycles</li>
+            <li>Vertical scaling is sufficient</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">✗ Avoid When</div>
+          <ul class="pat-list bad">
+            <li>Teams stepping on each other daily</li>
+            <li>Parts need wildly different scale</li>
+            <li>Deployment takes hours to release</li>
+            <li>Multiple teams own same codebase</li>
+            <li>Technology diversity is required</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">⚠ Watch Out For</div>
+          <ul class="pat-list warn">
+            <li>The Big Ball of Mud anti-pattern</li>
+            <li>Shared database becoming a bottleneck</li>
+            <li>Test suite growing slower over time</li>
+            <li>Long release cycles start to hurt</li>
+            <li>Cross-cutting concerns tangled</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Monolith Anti-Patterns</h3>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Big Ball of Mud</span></div>
+    <p class="anti-desc">No discernible structure. Everything imports everything. Business logic in controllers, database calls in view templates, validation spread across the codebase. Common result of adding features rapidly without maintaining layer discipline.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Enforce clear layers (presentation → application → domain → infrastructure). Introduce module boundaries and forbidden dependency rules. Treat internal architecture with same care as API design.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Shared Database as Integration Layer</span></div>
+    <p class="anti-desc">Multiple applications or services talk to the same database directly, including updating each other's tables. Schema changes become impossible without coordinating every consumer.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Each logical module owns its tables. Expose data to others via API or events — never by granting direct table access. Even in a monolith, enforce this boundary to prepare for future extraction.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Anemic Domain Model</span></div>
+    <p class="anti-desc">Domain objects are just data holders with no behaviour. All business logic lives in service classes that orchestrate dumb models. Results in scattered, duplicated business rules that are hard to test and reason about.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Apply DDD principles: move invariants and business rules into rich domain objects. An <code>Order</code> should know how to calculate its total and validate its own state — not delegate that to a 500-line OrderService.</div></div>
+  </div>
+</section>
+
+<!-- ═══ MODULAR MONOLITH ═══ -->
+<section class="section" id="modular-monolith">
+  <div class="sh">
+    <div class="si-box si-v">🏗️</div>
+    <div class="sh-text">
+      <h2>Modular Monolith</h2>
+      <div class="ssub">// the architecture the industry is rediscovering</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="trend-card">
+    <div class="trend-label">Industry Trend 2023–2025</div>
+    <div class="trend-h">The Return of the Modular Monolith</div>
+    <div class="trend-body">Amazon, the company that literally invented microservices culture with its "two-pizza team" rule, published a paper in 2023 examining their Prime Video team's return from microservices to a monolith — achieving a 90% cost reduction. Shopify, Stack Overflow, and Basecamp have all made similar moves or written extensively about preferring well-structured monoliths. This isn't nostalgia — it's hard-won pragmatism.</div>
+  </div>
+
+  <div class="pat-card">
+    <div class="pat-header">
+      <div>
+        <div class="pat-name">Modular Monolith</div>
+        <span class="pat-tag pt-v">Recommended Default</span>
+        <span class="pat-tag pt-g" style="margin-left:6px;">2024 Best Practice</span>
+      </div>
+      <div>
+        <div class="complexity-row" style="justify-content:flex-end;">
+          <div class="cx-item">
+            <span class="cx-label">Complexity</span>
+            <div class="cx-bar">
+              <div class="cx-seg gold on"></div>
+              <div class="cx-seg gold on"></div>
+              <div class="cx-seg"></div><div class="cx-seg"></div><div class="cx-seg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pat-body">
+      <p class="pat-desc">A single deployable unit — like a monolith — but with strong, enforced internal module boundaries. Each module owns its domain, its data, and its public API surface. Modules communicate through well-defined interfaces, not by reaching into each other's internals. Deployed as one unit; structured like services. You get the simplicity of a monolith with the logical isolation of services — and the ability to extract true services when you genuinely need to.</p>
+      <div class="pat-grid">
+        <div>
+          <div class="pat-section-t">✓ Use When</div>
+          <ul class="pat-list good">
+            <li>Team of 5–50 engineers</li>
+            <li>Domain reasonably well understood</li>
+            <li>Want service-like isolation without ops overhead</li>
+            <li>May need to extract services later</li>
+            <li>Single-region deployment is fine</li>
+            <li>Growth stage: 1M–50M users</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">Key Principles</div>
+          <ul class="pat-list">
+            <li>Module boundaries enforced at build time</li>
+            <li>Each module has its own DB schema/tables</li>
+            <li>Cross-module calls via public interfaces only</li>
+            <li>No reaching into another module's internals</li>
+            <li>Modules can be tested in isolation</li>
+            <li>Use ArchUnit / Dependency Cruiser to enforce</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">Extraction Path</div>
+          <ul class="pat-list">
+            <li>Start with well-defined module boundaries</li>
+            <li>Add messaging abstraction inside the monolith</li>
+            <li>When a module needs to scale independently — extract</li>
+            <li>The interface stays the same, delivery changes</li>
+            <li>You'll know <em>exactly</em> where boundaries belong</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout c-info">
+    <span class="ci">💡</span>
+    <div class="callout-body"><strong>Shopify's approach:</strong> Shopify runs one of the world's largest Rails applications. Rather than splitting into microservices, they invested deeply in module boundaries within their monolith, using component boundaries that are enforced by tooling. The result: large-scale team autonomy without distributed systems overhead.</div>
+  </div>
+</section>
+
+<!-- ═══ MICROSERVICES ═══ -->
+<section class="section" id="microservices">
+  <div class="sh">
+    <div class="si-box si-b">🔬</div>
+    <div class="sh-text">
+      <h2>Microservices</h2>
+      <div class="ssub">// powerful at scale, expensive everywhere else</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="pat-card">
+    <div class="pat-header">
+      <div>
+        <div class="pat-name">Microservices Architecture</div>
+        <span class="pat-tag pt-b">For Large Organisations</span>
+        <span class="pat-tag pt-r" style="margin-left:6px;">High Ops Cost</span>
+      </div>
+      <div>
+        <div class="complexity-row" style="justify-content:flex-end;">
+          <div class="cx-item">
+            <span class="cx-label">Complexity</span>
+            <div class="cx-bar">
+              <div class="cx-seg red on"></div>
+              <div class="cx-seg red on"></div>
+              <div class="cx-seg red on"></div>
+              <div class="cx-seg red on"></div>
+              <div class="cx-seg red on"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pat-body">
+      <p class="pat-desc">The system is decomposed into small, independently deployable services — each owned by a small team, each with its own database, each communicating over a network (HTTP/gRPC/messaging). Enables independent scaling and deployment per service. Requires mature platform engineering, service discovery, distributed tracing, and organisational alignment to actually succeed.</p>
+      <div class="pat-grid">
+        <div>
+          <div class="pat-section-t">✓ Genuine Use Cases</div>
+          <ul class="pat-list good">
+            <li>50+ engineers with clear team ownership</li>
+            <li>Parts truly need independent scale (e.g. payments vs. search)</li>
+            <li>Regulatory isolation requirements</li>
+            <li>Different technology stacks legitimately needed</li>
+            <li>Mature DevOps/Platform Engineering org</li>
+            <li>Netflix, Amazon, Uber scale</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">Real Benefits</div>
+          <ul class="pat-list">
+            <li>True team independence &amp; autonomy</li>
+            <li>Independent deployment — no coordination</li>
+            <li>Independent scaling per service</li>
+            <li>Fault isolation (one service fails, others don't)</li>
+            <li>Technology freedom per service</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">Real Costs</div>
+          <ul class="pat-list warn">
+            <li>Distributed transactions are hard</li>
+            <li>Network latency is now everywhere</li>
+            <li>Observability requires investment</li>
+            <li>Service discovery and mesh overhead</li>
+            <li>Testing integration paths is complex</li>
+            <li>Operational overhead multiplied by N</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Microservice Anti-Patterns</h3>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Distributed Monolith</span></div>
+    <p class="anti-desc">Services that are physically separate but logically coupled — they call each other synchronously in a chain, share a database, or must be deployed together. You get all the costs of distribution with none of the benefits. The worst of both worlds.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">True service independence requires independent data stores and async communication. If two services must always deploy together, merge them. If they chain-call 6 deep to handle one request, your boundaries are wrong.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Nano-services / Over-decomposition</span></div>
+    <p class="anti-desc">Services so small they have no business logic — just CRUD wrappers around a table. 50 services for a 10-person team. Operational burden is massive; every feature requires coordinating 5 service deployments.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">A service should map to a bounded context — a meaningful domain concept, not a table. If a service is just a thin wrapper around a database with no business rules, it belongs inside another service.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Synchronous Chain Calls</span></div>
+    <p class="anti-desc">Service A calls B, which calls C, which calls D. Latency compounds, failure cascades. One slow service makes everything slow. P99 latency of the chain is sum of all P99s.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Prefer async messaging for non-blocking work. Use the Saga pattern for distributed transactions. Design services to be autonomous — if Service A needs data from Service B to function, consider whether A is actually part of B's bounded context.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Shared Library Hell</span></div>
+    <p class="anti-desc">A giant shared library ("commons" / "core") that all services depend on. Updating the library requires coordinating and re-deploying all services. The services are no longer independently deployable.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Share as little as possible. When sharing is necessary (e.g., authentication middleware, telemetry), version it explicitly and allow services to upgrade at their own pace. Treat shared libraries like external packages.</div></div>
+  </div>
+</section>
+
+<!-- ═══ EVENT-DRIVEN ═══ -->
+<section class="section" id="event-driven">
+  <div class="sh">
+    <div class="si-box si-gr">⚡</div>
+    <div class="sh-text">
+      <h2>Event-Driven Architecture</h2>
+      <div class="ssub">// decouple producers from consumers through async messaging</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="pat-card">
+    <div class="pat-header">
+      <div>
+        <div class="pat-name">Event-Driven Architecture (EDA)</div>
+        <span class="pat-tag pt-gr">Async Decoupling</span>
+        <span class="pat-tag pt-g" style="margin-left:6px;">High Scalability</span>
+      </div>
+      <div>
+        <div class="complexity-row" style="justify-content:flex-end;">
+          <div class="cx-item">
+            <span class="cx-label">Complexity</span>
+            <div class="cx-bar">
+              <div class="cx-seg gold on"></div><div class="cx-seg gold on"></div>
+              <div class="cx-seg gold on"></div><div class="cx-seg gold on"></div>
+              <div class="cx-seg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pat-body">
+      <p class="pat-desc">Components communicate by producing and consuming events through a message broker (Kafka, RabbitMQ, AWS EventBridge, NATS). Producers don't know who consumes their events. Consumers subscribe to events they care about. Enables temporal decoupling, high throughput, and extensibility — add a new consumer without touching the producer. Works beautifully within a modular monolith (in-process events) or across microservices (external broker).</p>
+      <div class="pat-grid">
+        <div>
+          <div class="pat-section-t">✓ Use When</div>
+          <ul class="pat-list good">
+            <li>High-throughput pipelines (analytics, logs)</li>
+            <li>Fan-out: one event, many consumers</li>
+            <li>Workflows with long-running steps</li>
+            <li>Audit logs / event sourcing</li>
+            <li>Real-time data processing</li>
+            <li>Decoupling legacy systems</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">Core Concepts</div>
+          <ul class="pat-list">
+            <li><strong>Domain Events</strong> — something happened</li>
+            <li><strong>Commands</strong> — requests to do something</li>
+            <li><strong>Sagas</strong> — distributed long-running transactions</li>
+            <li><strong>Outbox Pattern</strong> — reliably publish events</li>
+            <li><strong>Consumer Groups</strong> — competing consumers</li>
+            <li><strong>Dead Letter Queues</strong> — failed message handling</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">⚠ Watch Out For</div>
+          <ul class="pat-list warn">
+            <li>Event schema evolution is hard</li>
+            <li>Debugging async flows is complex</li>
+            <li>Eventual consistency surprises users</li>
+            <li>Message ordering assumptions</li>
+            <li>At-least-once delivery = idempotency required</li>
+            <li>"Event spaghetti" — undocumented flows</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Event-Driven Anti-Patterns</h3>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Event Sourcing Everything</span></div>
+    <p class="anti-desc">Applying Event Sourcing to every entity in the system because it sounds elegant. Event Sourcing has real operational complexity: rebuilding state from events, projections, schema migration of historical events. Most CRUD entities don't benefit.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Use Event Sourcing only for aggregates where the history of changes is a core domain requirement (financial transactions, audit logs, order lifecycle). Use standard CRUD with domain events for everything else.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Fat Events / God Events</span></div>
+    <p class="anti-desc">Events that contain the entire entity payload — every field every time. Consumers become dependent on the event schema in the same way as a shared database. Any field addition or removal breaks consumers.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Events should carry minimal context: what happened and the ID of what changed. Consumers that need more data should query the producing service's API (event-carried state transfer, used carefully) or maintain their own read model.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Missing Idempotency</span></div>
+    <p class="anti-desc">Message brokers guarantee at-least-once delivery. If your consumer isn't idempotent — processing the same message twice produces the same result — you will double-charge customers, double-send emails, or corrupt state.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Every event consumer must be idempotent. Track processed message IDs in a database (idempotency key). Use conditional writes or upsert semantics. Treat duplicate events as a first-class concern, not an edge case.</div></div>
+  </div>
+</section>
+
+<!-- ═══ SERVERLESS ═══ -->
+<section class="section" id="serverless">
+  <div class="sh">
+    <div class="si-box si-t">☁️</div>
+    <div class="sh-text">
+      <h2>Serverless Architecture</h2>
+      <div class="ssub">// pay per execution, infinite scale, real constraints</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="pat-card">
+    <div class="pat-header">
+      <div>
+        <div class="pat-name">Serverless / FaaS Architecture</div>
+        <span class="pat-tag pt-t">Event-Triggered</span>
+        <span class="pat-tag pt-gr" style="margin-left:6px;">Low Ops</span>
+      </div>
+      <div>
+        <div class="complexity-row" style="justify-content:flex-end;">
+          <div class="cx-item">
+            <span class="cx-label">Complexity</span>
+            <div class="cx-bar">
+              <div class="cx-seg gold on"></div><div class="cx-seg gold on"></div>
+              <div class="cx-seg gold on"></div><div class="cx-seg"></div><div class="cx-seg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pat-body">
+      <p class="pat-desc">Functions-as-a-Service (Lambda, Cloud Functions, Azure Functions) triggered by events. No servers to manage; auto-scales from zero to millions; pay only for actual execution time. Ideal for irregular workloads, webhooks, and event pipelines. Cold starts, execution time limits, and vendor lock-in are real considerations.</p>
+      <div class="pat-grid">
+        <div>
+          <div class="pat-section-t">✓ Best For</div>
+          <ul class="pat-list good">
+            <li>Webhooks &amp; event processors</li>
+            <li>Scheduled/cron jobs</li>
+            <li>Image/video processing pipelines</li>
+            <li>Low-traffic APIs with spiky traffic</li>
+            <li>Glue code between services</li>
+            <li>Background job processing</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">✗ Poor Fit</div>
+          <ul class="pat-list bad">
+            <li>Long-running computations (&gt;15min)</li>
+            <li>Latency-sensitive APIs (cold starts)</li>
+            <li>Stateful workloads</li>
+            <li>High sustained throughput (cost)</li>
+            <li>Complex local development</li>
+            <li>When vendor lock-in is unacceptable</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">⚠ Anti-Patterns</div>
+          <ul class="pat-list warn">
+            <li>Monolithic Lambda — 1 function handles everything</li>
+            <li>Lambda calling Lambda synchronously</li>
+            <li>Keeping database connections open in Lambda</li>
+            <li>Not handling cold starts for user-facing paths</li>
+            <li>Missing Dead Letter Queues for failures</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BFF ═══ -->
+<section class="section" id="bff">
+  <div class="sh">
+    <div class="si-box si-r">🔀</div>
+    <div class="sh-text">
+      <h2>Backend for Frontend (BFF)</h2>
+      <div class="ssub">// tailored APIs for each client type</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <p>The BFF pattern, coined by Sam Newman, solves a specific problem: a general-purpose API designed for all clients optimises for none of them. A mobile app needs different data shapes, payload sizes, and endpoints than a web app or a third-party partner API. The BFF introduces a dedicated API layer <em>per client type</em>.</p>
+
+  <div class="bff-diagram">
+    <div style="text-align:center; font-family:var(--mono); font-size:9.5px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:18px;">Architecture Overview</div>
+    <div class="bff-row">
+      <div class="bff-client"><span class="bff-icon">🌐</span>Web App</div>
+      <div class="bff-client"><span class="bff-icon">📱</span>iOS App</div>
+      <div class="bff-client"><span class="bff-icon">🤖</span>Android</div>
+      <div class="bff-client"><span class="bff-icon">🔗</span>Partner API</div>
+    </div>
+    <div class="bff-arrow">↕</div>
+    <div class="bff-mid">
+      <div class="bff-box bff-box-web">BFF — Web</div>
+      <div class="bff-box bff-box-mob">BFF — Mobile</div>
+      <div class="bff-box bff-box-3p">BFF — Partner</div>
+    </div>
+    <div class="bff-arrow2">↕ (internal APIs / services)</div>
+    <div class="bff-services">
+      <div class="bff-svc">User Service</div>
+      <div class="bff-svc">Order Service</div>
+      <div class="bff-svc">Product Service</div>
+      <div class="bff-svc">Payment Service</div>
+      <div class="bff-svc">Notifications</div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-top:20px;">
+    <div class="card">
+      <div class="card-t"><span class="dot d-gr"></span>Why BFF Works</div>
+      <ul>
+        <li>Mobile BFF returns compact payloads; Web BFF returns full data</li>
+        <li>Each BFF team is owned by the client team — no upstream negotiation</li>
+        <li>Aggregates/transforms data from multiple backend services</li>
+        <li>Handles client-specific auth flows and session management</li>
+        <li>Can evolve independently of backend services</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-rd"></span>BFF Anti-Patterns</div>
+      <ul>
+        <li><strong>One BFF for all clients</strong> — defeats the purpose entirely</li>
+        <li><strong>Business logic in BFF</strong> — BFFs should aggregate, not implement rules</li>
+        <li><strong>BFF calling BFF</strong> — creates coupling between client layers</li>
+        <li><strong>Too many BFFs</strong> — one per team is a smell; one per client type is right</li>
+        <li><strong>BFF becomes a God Service</strong> — pulls too much logic from downstream</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout c-info">
+    <span class="ci">💡</span>
+    <div class="callout-body"><strong>GraphQL as BFF:</strong> GraphQL works exceptionally well in the BFF layer — clients specify exactly what data they need, eliminating over- and under-fetching. The BFF resolves fields from downstream services. This is how companies like GitHub, Shopify, and Netflix use GraphQL — as an aggregation layer, not as their internal service communication protocol.</div>
+  </div>
+</section>
+
+<!-- ═══ CQRS ═══ -->
+<section class="section" id="cqrs">
+  <div class="sh">
+    <div class="si-box si-a">📋</div>
+    <div class="sh-text">
+      <h2>CQRS &amp; Event Sourcing</h2>
+      <div class="ssub">// separate reads from writes for scale and auditability</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="pat-card">
+    <div class="pat-header">
+      <div>
+        <div class="pat-name">CQRS — Command Query Responsibility Segregation</div>
+        <span class="pat-tag pt-g">Write / Read Split</span>
+      </div>
+    </div>
+    <div class="pat-body">
+      <p class="pat-desc">Separate the model used for writes (Commands) from the model used for reads (Queries). Commands mutate state; Queries return data. Read models are optimised for their specific query pattern — denormalised, pre-computed, fast. Write models enforce business invariants. Often combined with Event Sourcing, where the event log is the source of truth and read models are projections.</p>
+      <div class="pat-grid">
+        <div>
+          <div class="pat-section-t">✓ Use When</div>
+          <ul class="pat-list good">
+            <li>Read/write ratio is very asymmetric</li>
+            <li>Queries need data in complex shapes</li>
+            <li>Need full audit history (Event Sourcing)</li>
+            <li>Complex domain with many invariants</li>
+            <li>Scaling reads independently from writes</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">✗ Avoid When</div>
+          <ul class="pat-list bad">
+            <li>Simple CRUD domains</li>
+            <li>Small teams — overhead is high</li>
+            <li>Users expect immediate consistency</li>
+            <li>Domain logic is not complex enough to warrant it</li>
+          </ul>
+        </div>
+        <div>
+          <div class="pat-section-t">⚠ Anti-Patterns</div>
+          <ul class="pat-list warn">
+            <li>Sharing a write model with reads</li>
+            <li>Querying command handlers</li>
+            <li>Applying CQRS to every entity, not just complex ones</li>
+            <li>Event schema is too fine-grained, breaking consumers</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ LAYERED / HEXAGONAL ═══ -->
+<section class="section" id="layered">
+  <div class="sh">
+    <div class="si-box si-b">📚</div>
+    <div class="sh-text">
+      <h2>Layered &amp; Hexagonal Architecture</h2>
+      <div class="ssub">// internal structure patterns that work at any scale</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="g2">
+    <div class="pat-card" style="margin-bottom:0;">
+      <div class="pat-header">
+        <div>
+          <div class="pat-name">Layered Architecture</div>
+          <span class="pat-tag pt-b">N-Tier</span>
+        </div>
+      </div>
+      <div class="pat-body">
+        <p class="pat-desc" style="margin-bottom:12px;">Classic horizontal layers: Presentation → Application → Domain → Infrastructure. Dependencies flow downward only. Simple, familiar, and effective when discipline is maintained.</p>
+        <ul class="pat-list good" style="font-size:12.5px;">
+          <li>Presentation: HTTP controllers, GraphQL resolvers</li>
+          <li>Application: Use cases, orchestration, no business rules</li>
+          <li>Domain: Entities, value objects, domain services</li>
+          <li>Infrastructure: DB, external APIs, email, file storage</li>
+        </ul>
+        <div class="anti-block" style="margin-top:12px; padding:12px 16px;">
+          <div class="anti-header" style="margin-bottom:6px;"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name" style="font-size:13px;">Layer skipping</span></div>
+          <p class="anti-desc" style="font-size:12.5px;">Controllers calling the repository directly, bypassing the domain. One layer should never know about layers more than one step away.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pat-card" style="margin-bottom:0;">
+      <div class="pat-header">
+        <div>
+          <div class="pat-name">Hexagonal / Ports &amp; Adapters</div>
+          <span class="pat-tag pt-v">Clean Architecture</span>
+        </div>
+      </div>
+      <div class="pat-body">
+        <p class="pat-desc" style="margin-bottom:12px;">The domain is at the centre with zero dependencies on infrastructure. External systems (databases, APIs, message brokers) are adapters that plug into defined ports. The domain is fully testable in isolation — no database required.</p>
+        <ul class="pat-list good" style="font-size:12.5px;">
+          <li><strong>Ports</strong>: Interfaces defined by the domain</li>
+          <li><strong>Adapters</strong>: Implementations (SQL, REST, Kafka)</li>
+          <li><strong>Domain</strong>: No framework, no ORM, no HTTP imports</li>
+          <li>Swap database, don't touch domain code</li>
+        </ul>
+        <div class="anti-block" style="margin-top:12px; padding:12px 16px;">
+          <div class="anti-header" style="margin-bottom:6px;"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name" style="font-size:13px;">Leaking infrastructure into domain</span></div>
+          <p class="anti-desc" style="font-size:12.5px;">Domain entities that import ORM annotations, HTTP status codes, or logging frameworks. The domain must be framework-agnostic.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ GENERAL ANTI-PATTERNS ═══ -->
+<section class="section" id="anti-general">
+  <div class="sh">
+    <div class="si-box si-rd">🚫</div>
+    <div class="sh-text">
+      <h2>General Architectural Anti-Patterns</h2>
+      <div class="ssub">// the traps every team falls into eventually</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Premature Optimisation / Over-Engineering</span></div>
+    <p class="anti-desc">Building for 10 million users when you have 100. Designing for failure modes you haven't encountered. Choosing Kafka because it's impressive, not because you need it. Engineering time spent on infrastructure that doesn't move the product forward.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Make decisions based on current pain and near-term projections. "We might need this later" is not sufficient justification for complexity today. You can add complexity when needed; you cannot easily remove it once embedded.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Resume-Driven Development (RDD)</span></div>
+    <p class="anti-desc">Choosing technologies to pad CVs rather than to solve actual problems. Using Kubernetes, Kafka, GraphQL, and gRPC because they look good — when a simple REST API on a single VM would serve the actual product perfectly.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Every technology decision should answer: "What specific problem does this solve for us, today?" If the answer is "it's what companies like us use," that's not enough.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">The Golden Hammer</span></div>
+    <p class="anti-desc">Using the same architectural pattern for every problem because it worked before. Applying microservices to a 3-person internal tool because "we used it at my last job." Every tool has a problem it's optimised for.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Map each architectural decision to a specific requirement. When evaluating patterns, be explicit about the constraints and context of the current system, not past systems.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Accidental Coupling / Tight Integration</span></div>
+    <p class="anti-desc">Components that should be independent are secretly entangled through shared global state, shared database tables, implicit ordering assumptions, or hard-coded service URLs. Changes ripple unexpectedly.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Explicit contracts between every module and service. Use architecture fitness functions (automated tests that verify structural rules) to catch coupling before it becomes load-bearing.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">No Clear Data Ownership</span></div>
+    <p class="anti-desc">Multiple services or modules writing to the same entity. No single authoritative source of truth for customer data, product data, or order state. Synchronisation logic becomes the most complex part of the system.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">For every entity, there is exactly one writer. Everyone else queries or subscribes to events from that owner. Data ownership maps to team ownership. If two teams both need to write the same data, that's a boundary problem to resolve first.</div></div>
+  </div>
+
+  <div class="anti-block">
+    <div class="anti-header"><span class="anti-badge">ANTI-PATTERN</span><span class="anti-name">Architecture by Consensus / Design by Committee</span></div>
+    <p class="anti-desc">Every architectural decision requires sign-off from every team. Meetings to decide how to name HTTP routes. No individual is accountable for outcomes. Results in paralysis, bland compromises, and inconsistent implementation.</p>
+    <div class="fix-block"><div class="fix-label">Fix</div><div class="fix-text">Appoint a decision-maker for architectural choices. Use RFC processes for broad input, but with a clear owner who makes the final call and is accountable for the outcome. Disagree and commit.</div></div>
+  </div>
+</section>
+
+<!-- ═══ MICROSERVICE PITFALLS ═══ -->
+<section class="section" id="anti-micro">
+  <div class="sh">
+    <div class="si-box si-rd">⚠️</div>
+    <div class="sh-text">
+      <h2>The Microservice Complexity Tax</h2>
+      <div class="ssub">// what you're signing up for when you go distributed</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <p>Microservices don't eliminate complexity — they redistribute it from code to infrastructure and organisational processes. Before adopting them, your team must be ready to pay the following taxes:</p>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Problem</th><th>Monolith</th><th>Microservices</th><th>Required Solution</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Transaction</strong></td><td class="ok">DB transaction</td><td class="no">Distributed</td><td>Saga pattern, 2PC, eventual consistency</td></tr>
+        <tr><td><strong>Debugging</strong></td><td class="ok">Stack trace</td><td class="no">Across services</td><td>Distributed tracing (OpenTelemetry, Jaeger)</td></tr>
+        <tr><td><strong>Testing</strong></td><td class="ok">Unit + integration</td><td class="no">Contract + E2E</td><td>Consumer-driven contract tests (Pact)</td></tr>
+        <tr><td><strong>Deployment</strong></td><td class="ok">One pipeline</td><td class="no">N pipelines</td><td>Platform engineering, GitOps, ArgoCD</td></tr>
+        <tr><td><strong>Service Discovery</strong></td><td class="ok">Function call</td><td class="no">Runtime lookup</td><td>Service mesh (Istio, Linkerd), DNS</td></tr>
+        <tr><td><strong>Auth</strong></td><td class="ok">Session / in-process</td><td class="no">Per-service</td><td>JWT propagation, service-to-service auth</td></tr>
+        <tr><td><strong>Data consistency</strong></td><td class="ok">ACID</td><td class="no">BASE</td><td>Explicit design for eventual consistency</td></tr>
+        <tr><td><strong>Local dev</strong></td><td class="ok">One process</td><td class="no">Dozens of containers</td><td>Docker Compose, service stubs, Telepresence</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-warn">
+    <span class="ci">⚠️</span>
+    <div class="callout-body"><strong>The Fallacies of Distributed Computing:</strong> The network is reliable. Latency is zero. Bandwidth is infinite. The network is secure. Topology doesn't change. There is one administrator. Transport cost is zero. The network is homogeneous. Every one of these assumptions is false. Your architecture must account for all of them.</div>
+  </div>
+</section>
+
+<!-- ═══ THE GREAT SHIFT ═══ -->
+<section class="section" id="trend-shift">
+  <div class="sh">
+    <div class="si-box si-g">📈</div>
+    <div class="sh-text">
+      <h2>The Great Architecture Shift</h2>
+      <div class="ssub">// why the industry is revisiting microservices</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="trend-card">
+    <div class="trend-label">2023–2025 Industry Movement</div>
+    <div class="trend-h">From Microservices Back to Simplicity</div>
+    <div class="trend-body">
+      The microservices movement, which peaked around 2017–2020, promised team autonomy, independent scaling, and technical freedom. For many organisations, it delivered complexity, operational burden, and engineering hours diverted from product to platform. The correction isn't a rejection of microservices — it's a recognition that the costs are real and context-dependent.
+    </div>
+  </div>
+
+  <h3>What the Evidence Shows</h3>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-t"><span class="dot d-g"></span>Amazon Prime Video (2023)</div>
+      <p>Moved from distributed microservices architecture to a monolith. Result: 90% reduction in infrastructure cost, reduced operational complexity, simpler debugging. Published as a case study by their own engineers — creating significant industry discussion.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-b"></span>Shopify</div>
+      <p>One of the world's largest Rails monoliths — serving billions in commerce. Instead of splitting into services, they invested in deep module boundaries, component architecture, and tooling to enforce boundaries. Team autonomy achieved without distributed systems overhead.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-v"></span>Stack Overflow</div>
+      <p>Runs on a monolith serving hundreds of millions of monthly visitors with a small engineering team. Has written extensively about why they don't see the need for microservices at their scale given their team size and architecture quality.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-gr"></span>DHH / 37signals (Basecamp)</div>
+      <p>Loud proponents of the "majestic monolith" — moving away from cloud microservices to a small number of well-structured server processes. Documented significant cost savings and engineering simplicity improvements.</p>
+    </div>
+  </div>
+
+  <h3>Why the Shift is Happening</h3>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>The Promise</th><th>The Reality</th></tr></thead>
+      <tbody>
+        <tr><td>"Independent deployment per service"</td><td>In practice: coordinating releases across 30 services, managing schema migrations across teams</td></tr>
+        <tr><td>"Teams can choose their own tech stack"</td><td>In practice: 8 languages, nobody can debug each other's services, hiring becomes impossible</td></tr>
+        <tr><td>"Scale individual services independently"</td><td>In practice: most services have similar load profiles; only 2–3 genuinely need different scaling</td></tr>
+        <tr><td>"Fault isolation — one service fails, others don't"</td><td>In practice: synchronous call chains mean upstream failure propagates anyway</td></tr>
+        <tr><td>"Small, focused teams with clear ownership"</td><td>In practice: 40 services owned by 8 engineers, everyone is on-call for everything</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-tip">
+    <span class="ci">✅</span>
+    <div class="callout-body"><strong>The nuanced conclusion:</strong> Microservices solve real problems — at the right organisational scale. The error was treating them as an aspirational default rather than a context-specific solution. The current advice: start with a well-structured modular monolith. Extract services when you have a concrete, measurable reason that the monolith cannot address. Your future self will thank you.</div>
+  </div>
+</section>
+
+<!-- ═══ GUIDING PRINCIPLES ═══ -->
+<section class="section" id="trend-principles">
+  <div class="sh">
+    <div class="si-box si-v">🧭</div>
+    <div class="sh-text">
+      <h2>Timeless Guiding Principles</h2>
+      <div class="ssub">// what survives every architectural fashion cycle</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-t"><span class="dot d-g"></span>Make It Easy to Change</div>
+      <p>The best architecture is the one you can change safely and quickly. Favour loose coupling, explicit interfaces, and clear ownership over any particular structural pattern.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-b"></span>Defer Decisions</div>
+      <p>Don't make irreversible decisions before you have to. A good architecture delays infrastructure and framework decisions, keeping options open until the cost of deferral exceeds the cost of deciding.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-v"></span>Measure, Don't Guess</div>
+      <p>Every architectural change should have measurable success criteria. "More scalable" is not a metric. "P99 &lt;200ms at 10k RPS" is. Measure before and after.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-gr"></span>Match Team Topology</div>
+      <p>Conway's Law is real. If your team isn't structured to own a service independently, the service will become a coordination nightmare. Architecture and team design must evolve together.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-t"></span>Design for Failure</div>
+      <p>Every external call will fail, every database will go down, every third-party API will have an outage. Circuit breakers, retries with backoff, fallbacks, and graceful degradation are not optional.</p>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot d-a"></span>Avoid Distributed if Possible</div>
+      <p>The best distributed systems code is the code you didn't write. Network calls are 1000× slower than in-process calls. Every service boundary is a potential failure point, a serialisation cost, and a debugging challenge.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ARCHITECTURE CHECKLIST ═══ -->
+<section class="section" id="checklist">
+  <div class="sh">
+    <div class="si-box si-gr">✅</div>
+    <div class="sh-text">
+      <h2>Architecture Design Checklist</h2>
+      <div class="ssub">// step-by-step process for designing a system, with pitfalls at each stage</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <p>Architecture is not a single meeting — it's an iterative process. This checklist provides a structured order of operations for designing or evaluating a system's architecture, along with the most common mistakes at each step.</p>
+
+  <div class="checklist">
+
+    <div class="cl-step">
+      <div class="cl-num">1</div>
+      <div class="cl-content">
+        <div class="cl-title">Understand the Requirements — Functional &amp; Non-Functional</div>
+        <div class="cl-desc">Before drawing any boxes, deeply understand what the system must do and the constraints it must operate within. Many architectural disasters stem from optimising for the wrong requirements.</div>
+        <ul class="cl-items">
+          <li>Document core user journeys — what workflows must work, always</li>
+          <li>Define non-functional requirements: availability (99.9% vs 99.999%), latency targets (P50/P95/P99), throughput (RPS), data volume</li>
+          <li>Identify compliance and regulatory constraints (GDPR, HIPAA, SOC2)</li>
+          <li>Clarify consistency requirements — strong consistency vs. eventual consistency, per workflow</li>
+          <li>Establish team size and operational maturity — this constrains your pattern options</li>
+          <li>Identify time-to-market constraints — complexity costs delivery time</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>Designing for imaginary scale. "We might get 10M users" is not a requirement. Ask: what does day-one traffic look like? What's the 12-month realistic projection? Architect for that, with a clear path to the next order of magnitude.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-step">
+      <div class="cl-num">2</div>
+      <div class="cl-content">
+        <div class="cl-title">Define the Domain — Identify Bounded Contexts</div>
+        <div class="cl-desc">Use Domain-Driven Design to identify the natural seams in your problem domain. These seams — bounded contexts — are where your architectural boundaries should live. Boundaries drawn in the wrong place cause more damage than any technology choice.</div>
+        <ul class="cl-items">
+          <li>Run an Event Storming session to map domain events and commands</li>
+          <li>Identify aggregates — clusters of entities that change together, owned by a single service/module</li>
+          <li>Find where concepts mean different things in different contexts (a "Customer" in billing vs. shipping)</li>
+          <li>Map team ownership to domain concepts — each bounded context should have one owning team</li>
+          <li>Document the context map: relationships between bounded contexts (upstream/downstream, partnership, anti-corruption layer)</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>Drawing service boundaries around technical concerns (AuthService, DatabaseService) rather than domain concepts. Technical boundaries couple teams; domain boundaries enable autonomy. A "UserService" that owns all user data is usually a monolith with an API in front of it.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-step">
+      <div class="cl-num">3</div>
+      <div class="cl-content">
+        <div class="cl-title">Choose Your Decomposition Strategy</div>
+        <div class="cl-desc">Given your requirements, team size, and domain understanding from steps 1–2, choose the structural pattern that fits. This is the most consequential single decision in the architecture process.</div>
+        <ul class="cl-items">
+          <li>Apply the decision matrix: team size, scale requirements, domain clarity, operational maturity</li>
+          <li>Default to the simplest pattern that meets current requirements — simpler is almost always better</li>
+          <li>If choosing microservices: can each service be independently deployed, scaled, and developed by one team?</li>
+          <li>If choosing a monolith: enforce module boundaries — don't let it become a ball of mud</li>
+          <li>Document the reasoning for the decision — future team members need to understand why</li>
+          <li>Explicitly note what would cause you to revisit this decision (scaling signals, team growth milestones)</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>Choosing microservices because a senior engineer read about them or "that's how Netflix does it." Netflix also has thousands of engineers and a decade of platform engineering investment. Your context is different.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-step">
+      <div class="cl-num">4</div>
+      <div class="cl-content">
+        <div class="cl-title">Design Data Architecture &amp; Ownership</div>
+        <div class="cl-desc">Data design is inseparable from service design. Every entity has exactly one owner. The data model is often the real source of coupling — more than APIs or code.</div>
+        <ul class="cl-items">
+          <li>Assign data ownership: every table/collection has exactly one authoritative writer</li>
+          <li>Decide on consistency model per workflow: ACID (same service) vs. eventual (cross-service via events)</li>
+          <li>Design for data sharing: query APIs, read models, event subscriptions — never shared tables across modules</li>
+          <li>Plan schema evolution strategy: how will you add fields, rename columns, and remove data without downtime</li>
+          <li>Choose your database types intentionally: relational, document, time-series, search — don't default to one for everything</li>
+          <li>Design the backup, recovery, and data retention policy — architecture decision, not an afterthought</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>The shared database anti-pattern in disguise: microservices with separate deployment pipelines but a shared schema. Any team can modify any table. Schema migrations require coordinating every service. This is a monolith with network calls added.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-step">
+      <div class="cl-num">5</div>
+      <div class="cl-content">
+        <div class="cl-title">Design Communication Patterns</div>
+        <div class="cl-desc">How components talk to each other determines latency, resilience, and coupling. Synchronous calls couple availability; async messaging decouples it but adds eventual consistency.</div>
+        <ul class="cl-items">
+          <li>Map each interaction: is it request/response (synchronous) or fire-and-forget / publish-subscribe (async)?</li>
+          <li>Use synchronous calls for user-facing reads and transactional writes within a bounded context</li>
+          <li>Use async messaging for cross-context workflows, notifications, and eventual propagation</li>
+          <li>Define your API contract strategy: REST, gRPC, GraphQL — and how schemas are versioned</li>
+          <li>Design for failure: every synchronous call needs a timeout, retry policy, and fallback</li>
+          <li>If using messaging: define message schema ownership, schema registry, and evolution policy</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>Synchronous call chains: Service A → B → C → D to handle one user request. P99 latency = sum of all P99s. One slow or failed service brings down the whole chain. Design for autonomy: each service should be able to serve its core function even if downstream services are unavailable.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-step">
+      <div class="cl-num">6</div>
+      <div class="cl-content">
+        <div class="cl-title">Design for Observability from Day One</div>
+        <div class="cl-desc">You cannot operate what you cannot observe. Observability is not a feature to add later — it must be part of the initial design. In distributed systems, it's the difference between a 5-minute incident and a 5-hour outage.</div>
+        <ul class="cl-items">
+          <li>Define the three pillars: <strong>Metrics</strong> (Prometheus/Datadog), <strong>Logs</strong> (structured, correlation IDs), <strong>Traces</strong> (OpenTelemetry)</li>
+          <li>Propagate correlation/trace IDs across every service boundary — from HTTP header to database query</li>
+          <li>Define SLIs (what you measure), SLOs (the targets), and SLAs (the commitments)</li>
+          <li>Design alerting strategy: alert on symptoms (SLO burn rate), not causes (CPU &gt; 80%)</li>
+          <li>Build runbooks alongside the system — not after incidents</li>
+          <li>Implement health checks, readiness probes, and circuit breakers as standard</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>"We'll add monitoring later." In a distributed system, "later" means "after the first major outage, while under pressure, with customers watching." The cost of instrumenting a service at build time is tiny compared to debugging a production issue with no telemetry.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-step">
+      <div class="cl-num">7</div>
+      <div class="cl-content">
+        <div class="cl-title">Design Security Architecture</div>
+        <div class="cl-desc">Security is not a layer you add on top — it's a dimension of every architectural decision. Authentication, authorisation, data encryption, network segmentation, and secrets management all have architectural implications.</div>
+        <ul class="cl-items">
+          <li>Define authentication: who are the actors (users, services, third-parties) and how do they prove identity</li>
+          <li>Define authorisation model: RBAC, ABAC, or per-resource ACLs — and where enforcement happens</li>
+          <li>Design service-to-service auth: mutual TLS, JWT, or API keys — never unauthenticated internal traffic</li>
+          <li>Plan secrets management: environment variables at minimum; HashiCorp Vault / AWS Secrets Manager for production</li>
+          <li>Network segmentation: what can talk to what — apply least privilege at the network level</li>
+          <li>Data classification: identify PII, payment data, health data — apply appropriate encryption and access controls</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>Implicit trust inside the network perimeter. "Internal services don't need auth because nothing bad can get in." One compromised service, one misconfigured S3 bucket, or one insider threat breaks this assumption. Zero-trust networking is now the standard baseline.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-step">
+      <div class="cl-num">8</div>
+      <div class="cl-content">
+        <div class="cl-title">Plan the Deployment &amp; Operations Model</div>
+        <div class="cl-desc">Architecture and deployment are inseparable. How you deploy dictates what failure modes you face, how quickly you can release, and how much operational overhead your team carries.</div>
+        <ul class="cl-items">
+          <li>Define deployment targets: containers (Kubernetes, ECS), VMs, PaaS, serverless — match to team operational capability</li>
+          <li>Design CI/CD pipeline: how code moves from commit to production, including automated tests and approvals</li>
+          <li>Define release strategy: blue/green, canary, feature flags — how do you roll back quickly?</li>
+          <li>Plan infrastructure as code from day one: Terraform/Pulumi, not ClickOps</li>
+          <li>Define environment strategy: how many environments, what runs in each, how are they provisioned</li>
+          <li>Plan for disaster recovery: RTO (how long to recover) and RPO (how much data can be lost)</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>Kubernetes by default. K8s is a powerful operations platform with real complexity. If your team doesn't have platform engineering capability, a managed PaaS (Railway, Render, Fly.io, ECS Fargate) delivers 90% of the benefit with 10% of the operational overhead.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-step">
+      <div class="cl-num">9</div>
+      <div class="cl-content">
+        <div class="cl-title">Document Architecture Decisions (ADRs)</div>
+        <div class="cl-desc">Architecture without documentation is tribal knowledge. Architecture Decision Records (ADRs) capture not just what was decided, but why — including the alternatives considered and the forces at play. Invaluable for new team members and for revisiting decisions as context changes.</div>
+        <ul class="cl-items">
+          <li>Write an ADR for every significant architectural decision (template: Context → Decision → Consequences)</li>
+          <li>Store ADRs alongside code in version control — they evolve with the system</li>
+          <li>Mark superseded ADRs as deprecated, not deleted — the history matters</li>
+          <li>Document the system's C4 model: Context, Containers, Components, Code diagrams</li>
+          <li>Define and publish API contracts (OpenAPI, AsyncAPI, Protobuf schemas)</li>
+          <li>Review and update documentation as the system evolves — stale docs are worse than no docs</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>Architecture diagrams that don't match reality. Systems drift from their documented state immediately. Build living documentation: generate diagrams from code where possible (Structurizr, C4 DSL), run architecture fitness functions in CI to catch drift automatically.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="cl-step">
+      <div class="cl-num">10</div>
+      <div class="cl-content">
+        <div class="cl-title">Define Evolution &amp; Migration Strategy</div>
+        <div class="cl-desc">No architecture is final. Design for change: define the signals that would trigger an architectural evolution and the path for getting there. The teams that handle growth well aren't the ones who made perfect initial decisions — they're the ones who built in reversibility.</div>
+        <ul class="cl-items">
+          <li>Define explicit scaling triggers: "When we reach X RPS, we'll extract Y module as a service"</li>
+          <li>Plan for the Strangler Fig pattern: incrementally replace parts of the system without a big rewrite</li>
+          <li>Identify the riskiest architectural assumptions and build in monitoring to detect when they break</li>
+          <li>Establish regular architecture reviews — quarterly at minimum — with the engineering team</li>
+          <li>Budget for technical debt paydown: not all debt is bad, but unmanaged debt compounds</li>
+        </ul>
+        <div class="cl-pitfall">
+          <div class="cl-pitfall-l">⚠ Common Pitfall</div>
+          <p>The Big Rewrite. "Our codebase is a mess — let's start over with the right architecture." Rewrites take 2–3× longer than estimated, the new system acquires its own technical debt, and the business continues running on the old system the whole time. The Strangler Fig almost always beats the rewrite.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══ REFERENCE LINKS ═══ -->
+<section class="section" id="refs">
+  <div class="sh">
+    <div class="si-box si-b">📚</div>
+    <div class="sh-text">
+      <h2>Reference Links</h2>
+      <div class="ssub">// foundational reading for every practicing architect</div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <div class="ref-grid">
+    <div class="ref-card">
+      <div class="ref-cat">Patterns &amp; Principles</div>
+      <ul>
+        <li><a href="https://martinfowler.com/architecture/" target="_blank">Martin Fowler — Architecture Guide</a></li>
+        <li><a href="https://martinfowler.com/microservices/" target="_blank">Martin Fowler — Microservices Resource Guide</a></li>
+        <li><a href="https://microservices.io/patterns/" target="_blank">microservices.io — Pattern Catalogue</a></li>
+        <li><a href="https://www.oreilly.com/library/view/software-architecture-patterns/9781491971437/" target="_blank">Software Architecture Patterns (O'Reilly)</a></li>
+        <li><a href="https://docs.microsoft.com/azure/architecture/patterns/" target="_blank">Azure Architecture Patterns Catalogue</a></li>
+      </ul>
+    </div>
+    <div class="ref-card">
+      <div class="ref-cat">Domain-Driven Design</div>
+      <ul>
+        <li><a href="https://www.domainlanguage.com/ddd/" target="_blank">DDD Reference — Eric Evans</a></li>
+        <li><a href="https://martinfowler.com/bliki/BoundedContext.html" target="_blank">Martin Fowler — Bounded Context</a></li>
+        <li><a href="https://www.eventstorming.com/" target="_blank">EventStorming — Alberto Brandolini</a></li>
+        <li><a href="https://github.com/ddd-crew/bounded-context-canvas" target="_blank">Bounded Context Canvas (DDD Crew)</a></li>
+        <li><a href="https://martinfowler.com/bliki/AnemicDomainModel.html" target="_blank">Anemic Domain Model — Martin Fowler</a></li>
+      </ul>
+    </div>
+    <div class="ref-card">
+      <div class="ref-cat">Modular Monolith &amp; The Shift</div>
+      <ul>
+        <li><a href="https://www.fearofoblivion.com/build-a-modular-monolith-first" target="_blank">Build a Modular Monolith First</a></li>
+        <li><a href="https://shopify.engineering/shopify-monolith" target="_blank">Shopify — Deconstructing the Monolith</a></li>
+        <li><a href="https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90" target="_blank">Amazon Prime Video — 90% Cost Reduction</a></li>
+        <li><a href="https://dhh.dk/2020/majestic-monolith.html" target="_blank">DHH — The Majestic Monolith</a></li>
+        <li><a href="https://www.youtube.com/watch?v=LcJKxPXYudE" target="_blank">Sam Newman — Monolith to Microservices</a></li>
+      </ul>
+    </div>
+    <div class="ref-card">
+      <div class="ref-cat">Event-Driven &amp; Messaging</div>
+      <ul>
+        <li><a href="https://martinfowler.com/eaaDev/EventSourcing.html" target="_blank">Event Sourcing — Martin Fowler</a></li>
+        <li><a href="https://martinfowler.com/bliki/CQRS.html" target="_blank">CQRS — Martin Fowler</a></li>
+        <li><a href="https://microservices.io/patterns/data/saga.html" target="_blank">Saga Pattern — microservices.io</a></li>
+        <li><a href="https://microservices.io/patterns/data/transactional-outbox.html" target="_blank">Outbox Pattern — microservices.io</a></li>
+        <li><a href="https://cloudevents.io/" target="_blank">CloudEvents Specification</a></li>
+      </ul>
+    </div>
+    <div class="ref-card">
+      <div class="ref-cat">BFF &amp; API Patterns</div>
+      <ul>
+        <li><a href="https://samnewman.io/patterns/architectural/bff/" target="_blank">BFF Pattern — Sam Newman (original)</a></li>
+        <li><a href="https://martinfowler.com/articles/api-façade.html" target="_blank">API Façade Pattern</a></li>
+        <li><a href="https://graphql.org/learn/best-practices/" target="_blank">GraphQL Best Practices</a></li>
+        <li><a href="https://cloud.google.com/apis/design" target="_blank">Google API Design Guide</a></li>
+        <li><a href="https://www.asyncapi.com/" target="_blank">AsyncAPI — Event-Driven API Specs</a></li>
+      </ul>
+    </div>
+    <div class="ref-card">
+      <div class="ref-cat">Observability &amp; Reliability</div>
+      <ul>
+        <li><a href="https://opentelemetry.io/" target="_blank">OpenTelemetry — CNCF</a></li>
+        <li><a href="https://sre.google/books/" target="_blank">Google SRE Book (free)</a></li>
+        <li><a href="https://martinfowler.com/articles/patterns-of-distributed-systems/" target="_blank">Patterns of Distributed Systems</a></li>
+        <li><a href="https://c4model.com/" target="_blank">C4 Model — Architecture Diagrams</a></li>
+        <li><a href="https://adr.github.io/" target="_blank">Architecture Decision Records (ADR)</a></li>
+      </ul>
+    </div>
+    <div class="ref-card">
+      <div class="ref-cat">Team &amp; Organisation</div>
+      <ul>
+        <li><a href="https://teamtopologies.com/" target="_blank">Team Topologies (Skelton &amp; Pais)</a></li>
+        <li><a href="https://martinfowler.com/bliki/ConwaysLaw.html" target="_blank">Conway's Law — Martin Fowler</a></li>
+        <li><a href="https://www.thoughtworks.com/radar" target="_blank">ThoughtWorks Technology Radar</a></li>
+        <li><a href="https://netflixtechblog.com/" target="_blank">Netflix Tech Blog</a></li>
+        <li><a href="https://engineering.shopify.com/" target="_blank">Shopify Engineering Blog</a></li>
+      </ul>
+    </div>
+    <div class="ref-card">
+      <div class="ref-cat">Books</div>
+      <ul>
+        <li><a href="https://www.amazon.com/dp/0134494164" target="_blank">Clean Architecture — Robert Martin</a></li>
+        <li><a href="https://www.amazon.com/dp/1492086908" target="_blank">Monolith to Microservices — Sam Newman</a></li>
+        <li><a href="https://www.amazon.com/dp/0321125215" target="_blank">Domain-Driven Design — Eric Evans</a></li>
+        <li><a href="https://www.amazon.com/dp/1491950358" target="_blank">Building Microservices — Sam Newman</a></li>
+        <li><a href="https://www.amazon.com/dp/1492077542" target="_blank">Fundamentals of Software Architecture — Richards</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout c-info" style="margin-top:24px;">
+    <span class="ci">📌</span>
+    <div class="callout-body"><strong>Quick diagnostic:</strong> If you're evaluating your current architecture, run this thought experiment — "If I needed to change the billing logic, how many teams would I need to coordinate? How many services would I deploy? How long would it take?" The answer tells you whether your current architecture is enabling or impeding your team. There is no universal right answer — only what's right for your context.</div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+const sections = document.querySelectorAll('.section');
+const links = document.querySelectorAll('.sl');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+  });
+}, { rootMargin: '-58px 0px -72% 0px' });
+sections.forEach(s => s.id && observer.observe(s));
+</script>
+<script src="../scripts/handbook-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecOps Handbook — Security Operations Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles/shared-ui.css">
+<style>
+  :root {
+    --bg-base:        #0b0e13;
+    --bg-surface:     #11151e;
+    --bg-card:        #171b26;
+    --bg-code:        #0d1019;
+    --bg-sidebar:     #0f1219;
+    --border:         #1e2433;
+    --border-accent:  #2c3850;
+    --text-primary:   #e6eaf3;
+    --text-secondary: #8a94af;
+    --text-muted:     #48526a;
+    --accent-blue:    #4f8ef7;
+    --accent-cyan:    #22d3ee;
+    --accent-green:   #34d399;
+    --accent-orange:  #fb923c;
+    --accent-purple:  #a78bfa;
+    --accent-yellow:  #fbbf24;
+    --accent-red:     #f87171;
+    --accent-pink:    #f472b6;
+    --accent-teal:    #2dd4bf;
+    --hl-keyword:     #a78bfa;
+    --hl-string:      #34d399;
+    --hl-number:      #fb923c;
+    --hl-comment:     #48526a;
+    --hl-func:        #4f8ef7;
+    --hl-class:       #22d3ee;
+    --sidebar-w:      280px;
+    --top-h:          60px;
+    --radius:         8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ─── TOP BAR ─── */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: var(--top-h);
+    background: rgba(11,14,19,0.96);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+  }
+  .topbar-logo {
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700;
+    color: var(--text-primary); text-decoration: none; letter-spacing: -0.3px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px; border-radius: 7px;
+    background: linear-gradient(135deg, #0e4a8a 0%, #1d6fdb 50%, #4f8ef7 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800; color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .logo-sub { color: var(--text-secondary); font-weight: 400; font-size: 13px; margin-left: 4px; }
+  .topbar-meta { display: flex; align-items: center; gap: 14px; }
+  .badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 3px 10px; border-radius: 20px; letter-spacing: 0.5px; font-weight: 500;
+  }
+  .badge-blue   { background: rgba(79,142,247,0.15); color: var(--accent-blue);   border: 1px solid rgba(79,142,247,0.35); }
+  .badge-red    { background: rgba(248,113,113,0.13); color: var(--accent-red);   border: 1px solid rgba(248,113,113,0.3); }
+  .badge-green  { background: rgba(52,211,153,0.12);  color: var(--accent-green); border: 1px solid rgba(52,211,153,0.3); }
+
+  /* ─── LAYOUT ─── */
+  .layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    position: sticky; top: var(--top-h);
+    height: calc(100vh - var(--top-h));
+    overflow-y: auto; overflow-x: hidden;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    padding: 24px 0 40px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 4px; }
+  .sidebar-section { margin-bottom: 8px; }
+  .sidebar-section-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-muted); padding: 12px 20px 6px;
+  }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 20px; text-decoration: none;
+    color: var(--text-secondary); font-size: 13.5px; font-weight: 400;
+    border-left: 3px solid transparent; transition: all 0.18s; line-height: 1.3;
+  }
+  .sidebar-link:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); border-left-color: var(--border-accent); }
+  .sidebar-link.active { color: var(--accent-blue); background: rgba(79,142,247,0.08); border-left-color: var(--accent-blue); font-weight: 500; }
+  .sidebar-link .icon { font-size: 14px; opacity: 0.85; width: 16px; text-align: center; }
+
+  /* ─── MAIN ─── */
+  .main { flex: 1; min-width: 0; padding: 48px 56px 80px; max-width: 960px; }
+
+  /* ─── HERO ─── */
+  .hero {
+    margin-bottom: 60px; padding: 48px 52px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 85% 0%,   rgba(79,142,247,0.12) 0%, transparent 55%),
+      radial-gradient(ellipse at 10% 100%,  rgba(248,113,113,0.07) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent-blue); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hero-tag::before { content: '//'; opacity: 0.45; }
+  .hero h1 {
+    font-family: 'Sora', sans-serif; font-size: 38px; font-weight: 700;
+    line-height: 1.15; letter-spacing: -1px; margin-bottom: 16px;
+    background: linear-gradient(135deg, #e6eaf3 30%, #4f8ef7 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero p { color: var(--text-secondary); font-size: 16px; max-width: 580px; line-height: 1.7; }
+  .hero-chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+  .chip {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    padding: 5px 14px; border-radius: 6px; border: 1px solid;
+  }
+  .chip-blue   { color: var(--accent-blue);   border-color: rgba(79,142,247,0.35);  background: rgba(79,142,247,0.08); }
+  .chip-green  { color: var(--accent-green);  border-color: rgba(52,211,153,0.35);  background: rgba(52,211,153,0.08); }
+  .chip-red    { color: var(--accent-red);    border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.08); }
+  .chip-purple { color: var(--accent-purple); border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.08); }
+  .chip-cyan   { color: var(--accent-cyan);   border-color: rgba(34,211,238,0.35);  background: rgba(34,211,238,0.08); }
+  .chip-orange { color: var(--accent-orange); border-color: rgba(251,146,60,0.35);  background: rgba(251,146,60,0.08); }
+  .chip-yellow { color: var(--accent-yellow); border-color: rgba(251,191,36,0.35);  background: rgba(251,191,36,0.08); }
+  .chip-teal   { color: var(--accent-teal);   border-color: rgba(45,212,191,0.35);  background: rgba(45,212,191,0.08); }
+
+  /* ─── SECTIONS ─── */
+  .section { margin-bottom: 64px; scroll-margin-top: calc(var(--top-h) + 24px); }
+  .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+  .section-icon {
+    width: 38px; height: 38px; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .icon-blue   { background: rgba(79,142,247,0.15); }
+  .icon-cyan   { background: rgba(34,211,238,0.15); }
+  .icon-green  { background: rgba(52,211,153,0.15); }
+  .icon-orange { background: rgba(251,146,60,0.15); }
+  .icon-purple { background: rgba(167,139,250,0.15); }
+  .icon-red    { background: rgba(248,113,113,0.15); }
+  .icon-yellow { background: rgba(251,191,36,0.15); }
+  .icon-teal   { background: rgba(45,212,191,0.15); }
+  .icon-pink   { background: rgba(244,114,182,0.15); }
+
+  .section-title-wrap h2 {
+    font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700;
+    letter-spacing: -0.3px; color: var(--text-primary);
+  }
+  .section-title-wrap .section-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .section-divider { height: 1px; background: linear-gradient(to right, var(--border), transparent); margin-bottom: 28px; }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px 26px; margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 600;
+    color: var(--text-primary); margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot-blue   { background: var(--accent-blue); }
+  .dot-green  { background: var(--accent-green); }
+  .dot-orange { background: var(--accent-orange); }
+  .dot-purple { background: var(--accent-purple); }
+  .dot-cyan   { background: var(--accent-cyan); }
+  .dot-red    { background: var(--accent-red); }
+  .dot-yellow { background: var(--accent-yellow); }
+  .dot-teal   { background: var(--accent-teal); }
+  .dot-pink   { background: var(--accent-pink); }
+
+  .card p, .card li { color: var(--text-secondary); font-size: 14px; }
+  .card ul { padding-left: 18px; }
+  .card ul li { margin-bottom: 5px; }
+
+  /* ─── CODE BLOCKS ─── */
+  .code-wrap {
+    background: var(--bg-code); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin: 16px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .code-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 18px; background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-lang { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+  .copy-btn {
+    font-size: 11px; color: var(--text-muted); background: none;
+    border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px;
+    cursor: pointer; font-family: inherit; transition: all 0.2s;
+  }
+  .copy-btn:hover { color: var(--accent-blue); border-color: var(--accent-blue); }
+  .code-block { padding: 18px 20px; overflow-x: auto; font-size: 13px; line-height: 1.7; white-space: pre; tab-size: 4; }
+
+  /* syntax highlight */
+  .kw { color: var(--hl-keyword); }
+  .st { color: var(--hl-string); }
+  .nm { color: var(--hl-number); }
+  .cm { color: var(--hl-comment); font-style: italic; }
+  .fn { color: var(--hl-func); }
+  .cl { color: var(--hl-class); }
+  .im { color: var(--accent-pink); }
+  .op { color: var(--text-muted); }
+  .at { color: var(--accent-yellow); }
+  .va { color: var(--accent-teal); }
+
+  /* ─── INFO BOXES ─── */
+  .info-box {
+    display: flex; gap: 14px; padding: 16px 20px;
+    border-radius: var(--radius); margin: 16px 0; border-left: 4px solid;
+  }
+  .info-box.tip    { background: rgba(52,211,153,0.08);  border-color: var(--accent-green); }
+  .info-box.note   { background: rgba(79,142,247,0.08);  border-color: var(--accent-blue); }
+  .info-box.warn   { background: rgba(251,146,60,0.08);  border-color: var(--accent-orange); }
+  .info-box.danger { background: rgba(248,113,113,0.08); border-color: var(--accent-red); }
+  .info-box.perf   { background: rgba(167,139,250,0.08); border-color: var(--accent-purple); }
+  .info-box.new    { background: rgba(34,211,238,0.08);  border-color: var(--accent-cyan); }
+  .info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .info-content { font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; }
+  .info-content strong { color: var(--text-primary); }
+
+  /* ─── INLINE CODE ─── */
+  code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+    background: rgba(79,142,247,0.1); color: var(--accent-blue);
+    padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(79,142,247,0.2);
+  }
+
+  /* ─── GRID ─── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  /* ─── TABLE ─── */
+  .ref-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .ref-table th {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-muted); padding: 10px 16px;
+    text-align: left; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border);
+  }
+  .ref-table td {
+    padding: 11px 16px; font-size: 13.5px; color: var(--text-secondary);
+    border-bottom: 1px solid rgba(30,36,51,0.6); vertical-align: top;
+  }
+  .ref-table tr:last-child td { border-bottom: none; }
+  .ref-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .ref-table td code { font-size: 11.5px; }
+  .method-name { color: var(--accent-blue); font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+
+  /* ─── SEVERITY PILLS ─── */
+  .sev {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 2px 9px; border-radius: 20px; letter-spacing: 0.5px; white-space: nowrap;
+  }
+  .sev-critical { background: rgba(248,113,113,0.18); color: #fca5a5; border: 1px solid rgba(248,113,113,0.3); }
+  .sev-high     { background: rgba(251,146,60,0.15);  color: #fdba74; border: 1px solid rgba(251,146,60,0.3); }
+  .sev-medium   { background: rgba(251,191,36,0.13);  color: #fcd34d; border: 1px solid rgba(251,191,36,0.3); }
+  .sev-low      { background: rgba(52,211,153,0.12);  color: #6ee7b7; border: 1px solid rgba(52,211,153,0.25); }
+  .sev-info     { background: rgba(79,142,247,0.12);  color: #93c5fd; border: 1px solid rgba(79,142,247,0.25); }
+
+  /* ─── RULE CARDS ─── */
+  .rule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 14px 0; }
+  .rule-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+  }
+  .rule-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    color: var(--accent-blue); background: rgba(79,142,247,0.12);
+    padding: 1px 8px; border-radius: 10px; margin-bottom: 8px; display: inline-block; letter-spacing: 0.05em;
+  }
+  .rule-num.must   { color: var(--accent-red);    background: rgba(248,113,113,0.12); }
+  .rule-num.should { color: var(--accent-orange);  background: rgba(251,146,60,0.12); }
+  .rule-num.avoid  { color: var(--accent-green);   background: rgba(52,211,153,0.10); }
+  .rule-title { font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 5px; }
+  .rule-body  { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* ─── PHASE TIMELINE ─── */
+  .phases { display: flex; gap: 0; margin: 20px 0; }
+  .phase {
+    flex: 1; padding: 16px 14px; position: relative;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-right: none; text-align: center;
+  }
+  .phase:first-child { border-radius: 8px 0 0 8px; }
+  .phase:last-child  { border-right: 1px solid var(--border); border-radius: 0 8px 8px 0; }
+  .phase-num   { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+  .phase-name  { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .phase-sub   { font-size: 11px; color: var(--text-muted); }
+  .phase.p-red    { border-top: 2px solid var(--accent-red); }
+  .phase.p-orange { border-top: 2px solid var(--accent-orange); }
+  .phase.p-yellow { border-top: 2px solid var(--accent-yellow); }
+  .phase.p-green  { border-top: 2px solid var(--accent-green); }
+  .phase.p-blue   { border-top: 2px solid var(--accent-blue); }
+  .phase.p-purple { border-top: 2px solid var(--accent-purple); }
+  .phase.p-teal   { border-top: 2px solid var(--accent-teal); }
+
+  /* ─── PROSE ─── */
+  .section p { color: var(--text-secondary); margin-bottom: 14px; font-size: 14.5px; }
+  h3 { font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 28px 0 12px; }
+  h4 { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin: 20px 0 8px; }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 6px; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { padding: 32px 24px 60px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .hero { padding: 32px 28px; }
+    .hero h1 { font-size: 28px; }
+    .phases { flex-direction: column; }
+    .phase { border-right: 1px solid var(--border); border-bottom: none; border-radius: 0; }
+    .phase:first-child { border-radius: 8px 8px 0 0; }
+    .phase:last-child { border-bottom: 1px solid var(--border); border-radius: 0 0 8px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="floating-actions">
+  <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"></path><path d="M9 12h10"></path></svg>
+  </a>
+</div>
+
+<!-- ═══════════ TOP BAR ═══════════ -->
+<header class="topbar">
+  <a class="topbar-logo" href="#">
+    <div class="logo-icon">SO</div>
+    <span>SecOps</span>
+    <span class="logo-sub">Handbook</span>
+  </a>
+  <div class="topbar-meta">
+    <span class="badge badge-red">Threat Detection</span>
+    <span class="badge badge-blue">Incident Response</span>
+    <span class="badge badge-green">Zero Trust</span>
+  </div>
+</header>
+
+<!-- ═══════════ LAYOUT ═══════════ -->
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Foundations</div>
+    <a href="#intro"      class="sidebar-link active"><span class="icon">🛡️</span> Introduction</a>
+    <a href="#frameworks" class="sidebar-link"><span class="icon">📐</span> Security Frameworks</a>
+    <a href="#threat"     class="sidebar-link"><span class="icon">🎯</span> Threat Modeling</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Identity &amp; Access</div>
+    <a href="#iam"        class="sidebar-link"><span class="icon">🔑</span> IAM &amp; Zero Trust</a>
+    <a href="#authn"      class="sidebar-link"><span class="icon">🔒</span> Authentication</a>
+    <a href="#authz"      class="sidebar-link"><span class="icon">🎛️</span> Authorization &amp; RBAC</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Detection &amp; Monitoring</div>
+    <a href="#siem"       class="sidebar-link"><span class="icon">📡</span> SIEM &amp; Logging</a>
+    <a href="#detection"  class="sidebar-link"><span class="icon">🔍</span> Detection Engineering</a>
+    <a href="#vuln"       class="sidebar-link"><span class="icon">🩺</span> Vulnerability Management</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Incident Response</div>
+    <a href="#ir"         class="sidebar-link"><span class="icon">🚨</span> IR Lifecycle</a>
+    <a href="#playbooks"  class="sidebar-link"><span class="icon">📋</span> Playbooks</a>
+    <a href="#forensics"  class="sidebar-link"><span class="icon">🔬</span> Digital Forensics</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Secure Development</div>
+    <a href="#ssdlc"      class="sidebar-link"><span class="icon">🏗️</span> Secure SDLC</a>
+    <a href="#secrets"    class="sidebar-link"><span class="icon">🗝️</span> Secrets Management</a>
+    <a href="#network"    class="sidebar-link"><span class="icon">🌐</span> Network Security</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Compliance &amp; Reference</div>
+    <a href="#compliance" class="sidebar-link"><span class="icon">📜</span> Compliance &amp; GRC</a>
+    <a href="#cloud"      class="sidebar-link"><span class="icon">☁️</span> Cloud Security</a>
+    <a href="#cheatsheet" class="sidebar-link"><span class="icon">🗒️</span> Quick Reference</a>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag">Security Operations Reference</div>
+    <h1>SecOps<br>Handbook</h1>
+    <p>A comprehensive reference for security engineers, analysts, and architects — covering threat modeling, identity, detection engineering, incident response, secure development, and cloud security operations.</p>
+    <div class="hero-chips">
+      <span class="chip chip-red">Threat Detection</span>
+      <span class="chip chip-blue">Incident Response</span>
+      <span class="chip chip-purple">Zero Trust</span>
+      <span class="chip chip-green">Secure SDLC</span>
+      <span class="chip chip-cyan">SIEM &amp; Logging</span>
+      <span class="chip chip-orange">Vulnerability Mgmt</span>
+      <span class="chip chip-teal">Cloud Security</span>
+      <span class="chip chip-yellow">Compliance</span>
+    </div>
+  </div>
+
+  <!-- ══════ INTRODUCTION ══════ -->
+  <section class="section" id="intro">
+    <div class="section-header">
+      <div class="section-icon icon-blue">🛡️</div>
+      <div class="section-title-wrap">
+        <h2>Introduction</h2>
+        <div class="section-sub">What SecOps is, the defender's mindset, and core operating principles</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>Security Operations (SecOps) is the discipline of continuously protecting organizational assets through detection, response, and prevention. It bridges security engineering with real-time operational work — threat hunting, alert triage, incident handling, and security posture management.</p>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-red"></span>Assume Breach</div>
+        <p>Operate as if adversaries are already inside. Focus on detection and lateral movement prevention, not just perimeter defense. Minimize blast radius.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>Defense in Depth</div>
+        <p>Layer independent security controls so that failure of any single control does not result in full compromise. No single point of trust or failure.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>Least Privilege</div>
+        <p>Every identity, system, and process gets the minimum access required to function. Reduce attack surface by eliminating standing privilege.</p>
+      </div>
+    </div>
+
+    <div class="info-box new">
+      <div class="info-icon">🔵</div>
+      <div class="info-content"><strong>Modern SecOps:</strong> The shift to cloud-native, distributed architectures means traditional perimeter-based security is insufficient. Modern SecOps combines Zero Trust architecture, infrastructure-as-code security scanning, behavioral analytics (UEBA), and automated response (SOAR) to operate at cloud scale.</div>
+    </div>
+  </section>
+
+  <!-- ══════ FRAMEWORKS ══════ -->
+  <section class="section" id="frameworks">
+    <div class="section-header">
+      <div class="section-icon icon-purple">📐</div>
+      <div class="section-title-wrap">
+        <h2>Security Frameworks</h2>
+        <div class="section-sub">NIST CSF, MITRE ATT&amp;CK, CIS Controls — know which framework to use when</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>NIST CSF 2.0</div>
+        <p>The Cybersecurity Framework organizes controls around six functions for communicating posture to leadership and boards.</p>
+        <ul>
+          <li><strong>Govern</strong> — Policies, roles, risk management strategy</li>
+          <li><strong>Identify</strong> — Assets, vulnerabilities, risk assessment</li>
+          <li><strong>Protect</strong> — Safeguards, access control, awareness</li>
+          <li><strong>Detect</strong> — Anomalies, monitoring, detection processes</li>
+          <li><strong>Respond</strong> — Response planning, communications, analysis</li>
+          <li><strong>Recover</strong> — Recovery planning, improvements</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-red"></span>MITRE ATT&amp;CK</div>
+        <p>A globally-accessible knowledge base of adversary TTPs (Tactics, Techniques, Procedures) based on real-world observations.</p>
+        <ul>
+          <li><strong>Use for:</strong> Detection coverage mapping, red team planning</li>
+          <li><strong>14 Tactics:</strong> Recon → Initial Access → Execution → Persistence → Privilege Escalation → Defense Evasion → Credential Access → Discovery → Lateral Movement → Collection → C2 → Exfiltration → Impact</li>
+          <li><code>attack.mitre.org</code> — full technique catalog</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-orange"></span>CIS Controls v8</div>
+        <p>18 prioritized controls providing prescriptive, actionable hardening guidance. Organized into three Implementation Groups (IG1–IG3) by organizational maturity. Essential starting point for SMBs and enterprises alike.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>OWASP Top 10 / ASVS</div>
+        <p>Application Security Verification Standard (ASVS) provides testable requirements for web app security. Top 10 is the minimal checklist for any web-facing service. Use ASVS Level 2 as the baseline for production applications.</p>
+      </div>
+    </div>
+
+    <table class="ref-table">
+      <thead><tr><th>Framework</th><th>Best For</th><th>Output</th></tr></thead>
+      <tbody>
+        <tr><td class="method-name">NIST CSF 2.0</td><td>Executive communication, overall program assessment</td><td>Maturity tiers, function coverage score</td></tr>
+        <tr><td class="method-name">MITRE ATT&amp;CK</td><td>Detection coverage gap analysis, adversary emulation</td><td>Coverage heatmap, detection rules</td></tr>
+        <tr><td class="method-name">CIS Controls v8</td><td>Baseline hardening, audit preparation</td><td>IG1/2/3 checklist completion</td></tr>
+        <tr><td class="method-name">STRIDE</td><td>Application threat modeling in design phase</td><td>Threat list per component</td></tr>
+        <tr><td class="method-name">PASTA</td><td>Risk-based application threat modeling</td><td>Attack simulation, risk scores</td></tr>
+        <tr><td class="method-name">ISO/IEC 27001</td><td>Certification, third-party trust</td><td>ISMS, Statement of Applicability</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════ THREAT MODELING ══════ -->
+  <section class="section" id="threat">
+    <div class="section-header">
+      <div class="section-icon icon-red">🎯</div>
+      <div class="section-title-wrap">
+        <h2>Threat Modeling</h2>
+        <div class="section-sub">STRIDE, data flow diagrams, and the four-question framework</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>Threat modeling is a structured process to identify, enumerate, and prioritize threats against a system before — and after — it is built. The goal is to answer: <em>What can go wrong, and what are we doing about it?</em></p>
+
+    <div class="phases">
+      <div class="phase p-blue">
+        <div class="phase-num">01</div>
+        <div class="phase-name">Scope</div>
+        <div class="phase-sub">Define system boundaries, actors, entry points</div>
+      </div>
+      <div class="phase p-purple">
+        <div class="phase-num">02</div>
+        <div class="phase-name">Decompose</div>
+        <div class="phase-sub">Draw DFDs, identify trust boundaries</div>
+      </div>
+      <div class="phase p-orange">
+        <div class="phase-num">03</div>
+        <div class="phase-name">Identify</div>
+        <div class="phase-sub">Apply STRIDE per component</div>
+      </div>
+      <div class="phase p-red">
+        <div class="phase-num">04</div>
+        <div class="phase-name">Rate</div>
+        <div class="phase-sub">Score with DREAD or CVSS</div>
+      </div>
+      <div class="phase p-green">
+        <div class="phase-num">05</div>
+        <div class="phase-name">Mitigate</div>
+        <div class="phase-sub">Controls, design changes, accepted risks</div>
+      </div>
+      <div class="phase p-teal">
+        <div class="phase-num">06</div>
+        <div class="phase-name">Validate</div>
+        <div class="phase-sub">Review, test, iterate per sprint</div>
+      </div>
+    </div>
+
+    <h3>STRIDE categories</h3>
+    <table class="ref-table">
+      <thead><tr><th>Letter</th><th>Threat</th><th>Violates</th><th>Example</th><th>Mitigations</th></tr></thead>
+      <tbody>
+        <tr><td class="method-name">S</td><td>Spoofing</td><td>Authentication</td><td>Impersonate a user or service</td><td>MFA, mutual TLS, signed tokens</td></tr>
+        <tr><td class="method-name">T</td><td>Tampering</td><td>Integrity</td><td>Modify data in transit or at rest</td><td>HMAC, digital signatures, TLS</td></tr>
+        <tr><td class="method-name">R</td><td>Repudiation</td><td>Non-repudiation</td><td>Deny performing an action</td><td>Audit logs, signed transactions</td></tr>
+        <tr><td class="method-name">I</td><td>Information Disclosure</td><td>Confidentiality</td><td>Expose sensitive data</td><td>Encryption, ACLs, data classification</td></tr>
+        <tr><td class="method-name">D</td><td>Denial of Service</td><td>Availability</td><td>Exhaust resources</td><td>Rate limiting, auto-scaling, WAF</td></tr>
+        <tr><td class="method-name">E</td><td>Elevation of Privilege</td><td>Authorization</td><td>Gain unauthorized permissions</td><td>Least privilege, input validation, RBAC</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box tip">
+      <div class="info-icon">✅</div>
+      <div class="info-content"><strong>Shift left:</strong> Run threat modeling in sprint 0 or during design review — not after code is written. Fixing a design flaw costs 10× less than patching a deployed vulnerability. Use <code>OWASP Threat Dragon</code> or <code>Microsoft TMT</code> for DFD tooling.</div>
+    </div>
+  </section>
+
+  <!-- ══════ IAM ══════ -->
+  <section class="section" id="iam">
+    <div class="section-header">
+      <div class="section-icon icon-cyan">🔑</div>
+      <div class="section-title-wrap">
+        <h2>IAM &amp; Zero Trust</h2>
+        <div class="section-sub">Identity is the new perimeter — never trust, always verify</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>Zero Trust Pillars</div>
+        <ul>
+          <li>Verify every request explicitly</li>
+          <li>Use least-privilege access</li>
+          <li>Assume breach — segment, monitor, encrypt</li>
+          <li>Evaluate: Identity, Device, Network, App, Data</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-purple"></span>Identity Hygiene</div>
+        <ul>
+          <li>No shared accounts or service accounts with human names</li>
+          <li>Enforce MFA for all human identities</li>
+          <li>Regular access reviews (quarterly for privileged)</li>
+          <li>Disable stale accounts within 24 hours of offboarding</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-teal"></span>Privileged Access</div>
+        <ul>
+          <li>Just-in-Time (JIT) access — no standing admin</li>
+          <li>Privileged Access Workstations (PAW) for admins</li>
+          <li>Break-glass accounts: vaulted, monitored, rotated</li>
+          <li>Record all privileged sessions</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Zero Trust maturity levels (CISA)</h3>
+    <table class="ref-table">
+      <thead><tr><th>Pillar</th><th>Traditional</th><th>Initial</th><th>Advanced</th><th>Optimal</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Identity</strong></td><td>Passwords only</td><td>MFA deployed</td><td>Risk-based auth, phishing-resistant MFA</td><td>Continuous validation, behavior analytics</td></tr>
+        <tr><td><strong>Devices</strong></td><td>Unknown endpoints</td><td>MDM enrolled</td><td>Compliance posture gates access</td><td>Real-time health signals, auto-remediation</td></tr>
+        <tr><td><strong>Network</strong></td><td>Flat network, VPN</td><td>Micro-segmentation started</td><td>Encrypted east-west, service mesh</td><td>Identity-aware network, no implicit trust</td></tr>
+        <tr><td><strong>Applications</strong></td><td>On-prem, VPN-gated</td><td>SSO, MFA on critical apps</td><td>App-level authz, CASB</td><td>Least-priv API access, continuous monitoring</td></tr>
+        <tr><td><strong>Data</strong></td><td>Perimeter encryption only</td><td>Data classification</td><td>DLP controls, encryption at rest</td><td>Object-level encryption, auto-classification</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════ AUTHENTICATION ══════ -->
+  <section class="section" id="authn">
+    <div class="section-header">
+      <div class="section-icon icon-orange">🔒</div>
+      <div class="section-title-wrap">
+        <h2>Authentication</h2>
+        <div class="section-sub">MFA, passkeys, token standards, and session security</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>MFA Hierarchy (strongest → weakest)</div>
+        <ul>
+          <li>🥇 <strong>FIDO2 / Passkeys</strong> — phishing-resistant, hardware-bound</li>
+          <li>🥈 <strong>Hardware security keys</strong> (YubiKey) — FIDO U2F/CTAP</li>
+          <li>🥉 <strong>TOTP apps</strong> (Authenticator) — susceptible to real-time phishing</li>
+          <li>⚠️ <strong>Push notifications</strong> — MFA fatigue attack vector</li>
+          <li>❌ <strong>SMS OTP</strong> — SIM-swap, SS7 attacks</li>
+          <li>❌ <strong>Email OTP</strong> — account takeover chain risk</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>JWT / OAuth 2.0 / OIDC</div>
+        <ul>
+          <li>Sign JWTs with RS256 or ES256 — never HS256 in multi-party systems</li>
+          <li>Validate <code>iss</code>, <code>aud</code>, <code>exp</code>, <code>nbf</code> on every request</li>
+          <li>Short-lived access tokens (15m–1h), longer refresh tokens</li>
+          <li>Rotate refresh tokens on use (rotation + reuse detection)</li>
+          <li>Use PKCE for all public OAuth clients</li>
+          <li>Never store tokens in <code>localStorage</code> — prefer <code>httpOnly</code> cookies</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">JWT validation checklist</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Required validations on every token verification</span>
+<span class="cm"># 1. Signature</span>
+<span class="va">alg</span> = header[<span class="st">'alg'</span>]   <span class="cm"># Must be in allowlist — reject 'none', 'HS256' if RS key expected</span>
+verify_signature(token, public_key)
+
+<span class="cm"># 2. Claims</span>
+assert claims[<span class="st">'iss'</span>] == EXPECTED_ISSUER      <span class="cm"># issuer</span>
+assert claims[<span class="st">'aud'</span>] == MY_CLIENT_ID          <span class="cm"># audience</span>
+assert claims[<span class="st">'exp'</span>] > now()                  <span class="cm"># not expired</span>
+assert claims[<span class="st">'nbf'</span>] &lt;= now()                  <span class="cm"># not before</span>
+assert claims[<span class="st">'iat'</span>] &lt; now() + CLOCK_SKEW       <span class="cm"># issued at (allow ~5 min skew)</span>
+
+<span class="cm"># 3. Revocation (if needed)</span>
+assert token_id <span class="kw">not in</span> revocation_cache       <span class="cm"># check jti against blocklist</span></div>
+    </div>
+
+    <div class="info-box warn">
+      <div class="info-icon">⚠️</div>
+      <div class="info-content"><strong>Algorithm confusion attacks:</strong> Always enforce the expected algorithm server-side. Never trust the <code>alg</code> header alone. An attacker can switch from RS256 to HS256 and sign with the public key as the secret if the server blindly accepts the header's algorithm claim.</div>
+    </div>
+  </section>
+
+  <!-- ══════ AUTHZ ══════ -->
+  <section class="section" id="authz">
+    <div class="section-header">
+      <div class="section-icon icon-purple">🎛️</div>
+      <div class="section-title-wrap">
+        <h2>Authorization &amp; RBAC</h2>
+        <div class="section-sub">RBAC, ABAC, ReBAC — choosing and implementing access control</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <table class="ref-table">
+      <thead><tr><th>Model</th><th>Description</th><th>Best For</th><th>Complexity</th></tr></thead>
+      <tbody>
+        <tr><td class="method-name">RBAC</td><td>Role-Based: permissions assigned to roles, roles to users</td><td>Enterprise apps with clear job functions</td><td>Low</td></tr>
+        <tr><td class="method-name">ABAC</td><td>Attribute-Based: policies using user, resource, and environment attributes</td><td>Fine-grained, context-sensitive access (e.g., "only during business hours")</td><td>High</td></tr>
+        <tr><td class="method-name">ReBAC</td><td>Relationship-Based: access based on graph relationships (e.g., Google Zanzibar)</td><td>Hierarchical data, social/collaboration apps</td><td>Medium</td></tr>
+        <tr><td class="method-name">PBAC</td><td>Policy-Based: centralized policy engine (e.g., OPA, Cedar)</td><td>Multi-service, complex logic, audit trails</td><td>Medium</td></tr>
+      </tbody>
+    </table>
+
+    <div class="rule-grid">
+      <div class="rule-card">
+        <div class="rule-num must">MUST</div>
+        <div class="rule-title">Enforce server-side always</div>
+        <div class="rule-body">Authorization checks on the server. Never rely on UI to hide controls — assume the client is hostile. Check on every request, not just at login.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MUST</div>
+        <div class="rule-title">Deny by default</div>
+        <div class="rule-body">Default to "deny all" and explicitly allow. An unconfigured permission must result in denial, not access.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num should">SHOULD</div>
+        <div class="rule-title">Centralize policy</div>
+        <div class="rule-body">Use a policy engine (OPA, Cedar, Casbin) rather than scattered <code>if</code> checks throughout code. Centralization enables auditing and consistent enforcement.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num avoid">AVOID</div>
+        <div class="rule-title">IDOR vulnerabilities</div>
+        <div class="rule-body">Always verify the requesting user owns or has access to the requested resource ID. Never assume a valid session means access to any object ID.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SIEM ══════ -->
+  <section class="section" id="siem">
+    <div class="section-header">
+      <div class="section-icon icon-teal">📡</div>
+      <div class="section-title-wrap">
+        <h2>SIEM &amp; Logging</h2>
+        <div class="section-sub">What to log, log quality, and SIEM query patterns</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>The logging imperative: security logs you must have</h3>
+    <table class="ref-table">
+      <thead><tr><th>Source</th><th>Critical Events</th><th>Retention</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Authentication</strong></td><td>Login success/fail, MFA events, password reset, account lock, token issued/revoked</td><td>1 year</td></tr>
+        <tr><td><strong>Authorization</strong></td><td>Access granted/denied, privilege escalation, role changes</td><td>1 year</td></tr>
+        <tr><td><strong>Network</strong></td><td>Firewall accepts/drops, DNS queries, VPN connections, unusual egress</td><td>90 days</td></tr>
+        <tr><td><strong>Endpoints</strong></td><td>Process creation (EventID 4688), script execution, driver load, USB events</td><td>90 days</td></tr>
+        <tr><td><strong>Cloud API</strong></td><td>All control-plane actions (CloudTrail, Activity Log), IAM changes</td><td>1 year</td></tr>
+        <tr><td><strong>Applications</strong></td><td>Errors, input validation failures, admin actions, data exports</td><td>90 days</td></tr>
+        <tr><td><strong>Data access</strong></td><td>Access to sensitive datasets, bulk downloads, schema changes</td><td>1 year</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Log quality standards</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">JSON — structured log event</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="at">"timestamp"</span>:  <span class="st">"2025-03-14T09:26:53.412Z"</span>,   <span class="cm">// ISO 8601 UTC — always</span>
+  <span class="at">"level"</span>:       <span class="st">"WARN"</span>,
+  <span class="at">"event_type"</span>:  <span class="st">"auth.login_failed"</span>,             <span class="cm">// structured taxonomy</span>
+  <span class="at">"actor"</span>: {
+    <span class="at">"user_id"</span>:   <span class="st">"usr_9k2xz"</span>,
+    <span class="at">"ip"</span>:        <span class="st">"198.51.100.42"</span>,
+    <span class="at">"user_agent"</span>: <span class="st">"Mozilla/5.0 ..."</span>
+  },
+  <span class="at">"resource"</span>: {
+    <span class="at">"type"</span>:     <span class="st">"console"</span>,
+    <span class="at">"service"</span>:  <span class="st">"auth-service"</span>
+  },
+  <span class="at">"outcome"</span>:     <span class="st">"failure"</span>,
+  <span class="at">"reason"</span>:      <span class="st">"invalid_password"</span>,
+  <span class="at">"request_id"</span>:  <span class="st">"req_abc123"</span>,            <span class="cm">// trace correlation ID</span>
+  <span class="at">"session_id"</span>:  <span class="st">"sess_xyz789"</span>
+}
+
+<span class="cm"># Anti-patterns in logs:</span>
+<span class="cm"># ❌ "User login failed"                        — unstructured, not queryable</span>
+<span class="cm"># ❌ Logging passwords, tokens, PII in plaintext — data leakage</span>
+<span class="cm"># ❌ Local timestamps without timezone           — correlation nightmare</span>
+<span class="cm"># ❌ Inconsistent field names (userId vs user_id) — schema chaos</span></div>
+    </div>
+
+    <h3>Common SIEM detection queries (Splunk / KQL patterns)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">KQL — Microsoft Sentinel</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// Brute force detection — 10+ failures in 5 min</span>
+<span class="fn">SigninLogs</span>
+| <span class="kw">where</span> ResultType <span class="op">!=</span> <span class="st">"0"</span>
+| <span class="fn">summarize</span> FailCount=<span class="fn">count</span>() <span class="kw">by</span> UserPrincipalName, IPAddress, <span class="fn">bin</span>(TimeGenerated, <span class="nm">5m</span>)
+| <span class="kw">where</span> FailCount <span class="op">>=</span> <span class="nm">10</span>
+| <span class="fn">project</span> TimeGenerated, UserPrincipalName, IPAddress, FailCount
+
+<span class="cm">// Impossible travel — same user from 2 countries within 1 hour</span>
+<span class="fn">SigninLogs</span>
+| <span class="kw">where</span> ResultType == <span class="st">"0"</span>
+| <span class="fn">summarize</span> Locations=<span class="fn">make_set</span>(Location) <span class="kw">by</span> UserPrincipalName, <span class="fn">bin</span>(TimeGenerated, <span class="nm">1h</span>)
+| <span class="kw">where</span> <span class="fn">array_length</span>(Locations) <span class="op">></span> <span class="nm">1</span>
+
+<span class="cm">// New admin account created outside business hours</span>
+<span class="fn">AuditLogs</span>
+| <span class="kw">where</span> OperationName == <span class="st">"Add member to role"</span>
+    <span class="op">and</span> TargetResources[<span class="nm">0</span>].displayName <span class="fn">contains</span> <span class="st">"Admin"</span>
+    <span class="op">and</span> (<span class="fn">hourofday</span>(TimeGenerated) <span class="op">&lt;</span> <span class="nm">8</span> <span class="op">or</span> <span class="fn">hourofday</span>(TimeGenerated) <span class="op">></span> <span class="nm">18</span>)
+
+<span class="cm">// Mass data export — user downloads >100 files in 1 hour</span>
+<span class="fn">OfficeActivity</span>
+| <span class="kw">where</span> Operation <span class="kw">in</span> (<span class="st">"FileDownloaded"</span>, <span class="st">"FileSyncDownloadedFull"</span>)
+| <span class="fn">summarize</span> Downloads=<span class="fn">count</span>() <span class="kw">by</span> UserId, <span class="fn">bin</span>(TimeGenerated, <span class="nm">1h</span>)
+| <span class="kw">where</span> Downloads <span class="op">></span> <span class="nm">100</span></div>
+    </div>
+  </section>
+
+  <!-- ══════ DETECTION ENGINEERING ══════ -->
+  <section class="section" id="detection">
+    <div class="section-header">
+      <div class="section-icon icon-orange">🔍</div>
+      <div class="section-title-wrap">
+        <h2>Detection Engineering</h2>
+        <div class="section-sub">Detection-as-code, Sigma rules, alert quality, and the detection lifecycle</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>Detection engineering is the practice of creating, testing, deploying, and maintaining security detections as code — with the same rigor as software engineering. Every detection should have a clear hypothesis, test cases, and documented false positive rate.</p>
+
+    <h3>Detection quality metrics</h3>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>True Positive Rate</div>
+        <p>Percentage of alerts that are genuine threats. Target: &gt;40% for operational detections. Low TPR = alert fatigue and missed detections.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-orange"></span>Mean Time to Detect</div>
+        <p>Average time from attacker action to alert firing. Target: &lt;15 minutes for high-severity TTPs. Benchmark against MITRE ATT&amp;CK technique dwell times.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>Detection Coverage</div>
+        <p>Percentage of MITRE ATT&amp;CK techniques with at least one active detection. Track per tactic to identify blind spots (Common gap: Credential Access, Defense Evasion).</p>
+      </div>
+    </div>
+
+    <h3>Sigma rule — portable detection format</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">YAML — Sigma rule</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">title:</span> <span class="st">Suspicious PowerShell Encoded Command Execution</span>
+<span class="at">id:</span> <span class="st">7f92d827-4c5d-4e7a-9b93-2f5c1ae4c823</span>
+<span class="at">status:</span> <span class="st">production</span>
+<span class="at">description:</span> <span class="st">Detects PowerShell execution with base64 encoded command — common in malware and fileless attacks</span>
+<span class="at">references:</span>
+  - <span class="st">https://attack.mitre.org/techniques/T1059/001/</span>
+<span class="at">tags:</span>
+  - <span class="st">attack.execution</span>
+  - <span class="st">attack.t1059.001</span>
+<span class="at">logsource:</span>
+  <span class="at">category:</span> <span class="st">process_creation</span>
+  <span class="at">product:</span> <span class="st">windows</span>
+<span class="at">detection:</span>
+  <span class="at">selection:</span>
+    <span class="at">Image|endswith:</span>
+      - <span class="st">'\powershell.exe'</span>
+      - <span class="st">'\pwsh.exe'</span>
+    <span class="at">CommandLine|contains:</span>
+      - <span class="st">' -EncodedCommand '</span>
+      - <span class="st">' -enc '</span>
+      - <span class="st">' -ec '</span>
+  <span class="at">filter_legit:</span>
+    <span class="at">ParentImage|endswith:</span> <span class="st">'\sccm.exe'</span>  <span class="cm"># known SCCM usage</span>
+  <span class="at">condition:</span> <span class="st">selection and not filter_legit</span>
+<span class="at">falsepositives:</span>
+  - <span class="st">Legitimate software management tools</span>
+  - <span class="st">Security tools using encoded payloads</span>
+<span class="at">level:</span> <span class="st">high</span>
+<span class="at">fields:</span>
+  - <span class="st">CommandLine</span>
+  - <span class="st">ParentImage</span>
+  - <span class="st">User</span></div>
+    </div>
+
+    <div class="info-box perf">
+      <div class="info-icon">🔧</div>
+      <div class="info-content"><strong>Detection-as-code workflow:</strong> Store Sigma rules in Git → CI pipeline validates syntax and runs against test events → deploy to SIEM with PR review. Use <code>sigma-cli</code> to convert rules to Splunk SPL, KQL, or Elastic DSL. Version all detection changes for rollback.</div>
+    </div>
+  </section>
+
+  <!-- ══════ VULNERABILITY MANAGEMENT ══════ -->
+  <section class="section" id="vuln">
+    <div class="section-header">
+      <div class="section-icon icon-yellow">🩺</div>
+      <div class="section-title-wrap">
+        <h2>Vulnerability Management</h2>
+        <div class="section-sub">CVSS scoring, SLA tiers, patch prioritization, and EPSS</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>Vulnerability SLA by severity</h3>
+    <table class="ref-table">
+      <thead><tr><th>Severity</th><th>CVSS Range</th><th>Criteria</th><th>Patch SLA</th><th>Compensating Control</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="sev sev-critical">CRITICAL</span></td>
+          <td>9.0–10.0</td>
+          <td>Remote code execution, unauthenticated, internet-exposed</td>
+          <td><strong>24 hours</strong></td>
+          <td>Isolate system immediately if patch unavailable</td>
+        </tr>
+        <tr>
+          <td><span class="sev sev-high">HIGH</span></td>
+          <td>7.0–8.9</td>
+          <td>High impact, may require auth or local access</td>
+          <td><strong>7 days</strong></td>
+          <td>WAF rule, network ACL, disable feature</td>
+        </tr>
+        <tr>
+          <td><span class="sev sev-medium">MEDIUM</span></td>
+          <td>4.0–6.9</td>
+          <td>Limited impact or significant complexity required</td>
+          <td><strong>30 days</strong></td>
+          <td>Document risk acceptance if delayed</td>
+        </tr>
+        <tr>
+          <td><span class="sev sev-low">LOW</span></td>
+          <td>0.1–3.9</td>
+          <td>Minimal impact, difficult to exploit</td>
+          <td><strong>90 days</strong></td>
+          <td>Risk acceptance acceptable</td>
+        </tr>
+        <tr>
+          <td><span class="sev sev-info">INFO</span></td>
+          <td>0.0</td>
+          <td>Configuration finding, hardening recommendation</td>
+          <td><strong>Next cycle</strong></td>
+          <td>Track in backlog</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box note">
+      <div class="info-icon">ℹ️</div>
+      <div class="info-content"><strong>CVSS ≠ risk priority.</strong> CVSS scores a vulnerability in isolation. Use <strong>EPSS</strong> (Exploit Prediction Scoring System) to prioritize by probability of exploitation in the wild. A CVSS 7.5 with EPSS 0.85 is more urgent than a CVSS 9.0 with EPSS 0.02. CISA's Known Exploited Vulnerabilities (KEV) catalog is the highest-priority source — these must be patched within 14 days for federal systems (CISA BOD 22-01).</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — vulnerability pipeline</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Container image scanning in CI (Trivy)</span>
+trivy image --severity CRITICAL,HIGH --exit-code 1 myapp:latest
+
+<span class="cm"># SBOM generation (Syft) — track all dependencies</span>
+syft myapp:latest -o spdx-json > sbom.json
+
+<span class="cm"># Check against CISA KEV catalog</span>
+curl -s https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json \
+  | jq <span class="st">'.vulnerabilities[] | select(.product == "log4j")'</span>
+
+<span class="cm"># Infrastructure scanning (Prowler — AWS/GCP/Azure)</span>
+prowler aws --compliance cis_level2_aws_well_architected_framework
+
+<span class="cm"># Secret scanning (pre-commit hook)</span>
+gitleaks detect --source . --verbose</div>
+    </div>
+  </section>
+
+  <!-- ══════ INCIDENT RESPONSE ══════ -->
+  <section class="section" id="ir">
+    <div class="section-header">
+      <div class="section-icon icon-red">🚨</div>
+      <div class="section-title-wrap">
+        <h2>Incident Response Lifecycle</h2>
+        <div class="section-sub">PICERL: Preparation through Lessons Learned</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="phases">
+      <div class="phase p-blue">
+        <div class="phase-num">01</div>
+        <div class="phase-name">Prepare</div>
+        <div class="phase-sub">Playbooks, tooling, training, retainer</div>
+      </div>
+      <div class="phase p-orange">
+        <div class="phase-num">02</div>
+        <div class="phase-name">Identify</div>
+        <div class="phase-sub">Detect, triage, declare incident</div>
+      </div>
+      <div class="phase p-red">
+        <div class="phase-num">03</div>
+        <div class="phase-name">Contain</div>
+        <div class="phase-sub">Stop spread, preserve evidence</div>
+      </div>
+      <div class="phase p-yellow">
+        <div class="phase-num">04</div>
+        <div class="phase-name">Eradicate</div>
+        <div class="phase-sub">Remove attacker, close entry point</div>
+      </div>
+      <div class="phase p-green">
+        <div class="phase-num">05</div>
+        <div class="phase-name">Recover</div>
+        <div class="phase-sub">Restore services, verify integrity</div>
+      </div>
+      <div class="phase p-teal">
+        <div class="phase-num">06</div>
+        <div class="phase-name">Review</div>
+        <div class="phase-sub">PIR, timeline, improvements</div>
+      </div>
+    </div>
+
+    <h3>Incident severity classification</h3>
+    <table class="ref-table">
+      <thead><tr><th>Severity</th><th>Criteria</th><th>Response Time</th><th>Escalation</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="sev sev-critical">SEV-1</span></td>
+          <td>Active breach, ransomware, data exfiltration, production down</td>
+          <td>Immediate — 24/7 response</td>
+          <td>CISO, Legal, Executive team, retainer</td>
+        </tr>
+        <tr>
+          <td><span class="sev sev-high">SEV-2</span></td>
+          <td>Suspected compromise, targeted phishing with creds, critical vuln being exploited</td>
+          <td>&lt;1 hour</td>
+          <td>Security manager, IR team lead</td>
+        </tr>
+        <tr>
+          <td><span class="sev sev-medium">SEV-3</span></td>
+          <td>Policy violation, minor malware, isolated endpoint compromise</td>
+          <td>&lt;4 hours (business hours)</td>
+          <td>SOC lead</td>
+        </tr>
+        <tr>
+          <td><span class="sev sev-low">SEV-4</span></td>
+          <td>Security misconfiguration, suspicious but unconfirmed activity</td>
+          <td>Next business day</td>
+          <td>Analyst on duty</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box danger">
+      <div class="info-icon">🚫</div>
+      <div class="info-content"><strong>Containment before eradication.</strong> Never remove malware or patch the entry point before containing the incident — you'll tip off the attacker and lose forensic evidence. First: isolate, preserve memory and disk images, capture network traffic. Then eradicate. Evidence collected after remediation is often inadmissible and untrustworthy.</div>
+    </div>
+  </section>
+
+  <!-- ══════ PLAYBOOKS ══════ -->
+  <section class="section" id="playbooks">
+    <div class="section-header">
+      <div class="section-icon icon-orange">📋</div>
+      <div class="section-title-wrap">
+        <h2>IR Playbooks</h2>
+        <div class="section-sub">Phishing, ransomware, credential compromise, insider threat</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>Phishing / BEC playbook</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Playbook — Phishing Response</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## DETECT</span>
+<span class="kw">□</span> Email reported by user OR auto-flagged by email gateway
+<span class="kw">□</span> Preserve original headers (<span class="va">X-Originating-IP</span>, <span class="va">DKIM</span>, <span class="va">SPF</span>, <span class="va">DMARC</span> results)
+<span class="kw">□</span> Extract and sandbox all URLs and attachments (VirusTotal, Any.run)
+
+<span class="cm">## SCOPE</span>
+<span class="kw">□</span> Search mail gateway for same sender/subject/attachment hash across all mailboxes
+<span class="kw">□</span> Identify all recipients — did anyone click the link?
+<span class="kw">□</span> Query proxy/DNS logs for connections to phishing domain (last 24h)
+<span class="kw">□</span> Check if any credentials were entered (CASB, IdP login events)
+
+<span class="cm">## CONTAIN</span>
+<span class="kw">□</span> Block phishing domain in email gateway, DNS, and proxy
+<span class="kw">□</span> Quarantine / delete email from all inboxes
+<span class="kw">□</span> If credentials compromised: force password reset + revoke all sessions immediately
+<span class="kw">□</span> If endpoint visited URL: isolate for forensics
+
+<span class="cm">## ERADICATE</span>
+<span class="kw">□</span> Reset credentials for all potentially affected accounts
+<span class="kw">□</span> Review OAuth app grants for malicious consent (common in BEC)
+<span class="kw">□</span> Remove any mail rules created by attacker (forwarding rules)
+<span class="kw">□</span> Check for new MFA device registrations or added recovery emails
+
+<span class="cm">## NOTIFY</span>
+<span class="kw">□</span> Inform affected users with clear instructions
+<span class="kw">□</span> If PII exposed: notify Privacy/Legal within regulatory window (72h GDPR)
+<span class="kw">□</span> Document IOCs: sender, domains, IPs, hashes</div>
+    </div>
+
+    <h3>Ransomware playbook (immediate actions)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Playbook — Ransomware (SEV-1)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## T+0: FIRST 15 MINUTES</span>
+<span class="kw">□</span> DECLARE SEV-1 — activate IR retainer / war room immediately
+<span class="kw">□</span> DO NOT pay ransom without legal and executive approval
+<span class="kw">□</span> ISOLATE affected systems — pull network cable, disable Wi-Fi (do not power off)
+<span class="kw">□</span> Preserve memory: capture RAM dump BEFORE isolation if possible
+
+<span class="cm">## T+15min: SCOPE</span>
+<span class="kw">□</span> Identify patient zero — first infected host from EDR telemetry
+<span class="kw">□</span> Map lateral movement — which hosts have communicated with patient zero?
+<span class="kw">□</span> Identify ransomware variant (upload note + sample to ID Ransomware.com)
+<span class="kw">□</span> Check backup integrity — confirm backups are clean and not encrypted
+
+<span class="cm">## T+1hr: CONTAIN</span>
+<span class="kw">□</span> Block C2 IOCs at firewall/DNS
+<span class="kw">□</span> Disable compromised accounts — assume all domain credentials stolen
+<span class="kw">□</span> Isolate domain controllers if reached
+<span class="kw">□</span> Engage Active Directory team — attackers likely have domain admin
+
+<span class="cm">## T+2hr+: ASSESS &amp; RECOVER</span>
+<span class="kw">□</span> Determine if decryptor available (NoMoreRansom.org)
+<span class="kw">□</span> Begin recovery from clean backups in isolated environment
+<span class="kw">□</span> Legal: assess breach notification requirements by jurisdiction
+<span class="kw">□</span> Forensics: preserve evidence chain of custody for potential prosecution</div>
+    </div>
+  </section>
+
+  <!-- ══════ FORENSICS ══════ -->
+  <section class="section" id="forensics">
+    <div class="section-header">
+      <div class="section-icon icon-purple">🔬</div>
+      <div class="section-title-wrap">
+        <h2>Digital Forensics</h2>
+        <div class="section-sub">Evidence collection, memory forensics, disk analysis, and chain of custody</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-red"></span>Order of Volatility</div>
+        <p>Collect evidence from most to least volatile:</p>
+        <ul>
+          <li>1. CPU registers, cache, running processes</li>
+          <li>2. RAM / memory dump</li>
+          <li>3. Network state (connections, ARP, routing)</li>
+          <li>4. Running services and processes (full detail)</li>
+          <li>5. File system metadata (timestamps, MFT)</li>
+          <li>6. Disk image (full forensic copy)</li>
+          <li>7. Remote logging (SIEM, cloud logs)</li>
+          <li>8. Backups and archives</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>Chain of Custody</div>
+        <ul>
+          <li>Document every person who accesses evidence</li>
+          <li>Timestamp all collection actions (UTC)</li>
+          <li>Hash all evidence (SHA-256) immediately at collection</li>
+          <li>Store originals in write-protected, sealed media</li>
+          <li>Work only on verified copies</li>
+          <li>Use tamper-evident packaging for physical media</li>
+          <li>Maintain custody log for litigation hold</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — evidence collection commands</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Memory acquisition (Linux — LiME kernel module)</span>
+insmod lime.ko <span class="st">"path=/mnt/evidence/mem.lime format=lime"</span>
+sha256sum /mnt/evidence/mem.lime > /mnt/evidence/mem.lime.sha256
+
+<span class="cm"># Disk imaging (dd with verification)</span>
+dc3dd if=/dev/sda of=/mnt/evidence/disk.img hash=sha256 hlog=hash.log
+
+<span class="cm"># Network state capture</span>
+ss -tulpn       > /mnt/evidence/network_sockets.txt
+arp -an         > /mnt/evidence/arp_table.txt
+ip route show   > /mnt/evidence/routing.txt
+tcpdump -i any -w /mnt/evidence/capture.pcap &amp;
+
+<span class="cm"># Process and system state</span>
+ps auxf         > /mnt/evidence/processes.txt
+lsof -n         > /mnt/evidence/open_files.txt
+netstat -anlp   > /mnt/evidence/netstat.txt
+cat /proc/*/cmdline 2>/dev/null > /mnt/evidence/proc_cmdlines.txt
+
+<span class="cm"># Windows — collect with KAPE or Velociraptor</span>
+<span class="cm"># Velociraptor artifact collection (remote, no agent required)</span>
+velociraptor artifacts collect Windows.KapeFiles.Targets --output /evidence/</div>
+    </div>
+  </section>
+
+  <!-- ══════ SECURE SDLC ══════ -->
+  <section class="section" id="ssdlc">
+    <div class="section-header">
+      <div class="section-icon icon-green">🏗️</div>
+      <div class="section-title-wrap">
+        <h2>Secure SDLC</h2>
+        <div class="section-sub">Security at every phase — from design to deployment</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <table class="ref-table">
+      <thead><tr><th>SDLC Phase</th><th>Security Activity</th><th>Tools / Standards</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Requirements</strong></td><td>Security requirements, abuse cases, data classification</td><td>OWASP ASVS, privacy impact assessment</td></tr>
+        <tr><td><strong>Design</strong></td><td>Threat modeling, architecture review, trust boundary mapping</td><td>STRIDE, PASTA, Threat Dragon, Microsoft TMT</td></tr>
+        <tr><td><strong>Development</strong></td><td>Secure coding guidelines, peer review, pre-commit hooks</td><td>gitleaks, semgrep, language-specific linters</td></tr>
+        <tr><td><strong>Testing</strong></td><td>SAST, SCA, DAST, unit tests for security controls</td><td>Snyk, OWASP ZAP, Burp Suite, Semgrep</td></tr>
+        <tr><td><strong>Build / CI</strong></td><td>Container scanning, SBOM generation, IaC scanning</td><td>Trivy, Syft, Checkov, tfsec, Terrascan</td></tr>
+        <tr><td><strong>Deploy</strong></td><td>Secret injection, signed artifacts, runtime security policy</td><td>Vault, SOPS, Sigstore, OPA/Gatekeeper</td></tr>
+        <tr><td><strong>Operate</strong></td><td>DAST in production, pentesting, bug bounty, SIEM monitoring</td><td>HackerOne, Detectify, Qualys, Nessus</td></tr>
+        <tr><td><strong>Retire</strong></td><td>Secure decommission, certificate/key rotation, data deletion</td><td>Data retention policy, key rotation runbook</td></tr>
+      </tbody>
+    </table>
+
+    <h3>OWASP Top 10 — 2021</h3>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <div class="rule-num">A01</div>
+        <div class="rule-title">Broken Access Control</div>
+        <div class="rule-body">#1 risk. IDOR, privilege escalation, missing authz checks. Enforce on every request server-side.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">A02</div>
+        <div class="rule-title">Cryptographic Failures</div>
+        <div class="rule-body">Sensitive data transmitted or stored without strong encryption. Enforce TLS 1.2+, ban MD5/SHA1 for security, use AES-256-GCM.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">A03</div>
+        <div class="rule-title">Injection</div>
+        <div class="rule-body">SQL, OS command, LDAP, SSTI injection. Parameterized queries always. Never concatenate user input into commands.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">A04</div>
+        <div class="rule-title">Insecure Design</div>
+        <div class="rule-body">Missing security controls in design phase. Threat model before coding, not after. Security requirements are functional requirements.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">A05</div>
+        <div class="rule-title">Security Misconfiguration</div>
+        <div class="rule-body">Default credentials, unnecessary features enabled, verbose errors in prod. IaC scanning + CIS benchmarks as CI gates.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">A06</div>
+        <div class="rule-title">Vulnerable Components</div>
+        <div class="rule-body">Known CVEs in dependencies. SCA scanning in CI, SBOM tracking, automated dependency update PRs (Renovate/Dependabot).</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECRETS MANAGEMENT ══════ -->
+  <section class="section" id="secrets">
+    <div class="section-header">
+      <div class="section-icon icon-cyan">🗝️</div>
+      <div class="section-title-wrap">
+        <h2>Secrets Management</h2>
+        <div class="section-sub">Where secrets live, how they rotate, and what to scan for</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-red"></span>Secrets Anti-patterns</div>
+        <ul>
+          <li>❌ Hardcoded in source code</li>
+          <li>❌ In environment variables baked into container images</li>
+          <li>❌ In CI/CD logs or build artifacts</li>
+          <li>❌ In <code>.env</code> files committed to git</li>
+          <li>❌ Shared via Slack, email, or ticketing systems</li>
+          <li>❌ Same secret used in dev and production</li>
+          <li>❌ Secrets that never rotate</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>Secrets Best Practices</div>
+        <ul>
+          <li>✅ Centralized secret store (Vault, AWS Secrets Manager, Azure Key Vault)</li>
+          <li>✅ Dynamic secrets — generated per-request, short TTL</li>
+          <li>✅ Rotation automated and tested</li>
+          <li>✅ Access to secrets requires authentication + authorization</li>
+          <li>✅ Pre-commit scanning (gitleaks, detect-secrets)</li>
+          <li>✅ Secret access audited and alerted</li>
+          <li>✅ Separate secrets per environment</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — secrets hygiene</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Install gitleaks pre-commit hook</span>
+cat > .git/hooks/pre-commit &lt;&lt;<span class="st">'EOF'</span>
+#!/bin/bash
+gitleaks detect --staged --no-banner
+EOF
+chmod +x .git/hooks/pre-commit
+
+<span class="cm"># Scan entire git history for leaked secrets</span>
+gitleaks detect --source . --no-banner --report-format json --report-path leaks.json
+
+<span class="cm"># HashiCorp Vault — dynamic DB credentials (example)</span>
+vault write database/config/my-postgres \
+    plugin_name=postgresql-database-plugin \
+    allowed_roles="app-role" \
+    connection_url="postgresql://{{username}}:{{password}}@db:5432/mydb"
+
+<span class="cm"># App retrieves short-lived credentials (valid 1 hour)</span>
+vault read database/creds/app-role
+<span class="cm"># → Key: username  Value: v-app-role-xyz123   (auto-created)</span>
+<span class="cm"># → Key: password  Value: &lt;random 64-char&gt;    (auto-revoked after TTL)</span>
+
+<span class="cm"># SOPS — encrypt secrets file for GitOps</span>
+sops --encrypt --age $(cat ~/.config/sops/age/keys.txt | grep public | awk <span class="st">'{print $4}'</span>) \
+    secrets.yaml > secrets.enc.yaml</div>
+    </div>
+  </section>
+
+  <!-- ══════ NETWORK SECURITY ══════ -->
+  <section class="section" id="network">
+    <div class="section-header">
+      <div class="section-icon icon-teal">🌐</div>
+      <div class="section-title-wrap">
+        <h2>Network Security</h2>
+        <div class="section-sub">Segmentation, TLS standards, firewall policy, and DNS security</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>TLS configuration standards</h3>
+    <table class="ref-table">
+      <thead><tr><th>Setting</th><th>Required</th><th>Banned</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Protocol versions</strong></td><td>TLS 1.2, TLS 1.3</td><td>SSL 2.0, SSL 3.0, TLS 1.0, TLS 1.1</td></tr>
+        <tr><td><strong>Key exchange</strong></td><td>ECDHE-RSA, ECDHE-ECDSA, DHE (2048+ bit)</td><td>RSA key exchange (no forward secrecy), EXPORT ciphers</td></tr>
+        <tr><td><strong>Ciphers</strong></td><td>AES-128/256-GCM, ChaCha20-Poly1305</td><td>RC4, DES, 3DES, NULL ciphers, EXPORT ciphers</td></tr>
+        <tr><td><strong>Certificate</strong></td><td>RSA 2048+ or ECDSA P-256+, SHA-256 signature</td><td>MD5, SHA-1 signatures, self-signed in production</td></tr>
+        <tr><td><strong>HSTS</strong></td><td><code>max-age=63072000; includeSubDomains; preload</code></td><td>Missing header, max-age &lt; 6 months</td></tr>
+      </tbody>
+    </table>
+
+    <div class="rule-grid">
+      <div class="rule-card">
+        <div class="rule-num must">MUST</div>
+        <div class="rule-title">Micro-segmentation</div>
+        <div class="rule-body">Default-deny between workloads. Web → App → DB tiers with explicit allow rules only. East-west traffic must be authenticated and encrypted.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MUST</div>
+        <div class="rule-title">DNSSEC + DoH/DoT</div>
+        <div class="rule-body">Enable DNSSEC on authoritative zones. Use DNS-over-HTTPS or DNS-over-TLS for resolver traffic. Monitor for DNS tunneling (unusually large TXT/NULL queries).</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num should">SHOULD</div>
+        <div class="rule-title">Egress filtering</div>
+        <div class="rule-body">Allow-list known-good egress destinations. Block all others by default. Most C2 and data exfiltration relies on unrestricted outbound access.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num avoid">AVOID</div>
+        <div class="rule-title">Flat networks</div>
+        <div class="rule-body">A single breach in a flat network = full lateral movement. Segment by data sensitivity, not just function. Crown jewels must be in their own segment with strict access controls.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ COMPLIANCE ══════ -->
+  <section class="section" id="compliance">
+    <div class="section-header">
+      <div class="section-icon icon-yellow">📜</div>
+      <div class="section-title-wrap">
+        <h2>Compliance &amp; GRC</h2>
+        <div class="section-sub">SOC 2, ISO 27001, PCI DSS, GDPR, HIPAA — what applies and when</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <table class="ref-table">
+      <thead><tr><th>Framework</th><th>Scope</th><th>Mandatory?</th><th>Key Controls</th><th>Audit Cycle</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="method-name">SOC 2 Type II</td>
+          <td>SaaS/cloud service providers handling customer data</td>
+          <td>Customer-driven (B2B trust)</td>
+          <td>Security, Availability, Confidentiality, Privacy TSCs</td>
+          <td>Annual (6–12 month observation period)</td>
+        </tr>
+        <tr>
+          <td class="method-name">ISO/IEC 27001</td>
+          <td>Any organization — ISMS-level</td>
+          <td>Customer/contract driven</td>
+          <td>114 controls across 14 domains (Annex A)</td>
+          <td>Annual surveillance, 3-year recertification</td>
+        </tr>
+        <tr>
+          <td class="method-name">PCI DSS v4.0</td>
+          <td>Any entity handling cardholder data</td>
+          <td>Yes (card brand mandate)</td>
+          <td>12 requirements — network, access, crypto, monitoring</td>
+          <td>Annual QSA assessment or SAQ</td>
+        </tr>
+        <tr>
+          <td class="method-name">GDPR / UK GDPR</td>
+          <td>Processing personal data of EU/UK residents</td>
+          <td>Yes (law)</td>
+          <td>Lawful basis, data minimization, 72h breach notification, DPO</td>
+          <td>Ongoing; DPA audits on complaint/incident</td>
+        </tr>
+        <tr>
+          <td class="method-name">HIPAA</td>
+          <td>US healthcare — covered entities and BAs</td>
+          <td>Yes (US federal law)</td>
+          <td>PHI safeguards, BAAs, breach notification, audit controls</td>
+          <td>HHS OCR audits; self-assessment</td>
+        </tr>
+        <tr>
+          <td class="method-name">NIST SP 800-53</td>
+          <td>US federal systems (FedRAMP for cloud)</td>
+          <td>Federal systems</td>
+          <td>1000+ controls across 20 families</td>
+          <td>Continuous monitoring; ATO renewal</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box tip">
+      <div class="info-icon">✅</div>
+      <div class="info-content"><strong>Compliance ≠ Security.</strong> Compliance is a minimum bar — passing a SOC 2 audit does not mean you are secure, only that you met a snapshot of controls at a point in time. Use compliance to formalize your program, but build security posture around threat-informed defense (ATT&amp;CK coverage, vuln management, detection engineering) rather than checkbox compliance.</div>
+    </div>
+  </section>
+
+  <!-- ══════ CLOUD SECURITY ══════ -->
+  <section class="section" id="cloud">
+    <div class="section-header">
+      <div class="section-icon icon-blue">☁️</div>
+      <div class="section-title-wrap">
+        <h2>Cloud Security</h2>
+        <div class="section-sub">AWS, Azure, GCP — IAM hardening, storage controls, and CSPM</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>Cloud security baseline (all providers)</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-red"></span>Identity &amp; Access</div>
+        <ul>
+          <li>Root/Owner account: hardware MFA, no access keys, emergency use only</li>
+          <li>No long-lived access keys — use IAM roles, instance profiles, workload identity</li>
+          <li>Enforce SCPs / Azure Policy / Org Policies at management account level</li>
+          <li>Enable AWS IAM Access Analyzer / Azure AD Identity Protection</li>
+          <li>Audit unused permissions quarterly (Access Advisor, Entra)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-orange"></span>Storage &amp; Data</div>
+        <ul>
+          <li>Block all public S3/Blob/GCS bucket access at org level unless explicitly required</li>
+          <li>Enable server-side encryption with CMK (KMS/Key Vault/CMEK)</li>
+          <li>Enable versioning + MFA delete on critical buckets</li>
+          <li>VPC endpoints / Private Link for storage — no traversal over public internet</li>
+          <li>Scan buckets for sensitive data (Macie, Purview, DLP)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — AWS security posture checks</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Check for public S3 buckets</span>
+aws s3api list-buckets --query <span class="st">'Buckets[].Name'</span> | \
+  xargs -I{} aws s3api get-bucket-public-access-block --bucket {}
+
+<span class="cm"># List IAM users with access keys older than 90 days</span>
+aws iam generate-credential-report
+aws iam get-credential-report --query <span class="st">'Content'</span> --output text | base64 -d | \
+  awk -F, <span class="st">'NR>1 {if ($9 != "N/A" && $9 < strftime("%Y-%m-%dT", systime()-7776000)) print $1, $9}'</span>
+
+<span class="cm"># Check for root access key existence (should be empty)</span>
+aws iam get-account-summary --query <span class="st">'SummaryMap.AccountAccessKeysPresent'</span>
+
+<span class="cm"># Enable GuardDuty across all regions</span>
+aws ec2 describe-regions --query <span class="st">'Regions[].RegionName'</span> --output text | \
+  xargs -I{} aws guardduty create-detector --enable --region {}
+
+<span class="cm"># CloudTrail — verify S3 data events logging (common gap)</span>
+aws cloudtrail get-event-selectors --trail-name management-events \
+  --query <span class="st">'EventSelectors[].DataResources'</span></div>
+    </div>
+
+    <table class="ref-table">
+      <thead><tr><th>Control</th><th>AWS</th><th>Azure</th><th>GCP</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Audit logging</strong></td><td>CloudTrail (all regions, S3 events)</td><td>Azure Monitor Activity Log + Defender</td><td>Cloud Audit Logs (Admin + Data)</td></tr>
+        <tr><td><strong>Threat detection</strong></td><td>GuardDuty</td><td>Microsoft Defender for Cloud</td><td>Security Command Center</td></tr>
+        <tr><td><strong>CSPM</strong></td><td>Security Hub + Config</td><td>Defender CSPM</td><td>SCC Premium</td></tr>
+        <tr><td><strong>WAF</strong></td><td>AWS WAF + Shield</td><td>Azure WAF + DDoS Standard</td><td>Cloud Armor</td></tr>
+        <tr><td><strong>Secrets</strong></td><td>Secrets Manager / Parameter Store</td><td>Key Vault</td><td>Secret Manager</td></tr>
+        <tr><td><strong>Network</strong></td><td>VPC Flow Logs, Security Groups, NACLs</td><td>NSG Flow Logs, Azure Firewall</td><td>VPC Flow Logs, Firewall</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════ CHEAT SHEET ══════ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-header">
+      <div class="section-icon icon-yellow">🗒️</div>
+      <div class="section-title-wrap">
+        <h2>Quick Reference</h2>
+        <div class="section-sub">One-liners, port reference, common IOC patterns, and crypto standards</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>Common Attack Ports to Monitor</div>
+        <div class="code-wrap" style="margin: 10px 0 0">
+          <div class="code-block" style="font-size: 12px; padding: 12px 14px"><span class="cm"># Unusual outbound = potential C2 / exfiltration</span>
+<span class="nm">4444</span>  <span class="cm"># Metasploit default listener</span>
+<span class="nm">1337</span>  <span class="cm"># Common backdoor/leet port</span>
+<span class="nm">8888</span>  <span class="cm"># Jupyter, common C2</span>
+<span class="nm">6667</span>  <span class="cm"># IRC — legacy botnet C2</span>
+<span class="nm">3389</span>  <span class="cm"># RDP — must NOT be internet-exposed</span>
+<span class="nm">5985/5986</span>  <span class="cm"># WinRM — lateral movement</span>
+<span class="nm">22</span>    <span class="cm"># SSH — monitor for brute force</span>
+<span class="nm">445</span>   <span class="cm"># SMB — ransomware spread</span>
+<span class="nm">135</span>   <span class="cm"># RPC — WMI lateral movement</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>Cryptography Standards</div>
+        <div class="code-wrap" style="margin: 10px 0 0">
+          <div class="code-block" style="font-size: 12px; padding: 12px 14px"><span class="cm"># Symmetric encryption</span>
+✅ AES-256-GCM  <span class="cm"># authenticated, preferred</span>
+✅ ChaCha20-Poly1305  <span class="cm"># mobile-friendly</span>
+❌ AES-ECB      <span class="cm"># leaks patterns</span>
+❌ DES / 3DES   <span class="cm"># deprecated</span>
+
+<span class="cm"># Hashing (passwords)</span>
+✅ bcrypt (cost≥12), Argon2id, scrypt
+❌ MD5, SHA-1, SHA-256 (unsalted)
+
+<span class="cm"># Key exchange</span>
+✅ ECDH (P-256/P-384), X25519
+✅ RSA-OAEP (2048+ bit)
+❌ RSA PKCS#1 v1.5 (PKCS#1 padding oracle)</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-red"></span>IOC Pattern Types</div>
+        <div class="code-wrap" style="margin: 10px 0 0">
+          <div class="code-block" style="font-size: 12px; padding: 12px 14px"><span class="cm"># Network indicators</span>
+<span class="va">IP addresses</span>     <span class="cm"># C2 servers, proxy IPs</span>
+<span class="va">Domain names</span>     <span class="cm"># DGA domains, typosquats</span>
+<span class="va">URL patterns</span>     <span class="cm"># malware download paths</span>
+<span class="va">JA3/JA3S hashes</span> <span class="cm"># TLS fingerprinting</span>
+
+<span class="cm"># Host indicators</span>
+<span class="va">File hashes</span>      <span class="cm"># MD5/SHA256 of malware</span>
+<span class="va">Registry keys</span>   <span class="cm"># persistence mechanisms</span>
+<span class="va">Mutexes</span>         <span class="cm"># prevent re-infection</span>
+<span class="va">Named pipes</span>     <span class="cm"># lateral movement</span>
+
+<span class="cm"># Behavioral indicators (TTPs)</span>
+<span class="va">LOLBAS usage</span>    <span class="cm"># living off the land</span>
+<span class="va">Process hollowing</span>  <span class="cm"># memory injection</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-purple"></span>Security Headers Checklist</div>
+        <div class="code-wrap" style="margin: 10px 0 0">
+          <div class="code-block" style="font-size: 12px; padding: 12px 14px"><span class="cm"># HTTP response headers — must-have</span>
+<span class="va">Strict-Transport-Security</span>: max-age=<span class="nm">63072000</span>; includeSubDomains; preload
+<span class="va">Content-Security-Policy</span>: default-src <span class="st">'self'</span>; ...
+<span class="va">X-Content-Type-Options</span>: nosniff
+<span class="va">X-Frame-Options</span>: DENY
+<span class="va">Referrer-Policy</span>: strict-origin-when-cross-origin
+<span class="va">Permissions-Policy</span>: camera=(), microphone=(), geolocation=()
+
+<span class="cm"># Check your headers</span>
+curl -sI https://yourdomain.com | grep -iE \
+  <span class="st">'strict-transport|content-security|x-content|x-frame|referrer'</span>
+
+<span class="cm"># Use securityheaders.com for scoring</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box note">
+      <div class="info-icon">📚</div>
+      <div class="info-content">
+        <strong>Key resources:</strong> <code>attack.mitre.org</code> (TTPs) · <code>nvd.nist.gov</code> (CVEs) · <code>cisa.gov/known-exploited-vulnerabilities-catalog</code> (KEV) · <code>owasp.org/Top10</code> · <code>sigma.socprime.com</code> (detection rules) · <code>docs.hunting.security</code> · <code>lolbas-project.github.io</code> (living-off-the-land binaries) · <code>gtfobins.github.io</code> (Linux privilege escalation)
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-wrap').querySelector('.code-block');
+    navigator.clipboard.writeText(block.innerText).then(() => {
+      btn.textContent = 'copied!';
+      btn.style.color = 'var(--accent-green)';
+      btn.style.borderColor = 'var(--accent-green)';
+      setTimeout(() => {
+        btn.textContent = 'copy';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 1800);
+    });
+  }
+
+  const sections = document.querySelectorAll('.section');
+  const links    = document.querySelectorAll('.sidebar-link');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+      }
+    });
+  }, { rootMargin: '-60px 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+<script src="../scripts/handbook-ui.js"></script>
+</body>
+</html>

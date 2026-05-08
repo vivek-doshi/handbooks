@@ -3,6 +3,39 @@
   const root = document.documentElement;
   const media = window.matchMedia('(prefers-color-scheme: light)');
 
+  function ensureFavicon() {
+    if (!document.head) {
+      return;
+    }
+
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+        '<defs>' +
+          '<linearGradient id="v" x1="16" y1="10" x2="48" y2="54" gradientUnits="userSpaceOnUse">' +
+            '<stop offset="0" stop-color="#f7d96f" />' +
+            '<stop offset="0.55" stop-color="#ff8f5a" />' +
+            '<stop offset="1" stop-color="#ff3355" />' +
+          '</linearGradient>' +
+        '</defs>' +
+        '<rect width="64" height="64" rx="16" fill="#0c1322" />' +
+        '<path d="M18 14h12l6 18 6-18h12L36 50h-8Z" fill="url(#v)" />' +
+        '<path d="M12 22h8M10 32h6M52 16l-4 8M56 28l-8 2" stroke="#8be7ff" stroke-width="2.25" stroke-linecap="round" />' +
+        '<path d="M44 12l-4 6M50 40l6 2" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1.75" stroke-linecap="round" />' +
+      '</svg>';
+    const faviconHref = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    let link = document.querySelector('link[rel="icon"]');
+
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      link.type = 'image/svg+xml';
+      link.sizes = 'any';
+      document.head.appendChild(link);
+    }
+
+    link.href = faviconHref;
+  }
+
   function resolveTheme() {
     const savedTheme = window.localStorage.getItem(storageKey);
     if (savedTheme === 'light' || savedTheme === 'dark') {
@@ -57,7 +90,7 @@
       floatingActions = document.createElement('div');
       floatingActions.className = 'floating-actions';
       floatingActions.innerHTML =
-        '<a class="floating-link" href="index.html" aria-label="Back to handbooks index" title="Back to handbooks index">' +
+        '<a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">' +
           '<span class="sr-only">Back to handbooks index</span>' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
             '<path d="M15 18 9 12l6-6"></path>' +
@@ -353,6 +386,11 @@
       collapseButton.className = 'topic-filter-clear';
       collapseButton.textContent = 'Collapse all groups';
 
+      const randomButton = document.createElement('button');
+      randomButton.type = 'button';
+      randomButton.className = 'topic-filter-clear';
+      randomButton.textContent = 'Read Random book';
+
       expandButton.addEventListener('click', function () {
         cardGrid.querySelectorAll('.topic-group').forEach(function (groupSection) {
           groupSection.classList.remove('is-collapsed');
@@ -366,22 +404,30 @@
 
       collapseButton.addEventListener('click', function () {
         cardGrid.querySelectorAll('.topic-group').forEach(function (groupSection) {
-          if (groupSection.classList.contains('is-filter-visible')) {
-            groupSection.classList.remove('is-collapsed');
-          } else {
-            groupSection.classList.add('is-collapsed');
-          }
+          groupSection.classList.add('is-collapsed');
 
           const toggle = groupSection.querySelector('.topic-group-toggle');
 
           if (toggle) {
-            toggle.setAttribute('aria-expanded', String(!groupSection.classList.contains('is-collapsed')));
+            toggle.setAttribute('aria-expanded', 'false');
           }
         });
       });
 
+      randomButton.addEventListener('click', function () {
+        const links = Array.from(cardGrid.querySelectorAll('.handbook-card:not(.is-hidden) .card-link'));
+
+        if (!links.length) {
+          return;
+        }
+
+        const randomLink = links[Math.floor(Math.random() * links.length)];
+        window.location.href = randomLink.href;
+      });
+
       actions.appendChild(expandButton);
       actions.appendChild(collapseButton);
+      actions.appendChild(randomButton);
       filterMeta.appendChild(actions);
     }
 
@@ -619,6 +665,7 @@
     applyFilter();
   }
 
+  ensureFavicon();
   applyTheme(resolveTheme());
 
   document.addEventListener('DOMContentLoaded', function () {

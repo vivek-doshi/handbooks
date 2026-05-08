@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Trust Architecture — Field Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../styles/shared-ui.css">
+<style>
+:root {
+  --black:       #050608;
+  --black2:      #0a0c0f;
+  --black3:      #0f1216;
+  --black4:      #161a20;
+  --black5:      #1e242d;
+  --border:      rgba(255,255,255,0.06);
+  --border2:     rgba(255,255,255,0.11);
+  --text:        #d8e0ec;
+  --text2:       #8fa3be;
+  --muted:       #4a5a70;
+  --green:       #00e87a;
+  --green-dim:   #00b85e;
+  --green-glow:  rgba(0,232,122,0.12);
+  --red:         #ff4757;
+  --red-dim:     rgba(255,71,87,0.12);
+  --amber:       #ffb300;
+  --amber-dim:   rgba(255,179,0,0.1);
+  --blue:        #2979ff;
+  --blue-dim:    rgba(41,121,255,0.1);
+  --teal:        #00e5cc;
+  --teal-dim:    rgba(0,229,204,0.1);
+  --mono:        'IBM Plex Mono', monospace;
+  --display:     'Barlow Condensed', sans-serif;
+  --body:        'Barlow', sans-serif;
+  --sidebar-w:   260px;
+  --top-h:       52px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--black);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+/* ─── SCAN LINE OVERLAY ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.07) 2px,
+    rgba(0,0,0,0.07) 4px
+  );
+  pointer-events: none;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(5,6,8,0.97);
+  border-bottom: 1px solid var(--green);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+}
+.topbar-left { display: flex; align-items: center; gap: 16px; }
+.topbar-classification {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 3px; color: var(--black);
+  background: var(--green); padding: 3px 12px;
+  text-transform: uppercase;
+}
+.topbar-title {
+  font-family: var(--display); font-size: 17px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--text);
+}
+.topbar-right {
+  display: flex; align-items: center; gap: 20px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px;
+}
+.topbar-status {
+  display: flex; align-items: center; gap: 6px; color: var(--green);
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ─── LAYOUT ─── */
+.layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); position: relative; z-index: 1; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--black2);
+  border-right: 1px solid var(--border2);
+  padding-bottom: 48px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sb-header {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(0,232,122,0.06) 0%, transparent 100%);
+}
+.sb-docnum { font-family: var(--mono); font-size: 10px; color: var(--green); letter-spacing: 2px; margin-bottom: 4px; }
+.sb-subtitle { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+.nav-group-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+  padding: 16px 20px 5px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 20px;
+  text-decoration: none; font-size: 12.5px;
+  color: var(--text2); font-family: var(--body);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+  position: relative;
+}
+.nav-link::before {
+  content: attr(data-num);
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  width: 22px; flex-shrink: 0; text-align: right;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); border-left-color: var(--border2); }
+.nav-link.active { color: var(--green); border-left-color: var(--green); background: var(--green-glow); }
+.nav-link.active::before { color: var(--green-dim); }
+
+/* ─── MAIN ─── */
+.main { flex: 1; min-width: 0; padding: 48px 60px 100px; max-width: 980px; }
+
+/* ─── HERO ─── */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--green);
+  background: var(--black3);
+  padding: 52px 56px;
+  margin-bottom: 64px;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(0,232,122,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(41,121,255,0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero-corner {
+  position: absolute; top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 60px 60px 0;
+  border-color: transparent var(--green) transparent transparent;
+}
+.hero-corner-label {
+  position: absolute; top: 6px; right: 4px;
+  font-family: var(--mono); font-size: 8px; color: var(--black);
+  transform: rotate(45deg); letter-spacing: 0.5px;
+}
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+  color: var(--green); text-transform: uppercase; margin-bottom: 18px;
+  display: flex; align-items: center; gap: 12px;
+}
+.hero-eyebrow::before { content: '['; opacity: 0.4; }
+.hero-eyebrow::after { content: ']'; opacity: 0.4; }
+.hero h1 {
+  font-family: var(--display); font-size: 64px; font-weight: 900;
+  line-height: 0.9; letter-spacing: -1px;
+  text-transform: uppercase; color: var(--text);
+  margin-bottom: 24px;
+}
+.hero h1 span { color: var(--green); }
+.hero-desc {
+  color: var(--text2); font-size: 15px; max-width: 560px;
+  line-height: 1.75; margin-bottom: 28px;
+}
+.hero-axiom {
+  font-family: var(--mono); font-size: 13px;
+  color: var(--green); border-left: 3px solid var(--green);
+  padding: 10px 16px; background: var(--green-glow);
+  display: inline-block; margin-bottom: 28px;
+}
+.hero-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 5px 14px; border: 1px solid; border-radius: 2px;
+}
+.chip-green  { color: var(--green);  border-color: rgba(0,232,122,0.4);  background: var(--green-glow); }
+.chip-red    { color: var(--red);    border-color: rgba(255,71,87,0.35);  background: var(--red-dim); }
+.chip-amber  { color: var(--amber);  border-color: rgba(255,179,0,0.35);  background: var(--amber-dim); }
+.chip-blue   { color: var(--blue);   border-color: rgba(41,121,255,0.35); background: var(--blue-dim); }
+.chip-teal   { color: var(--teal);   border-color: rgba(0,229,204,0.35);  background: var(--teal-dim); }
+
+/* ─── SECTIONS ─── */
+section { margin-bottom: 72px; scroll-margin-top: calc(var(--top-h) + 20px); }
+
+.section-header {
+  display: flex; align-items: flex-start; gap: 16px;
+  margin-bottom: 24px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 80px; height: 1px; background: var(--green);
+}
+.section-num {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--green); margin-top: 3px; flex-shrink: 0;
+  width: 40px;
+}
+.section-title-block h2 {
+  font-family: var(--display); font-size: 30px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  line-height: 1;
+}
+.section-title-block .section-sub {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  letter-spacing: 1px; margin-top: 5px;
+}
+
+/* ─── PROSE ─── */
+.prose { color: var(--text2); font-size: 14px; line-height: 1.8; margin-bottom: 16px; }
+.prose strong { color: var(--text); font-weight: 600; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--black3);
+  border: 1px solid var(--border);
+  padding: 22px 24px;
+  margin-bottom: 12px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
+.card-accent-green  { border-left: 3px solid var(--green); }
+.card-accent-red    { border-left: 3px solid var(--red); }
+.card-accent-amber  { border-left: 3px solid var(--amber); }
+.card-accent-blue   { border-left: 3px solid var(--blue); }
+.card-accent-teal   { border-left: 3px solid var(--teal); }
+
+.card-title {
+  font-family: var(--display); font-size: 16px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
+}
+.card-tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 2px;
+}
+.tag-green  { color: var(--green);  background: var(--green-glow);  border: 1px solid rgba(0,232,122,0.3); }
+.tag-red    { color: var(--red);    background: var(--red-dim);     border: 1px solid rgba(255,71,87,0.3); }
+.tag-amber  { color: var(--amber);  background: var(--amber-dim);   border: 1px solid rgba(255,179,0,0.3); }
+.tag-blue   { color: var(--blue);   background: var(--blue-dim);    border: 1px solid rgba(41,121,255,0.3); }
+.tag-teal   { color: var(--teal);   background: var(--teal-dim);    border: 1px solid rgba(0,229,204,0.3); }
+
+.card p, .card li { color: var(--text2); font-size: 13.5px; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; line-height: 1.6; }
+
+/* ─── GRID ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+/* ─── CODE ─── */
+.code-wrap {
+  background: #040507;
+  border: 1px solid var(--border2);
+  margin: 16px 0;
+  position: relative;
+  font-family: var(--mono);
+}
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 16px;
+  background: rgba(0,232,122,0.04);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang {
+  font-size: 10px; font-weight: 600; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--green);
+}
+.copy-btn {
+  font-size: 10px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--green); border-color: var(--green); }
+.code-block {
+  padding: 18px 20px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.75; white-space: pre; tab-size: 4; color: #8fa3be;
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* syntax */
+.kw  { color: #81a1c1; }
+.st  { color: #a3be8c; }
+.cm  { color: #3d4f63; font-style: italic; }
+.fn  { color: #88c0d0; }
+.cl  { color: #ebcb8b; }
+.nu  { color: #d08770; }
+.at  { color: var(--green); }
+.hl  { background: rgba(0,232,122,0.05); display: block; margin: 0 -20px; padding: 0 20px; border-left: 2px solid var(--green); }
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(0,232,122,0.08); color: var(--green);
+  padding: 1px 7px; border: 1px solid rgba(0,232,122,0.2);
+}
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 14px;
+  padding: 14px 18px; margin: 16px 0;
+  border-left: 3px solid; font-size: 13.5px;
+}
+.callout-icon { flex-shrink: 0; font-size: 14px; margin-top: 2px; }
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.callout.threat   { background: rgba(255,71,87,0.06);   border-color: var(--red);   }
+.callout.tip      { background: rgba(0,232,122,0.05);   border-color: var(--green); }
+.callout.note     { background: rgba(41,121,255,0.06);  border-color: var(--blue);  }
+.callout.warning  { background: rgba(255,179,0,0.06);   border-color: var(--amber); }
+
+/* ─── TABLES ─── */
+.table-wrap {
+  border: 1px solid var(--border); margin: 16px 0; overflow-x: auto;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: rgba(0,232,122,0.05);
+  color: var(--green); font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+td code { font-size: 11px; }
+.ok  { color: var(--green); font-weight: 700; font-family: var(--mono); }
+.no  { color: var(--red);   font-weight: 700; font-family: var(--mono); }
+.partial { color: var(--amber); font-weight: 700; font-family: var(--mono); }
+
+/* ─── PILLAR DIAGRAM ─── */
+.pillar-row {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;
+  background: var(--border); border: 1px solid var(--border);
+  margin: 20px 0;
+}
+.pillar {
+  background: var(--black3); padding: 20px 14px;
+  text-align: center; position: relative;
+  transition: background 0.2s;
+}
+.pillar:hover { background: var(--black4); }
+.pillar-icon { font-size: 26px; margin-bottom: 10px; }
+.pillar-label {
+  font-family: var(--display); font-size: 13px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  margin-bottom: 6px; line-height: 1.2;
+}
+.pillar-sub { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.pillar-bar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+}
+.pb-green { background: var(--green); }
+.pb-blue  { background: var(--blue); }
+.pb-amber { background: var(--amber); }
+.pb-teal  { background: var(--teal); }
+.pb-red   { background: var(--red); }
+
+/* ─── FLOW DIAGRAM ─── */
+.flow {
+  display: flex; align-items: center; gap: 0;
+  overflow-x: auto; margin: 20px 0;
+  padding: 24px; background: var(--black3); border: 1px solid var(--border);
+}
+.flow-step {
+  flex-shrink: 0; text-align: center;
+  padding: 14px 18px;
+  background: var(--black4);
+  border: 1px solid var(--border2);
+  min-width: 110px;
+}
+.flow-step-label {
+  font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 5px;
+}
+.flow-step-name {
+  font-family: var(--display); font-size: 13px; font-weight: 700;
+  text-transform: uppercase; color: var(--text); letter-spacing: 0.5px; line-height: 1.2;
+}
+.flow-arrow { color: var(--green); font-size: 20px; margin: 0 6px; flex-shrink: 0; }
+.flow-arrow-deny { color: var(--red); }
+
+/* ─── MATURITY MODEL ─── */
+.maturity {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0;
+}
+.maturity-stage {
+  background: var(--black3); border: 1px solid var(--border);
+  padding: 18px 16px; position: relative; overflow: hidden;
+}
+.maturity-stage::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.ms-1::before { background: var(--muted); }
+.ms-2::before { background: var(--amber); }
+.ms-3::before { background: var(--blue); }
+.ms-4::before { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.maturity-level {
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px;
+}
+.maturity-name {
+  font-family: var(--display); font-size: 16px; font-weight: 800;
+  text-transform: uppercase; margin-bottom: 8px; color: var(--text);
+}
+.ms-1 .maturity-name { color: var(--muted); }
+.ms-2 .maturity-name { color: var(--amber); }
+.ms-3 .maturity-name { color: var(--blue); }
+.ms-4 .maturity-name { color: var(--green); }
+.maturity-stage ul { padding-left: 14px; }
+.maturity-stage li { font-size: 12px; color: var(--muted); margin-bottom: 3px; line-height: 1.5; }
+
+/* ─── COMPARE GRID ─── */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.compare-block { border: 1px solid var(--border); }
+.compare-header {
+  padding: 10px 18px; font-family: var(--display);
+  font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+  display: flex; align-items: center; gap: 8px;
+}
+.compare-old .compare-header { background: var(--red-dim); color: var(--red); border-bottom: 1px solid rgba(255,71,87,0.2); }
+.compare-new .compare-header { background: var(--green-glow); color: var(--green); border-bottom: 1px solid rgba(0,232,122,0.2); }
+.compare-body { padding: 14px 18px; }
+.compare-body li { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+.compare-body ul { padding-left: 14px; }
+
+/* ─── THREAT LEVEL ─── */
+.threat-bar { display: flex; gap: 4px; align-items: center; margin: 16px 0; }
+.tl-block {
+  height: 28px; flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+.tl-1 { background: rgba(255,71,87,0.08);  color: var(--muted);  border: 1px solid rgba(255,71,87,0.1); }
+.tl-2 { background: rgba(255,179,0,0.1);   color: var(--amber);  border: 1px solid rgba(255,179,0,0.25); }
+.tl-3 { background: rgba(41,121,255,0.1);  color: var(--blue);   border: 1px solid rgba(41,121,255,0.25); }
+.tl-4 { background: rgba(0,229,204,0.1);   color: var(--teal);   border: 1px solid rgba(0,229,204,0.25); }
+.tl-5 { background: rgba(0,232,122,0.1);   color: var(--green);  border: 1px solid rgba(0,232,122,0.3); box-shadow: inset 0 0 12px rgba(0,232,122,0.05); }
+
+/* ─── HEADING WITHIN SECTION ─── */
+h3 {
+  font-family: var(--display); font-size: 18px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  margin: 28px 0 12px; display: flex; align-items: center; gap: 10px;
+}
+h3::before { content: '//'; font-family: var(--mono); font-size: 12px; color: var(--green); }
+h4 {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--muted);
+  margin: 20px 0 8px;
+}
+
+/* ─── INLINE CODE ─── */
+p code, li code { font-size: 11.5px; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .grid-2, .grid-3, .pillar-row, .maturity, .compare-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 44px; }
+  .flow { flex-direction: column; align-items: flex-start; }
+  .flow-arrow { transform: rotate(90deg); }
+}
+</style>
+</head>
+<body>
+<div class="floating-actions">
+  <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"></path><path d="M9 12h10"></path></svg>
+  </a>
+</div>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-classification">FIELD MANUAL</div>
+    <div class="topbar-title">Zero Trust Architecture</div>
+  </div>
+  <div class="topbar-right">
+    <span>DOC-ZTA-2024</span>
+    <div class="topbar-status"><span class="status-dot"></span>LIVE</div>
+  </div>
+</header>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sb-header">
+    <div class="sb-docnum">// ZTA-FIELD-001</div>
+    <div class="sb-subtitle">Identity · Network · Data</div>
+  </div>
+
+  <div class="nav-group-label">Foundations</div>
+  <a class="nav-link active" href="#overview"  data-num="01">Overview &amp; Principles</a>
+  <a class="nav-link"        href="#vpn-death"  data-num="02">End of the Perimeter</a>
+  <a class="nav-link"        href="#pillars"    data-num="03">The Five Pillars</a>
+
+  <div class="nav-group-label">Identity</div>
+  <a class="nav-link"  href="#identity"    data-num="04">Identity as Perimeter</a>
+  <a class="nav-link"  href="#mfa"         data-num="05">MFA &amp; Phishing Resistance</a>
+  <a class="nav-link"  href="#pam"         data-num="06">Privileged Access</a>
+
+  <div class="nav-group-label">Network</div>
+  <a class="nav-link"  href="#microseg"    data-num="07">Micro-Segmentation</a>
+  <a class="nav-link"  href="#ztna"        data-num="08">ZTNA vs VPN</a>
+  <a class="nav-link"  href="#sdp"         data-num="09">Software-Defined Perimeter</a>
+
+  <div class="nav-group-label">Data &amp; Devices</div>
+  <a class="nav-link"  href="#data"        data-num="10">Data Classification</a>
+  <a class="nav-link"  href="#devices"     data-num="11">Device Trust</a>
+  <a class="nav-link"  href="#workloads"   data-num="12">Workload Identity</a>
+
+  <div class="nav-group-label">Operations</div>
+  <a class="nav-link"  href="#visibility"  data-num="13">Visibility &amp; Analytics</a>
+  <a class="nav-link"  href="#automation"  data-num="14">Policy Automation</a>
+  <a class="nav-link"  href="#maturity"    data-num="15">Maturity Model</a>
+  <a class="nav-link"  href="#implementation" data-num="16">Implementation Roadmap</a>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-corner"></div>
+    <div class="hero-corner-label">ZTA</div>
+    <div class="hero-eyebrow">Architecture Field Handbook</div>
+    <h1>Zero<br><span>Trust</span></h1>
+    <div class="hero-axiom">// "Never trust, always verify. Assume breach. Verify explicitly."</div>
+    <p class="hero-desc">The definitive operational guide to eliminating implicit trust from your network. Covers identity-based access, micro-segmentation, ZTNA, device posture, and a phased migration path from legacy perimeter defenses.</p>
+    <div class="hero-chips">
+      <span class="chip chip-red">Post-VPN</span>
+      <span class="chip chip-green">Identity-First</span>
+      <span class="chip chip-amber">Micro-Segmentation</span>
+      <span class="chip chip-blue">ZTNA</span>
+      <span class="chip chip-teal">NIST SP 800-207</span>
+    </div>
+  </div>
+
+  <!-- ══ 01 OVERVIEW ══ -->
+  <section id="overview">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title-block">
+        <h2>Overview &amp; Core Principles</h2>
+        <div class="section-sub">// FOUNDATIONAL DOCTRINE</div>
+      </div>
+    </div>
+
+    <p class="prose">Zero Trust Architecture (ZTA) is a security model, not a product. It eliminates the concept of a trusted internal network — the assumption that everything inside the corporate perimeter is safe. Coined by John Kindervag at Forrester in 2010 and formalized by NIST in SP 800-207, ZTA mandates continuous verification of every request, regardless of origin.</p>
+
+    <div class="grid-3">
+      <div class="card card-accent-red">
+        <div class="card-title">Assume Breach</div>
+        <p>Design and operate as if adversaries are already inside your network. Every segment, every workload, every user is a potential lateral movement vector.</p>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">Verify Explicitly</div>
+        <p>Authenticate and authorize every request using all available signals: identity, device health, location, service, data classification, and behavioral anomalies.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Least Privilege Access</div>
+        <p>Grant the minimum access required, just-in-time, for the exact resource needed. No standing privileges. Time-bound sessions. Continuous re-evaluation.</p>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>NIST SP 800-207</strong> defines seven ZTA tenets: all data sources are resources; all communication is secured; access is granted per-session; access policy is dynamic; the enterprise monitors asset integrity; authentication/authorization is dynamic and strictly enforced; and the enterprise collects information to improve its security posture.</div>
+    </div>
+  </section>
+
+  <!-- ══ 02 END OF PERIMETER ══ -->
+  <section id="vpn-death">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title-block">
+        <h2>The End of the Perimeter</h2>
+        <div class="section-sub">// WHY CASTLE-AND-MOAT FAILED</div>
+      </div>
+    </div>
+
+    <p class="prose">The traditional perimeter model assumed a trusted interior separated from an untrusted exterior by firewalls and VPNs. This model has fundamentally collapsed. The attack surface now spans cloud workloads, remote users, SaaS applications, and third-party supply chains — none of which sit inside a definable perimeter.</p>
+
+    <div class="compare-grid">
+      <div class="compare-block compare-old">
+        <div class="compare-header">✕ Legacy Perimeter Model</div>
+        <div class="compare-body">
+          <ul>
+            <li>Trust everything inside the network boundary</li>
+            <li>VPN grants broad access to internal subnets</li>
+            <li>Flat network — lateral movement is trivial</li>
+            <li>Authentication happens once at the edge</li>
+            <li>No visibility into east-west traffic</li>
+            <li>Single breach = full internal exposure</li>
+            <li>Implicit trust based on IP address</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-block compare-new">
+        <div class="compare-header">✓ Zero Trust Model</div>
+        <div class="compare-body">
+          <ul>
+            <li>Trust nothing — verify every request</li>
+            <li>Access granted per-application, per-session</li>
+            <li>Segmented — blast radius is contained</li>
+            <li>Continuous authentication &amp; re-authorization</li>
+            <li>Full visibility: north-south and east-west</li>
+            <li>Breach impact limited to smallest unit</li>
+            <li>Explicit trust based on identity + context</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>The Forces That Killed the Perimeter</h3>
+    <div class="grid-2">
+      <div class="card card-accent-red">
+        <div class="card-title">Cloud &amp; SaaS Adoption <span class="card-tag tag-red">Critical</span></div>
+        <p>Applications no longer live in the data center. AWS, Azure, GCP, M365, Salesforce, Workday — corporate data now lives outside any traditional perimeter. Routing all traffic through a VPN creates catastrophic latency and a single choke point.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Remote &amp; Hybrid Work <span class="card-tag tag-amber">Structural</span></div>
+        <p>The workforce operates from home networks, coffee shops, mobile hotspots. The endpoint is no longer on a corporate LAN. The device itself may be BYOD, unmanaged, or compromised.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Supply Chain Attacks <span class="card-tag tag-blue">Growing</span></div>
+        <p>SolarWinds, Log4Shell, MOVEit. Adversaries compromise trusted third-party software or vendors to gain implicit access to victim networks. Perimeter firewalls provide zero defense against trusted-insider threat vectors.</p>
+      </div>
+      <div class="card card-accent-teal">
+        <div class="card-title">Credential Compromise <span class="card-tag tag-teal">Pervasive</span></div>
+        <p>81% of breaches involve stolen credentials (Verizon DBIR). VPN + password = complete network access for any attacker with a phished credential. Perimeter defenses collapse at the authentication layer.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 03 FIVE PILLARS ══ -->
+  <section id="pillars">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title-block">
+        <h2>The Five Pillars</h2>
+        <div class="section-sub">// CISA ZTA FRAMEWORK</div>
+      </div>
+    </div>
+
+    <p class="prose">CISA's Zero Trust Maturity Model organizes ZTA across five interdependent pillars. Progress in each pillar compounds — strong identity makes micro-segmentation policies more precise; device health data enriches authentication decisions; visibility across all pillars enables automation.</p>
+
+    <div class="pillar-row">
+      <div class="pillar">
+        <div class="pillar-icon">🪪</div>
+        <div class="pillar-label">Identity</div>
+        <div class="pillar-sub">Users, services, and devices as the primary perimeter</div>
+        <div class="pillar-bar pb-green"></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">💻</div>
+        <div class="pillar-label">Devices</div>
+        <div class="pillar-sub">Posture, health, and compliance of every endpoint</div>
+        <div class="pillar-bar pb-blue"></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">🌐</div>
+        <div class="pillar-label">Networks</div>
+        <div class="pillar-sub">Segmentation, encryption, and traffic inspection</div>
+        <div class="pillar-bar pb-amber"></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">📁</div>
+        <div class="pillar-label">Data</div>
+        <div class="pillar-sub">Classification, labeling, and access control</div>
+        <div class="pillar-bar pb-teal"></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">⚙️</div>
+        <div class="pillar-label">Applications</div>
+        <div class="pillar-sub">Workload identity, app-layer authorization</div>
+        <div class="pillar-bar pb-red"></div>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Cross-cutting capabilities:</strong> Visibility &amp; Analytics, Automation &amp; Orchestration, and Governance thread through all five pillars. No pillar operates in isolation — access decisions at the policy enforcement point draw from signals across all of them simultaneously.</div>
+    </div>
+  </section>
+
+  <!-- ══ 04 IDENTITY ══ -->
+  <section id="identity">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div class="section-title-block">
+        <h2>Identity as the New Perimeter</h2>
+        <div class="section-sub">// IDENTITY PROVIDER ARCHITECTURE</div>
+      </div>
+    </div>
+
+    <p class="prose">In a Zero Trust model, identity is the control plane. Every access decision — user to app, service to service, workload to data store — flows through an identity provider (IdP). The IdP becomes the authoritative source of truth for who (or what) is requesting access, enriched by contextual signals from device, network, and behavioral analytics.</p>
+
+    <h3>Identity Provider Architecture</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-step-label">Request</div>
+        <div class="flow-step-name">User / Device / Workload</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">IdP</div>
+        <div class="flow-step-name">Authentication &amp; MFA</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Policy Engine</div>
+        <div class="flow-step-name">Context Evaluation</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">PEP</div>
+        <div class="flow-step-name">Enforce Decision</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Resource</div>
+        <div class="flow-step-name">App / Data / Service</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">Federated Identity <span class="card-tag tag-green">Standard</span></div>
+        <p>Consolidate authentication to a single IdP (Okta, Azure AD, Ping Identity). Use SAML 2.0 or OIDC for all application integrations. Eliminate local accounts. Every identity must have an authoritative source.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Continuous Access Evaluation <span class="card-tag tag-blue">Advanced</span></div>
+        <p>CAE (OpenID CAEP) allows resource servers to receive real-time revocation signals from the IdP — token invalidation in under 15 minutes drops to near-instant when a policy change or credential compromise is detected.</p>
+      </div>
+    </div>
+
+    <h3>Contextual Access Policy Signals</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Signal Category</th><th>Data Points</th><th>Risk Weight</th></tr>
+        <tr>
+          <td><strong>Identity Strength</strong></td>
+          <td>Authentication method, MFA type, credential age, compromised credential check</td>
+          <td><span class="ok">HIGH</span></td>
+        </tr>
+        <tr>
+          <td><strong>Device Posture</strong></td>
+          <td>MDM enrollment, OS patch level, disk encryption, EDR presence, jailbreak status</td>
+          <td><span class="ok">HIGH</span></td>
+        </tr>
+        <tr>
+          <td><strong>Network Context</strong></td>
+          <td>Source IP, ASN reputation, geolocation, VPN/TOR exit node detection</td>
+          <td><span class="partial">MEDIUM</span></td>
+        </tr>
+        <tr>
+          <td><strong>Behavioral Baseline</strong></td>
+          <td>Typical access time, typical resource patterns, velocity anomalies</td>
+          <td><span class="partial">MEDIUM</span></td>
+        </tr>
+        <tr>
+          <td><strong>Resource Sensitivity</strong></td>
+          <td>Data classification label, regulatory scope (PCI, HIPAA), blast radius</td>
+          <td><span class="ok">HIGH</span></td>
+        </tr>
+        <tr>
+          <td><strong>Session Risk Score</strong></td>
+          <td>Composite risk score computed in real-time; triggers step-up auth or deny</td>
+          <td><span class="ok">HIGH</span></td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 05 MFA ══ -->
+  <section id="mfa">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div class="section-title-block">
+        <h2>MFA &amp; Phishing Resistance</h2>
+        <div class="section-sub">// NOT ALL MFA IS EQUAL</div>
+      </div>
+    </div>
+
+    <p class="prose">Multi-factor authentication is necessary but not sufficient. SMS OTP and TOTP codes are vulnerable to real-time phishing (AiTM — Adversary-in-the-Middle attacks). Evilginx, Modlishka, and similar proxy frameworks can intercept and relay valid MFA codes in real time. Zero Trust requires <strong>phishing-resistant MFA</strong> as the baseline for privileged access.</p>
+
+    <div class="threat-bar">
+      <div class="tl-block tl-1">SMS OTP<br><span style="font-size:8px">WEAK</span></div>
+      <div class="tl-block tl-2">TOTP App<br><span style="font-size:8px">BETTER</span></div>
+      <div class="tl-block tl-3">Push Auth<br><span style="font-size:8px">GOOD</span></div>
+      <div class="tl-block tl-4">Number Match Push<br><span style="font-size:8px">STRONG</span></div>
+      <div class="tl-block tl-5">FIDO2 / Passkeys<br><span style="font-size:8px">PHISHING-RESISTANT</span></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-red">
+        <div class="card-title">Vulnerable to AiTM Phishing <span class="card-tag tag-red">Avoid</span></div>
+        <ul>
+          <li>SMS one-time passwords (SIM-swappable)</li>
+          <li>Standard TOTP codes (relayed by proxy)</li>
+          <li>Plain push approval notifications</li>
+          <li>Email magic links (if email is compromised)</li>
+        </ul>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">Phishing-Resistant MFA <span class="card-tag tag-green">Target</span></div>
+        <ul>
+          <li><strong>FIDO2 / WebAuthn</strong> — hardware or platform authenticator, origin-bound</li>
+          <li><strong>Passkeys</strong> — FIDO2 with synced credentials, consumer-friendly</li>
+          <li><strong>PIV / Smart Cards</strong> — certificate-based, required for U.S. federal (M-22-09)</li>
+          <li><strong>Windows Hello for Business</strong> — TPM-backed, Kerberos/FIDO2</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout threat">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>MFA Fatigue / Push Bombing:</strong> Attackers flood users with push notifications at odd hours hoping for an accidental approval. Mitigations: number matching (user must enter a code displayed on the login screen into the push), additional context (show app name + location), and maximum push frequency limits per session.</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Policy Example — Conditional Access</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Azure AD / Entra ID Conditional Access Policy (conceptual)</span>
+<span class="cm"># Target: All Users → All Cloud Apps → Require phishing-resistant MFA</span>
+
+Policy: "Require Phishing-Resistant MFA - Privileged Resources"
+  Assignments:
+    Users:  All users (excluding break-glass accounts)
+    Apps:   - All cloud apps
+            - On-prem apps via App Proxy
+    Conditions:
+      SignInRisk:     Medium, High         <span class="cm"># Identity Protection signal</span>
+      DevicePlatform: Any
+      Locations:      Any (including trusted)
+
+  Access Controls:
+    Grant:
+      - Require: Authentication Strength = Phishing-Resistant MFA
+        <span class="cm"># Phishing-Resistant = FIDO2 or Certificate-Based Auth only</span>
+      - Require: Compliant Device  <span class="cm"># MDM enrolled + policy compliant</span>
+      - Operator: AND
+
+  Session Controls:
+    SignInFrequency:       4 hours (persistent browser: disabled)
+    ContinuousAccess:      Enabled  <span class="cm"># CAE for real-time revocation</span>
+    CloudAppSecurity:      Monitor session (DLP integration)</div>
+    </div>
+  </section>
+
+  <!-- ══ 06 PAM ══ -->
+  <section id="pam">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div class="section-title-block">
+        <h2>Privileged Access Management</h2>
+        <div class="section-sub">// NO STANDING PRIVILEGE</div>
+      </div>
+    </div>
+
+    <p class="prose">Privileged accounts are the crown jewels. Domain admins, root accounts, service principals with broad permissions — these are the accounts attackers pivot to after initial compromise. Zero Trust mandates eliminating standing privileged access entirely and replacing it with just-in-time (JIT) and just-enough-access (JEA) models.</p>
+
+    <div class="grid-3">
+      <div class="card card-accent-green">
+        <div class="card-title">Just-In-Time Access</div>
+        <p>Privileged access is elevated on-demand for a bounded time window (e.g., 1 hour). No permanent admin role assignments. Every elevation is logged, requires approval workflow, and auto-expires.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Just-Enough Access</div>
+        <p>Scope privileges to the minimum required for the specific task. Instead of Domain Admin, use a custom role scoped to a single OU or resource group. Role definitions are task-specific, not broad.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Privileged Access Workstations</div>
+        <p>Administrative tasks performed only from hardened, dedicated PAWs. Isolated from the internet and standard user activity. No email, no browsing. Separate device or VM for privileged sessions.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">JIT Workflow — PIM / CyberArk Pattern</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## JIT Access Lifecycle</span>
+
+1. REQUEST
+   User submits elevation request:
+   - Role:       "SQL Server Admin — Production DB Cluster"
+   - Scope:      /subscriptions/prod/resourceGroups/db-rg
+   - Duration:   60 minutes
+   - Justification: "Incident INC-4891 — DB deadlock investigation"
+   - Ticket:     Required (INC-4891 validated against ITSM)
+
+2. APPROVAL
+   - Auto-approved if: risk score LOW + ticket verified + within hours
+   - Manager approval: risk score MEDIUM or off-hours access
+   - CISO approval:    Sensitive tier resources or duration > 4h
+
+3. ELEVATION
+   - Role activated, credential vaulted in PAM (CyberArk / Delinea)
+   - Session proxy initiated — all keystrokes recorded
+   - Alert: SOC notified of elevation event
+
+4. SESSION
+   - Time-bound credential, rotates every elevation
+   - Full session recording in PAM vault
+   - Network access limited to target resource only (micro-segmentation)
+
+5. EXPIRY / REVOCATION
+   - Auto-revoked at T+60m or on ticket close
+   - Credential rotated immediately post-session
+   - Session recording retained per policy (90 days minimum)</div>
+    </div>
+  </section>
+
+  <!-- ══ 07 MICRO-SEG ══ -->
+  <section id="microseg">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div class="section-title-block">
+        <h2>Micro-Segmentation</h2>
+        <div class="section-sub">// CONTAIN THE BLAST RADIUS</div>
+      </div>
+    </div>
+
+    <p class="prose">Micro-segmentation replaces flat network architecture with granular, policy-enforced zones — down to individual workload or process level. Even if an attacker compromises one workload, east-west (lateral) movement to other workloads is blocked. The goal: a breach in web tier cannot reach the database tier without explicit policy permission.</p>
+
+    <h3>Segmentation Tiers</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Tier</th><th>Granularity</th><th>Technology</th><th>ZT Alignment</th></tr>
+        <tr>
+          <td>Network Segmentation</td>
+          <td>VLANs, subnets</td>
+          <td>Firewall ACLs, router policy</td>
+          <td><span class="partial">PARTIAL</span> — coarse, IP-based</td>
+        </tr>
+        <tr>
+          <td>Perimeter Micro-seg</td>
+          <td>DMZ zones, app tiers</td>
+          <td>NGFWs, NSGs, Security Groups</td>
+          <td><span class="partial">PARTIAL</span> — better, still coarse</td>
+        </tr>
+        <tr>
+          <td>Workload Micro-seg</td>
+          <td>Per VM / container</td>
+          <td>Illumio, Guardicore, NSX-T, Calico</td>
+          <td><span class="ok">STRONG</span> — identity-aware policy</td>
+        </tr>
+        <tr>
+          <td>Process Micro-seg</td>
+          <td>Per process / port</td>
+          <td>eBPF-based (Cilium, Tetragon)</td>
+          <td><span class="ok">OPTIMAL</span> — kernel-level enforcement</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Policy Model: Allowlist, Not Denylist</h3>
+    <p class="prose">Legacy firewalls operate on denylist logic — block known bad, allow everything else. Micro-segmentation inverts this: <strong>deny all by default, allow only explicitly declared flows</strong>. Every permitted communication path is intentional and documented.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Network Policy — Kubernetes / Cilium</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">apiVersion</span>: cilium.io/v2
+<span class="at">kind</span>: CiliumNetworkPolicy
+<span class="at">metadata</span>:
+  name: payments-service-policy
+  namespace: production
+<span class="at">spec</span>:
+  <span class="cm"># Identity selector — target workload</span>
+  endpointSelector:
+    matchLabels:
+      app: payments-api
+      tier: backend
+
+  <span class="cm"># INGRESS: only allow from these sources</span>
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: api-gateway       <span class="cm"># Frontend gateway only</span>
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
+          rules:
+            http:
+              - method: POST
+                path: /v1/charge   <span class="cm"># Exact path, exact method</span>
+
+    - fromEndpoints:
+        - matchLabels:
+            app: fraud-detection   <span class="cm"># Internal service</span>
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
+
+  <span class="cm"># EGRESS: only allow to these destinations</span>
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app: postgres-primary  <span class="cm"># DB only</span>
+      toPorts:
+        - ports: [{ port: "5432", protocol: TCP }]
+
+    - toFQDNs:
+        - matchPattern: "api.stripe.com"  <span class="cm"># External payment gateway</span>
+      toPorts:
+        - ports: [{ port: "443", protocol: TCP }]
+
+  <span class="cm"># All other traffic: DENY (implicit default)</span></div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Discover before deny:</strong> Begin micro-segmentation in <em>observe mode</em> to map actual traffic flows before enforcing policy. Blind enforcement breaks applications. Tools like Illumio Explorer or NSX Traffic Analysis visualize east-west flows from day 1, allowing you to build accurate allowlists from reality, not assumptions.</div>
+    </div>
+  </section>
+
+  <!-- ══ 08 ZTNA vs VPN ══ -->
+  <section id="ztna">
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <div class="section-title-block">
+        <h2>ZTNA vs VPN</h2>
+        <div class="section-sub">// APPLICATION-LEVEL ACCESS BROKERS</div>
+      </div>
+    </div>
+
+    <p class="prose">Zero Trust Network Access (ZTNA) replaces VPN tunnels with identity-aware, application-level access brokers. Instead of granting network access, ZTNA grants <strong>application access</strong> — only after verifying identity, device posture, and policy, and only to the specific application requested.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Dimension</th><th>Traditional VPN</th><th>ZTNA</th></tr>
+        <tr>
+          <td><strong>Access Scope</strong></td>
+          <td class="no">Full network segment / subnet</td>
+          <td class="ok">Single application, per session</td>
+        </tr>
+        <tr>
+          <td><strong>Trust Basis</strong></td>
+          <td class="no">Authenticated = trusted</td>
+          <td class="ok">Authenticated + device + risk score</td>
+        </tr>
+        <tr>
+          <td><strong>Visibility</strong></td>
+          <td class="no">Encrypted tunnel, limited inspection</td>
+          <td class="ok">Full session logging, app-layer visibility</td>
+        </tr>
+        <tr>
+          <td><strong>Lateral Movement</strong></td>
+          <td class="no">Unrestricted once inside</td>
+          <td class="ok">Blocked — no network access granted</td>
+        </tr>
+        <tr>
+          <td><strong>Performance</strong></td>
+          <td class="no">Hairpin traffic through data center</td>
+          <td class="ok">Direct-to-app or cloud-proxied, low latency</td>
+        </tr>
+        <tr>
+          <td><strong>Application Discovery</strong></td>
+          <td class="no">IP/port scanning possible</td>
+          <td class="ok">Dark — apps invisible without auth</td>
+        </tr>
+        <tr>
+          <td><strong>Unmanaged Devices</strong></td>
+          <td class="partial">VPN client required</td>
+          <td class="ok">Clientless browser access option</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>ZTNA Deployment Models</h3>
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">Agent-Based ZTNA <span class="card-tag tag-green">Managed Devices</span></div>
+        <p>Lightweight agent on managed endpoints continuously reports device posture to the ZTNA service. Access decisions incorporate real-time device health. Agent intercepts application traffic and routes through ZTNA broker.</p>
+        <p style="margin-top:8px;"><strong>Products:</strong> Zscaler Private Access, Cloudflare Access, Palo Alto Prisma Access, Cisco Duo SSE</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Agentless ZTNA <span class="card-tag tag-blue">Third Parties / BYOD</span></div>
+        <p>Browser-based access through reverse proxy. No agent required — ideal for contractors, partners, BYOD. Device posture limited to browser-observable signals. Session isolation via browser rendering.</p>
+        <p style="margin-top:8px;"><strong>Products:</strong> Cloudflare Browser Isolation, Zscaler Cloud Browser Isolation, Axis Security</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 09 SDP ══ -->
+  <section id="sdp">
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <div class="section-title-block">
+        <h2>Software-Defined Perimeter</h2>
+        <div class="section-sub">// DARK CLOUD — INVISIBLE UNTIL AUTHORIZED</div>
+      </div>
+    </div>
+
+    <p class="prose">A Software-Defined Perimeter (SDP) implements the "need to know" principle at the network layer. Applications and infrastructure are invisible — they do not respond to unauthenticated connection attempts. Only after mutual authentication through a controller does the infrastructure reveal itself and allow connectivity.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-step-label">Client</div>
+        <div class="flow-step-name">SDP Client + Identity</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Controller</div>
+        <div class="flow-step-name">AuthN + Policy Check</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Decision</div>
+        <div class="flow-step-name">ALLOW / DENY</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Gateway</div>
+        <div class="flow-step-name">Dynamic Tunnel</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Service</div>
+        <div class="flow-step-name">Dark / Hidden</div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Single Packet Authorization (SPA):</strong> The gateway listens for a cryptographically signed UDP packet before opening any TCP port. Port scanners and unauthenticated probes receive no response — the service is completely dark to attackers. fwknop is the reference open-source SPA implementation. Commercial implementations include Appgate SDP and Zscaler.</div>
+    </div>
+  </section>
+
+  <!-- ══ 10 DATA ══ -->
+  <section id="data">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title-block">
+        <h2>Data Classification &amp; Protection</h2>
+        <div class="section-sub">// PROTECT WHAT MATTERS</div>
+      </div>
+    </div>
+
+    <p class="prose">Zero Trust protects data, not networks. You cannot apply appropriate controls without knowing what data you have, where it lives, and how sensitive it is. Data classification is the prerequisite to data-aware access policy.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Classification</th><th>Examples</th><th>Controls Required</th><th>Regulatory Scope</th></tr>
+        <tr>
+          <td><strong style="color:var(--red)">RESTRICTED</strong></td>
+          <td>PII, PHI, PCI cardholder data, credentials, trade secrets</td>
+          <td>Encryption at rest + in transit, MFA required, DLP block, PAM-controlled, audit all access</td>
+          <td>GDPR, HIPAA, PCI-DSS, CCPA</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--amber)">CONFIDENTIAL</strong></td>
+          <td>Internal financials, HR data, unreleased product plans, M&amp;A details</td>
+          <td>Encryption, authenticated access, DLP monitor, access review quarterly</td>
+          <td>SOX, various</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--blue)">INTERNAL</strong></td>
+          <td>Internal wikis, process docs, non-sensitive code</td>
+          <td>Authenticated access, encryption in transit</td>
+          <td>General data protection</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--muted)">PUBLIC</strong></td>
+          <td>Marketing, press releases, public docs</td>
+          <td>Integrity controls, no confidentiality requirement</td>
+          <td>N/A</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Data-Loss Prevention Integration</h3>
+    <p class="prose">DLP policies enforce data classification at the enforcement point — intercepting uploads, emails, and clipboard operations that attempt to move RESTRICTED data to unauthorized destinations. In a ZT model, DLP is a session control layer integrated with the ZTNA/SSE platform.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">DLP Policy — Inline Inspection (CASB / SSE)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># DLP Rule: Block PCI Data Upload to Unsanctioned Cloud Storage</span>
+
+Rule: "PCI Data Exfiltration Prevention"
+  Priority:   10 (highest)
+  Direction:  UPLOAD to INTERNET
+
+  Content Inspection:
+    Patterns:
+      - type: PCI_CCN          <span class="cm"># Credit card number regex + Luhn check</span>
+        threshold: 1           <span class="cm"># Single instance triggers</span>
+      - type: CUSTOM_REGEX
+        pattern: "4[0-9]{12}(?:[0-9]{3})?"  <span class="cm"># Visa pattern</span>
+
+  Destinations (Unsanctioned):
+    Categories: PersonalStorage, FileSharing
+    Apps: Dropbox, Google Drive (personal), WeTransfer, Pastebin
+    <span class="cm"># Note: sanctioned apps (e.g., corporate SharePoint) are excluded</span>
+
+  Actions:
+    Primary:  BLOCK
+    Alert:    SOC (P2 — 30 min SLA)
+    Notify:   User (explain policy) + Manager
+    Log:      Full session context, content fingerprint (no raw data)
+    Quarantine: File flagged for review in DLP console</div>
+    </div>
+  </section>
+
+  <!-- ══ 11 DEVICES ══ -->
+  <section id="devices">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div class="section-title-block">
+        <h2>Device Trust &amp; Posture</h2>
+        <div class="section-sub">// ENDPOINTS AS ACCESS SIGNALS</div>
+      </div>
+    </div>
+
+    <p class="prose">Device health is a critical signal in ZTA access decisions. A compromised endpoint authenticating with valid credentials should be denied access to sensitive resources. Device posture — MDM enrollment status, patch level, EDR presence, disk encryption — is evaluated continuously, not just at login.</p>
+
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">Managed Device Requirements <span class="card-tag tag-green">Enforced</span></div>
+        <ul>
+          <li>MDM enrolled (Intune / Jamf / SOTI)</li>
+          <li>OS patch level within 14 days of release</li>
+          <li>Full disk encryption enabled (BitLocker / FileVault)</li>
+          <li>EDR agent active and reporting (CrowdStrike / Defender)</li>
+          <li>Compliant screen lock policy</li>
+          <li>Approved certificate from PKI issued</li>
+        </ul>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Non-Compliant Device Response <span class="card-tag tag-amber">Tiered</span></div>
+        <ul>
+          <li><strong>Missing EDR:</strong> Block access to Restricted tier, allow Internal only</li>
+          <li><strong>OS out of date:</strong> Redirect to remediation portal, 7-day grace</li>
+          <li><strong>No MDM enrollment:</strong> Agentless ZTNA only (browser-isolated)</li>
+          <li><strong>Jailbroken/rooted:</strong> Full deny, SOC alert, quarantine device</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Device Identity via Certificate:</strong> Issue unique certificates from your corporate PKI to each managed device. Device certificate authentication (mTLS) at the ZTNA gateway cryptographically binds the session to the specific device. Certificate validity is conditioned on MDM compliance status — non-compliant devices have certificates revoked via OCSP or CRL.</div>
+    </div>
+  </section>
+
+  <!-- ══ 12 WORKLOADS ══ -->
+  <section id="workloads">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div class="section-title-block">
+        <h2>Workload Identity</h2>
+        <div class="section-sub">// SERVICE-TO-SERVICE ZERO TRUST</div>
+      </div>
+    </div>
+
+    <p class="prose">Human users are only half the access problem. Workloads — microservices, functions, pipelines, VMs — communicate constantly, and each communication is an opportunity for lateral movement. Workload identity issues cryptographic identities to every workload and enforces mutual authentication on service-to-service communication.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Service Mesh mTLS — Istio / SPIFFE</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Istio — enforce STRICT mTLS across the mesh</span>
+<span class="at">apiVersion</span>: security.istio.io/v1beta1
+<span class="at">kind</span>: PeerAuthentication
+<span class="at">metadata</span>:
+  name: default
+  namespace: production
+<span class="at">spec</span>:
+  mtls:
+    mode: STRICT    <span class="cm"># Reject all plaintext. mTLS required for every connection.</span>
+
+<span class="cm">---</span>
+<span class="cm"># Authorization Policy — payments-api may ONLY be called by api-gateway</span>
+<span class="at">apiVersion</span>: security.istio.io/v1beta1
+<span class="at">kind</span>: AuthorizationPolicy
+<span class="at">metadata</span>:
+  name: payments-authz
+  namespace: production
+<span class="at">spec</span>:
+  selector:
+    matchLabels:
+      app: payments-api
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            <span class="cm"># SPIFFE identity of the allowed caller</span>
+            principals:
+              - "cluster.local/ns/production/sa/api-gateway"
+      to:
+        - operation:
+            methods: ["POST"]
+            paths: ["/v1/charge", "/v1/refund"]
+  <span class="cm"># Default: DENY ALL (no matching ALLOW rule = denied)</span></div>
+    </div>
+
+    <h3>Secret Management — No Hardcoded Credentials</h3>
+    <div class="grid-2">
+      <div class="card card-accent-teal">
+        <div class="card-title">Dynamic Secrets (HashiCorp Vault)</div>
+        <p>Workloads authenticate to Vault using their SPIFFE/SVID identity or cloud IAM role. Vault issues short-lived, scoped credentials (DB passwords, API keys, TLS certs) that expire automatically. No static credentials ever stored in config or environment variables.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Cloud-Native Options</div>
+        <p>AWS IAM roles for service accounts (IRSA), Azure Managed Identity, GCP Workload Identity Federation. Workloads receive temporary, auto-rotated tokens from the cloud provider's IAM service — no secret management overhead.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 13 VISIBILITY ══ -->
+  <section id="visibility">
+    <div class="section-header">
+      <div class="section-num">13</div>
+      <div class="section-title-block">
+        <h2>Visibility &amp; Analytics</h2>
+        <div class="section-sub">// YOU CAN'T PROTECT WHAT YOU CAN'T SEE</div>
+      </div>
+    </div>
+
+    <p class="prose">Zero Trust generates more telemetry than any other security architecture — every access decision, every policy evaluation, every denied request is a data point. This telemetry feeds analytics platforms that detect anomalies, drive policy tuning, and provide the forensic record needed for incident response.</p>
+
+    <div class="grid-3">
+      <div class="card card-accent-green">
+        <div class="card-title">Identity Analytics (UEBA)</div>
+        <p>User and Entity Behavior Analytics baselines normal access patterns. Detects: off-hours access, impossible travel, privilege escalation chains, data staging/exfil patterns, mass file access.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Network Flow Telemetry</div>
+        <p>NetFlow / IPFIX / eBPF-sourced telemetry from micro-segmentation layer. Maps east-west traffic, detects scanning, identifies unexpected communication paths, powers blast radius analysis.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Endpoint Telemetry (XDR)</div>
+        <p>EDR/XDR agents provide process execution, file system, registry, and network events from endpoints. Correlates endpoint activity with network and identity events for full attack chain reconstruction.</p>
+      </div>
+    </div>
+
+    <h3>Log Sources — Required for ZTA Baseline</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Source</th><th>Key Events</th><th>Retention</th></tr>
+        <tr><td>Identity Provider</td><td>All auth events, MFA challenges, policy evaluations, token issuance/revocation</td><td>1 year</td></tr>
+        <tr><td>ZTNA / Access Proxy</td><td>Every access request (allow/deny), session duration, bytes transferred, app accessed</td><td>1 year</td></tr>
+        <tr><td>Micro-Segmentation</td><td>All connection attempts, policy hits/misses, new/changed flows</td><td>90 days</td></tr>
+        <tr><td>Endpoint EDR</td><td>Process creation, network connections, file writes, credential access</td><td>90 days</td></tr>
+        <tr><td>PAM / Vault</td><td>Elevation requests, credential checkouts, session recordings, secret access</td><td>2 years</td></tr>
+        <tr><td>Cloud Control Plane</td><td>IAM changes, resource creation/deletion, config changes (CloudTrail, Activity Log)</td><td>2 years</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 14 AUTOMATION ══ -->
+  <section id="automation">
+    <div class="section-header">
+      <div class="section-num">14</div>
+      <div class="section-title-block">
+        <h2>Policy Automation &amp; Orchestration</h2>
+        <div class="section-sub">// HUMAN SPEED IS NOT ENOUGH</div>
+      </div>
+    </div>
+
+    <p class="prose">ZTA policies must respond to risk signals faster than human operators can act. Automated policy enforcement closes the gap between detection and response — revoking access, quarantining devices, and isolating workloads in seconds, not hours.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">SOAR Playbook — Compromised Credential Response</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">TRIGGER: Identity Protection — High Risk Sign-in Detected
+  Conditions:
+    - RiskLevel: HIGH (score > 90)
+    - Source: Azure AD Identity Protection / Okta ThreatInsight
+    - NOT: known break-glass account
+
+AUTOMATED ACTIONS (T+0 seconds):
+  1. Revoke all active sessions         <span class="cm"># IdP API: revokeAllSessions(userId)</span>
+  2. Invalidate all refresh tokens      <span class="cm"># IdP API: revokeTokens(userId)</span>
+  3. Disable account                    <span class="cm"># IdP API: disableUser(userId)</span>
+  4. Quarantine endpoint (if known)     <span class="cm"># EDR API: isolateDevice(deviceId)</span>
+  5. Block in ZTNA                      <span class="cm"># ZTNA API: blockUser(userId, reason)</span>
+  6. Create P1 incident in ITSM         <span class="cm"># ServiceNow API: createIncident(P1)</span>
+  7. Page SOC analyst                   <span class="cm"># PagerDuty: trigger(policy=SOC-P1)</span>
+  8. Notify user's manager              <span class="cm"># Slack + Email: notifyManager(mgr)</span>
+
+ENRICHMENT (T+30 seconds):
+  - Pull: last 24h sign-in history
+  - Pull: all privileged roles / group memberships
+  - Pull: recent file access and email send events
+  - Geo-plot: all recent access locations
+  - Cross-reference: breach credential database (Have I Been Pwned API)
+
+SOC REVIEW (T+15 min SLA):
+  - Confirm compromise / false positive
+  - If FP: restore account, document, tune detection
+  - If confirmed: escalate to full IR procedure</div>
+    </div>
+
+    <div class="callout threat">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Automation blast radius:</strong> Automated account disables are powerful but dangerous. Implement confidence thresholds — only automate at risk score &gt;90. Between 60-90, automate step-up MFA and notify SOC. Below 60, log and monitor. Test all playbooks in simulation mode before production activation. Maintain break-glass accounts excluded from all automated policies.</div>
+    </div>
+  </section>
+
+  <!-- ══ 15 MATURITY ══ -->
+  <section id="maturity">
+    <div class="section-header">
+      <div class="section-num">15</div>
+      <div class="section-title-block">
+        <h2>CISA Zero Trust Maturity Model</h2>
+        <div class="section-sub">// WHERE ARE YOU TODAY</div>
+      </div>
+    </div>
+
+    <p class="prose">CISA's ZT Maturity Model defines four stages across all five pillars. Organizations rarely advance all pillars simultaneously — focus on achieving ADVANCED across Identity first, as it provides the most immediate risk reduction and enables higher maturity in other pillars.</p>
+
+    <div class="maturity">
+      <div class="maturity-stage ms-1">
+        <div class="maturity-level">Stage 01</div>
+        <div class="maturity-name">Traditional</div>
+        <ul>
+          <li>Static perimeter defenses</li>
+          <li>Manual access provisioning</li>
+          <li>No device posture checking</li>
+          <li>Password-only authentication</li>
+          <li>Flat network architecture</li>
+          <li>Minimal telemetry</li>
+        </ul>
+      </div>
+      <div class="maturity-stage ms-2">
+        <div class="maturity-level">Stage 02</div>
+        <div class="maturity-name">Initial</div>
+        <ul>
+          <li>MFA deployed (some users)</li>
+          <li>Basic MDM enrollment</li>
+          <li>VLAN segmentation</li>
+          <li>SSO / IdP introduced</li>
+          <li>SIEM with basic correlation</li>
+          <li>Manual access review (annual)</li>
+        </ul>
+      </div>
+      <div class="maturity-stage ms-3">
+        <div class="maturity-level">Stage 03</div>
+        <div class="maturity-name">Advanced</div>
+        <ul>
+          <li>Phishing-resistant MFA</li>
+          <li>ZTNA replacing VPN</li>
+          <li>Workload micro-segmentation</li>
+          <li>JIT privileged access (PAM)</li>
+          <li>Automated threat response</li>
+          <li>Quarterly access reviews</li>
+        </ul>
+      </div>
+      <div class="maturity-stage ms-4">
+        <div class="maturity-level">Stage 04</div>
+        <div class="maturity-name">Optimal</div>
+        <ul>
+          <li>Dynamic, risk-scored policy</li>
+          <li>Continuous re-authorization (CAE)</li>
+          <li>mTLS service mesh everywhere</li>
+          <li>Dynamic secrets, no static creds</li>
+          <li>Real-time SOAR automation</li>
+          <li>Continuous access review (CIEM)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 16 ROADMAP ══ -->
+  <section id="implementation">
+    <div class="section-header">
+      <div class="section-num">16</div>
+      <div class="section-title-block">
+        <h2>Implementation Roadmap</h2>
+        <div class="section-sub">// PHASED MIGRATION FROM PERIMETER</div>
+      </div>
+    </div>
+
+    <p class="prose">ZTA is a multi-year journey, not a product purchase. Organizations that try to boil the ocean — rearchitecting everything simultaneously — fail. The most successful implementations use a phased approach that delivers quick wins in identity (highest ROI) while progressively modernizing network and data controls.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Recommended Phasing — 18-Month Plan</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">PHASE 0 — DISCOVER (Months 1-2)</span>   Risk: Map, not mitigate yet
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Asset inventory — all users, devices, apps, services, data stores
+  ✦ Traffic mapping — east-west flows (Illumio / NSX observe mode)
+  ✦ Identity audit — all accounts, service accounts, privileged roles
+  ✦ Data classification — scan and label data at rest (Varonis / Purview)
+  ✦ Current-state maturity assessment (CISA ZT Maturity Model)
+  ✦ Threat model — identify crown jewels, likely attack paths
+
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">PHASE 1 — IDENTITY FOUNDATION (Months 3-6)</span>   ROI: HIGHEST
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Consolidate IdP — single authoritative identity provider
+  ✦ MFA for all users — start TOTP, roadmap to FIDO2
+  ✦ Privileged accounts — enroll in PAM (CyberArk / BeyondTrust)
+  ✦ Eliminate shared accounts and service account passwords
+  ✦ Conditional access baseline policies — compliant device + MFA
+  ✦ Access reviews — implement quarterly automated review cycle
+
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">PHASE 2 — NETWORK MODERNIZATION (Months 6-12)</span>
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Deploy ZTNA for remote access — pilot with 20% of users
+  ✦ VPN deprecation plan — sunset legacy VPN per app group
+  ✦ Micro-segmentation pilot — start with highest-value crown jewels
+  ✦ DNS security — block C2 and malicious domains (Cisco Umbrella / PDNS)
+  ✦ TLS inspection — decrypt and inspect encrypted traffic
+  ✦ Expand ZTNA — migrate remaining remote access populations
+
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">PHASE 3 — DATA &amp; WORKLOAD (Months 12-18)</span>
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Deploy CASB / DLP inline — data-aware access controls
+  ✦ Service mesh + mTLS — workload-to-workload identity
+  ✦ Secrets management — eliminate all static credentials
+  ✦ Phishing-resistant MFA — FIDO2 for privileged users first
+  ✦ SOAR automation — automate top 5 response playbooks
+  ✦ Full micro-segmentation — enforce allowlist policy network-wide</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-red">
+        <div class="card-title">Common Failure Modes <span class="card-tag tag-red">Avoid</span></div>
+        <ul>
+          <li>Big-bang approach — too much change at once</li>
+          <li>Buying tools before defining policy</li>
+          <li>Ignoring service account identities</li>
+          <li>Skipping observe/audit mode (enforce blindly)</li>
+          <li>No executive sponsorship / budget alignment</li>
+          <li>Siloed teams — network vs. identity vs. security</li>
+          <li>Underestimating change management / user friction</li>
+        </ul>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">Success Factors <span class="card-tag tag-green">Must-Have</span></div>
+        <ul>
+          <li>Identity-first sequencing — highest ROI, lowest disruption</li>
+          <li>Observe before enforce — map reality, then apply policy</li>
+          <li>Executive mandate with clear success metrics</li>
+          <li>Cross-functional tiger team (IAM + Net + Sec + App)</li>
+          <li>User experience investment — poor UX = shadow IT</li>
+          <li>Continuous measurement against CISA maturity model</li>
+          <li>Vendor agnostic architecture (avoid lock-in)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Reference Architectures:</strong> NIST SP 800-207 (canonical ZTA definition), CISA Zero Trust Maturity Model v2 (staged roadmap), DoD Zero Trust Strategy (federal implementation), Google BeyondCorp (original corporate ZTA case study), Microsoft Zero Trust Guidance Center (Azure-focused), NSA Embracing a Zero Trust Security Model (network-focused guidance).</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-52px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+<script src="../scripts/handbook-ui.js"></script>
+</body>
+</html>
