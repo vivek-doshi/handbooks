@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETL Handbook — Extract, Transform, Load</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink:        #1a1410;
+  --ink2:       #2e2620;
+  --ink3:       #3d3530;
+  --paper:      #faf7f2;
+  --paper2:     #f3ede4;
+  --paper3:     #ece4d8;
+  --border:     rgba(58,42,28,0.12);
+  --border2:    rgba(58,42,28,0.22);
+  --rust:       #c4622d;
+  --rust-dim:   rgba(196,98,45,0.1);
+  --rust-glow:  rgba(196,98,45,0.18);
+  --teal:       #1a7f74;
+  --teal-dim:   rgba(26,127,116,0.1);
+  --gold:       #b08320;
+  --gold-dim:   rgba(176,131,32,0.1);
+  --navy:       #1e3a5f;
+  --navy-dim:   rgba(30,58,95,0.1);
+  --plum:       #6b3a6b;
+  --plum-dim:   rgba(107,58,107,0.1);
+  --serif:      'DM Serif Display', serif;
+  --mono:       'DM Mono', monospace;
+  --sans:       'DM Sans', sans-serif;
+  --sidebar-w:  268px;
+  --top-h:      58px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: var(--ink);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+}
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-badge {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 3px; color: var(--ink);
+  background: var(--rust); padding: 4px 12px;
+  text-transform: uppercase;
+}
+.topbar-title {
+  font-family: var(--serif); font-size: 18px; color: var(--paper);
+  letter-spacing: 0.3px;
+}
+.topbar-right {
+  font-family: var(--mono); font-size: 10px; color: rgba(250,247,242,0.35);
+  letter-spacing: 1px;
+  display: flex; align-items: center; gap: 20px;
+}
+.topbar-right span { display: flex; align-items: center; gap: 6px; }
+.dot-live {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 6px var(--teal);
+  animation: blink 2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ─── LAYOUT ─── */
+.layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--ink2);
+  padding-bottom: 48px;
+  scrollbar-width: thin; scrollbar-color: var(--ink3) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--ink3); }
+
+.sb-head {
+  padding: 24px 22px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: linear-gradient(160deg, rgba(196,98,45,0.15) 0%, transparent 60%);
+}
+.sb-eyebrow { font-family: var(--mono); font-size: 9px; letter-spacing: 3px; color: var(--rust); text-transform: uppercase; margin-bottom: 5px; }
+.sb-doc { font-family: var(--serif); font-size: 22px; color: var(--paper); line-height: 1.2; }
+.sb-rev { font-family: var(--mono); font-size: 10px; color: rgba(250,247,242,0.28); margin-top: 6px; }
+
+.nav-group { padding: 14px 0 2px; }
+.nav-group-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 2.5px; text-transform: uppercase; color: rgba(250,247,242,0.28);
+  padding: 0 22px 5px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 22px; text-decoration: none;
+  font-size: 13px; color: rgba(250,247,242,0.5);
+  border-left: 2px solid transparent;
+  transition: all 0.15s; line-height: 1.3;
+}
+.nav-link .nl-num { font-family: var(--mono); font-size: 9px; color: rgba(250,247,242,0.2); width: 20px; flex-shrink: 0; }
+.nav-link:hover { color: rgba(250,247,242,0.85); background: rgba(255,255,255,0.04); border-left-color: rgba(255,255,255,0.15); }
+.nav-link.active { color: var(--rust); border-left-color: var(--rust); background: rgba(196,98,45,0.1); }
+.nav-link.active .nl-num { color: rgba(196,98,45,0.6); }
+
+/* ─── MAIN ─── */
+.main { flex: 1; min-width: 0; padding: 52px 64px 100px; max-width: 1000px; }
+
+/* ─── HERO ─── */
+.hero {
+  position: relative; margin-bottom: 72px;
+  padding: 60px 56px 52px;
+  background: var(--ink);
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(196,98,45,0.2) 0%, transparent 55%),
+    radial-gradient(ellipse at 0% 100%, rgba(26,127,116,0.12) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero::after {
+  content: 'ETL';
+  position: absolute; right: 48px; bottom: -20px;
+  font-family: var(--serif); font-size: 200px; line-height: 1;
+  color: rgba(255,255,255,0.025); pointer-events: none;
+  letter-spacing: -8px;
+}
+.hero-kicker {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+  text-transform: uppercase; color: var(--rust);
+  margin-bottom: 16px; opacity: 0.9;
+}
+.hero h1 {
+  font-family: var(--serif); font-size: 72px; line-height: 0.92;
+  letter-spacing: -1.5px; color: var(--paper);
+  margin-bottom: 12px;
+}
+.hero h1 em { color: var(--rust); font-style: italic; }
+.hero-sub {
+  font-family: var(--serif); font-style: italic; font-size: 22px;
+  color: rgba(250,247,242,0.5); margin-bottom: 22px; letter-spacing: 0.2px;
+}
+.hero-desc {
+  color: rgba(250,247,242,0.6); font-size: 15px; max-width: 540px;
+  line-height: 1.75; margin-bottom: 30px;
+}
+.hero-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase; padding: 5px 14px;
+  border: 1px solid; border-radius: 2px;
+}
+.pill-rust   { color: var(--rust);  border-color: rgba(196,98,45,0.5);  background: rgba(196,98,45,0.12); }
+.pill-teal   { color: #4db8b0;      border-color: rgba(26,127,116,0.5); background: rgba(26,127,116,0.12); }
+.pill-gold   { color: #d4a535;      border-color: rgba(176,131,32,0.5); background: rgba(176,131,32,0.12); }
+.pill-navy   { color: #5b8fcc;      border-color: rgba(30,58,95,0.5);   background: rgba(30,58,95,0.2); }
+.pill-plum   { color: #c07fc0;      border-color: rgba(107,58,107,0.5); background: rgba(107,58,107,0.15); }
+
+/* ─── SECTIONS ─── */
+section { margin-bottom: 76px; scroll-margin-top: calc(var(--top-h) + 20px); }
+.section-header { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--border); position: relative; }
+.section-header::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 60px; height: 2px; background: var(--rust); }
+.sec-num { font-family: var(--mono); font-size: 10px; color: var(--rust); margin-top: 4px; flex-shrink: 0; }
+.sec-titles h2 { font-family: var(--serif); font-size: 34px; line-height: 1; color: var(--ink); letter-spacing: -0.5px; }
+.sec-titles .sec-sub { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: #9a8a78; text-transform: uppercase; margin-top: 5px; }
+
+/* ─── PROSE ─── */
+.prose { color: #4a3e34; font-size: 14.5px; line-height: 1.85; margin-bottom: 18px; }
+.prose strong { color: var(--ink); font-weight: 600; }
+
+/* ─── HEADINGS ─── */
+h3 {
+  font-family: var(--serif); font-size: 21px; color: var(--ink);
+  margin: 32px 0 14px; letter-spacing: -0.3px;
+  display: flex; align-items: center; gap: 10px;
+}
+h3::before { content: '§'; font-family: var(--mono); font-size: 12px; color: var(--rust); opacity: 0.7; }
+h4 { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: #9a8a78; margin: 20px 0 8px; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--paper2); border: 1px solid var(--border);
+  padding: 22px 24px; margin-bottom: 14px;
+  position: relative; transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
+.card.accent-rust { border-left: 3px solid var(--rust); }
+.card.accent-teal { border-left: 3px solid var(--teal); }
+.card.accent-gold { border-left: 3px solid var(--gold); }
+.card.accent-navy { border-left: 3px solid var(--navy); }
+.card.accent-plum { border-left: 3px solid var(--plum); }
+
+.card-head {
+  font-family: var(--sans); font-size: 15px; font-weight: 600;
+  color: var(--ink); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.tag {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px;
+  text-transform: uppercase; padding: 2px 8px;
+}
+.tag-rust  { color: var(--rust);  background: var(--rust-dim);  border: 1px solid rgba(196,98,45,0.25); }
+.tag-teal  { color: var(--teal);  background: var(--teal-dim);  border: 1px solid rgba(26,127,116,0.25); }
+.tag-gold  { color: var(--gold);  background: var(--gold-dim);  border: 1px solid rgba(176,131,32,0.25); }
+.tag-navy  { color: var(--navy);  background: var(--navy-dim);  border: 1px solid rgba(30,58,95,0.25); }
+.tag-plum  { color: var(--plum);  background: var(--plum-dim);  border: 1px solid rgba(107,58,107,0.25); }
+
+.card p, .card li { color: #5a4e44; font-size: 13.5px; line-height: 1.7; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; }
+
+/* ─── GRIDS ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+/* ─── ETL FLOW DIAGRAM ─── */
+.etl-flow {
+  display: flex; align-items: stretch; gap: 0;
+  margin: 24px 0; background: var(--ink); padding: 2px; overflow: hidden;
+}
+.flow-phase {
+  flex: 1; padding: 28px 22px; text-align: center; position: relative;
+}
+.flow-phase.fp-e { background: rgba(196,98,45,0.15); border-right: 1px solid rgba(255,255,255,0.07); }
+.flow-phase.fp-t { background: rgba(176,131,32,0.12); border-right: 1px solid rgba(255,255,255,0.07); }
+.flow-phase.fp-l { background: rgba(26,127,116,0.15); }
+.flow-letter { font-family: var(--serif); font-size: 56px; line-height: 1; margin-bottom: 6px; }
+.fp-e .flow-letter { color: var(--rust); }
+.fp-t .flow-letter { color: #d4a535; }
+.fp-l .flow-letter { color: #4db8b0; }
+.flow-word { font-family: var(--mono); font-size: 9px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; }
+.fp-e .flow-word { color: rgba(196,98,45,0.7); }
+.fp-t .flow-word { color: rgba(212,165,53,0.7); }
+.fp-l .flow-word { color: rgba(77,184,176,0.7); }
+.flow-items { list-style: none; }
+.flow-items li {
+  font-size: 12px; color: rgba(250,247,242,0.55); margin-bottom: 5px;
+  padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.flow-items li:last-child { border-bottom: none; }
+.flow-arrow-wrap {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px; background: rgba(255,255,255,0.03);
+}
+.flow-arrow-sym { color: rgba(250,247,242,0.2); font-size: 20px; }
+
+/* ─── CODE ─── */
+.code-wrap {
+  background: var(--ink2); border: 1px solid rgba(255,255,255,0.06);
+  margin: 18px 0; overflow: hidden;
+  font-family: var(--mono);
+}
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 18px; background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.code-lang { font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--rust); }
+.copy-btn {
+  font-size: 10px; color: rgba(250,247,242,0.3); background: none;
+  border: 1px solid rgba(255,255,255,0.1); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+  letter-spacing: 1px;
+}
+.copy-btn:hover { color: var(--rust); border-color: var(--rust); }
+.code-block {
+  padding: 20px 22px; overflow-x: auto;
+  font-size: 12.5px; line-height: 1.75;
+  white-space: pre; tab-size: 4; color: #8a9bb0;
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+
+/* syntax */
+.kw  { color: #c07fc0; }
+.st  { color: #a3d9a5; }
+.cm  { color: #445566; font-style: italic; }
+.fn  { color: #7ab8e8; }
+.nu  { color: #e8a87c; }
+.at  { color: var(--rust); }
+.hl  { display: block; background: rgba(196,98,45,0.06); margin: 0 -22px; padding: 0 22px; border-left: 2px solid var(--rust); }
+code { font-family: var(--mono); font-size: 12px; background: var(--rust-dim); color: var(--rust); padding: 1px 6px; border: 1px solid rgba(196,98,45,0.2); }
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 14px;
+  padding: 15px 18px; margin: 18px 0;
+  border-left: 3px solid; font-size: 13.5px;
+}
+.callout-icon { flex-shrink: 0; font-size: 15px; }
+.callout-body { color: #5a4e44; line-height: 1.65; }
+.callout-body strong { color: var(--ink); }
+.callout.tip     { background: rgba(26,127,116,0.07);  border-color: var(--teal); }
+.callout.warning { background: rgba(196,98,45,0.07);   border-color: var(--rust); }
+.callout.note    { background: rgba(30,58,95,0.06);    border-color: var(--navy); }
+.callout.idea    { background: rgba(176,131,32,0.07);  border-color: var(--gold); }
+
+/* ─── TABLES ─── */
+.table-wrap { border: 1px solid var(--border); margin: 18px 0; overflow-x: auto; background: var(--paper2); }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 10px 16px; background: rgba(58,42,28,0.06); color: var(--ink3); font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; border-bottom: 1px solid var(--border2); }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: #5a4e44; vertical-align: top; line-height: 1.6; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(58,42,28,0.03); }
+.ok  { color: var(--teal);  font-weight: 700; font-family: var(--mono); font-size: 11px; }
+.no  { color: var(--rust);  font-weight: 700; font-family: var(--mono); font-size: 11px; }
+.mid { color: var(--gold);  font-weight: 700; font-family: var(--mono); font-size: 11px; }
+
+/* ─── COMPARE ─── */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
+.compare-block { border: 1px solid var(--border); overflow: hidden; }
+.compare-head { padding: 10px 18px; font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+.compare-old .compare-head { background: rgba(196,98,45,0.08); color: var(--rust); border-bottom: 1px solid rgba(196,98,45,0.15); }
+.compare-new .compare-head { background: rgba(26,127,116,0.07); color: var(--teal); border-bottom: 1px solid rgba(26,127,116,0.15); }
+.compare-body { padding: 14px 18px; }
+.compare-body li { font-size: 13px; color: #5a4e44; margin-bottom: 6px; }
+.compare-body ul { padding-left: 14px; }
+
+/* ─── SCENARIO CARDS ─── */
+.scenario {
+  background: var(--paper2); border: 1px solid var(--border);
+  margin-bottom: 14px; overflow: hidden;
+}
+.scenario-head {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 20px;
+  background: var(--ink); border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.scenario-icon { font-size: 22px; }
+.scenario-title { font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--paper); }
+.scenario-tag { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 8px; margin-left: auto; }
+.scenario-body { padding: 16px 20px; }
+.scenario-body p { color: #5a4e44; font-size: 13.5px; margin-bottom: 10px; }
+.scenario-body ul { padding-left: 18px; }
+.scenario-body li { font-size: 13px; color: #5a4e44; margin-bottom: 4px; }
+
+/* ─── PHASE TIMELINE ─── */
+.phases { display: flex; gap: 0; margin: 18px 0; background: var(--paper2); border: 1px solid var(--border); }
+.phase { flex: 1; padding: 18px 16px; text-align: center; border-right: 1px solid var(--border); position: relative; }
+.phase:last-child { border-right: none; }
+.phase::after { content: '→'; position: absolute; right: -10px; top: 50%; transform: translateY(-50%); color: var(--border2); font-size: 14px; z-index: 1; }
+.phase:last-child::after { display: none; }
+.phase-num { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: #9a8a78; margin-bottom: 5px; }
+.phase-name { font-family: var(--serif); font-size: 16px; color: var(--ink); margin-bottom: 4px; }
+.phase-desc { font-size: 11.5px; color: #9a8a78; line-height: 1.4; }
+.phase.p1 { border-top: 2px solid var(--rust); }
+.phase.p2 { border-top: 2px solid var(--gold); }
+.phase.p3 { border-top: 2px solid var(--teal); }
+.phase.p4 { border-top: 2px solid var(--navy); }
+.phase.p5 { border-top: 2px solid var(--plum); }
+.phase.p6 { border-top: 2px solid #9a8a78; }
+
+/* ─── MATURITY ─── */
+.maturity { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin: 18px 0; }
+.maturity-block { background: var(--paper2); border: 1px solid var(--border); padding: 18px; position: relative; overflow: hidden; }
+.maturity-block::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.mb-1::before { background: var(--rust); }
+.mb-2::before { background: var(--gold); }
+.mb-3::before { background: var(--teal); }
+.m-level { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: #9a8a78; text-transform: uppercase; margin-bottom: 5px; }
+.m-title { font-family: var(--serif); font-size: 18px; color: var(--ink); margin-bottom: 10px; }
+.mb-1 .m-title { color: var(--rust); }
+.mb-2 .m-title { color: var(--gold); }
+.mb-3 .m-title { color: var(--teal); }
+.maturity-block ul { padding-left: 14px; }
+.maturity-block li { font-size: 12px; color: #9a8a78; margin-bottom: 4px; }
+
+/* ─── INLINE ─── */
+p code, li code { font-size: 11.5px; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 920px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .grid-2, .grid-3, .etl-flow, .compare, .maturity { grid-template-columns: 1fr; display: block; }
+  .etl-flow { display: flex; flex-direction: column; }
+  .hero h1 { font-size: 48px; }
+  .phases { flex-direction: column; }
+  .phase::after { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-badge">Field Guide</div>
+    <div class="topbar-title">ETL — Data Engineering Handbook</div>
+  </div>
+  <div class="topbar-right">
+    <span>DOC-ETL-2024</span>
+    <span><span class="dot-live"></span> Beginner → Intermediate</span>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-eyebrow">// ETL-GUIDE-001</div>
+    <div class="sb-doc">Extract · Transform · Load</div>
+    <div class="sb-rev">Rev 2024 · Beginner → Intermediate</div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Foundations</div>
+    <a class="nav-link active" href="#what-is-etl" data-num="01"><span class="nl-num">01</span>What Is ETL?</a>
+    <a class="nav-link"        href="#why-etl"     data-num="02"><span class="nl-num">02</span>Why ETL Matters</a>
+    <a class="nav-link"        href="#components"  data-num="03"><span class="nl-num">03</span>The Three Stages</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Deep Dives</div>
+    <a class="nav-link" href="#extract"   data-num="04"><span class="nl-num">04</span>Extract in Detail</a>
+    <a class="nav-link" href="#transform" data-num="05"><span class="nl-num">05</span>Transform in Detail</a>
+    <a class="nav-link" href="#load"      data-num="06"><span class="nl-num">06</span>Load in Detail</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">When &amp; How</div>
+    <a class="nav-link" href="#when"      data-num="07"><span class="nl-num">07</span>When to Use ETL</a>
+    <a class="nav-link" href="#patterns"  data-num="08"><span class="nl-num">08</span>Common Patterns</a>
+    <a class="nav-link" href="#tools"     data-num="09"><span class="nl-num">09</span>Tools &amp; Frameworks</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Practice</div>
+    <a class="nav-link" href="#examples"  data-num="10"><span class="nl-num">10</span>Worked Examples</a>
+    <a class="nav-link" href="#errors"    data-num="11"><span class="nl-num">11</span>Errors &amp; Pitfalls</a>
+    <a class="nav-link" href="#maturity"  data-num="12"><span class="nl-num">12</span>Maturity Path</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-kicker">Data Engineering Field Guide</div>
+    <h1>Extract,<br><em>Transform</em>,<br>Load</h1>
+    <p class="hero-sub">The backbone of every data-driven organisation</p>
+    <p class="hero-desc">A practical, no-jargon guide to understanding, designing, and running ETL pipelines — from your first script to production-grade systems. Written for analysts, engineers, and anyone who's ever asked "where does this data actually come from?"</p>
+    <div class="hero-pills">
+      <span class="pill pill-rust">Beginner Friendly</span>
+      <span class="pill pill-gold">Python Examples</span>
+      <span class="pill pill-teal">SQL Patterns</span>
+      <span class="pill pill-navy">Real Scenarios</span>
+      <span class="pill pill-plum">Best Practices</span>
+    </div>
+  </div>
+
+  <!-- ══ 01 WHAT IS ETL ══ -->
+  <section id="what-is-etl">
+    <div class="section-header">
+      <div class="sec-num">01</div>
+      <div class="sec-titles">
+        <h2>What Is ETL?</h2>
+        <div class="sec-sub">// DEFINITION &amp; INTUITION</div>
+      </div>
+    </div>
+
+    <p class="prose">ETL stands for <strong>Extract, Transform, Load</strong>. It is the process of pulling raw data from one or more sources, reshaping it into a usable form, and storing it in a destination where it can be queried and analysed. Think of it as the plumbing of the data world — invisible when it works, catastrophic when it doesn't.</p>
+
+    <p class="prose">Every time you look at a business dashboard, run a report, or train a machine learning model, there is almost certainly an ETL pipeline somewhere in the chain that made that data available and coherent.</p>
+
+    <div class="etl-flow">
+      <div class="flow-phase fp-e">
+        <div class="flow-letter">E</div>
+        <div class="flow-word">Extract</div>
+        <ul class="flow-items">
+          <li>Read from source</li>
+          <li>Databases, APIs, files</li>
+          <li>Raw, messy data</li>
+          <li>No changes yet</li>
+        </ul>
+      </div>
+      <div class="flow-arrow-wrap"><span class="flow-arrow-sym">⟶</span></div>
+      <div class="flow-phase fp-t">
+        <div class="flow-letter">T</div>
+        <div class="flow-word">Transform</div>
+        <ul class="flow-items">
+          <li>Clean &amp; validate</li>
+          <li>Reshape structure</li>
+          <li>Enrich &amp; aggregate</li>
+          <li>Business logic</li>
+        </ul>
+      </div>
+      <div class="flow-arrow-wrap"><span class="flow-arrow-sym">⟶</span></div>
+      <div class="flow-phase fp-l">
+        <div class="flow-letter">L</div>
+        <div class="flow-word">Load</div>
+        <ul class="flow-items">
+          <li>Write to destination</li>
+          <li>Data warehouse, lake</li>
+          <li>Structured &amp; ready</li>
+          <li>Analysts can query</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Analogy:</strong> Imagine you run a bakery with suppliers in three countries. ETL is like: going to each supplier to pick up raw ingredients (Extract), converting foreign measurements and removing bad produce (Transform), then stocking your shelves in a consistent layout (Load). Your bakers (analysts) now work from clean, organised ingredients.</div>
+    </div>
+
+    <h3>ETL vs ELT — a quick distinction</h3>
+    <div class="compare">
+      <div class="compare-block compare-old">
+        <div class="compare-head">📦 ETL — Transform First</div>
+        <div class="compare-body">
+          <ul>
+            <li>Transform data <em>before</em> loading into the destination</li>
+            <li>Lighter storage requirements — only clean data lands</li>
+            <li>Better for sensitive data (scrub PII before it touches the warehouse)</li>
+            <li>Traditional approach — suited to on-premise data warehouses</li>
+            <li>Transformation logic lives in the pipeline (Python, Spark, etc.)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-block compare-new">
+        <div class="compare-head">🏗️ ELT — Load First (Modern)</div>
+        <div class="compare-body">
+          <ul>
+            <li>Load raw data first, transform inside the warehouse using SQL</li>
+            <li>Raw data always available for re-processing</li>
+            <li>Cloud warehouses (BigQuery, Snowflake, Redshift) are cheap &amp; fast</li>
+            <li>dbt (data build tool) is the dominant ELT transform layer</li>
+            <li>Better for exploration — analysts can define their own transforms</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 02 WHY ETL ══ -->
+  <section id="why-etl">
+    <div class="section-header">
+      <div class="sec-num">02</div>
+      <div class="sec-titles">
+        <h2>Why ETL Matters</h2>
+        <div class="sec-sub">// THE BUSINESS CASE</div>
+      </div>
+    </div>
+
+    <p class="prose">Data rarely arrives in the format you need. Systems speak different languages — one uses <code>user_id</code>, another uses <code>userId</code>, another uses an integer vs. a UUID. Timestamps come in three timezones. Null values mean different things. Duplicates creep in. ETL solves the "data integration" problem at scale.</p>
+
+    <div class="grid-3">
+      <div class="card accent-rust">
+        <div class="card-head">Single Source of Truth</div>
+        <p>ETL consolidates data from dozens of systems into one reliable destination. Sales, marketing, and engineering stop arguing about whose numbers are right — there's one canonical dataset.</p>
+      </div>
+      <div class="card accent-gold">
+        <div class="card-head">Data Quality Enforcement</div>
+        <p>Business rules live in the transform stage. Malformed records get caught, logged, and quarantined — not silently corrupting downstream reports. Quality gates run on every pipeline execution.</p>
+      </div>
+      <div class="card accent-teal">
+        <div class="card-head">Analytics at Scale</div>
+        <p>Pre-aggregated, modelled data in a warehouse is orders of magnitude faster to query than joining raw operational tables. Analysts work with optimised marts, not raw OLTP tables.</p>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Without ETL:</strong> Analysts write ad-hoc queries against production databases, slowing them down. Every analyst builds their own version of "customer count" differently. There's no audit trail for data changes. Reports break when source schemas change. This is the chaos ETL prevents.</div>
+    </div>
+  </section>
+
+  <!-- ══ 03 THREE STAGES ══ -->
+  <section id="components">
+    <div class="section-header">
+      <div class="sec-num">03</div>
+      <div class="sec-titles">
+        <h2>The Three Stages</h2>
+        <div class="sec-sub">// OVERVIEW OF EACH PHASE</div>
+      </div>
+    </div>
+
+    <div class="card accent-rust">
+      <div class="card-head">① Extract — Reading from Sources <span class="tag tag-rust">Read-Only</span></div>
+      <p>The Extract phase connects to one or more data sources and reads records. The critical rule: <strong>never modify the source</strong>. You are a reader, not a writer. Sources include relational databases (PostgreSQL, MySQL), APIs (REST, GraphQL), flat files (CSV, JSON, Parquet), cloud storage (S3, GCS), event streams (Kafka), and third-party SaaS products (Salesforce, Stripe, HubSpot).</p>
+    </div>
+    <div class="card accent-gold">
+      <div class="card-head">② Transform — Reshaping Data <span class="tag tag-gold">Core Logic</span></div>
+      <p>The Transform phase is where business logic lives. This is the most complex and valuable part of ETL. It includes: cleaning (trim whitespace, fix encodings), validation (check constraints, schema conformance), deduplication, type casting, joining datasets, aggregating, deriving calculated fields, applying business rules ("a churned customer is one with no activity in 90 days"), and privacy operations (hash/mask PII).</p>
+    </div>
+    <div class="card accent-teal">
+      <div class="card-head">③ Load — Writing to Destination <span class="tag tag-teal">Persist</span></div>
+      <p>The Load phase writes the transformed data to its destination. Key decisions here: <strong>full load</strong> (truncate and rewrite everything, simple but expensive) vs. <strong>incremental load</strong> (only new or changed records, efficient but complex). The destination might be a data warehouse, data lake, a reporting database, or a downstream application.</p>
+    </div>
+  </section>
+
+  <!-- ══ 04 EXTRACT ══ -->
+  <section id="extract">
+    <div class="section-header">
+      <div class="sec-num">04</div>
+      <div class="sec-titles">
+        <h2>Extract in Detail</h2>
+        <div class="sec-sub">// READING FROM THE WILD</div>
+      </div>
+    </div>
+
+    <p class="prose">Extraction is deceptively difficult. Sources are unreliable, APIs rate-limit you, schemas change without notice, and connections time out. A robust extract layer handles failures gracefully, logs everything, and is idempotent — safe to re-run without double-counting.</p>
+
+    <h3>Common extraction patterns</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Pattern</th><th>How it works</th><th>Best for</th></tr>
+        <tr>
+          <td><strong>Full Extract</strong></td>
+          <td>Read all records from the source every time</td>
+          <td>Small tables, no change tracking available</td>
+        </tr>
+        <tr>
+          <td><strong>Incremental (Timestamp)</strong></td>
+          <td>Filter by <code>updated_at &gt; last_run_time</code></td>
+          <td>Tables with reliable <code>updated_at</code> columns</td>
+        </tr>
+        <tr>
+          <td><strong>CDC — Change Data Capture</strong></td>
+          <td>Read the database transaction log for changes</td>
+          <td>High-volume tables, near-real-time needs</td>
+        </tr>
+        <tr>
+          <td><strong>API Pagination</strong></td>
+          <td>Iterate through pages/cursors of an API response</td>
+          <td>REST APIs with paginated endpoints</td>
+        </tr>
+        <tr>
+          <td><strong>File Drop</strong></td>
+          <td>Watch a folder/bucket for new files, process on arrival</td>
+          <td>Partner data drops, legacy exports</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Extract example — database + API</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Incremental Database Extract</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> psycopg2
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">def</span> <span class="fn">extract_orders</span>(last_run: datetime) -> pd.DataFrame:
+    <span class="st">"""
+    Extract only orders created/updated since last pipeline run.
+    Safe to re-run — uses >= not > to catch any edge cases.
+    """</span>
+    conn = psycopg2.connect(
+        host=<span class="st">"db.prod.internal"</span>,
+        database=<span class="st">"ecommerce"</span>,
+        user=<span class="st">"etl_readonly"</span>,     <span class="cm"># Read-only user — ETL never writes to source</span>
+        password=os.environ[<span class="st">"DB_PASSWORD"</span>]
+    )
+
+    query = <span class="st">"""
+        SELECT
+            order_id,
+            customer_id,
+            order_status,
+            total_amount,
+            currency_code,
+            created_at,
+            updated_at
+        FROM orders
+        WHERE updated_at >= %(last_run)s   -- Incremental filter
+        ORDER BY updated_at ASC
+    """</span>
+
+    df = pd.read_sql(query, conn, params={<span class="st">"last_run"</span>: last_run})
+    conn.close()
+
+    print(f<span class="st">"Extracted {len(df)} orders since {last_run}"</span>)
+    <span class="kw">return</span> df
+
+<span class="cm"># Usage</span>
+last_run = get_last_successful_run()   <span class="cm"># Load from metadata store</span>
+raw_orders = extract_orders(last_run)</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — REST API Extract with Pagination</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> requests, time
+
+<span class="kw">def</span> <span class="fn">extract_from_api</span>(endpoint: str, api_key: str) -> list:
+    <span class="st">"""Paginate through all pages of a REST API."""</span>
+    all_records = []
+    page = <span class="nu">1</span>
+    page_size = <span class="nu">100</span>
+
+    <span class="kw">while</span> <span class="kw">True</span>:
+        response = requests.get(
+            endpoint,
+            headers={<span class="st">"Authorization"</span>: f<span class="st">"Bearer {api_key}"</span>},
+            params={<span class="st">"page"</span>: page, <span class="st">"per_page"</span>: page_size},
+            timeout=<span class="nu">30</span>
+        )
+        response.raise_for_status()   <span class="cm"># Raise on 4xx/5xx errors</span>
+        data = response.json()
+
+        records = data.get(<span class="st">"results"</span>, [])
+        <span class="kw">if not</span> records:
+            <span class="kw">break</span>   <span class="cm"># No more pages</span>
+
+        all_records.extend(records)
+        print(f<span class="st">"Page {page}: fetched {len(records)} records"</span>)
+
+        <span class="kw">if not</span> data.get(<span class="st">"has_more"</span>, <span class="kw">False</span>):
+            <span class="kw">break</span>
+
+        page += <span class="nu">1</span>
+        time.sleep(<span class="nu">0.2</span>)   <span class="cm"># Rate limit courtesy pause</span>
+
+    <span class="kw">return</span> all_records</div>
+    </div>
+  </section>
+
+  <!-- ══ 05 TRANSFORM ══ -->
+  <section id="transform">
+    <div class="section-header">
+      <div class="sec-num">05</div>
+      <div class="sec-titles">
+        <h2>Transform in Detail</h2>
+        <div class="sec-sub">// WHERE THE LOGIC LIVES</div>
+      </div>
+    </div>
+
+    <p class="prose">Transformation is the heart of ETL. This is where raw, messy reality becomes structured, trustworthy data. Transformations range from trivial (renaming a column) to complex (sessionising event streams, slowly changing dimension tracking, multi-table joins with business logic).</p>
+
+    <div class="grid-2">
+      <div class="card accent-rust">
+        <div class="card-head">Data Cleaning <span class="tag tag-rust">Always First</span></div>
+        <ul>
+          <li>Strip leading/trailing whitespace from strings</li>
+          <li>Standardise case (e.g. all email → lowercase)</li>
+          <li>Parse and normalise date formats to UTC</li>
+          <li>Handle NULL / missing values (drop, impute, or flag)</li>
+          <li>Remove duplicate records</li>
+          <li>Fix encoding issues (UTF-8 normalisation)</li>
+        </ul>
+      </div>
+      <div class="card accent-gold">
+        <div class="card-head">Structural Changes <span class="tag tag-gold">Shape</span></div>
+        <ul>
+          <li>Rename columns to consistent naming convention</li>
+          <li>Cast types (string "123" → integer 123)</li>
+          <li>Pivot / unpivot (wide → long, long → wide)</li>
+          <li>Flatten nested JSON structures</li>
+          <li>Split a column into multiple (e.g. full_name → first + last)</li>
+          <li>Combine columns (e.g. city + country → location)</li>
+        </ul>
+      </div>
+      <div class="card accent-teal">
+        <div class="card-head">Business Logic <span class="tag tag-teal">Add Value</span></div>
+        <ul>
+          <li>Join with lookup/dimension tables (e.g. add country name from country_code)</li>
+          <li>Calculate derived metrics (revenue = quantity × unit_price)</li>
+          <li>Apply segmentation rules (user tier based on spend)</li>
+          <li>Aggregate to target grain (daily totals per region)</li>
+          <li>Flag anomalies or out-of-range values</li>
+        </ul>
+      </div>
+      <div class="card accent-navy">
+        <div class="card-head">Privacy &amp; Compliance <span class="tag tag-navy">Mandatory</span></div>
+        <ul>
+          <li>Hash or pseudonymise PII (emails, phone numbers)</li>
+          <li>Mask credit card numbers (store only last 4 digits)</li>
+          <li>Apply data retention rules (delete records older than N days)</li>
+          <li>Tag records with sensitivity classification</li>
+          <li>Enforce GDPR deletion requests (right to be forgotten)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Transform example — cleaning &amp; enriching orders</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python / Pandas — Transform Stage</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">def</span> <span class="fn">transform_orders</span>(df: pd.DataFrame) -> pd.DataFrame:
+    <span class="st">"""Clean, validate, and enrich raw orders data."""</span>
+
+    <span class="cm"># ── 1. RENAME to consistent snake_case convention ──</span>
+    df = df.rename(columns={
+        <span class="st">"orderID"</span>: <span class="st">"order_id"</span>,
+        <span class="st">"customerID"</span>: <span class="st">"customer_id"</span>,
+        <span class="st">"TotalAmount"</span>: <span class="st">"total_amount_raw"</span>,
+    })
+
+    <span class="cm"># ── 2. CAST types ──</span>
+    df[<span class="st">"total_amount_raw"</span>] = pd.to_numeric(df[<span class="st">"total_amount_raw"</span>], errors=<span class="st">"coerce"</span>)
+    df[<span class="st">"created_at"</span>] = pd.to_datetime(df[<span class="st">"created_at"</span>], utc=<span class="kw">True</span>)
+
+    <span class="cm"># ── 3. VALIDATE — flag bad records instead of silently dropping ──</span>
+    df[<span class="st">"is_valid"</span>] = (
+        df[<span class="st">"order_id"</span>].notna() &
+        df[<span class="st">"total_amount_raw"</span>] > <span class="nu">0</span> &
+        df[<span class="st">"order_status"</span>].isin([<span class="st">"pending"</span>, <span class="st">"confirmed"</span>, <span class="st">"shipped"</span>, <span class="st">"cancelled"</span>])
+    )
+    invalid = df[~df[<span class="st">"is_valid"</span>]]
+    <span class="kw">if</span> len(invalid) > <span class="nu">0</span>:
+        print(f<span class="st">"⚠ {len(invalid)} invalid records — routing to quarantine"</span>)
+        invalid.to_parquet(<span class="st">"quarantine/orders_invalid.parquet"</span>)
+    df = df[df[<span class="st">"is_valid"</span>]].drop(columns=[<span class="st">"is_valid"</span>])
+
+    <span class="cm"># ── 4. DEDUPLICATE — keep latest record per order_id ──</span>
+    df = df.sort_values(<span class="st">"updated_at"</span>, ascending=<span class="kw">False</span>)
+    df = df.drop_duplicates(subset=[<span class="st">"order_id"</span>], keep=<span class="st">"first"</span>)
+
+    <span class="cm"># ── 5. CURRENCY NORMALISATION — convert to USD ──</span>
+    fx_rates = {<span class="st">"GBP"</span>: <span class="nu">1.27</span>, <span class="st">"EUR"</span>: <span class="nu">1.09</span>, <span class="st">"USD"</span>: <span class="nu">1.0</span>}
+    df[<span class="st">"fx_rate"</span>] = df[<span class="st">"currency_code"</span>].map(fx_rates).fillna(<span class="nu">1.0</span>)
+    df[<span class="st">"total_amount_usd"</span>] = (df[<span class="st">"total_amount_raw"</span>] * df[<span class="st">"fx_rate"</span>]).round(<span class="nu">2</span>)
+
+    <span class="cm"># ── 6. DERIVED FIELDS — add useful calculated columns ──</span>
+    df[<span class="st">"order_date"</span>] = df[<span class="st">"created_at"</span>].dt.date
+    df[<span class="st">"order_month"</span>] = df[<span class="st">"created_at"</span>].dt.to_period(<span class="st">"M"</span>).astype(str)
+    df[<span class="st">"is_high_value"</span>] = df[<span class="st">"total_amount_usd"</span>] >= <span class="nu">500</span>
+
+    <span class="cm"># ── 7. FINAL COLUMN SELECTION — only what the warehouse needs ──</span>
+    <span class="kw">return</span> df[[
+        <span class="st">"order_id"</span>, <span class="st">"customer_id"</span>, <span class="st">"order_status"</span>,
+        <span class="st">"total_amount_usd"</span>, <span class="st">"currency_code"</span>,
+        <span class="st">"order_date"</span>, <span class="st">"order_month"</span>, <span class="st">"is_high_value"</span>,
+        <span class="st">"created_at"</span>, <span class="st">"updated_at"</span>
+    ]]</div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✔</span>
+      <div class="callout-body"><strong>Quarantine, don't drop:</strong> When a record fails validation, never silently drop it. Write it to a quarantine table or file with a rejection reason. This is how you discover upstream bugs, catch schema changes, and maintain an audit trail. "Silent drops" are how data quality issues stay hidden for months.</div>
+    </div>
+  </section>
+
+  <!-- ══ 06 LOAD ══ -->
+  <section id="load">
+    <div class="section-header">
+      <div class="sec-num">06</div>
+      <div class="sec-titles">
+        <h2>Load in Detail</h2>
+        <div class="sec-sub">// WRITING TO THE DESTINATION</div>
+      </div>
+    </div>
+
+    <p class="prose">Loading is the final step — persisting your clean, transformed data. The key decision is your <strong>load strategy</strong>. Get this wrong and you'll either re-process millions of rows unnecessarily or miss updates entirely.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Strategy</th><th>Description</th><th>Pros</th><th>Cons</th><th>Use When</th></tr>
+        <tr>
+          <td><strong>Full Load</strong></td>
+          <td>Truncate destination, reload everything</td>
+          <td class="ok">Simple</td>
+          <td class="no">Slow at scale</td>
+          <td>Small tables, no CDC, dim tables</td>
+        </tr>
+        <tr>
+          <td><strong>Append Only</strong></td>
+          <td>Add new rows, never update existing</td>
+          <td class="ok">Very fast</td>
+          <td class="no">Can't handle updates</td>
+          <td>Immutable events (clicks, log lines)</td>
+        </tr>
+        <tr>
+          <td><strong>Upsert (MERGE)</strong></td>
+          <td>Insert new, update existing by key</td>
+          <td class="ok">Handles changes</td>
+          <td class="mid">Complex queries</td>
+          <td>Most transactional data</td>
+        </tr>
+        <tr>
+          <td><strong>SCD Type 2</strong></td>
+          <td>Keep full history of all changes with effective dates</td>
+          <td class="ok">Full history</td>
+          <td class="no">Large storage</td>
+          <td>Customer, product dimension tables</td>
+        </tr>
+        <tr>
+          <td><strong>Partition Overwrite</strong></td>
+          <td>Replace only the affected time partition</td>
+          <td class="ok">Efficient for time data</td>
+          <td class="mid">Date-partitioned tables only</td>
+          <td>Daily/monthly aggregation tables</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Load example — upsert to PostgreSQL</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Upsert Load Pattern</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> psycopg2
+<span class="kw">from</span> psycopg2.extras <span class="kw">import</span> execute_values
+
+<span class="kw">def</span> <span class="fn">load_orders</span>(df, conn):
+    <span class="st">"""
+    Upsert: insert new orders, update existing ones by order_id.
+    Uses PostgreSQL's ON CONFLICT DO UPDATE (UPSERT).
+    """</span>
+    records = [tuple(row) <span class="kw">for</span> row <span class="kw">in</span> df.itertuples(index=<span class="kw">False</span>)]
+
+    upsert_sql = <span class="st">"""
+        INSERT INTO warehouse.orders (
+            order_id, customer_id, order_status,
+            total_amount_usd, order_date, order_month,
+            is_high_value, created_at, updated_at
+        ) VALUES %s
+        ON CONFLICT (order_id) DO UPDATE SET   -- If order exists, update it
+            order_status    = EXCLUDED.order_status,
+            total_amount_usd = EXCLUDED.total_amount_usd,
+            is_high_value   = EXCLUDED.is_high_value,
+            updated_at      = EXCLUDED.updated_at
+    """</span>
+
+    <span class="kw">with</span> conn.cursor() <span class="kw">as</span> cur:
+        execute_values(cur, upsert_sql, records, page_size=<span class="nu">1000</span>)
+
+    conn.commit()
+    print(f<span class="st">"Loaded {len(df)} records"</span>)
+
+<span class="cm"># Putting it all together</span>
+<span class="kw">def</span> <span class="fn">run_pipeline</span>():
+    last_run = get_last_run_time()
+    raw    = extract_orders(last_run)      <span class="cm"># Step 1: Extract</span>
+    clean  = transform_orders(raw)         <span class="cm"># Step 2: Transform</span>
+    load_orders(clean, get_warehouse_conn()) <span class="cm"># Step 3: Load</span>
+    save_run_time(datetime.utcnow())       <span class="cm"># Record checkpoint</span>
+
+run_pipeline()</div>
+    </div>
+  </section>
+
+  <!-- ══ 07 WHEN TO USE ══ -->
+  <section id="when">
+    <div class="section-header">
+      <div class="sec-num">07</div>
+      <div class="sec-titles">
+        <h2>When to Use ETL</h2>
+        <div class="sec-sub">// USE CASES &amp; SCENARIOS</div>
+      </div>
+    </div>
+
+    <p class="prose">ETL is not always the answer. For a single CSV report, a script works fine. But once you have multiple sources, recurring schedules, SLA requirements, or more than one consumer of the data, ETL pipelines pay their investment back quickly. Here are the most common triggers.</p>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-icon">🏪</span>
+        <span class="scenario-title">Business Intelligence &amp; Reporting</span>
+        <span class="scenario-tag tag-teal">Very Common</span>
+      </div>
+      <div class="scenario-body">
+        <p>You want a dashboard showing daily sales, by region, by product category, updated every morning. Your data lives in a transactional MySQL database. Direct queries to MySQL are too slow and risk impacting the live site.</p>
+        <ul>
+          <li><strong>Extract:</strong> Pull yesterday's orders from MySQL each night at 2am</li>
+          <li><strong>Transform:</strong> Join with product and region tables, calculate daily totals</li>
+          <li><strong>Load:</strong> Write aggregated summary to Snowflake or Redshift</li>
+          <li><strong>Result:</strong> BI tool (Tableau, Looker) queries the warehouse, not production</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-icon">🔗</span>
+        <span class="scenario-title">Merging Data from Multiple Systems</span>
+        <span class="scenario-tag tag-gold">Very Common</span>
+      </div>
+      <div class="scenario-body">
+        <p>Your sales data is in Salesforce, billing in Stripe, support tickets in Zendesk. You want to understand the full customer lifecycle in one place — acquisition cost, revenue, and support cost per customer.</p>
+        <ul>
+          <li><strong>Extract:</strong> Pull from Salesforce API, Stripe API, and Zendesk API on a schedule</li>
+          <li><strong>Transform:</strong> Map each system's customer identifier to a common <code>customer_id</code>, standardise date formats, resolve conflicting data</li>
+          <li><strong>Load:</strong> Build a unified customer table in the data warehouse</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-icon">🤖</span>
+        <span class="scenario-title">Feature Engineering for Machine Learning</span>
+        <span class="scenario-tag tag-rust">Data Science</span>
+      </div>
+      <div class="scenario-body">
+        <p>Training a churn prediction model requires a feature table: one row per customer, with columns for recency of last purchase, frequency, total spend, support ticket count, etc. These come from five different tables.</p>
+        <ul>
+          <li><strong>Extract:</strong> Pull from transactions, sessions, support, and product tables</li>
+          <li><strong>Transform:</strong> Calculate RFM (Recency, Frequency, Monetary) features, aggregate events into windows (last 7d, 30d, 90d), handle nulls intelligently</li>
+          <li><strong>Load:</strong> Write feature table to a feature store or ML training data path</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="scenario">
+      <div class="scenario-head">
+        <span class="scenario-icon">🏛️</span>
+        <span class="scenario-title">Data Migrations</span>
+        <span class="scenario-tag tag-navy">One-Time / Periodic</span>
+      </div>
+      <div class="scenario-body">
+        <p>Migrating from an old CRM to a new one, or moving from an on-premise Oracle DB to a cloud warehouse. You need to transform the old schema into the new schema, preserving history.</p>
+        <ul>
+          <li>Map old field names to new ones, handle structural differences</li>
+          <li>Apply data quality rules to clean up years of technical debt</li>
+          <li>Validate row counts and checksums between source and destination</li>
+          <li>Run in parallel during cutover to verify before switching live traffic</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout idea">
+      <span class="callout-icon">📋</span>
+      <div class="callout-body"><strong>Quick checklist — do you need ETL?</strong> If you answer yes to 2 or more: you have more than one data source; your report takes longer than acceptable to run; analysts query production databases directly; the same metric produces different numbers depending on who runs it; your data loads are manual / ad-hoc; you have compliance requirements for data lineage — <strong>yes, you need ETL.</strong></div>
+    </div>
+  </section>
+
+  <!-- ══ 08 PATTERNS ══ -->
+  <section id="patterns">
+    <div class="section-header">
+      <div class="sec-num">08</div>
+      <div class="sec-titles">
+        <h2>Common ETL Patterns</h2>
+        <div class="sec-sub">// DESIGN PATTERNS YOU'LL USE REPEATEDLY</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card accent-rust">
+        <div class="card-head">Idempotency <span class="tag tag-rust">Critical</span></div>
+        <p>A pipeline is <em>idempotent</em> if running it twice produces the same result as running it once. This is essential — pipelines fail and need to re-run. Design your loads as upserts (not appends), track watermarks/checkpoints, and test re-runs explicitly.</p>
+      </div>
+      <div class="card accent-gold">
+        <div class="card-head">Watermark / Checkpoint Pattern</div>
+        <p>Store the timestamp of the last successful run in a metadata table. The next run reads from that timestamp. If the pipeline fails mid-run, it retries from the last checkpoint — not from scratch and not forward of failed data.</p>
+      </div>
+      <div class="card accent-teal">
+        <div class="card-head">Staging Tables</div>
+        <p>Never write directly from extraction to the final table. Land raw data in a <code>stg_</code> (staging) table first. Apply transforms to produce <code>int_</code> (intermediate) tables. Final consumers see <code>fct_</code> (fact) and <code>dim_</code> (dimension) tables. This pattern (popularised by dbt) makes debugging vastly easier.</p>
+      </div>
+      <div class="card accent-navy">
+        <div class="card-head">Dead Letter Queue</div>
+        <p>Records that fail validation or transformation go to a "dead letter" location — not silently dropped. Operators review these records, fix upstream data quality issues, and can re-process them. Essential for auditability and compliance.</p>
+      </div>
+      <div class="card accent-plum">
+        <div class="card-head">Slowly Changing Dimensions (SCD)</div>
+        <p><strong>Type 1:</strong> Overwrite old value (no history). <strong>Type 2:</strong> Add a new row with <code>valid_from</code> / <code>valid_to</code> dates to preserve full history — used for customer address, product price. <strong>Type 3:</strong> Add a "previous value" column. Type 2 is the most common for analytics.</p>
+      </div>
+      <div class="card accent-rust">
+        <div class="card-head">Partitioning Strategy</div>
+        <p>Large tables (billions of rows) must be partitioned — typically by date. Each pipeline run overwrites only the affected date partition(s). This makes backfills fast, isolates failures, and dramatically reduces query scan costs in columnar warehouses.</p>
+      </div>
+    </div>
+
+    <h3>Watermark pattern in SQL</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">SQL — Checkpoint / Watermark Pattern</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">-- Metadata table to track pipeline state</span>
+<span class="kw">CREATE TABLE</span> etl_metadata.pipeline_runs (
+    pipeline_name   <span class="kw">TEXT</span>        <span class="kw">NOT NULL</span>,
+    last_run_at     <span class="kw">TIMESTAMPTZ</span> <span class="kw">NOT NULL</span>,
+    rows_processed  <span class="kw">BIGINT</span>,
+    status          <span class="kw">TEXT</span>        <span class="kw">CHECK</span> (status <span class="kw">IN</span> (<span class="st">'success'</span>, <span class="st">'failed'</span>, <span class="st">'running'</span>)),
+    <span class="kw">PRIMARY KEY</span> (pipeline_name)
+);
+
+<span class="cm">-- Get the watermark before running</span>
+<span class="kw">SELECT</span> last_run_at
+<span class="kw">FROM</span>   etl_metadata.pipeline_runs
+<span class="kw">WHERE</span>  pipeline_name = <span class="st">'orders_daily'</span>
+  <span class="kw">AND</span>  status = <span class="st">'success'</span>;
+
+<span class="cm">-- After success, update the watermark</span>
+<span class="kw">INSERT INTO</span> etl_metadata.pipeline_runs
+  (pipeline_name, last_run_at, rows_processed, status)
+<span class="kw">VALUES</span>
+  (<span class="st">'orders_daily'</span>, NOW(), <span class="nu">4821</span>, <span class="st">'success'</span>)
+<span class="kw">ON CONFLICT</span> (pipeline_name) <span class="kw">DO UPDATE SET</span>
+  last_run_at    = <span class="kw">EXCLUDED</span>.last_run_at,
+  rows_processed = <span class="kw">EXCLUDED</span>.rows_processed,
+  status         = <span class="kw">EXCLUDED</span>.status;</div>
+    </div>
+  </section>
+
+  <!-- ══ 09 TOOLS ══ -->
+  <section id="tools">
+    <div class="section-header">
+      <div class="sec-num">09</div>
+      <div class="sec-titles">
+        <h2>Tools &amp; Frameworks</h2>
+        <div class="sec-sub">// THE ECOSYSTEM</div>
+      </div>
+    </div>
+
+    <p class="prose">The ETL tooling landscape is large. Here's an honest map — what each tool is actually for, when to use it, and when to skip it. You do not need all of these; start simple and only add complexity when you feel the pain of not having it.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Tool</th><th>Category</th><th>Best For</th><th>Learning Curve</th></tr>
+        <tr>
+          <td><strong>Pandas</strong></td>
+          <td>Transform (Python)</td>
+          <td>Small-to-medium datasets (&lt;10M rows), exploratory pipelines, simple transforms</td>
+          <td class="ok">Low</td>
+        </tr>
+        <tr>
+          <td><strong>dbt</strong></td>
+          <td>Transform (SQL / ELT)</td>
+          <td>SQL-based transforms inside a warehouse; testing, documentation, lineage built-in</td>
+          <td class="ok">Low–Medium</td>
+        </tr>
+        <tr>
+          <td><strong>Apache Spark</strong></td>
+          <td>Batch processing</td>
+          <td>Very large datasets (billions of rows), complex distributed transforms</td>
+          <td class="no">High</td>
+        </tr>
+        <tr>
+          <td><strong>Apache Airflow</strong></td>
+          <td>Orchestration</td>
+          <td>Scheduling, dependency management, monitoring of multi-step pipelines</td>
+          <td class="mid">Medium</td>
+        </tr>
+        <tr>
+          <td><strong>Prefect / Dagster</strong></td>
+          <td>Orchestration (modern)</td>
+          <td>Airflow alternative; better developer experience, Pythonic, cloud-native</td>
+          <td class="ok">Low–Medium</td>
+        </tr>
+        <tr>
+          <td><strong>Airbyte / Fivetran</strong></td>
+          <td>Data ingestion (Extract)</td>
+          <td>300+ pre-built connectors; manage the Extract phase without writing code</td>
+          <td class="ok">Low</td>
+        </tr>
+        <tr>
+          <td><strong>Apache Kafka</strong></td>
+          <td>Streaming / Event</td>
+          <td>Real-time, event-driven pipelines; high-throughput streaming ingestion</td>
+          <td class="no">High</td>
+        </tr>
+        <tr>
+          <td><strong>Great Expectations</strong></td>
+          <td>Data Quality</td>
+          <td>Automated data quality checks; define expectations, validate on every run</td>
+          <td class="mid">Medium</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✔</span>
+      <div class="callout-body"><strong>Recommended starter stack:</strong> <code>Python + Pandas</code> for transforms → <code>SQLAlchemy</code> for database connections → <code>Prefect</code> for scheduling → <code>dbt</code> once your warehouse transforms grow beyond a few scripts. Only add Spark when your data genuinely exceeds single-machine capacity. Start simple — complexity is free to add, expensive to remove.</div>
+    </div>
+  </section>
+
+  <!-- ══ 10 EXAMPLES ══ -->
+  <section id="examples">
+    <div class="section-header">
+      <div class="sec-num">10</div>
+      <div class="sec-titles">
+        <h2>Worked Examples</h2>
+        <div class="sec-sub">// END-TO-END CODE WALKTHROUGHS</div>
+      </div>
+    </div>
+
+    <h3>Example 1 — CSV files into a database</h3>
+    <p class="prose">A sales team drops a new CSV file into an S3 bucket every morning at 7am. You need to load it into your PostgreSQL warehouse, deduplicated, with invalid rows quarantined.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — CSV File ETL Pipeline</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> boto3, psycopg2, logging
+<span class="kw">from</span> io <span class="kw">import</span> StringIO
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(<span class="st">"sales_etl"</span>)
+
+<span class="cm"># ─────────────────── EXTRACT ───────────────────</span>
+<span class="kw">def</span> <span class="fn">extract_from_s3</span>(bucket: str, key: str) -> pd.DataFrame:
+    s3 = boto3.client(<span class="st">"s3"</span>)
+    obj = s3.get_object(Bucket=bucket, Key=key)
+    df = pd.read_csv(StringIO(obj[<span class="st">"Body"</span>].read().decode(<span class="st">"utf-8"</span>)))
+    log.info(f<span class="st">"Extracted {len(df)} rows from s3://{bucket}/{key}"</span>)
+    <span class="kw">return</span> df
+
+<span class="cm"># ─────────────────── TRANSFORM ───────────────────</span>
+<span class="kw">def</span> <span class="fn">transform_sales</span>(df: pd.DataFrame) -> tuple:
+    <span class="cm"># Standardise column names</span>
+    df.columns = df.columns.str.lower().str.replace(<span class="st">" "</span>, <span class="st">"_"</span>)
+
+    <span class="cm"># Cast types</span>
+    df[<span class="st">"sale_date"</span>]  = pd.to_datetime(df[<span class="st">"sale_date"</span>], dayfirst=<span class="kw">True</span>)
+    df[<span class="st">"amount"</span>]     = pd.to_numeric(df[<span class="st">"amount"</span>], errors=<span class="st">"coerce"</span>)
+    df[<span class="st">"product_sku"</span>] = df[<span class="st">"product_sku"</span>].str.upper().str.strip()
+
+    <span class="cm"># Separate valid and invalid</span>
+    mask = df[<span class="st">"amount"</span>].notna() & df[<span class="st">"sale_id"</span>].notna() & (df[<span class="st">"amount"</span>] > <span class="nu">0</span>)
+    valid, invalid = df[mask].copy(), df[~mask].copy()
+    log.info(f<span class="st">"Valid: {len(valid)}  |  Invalid (quarantined): {len(invalid)}"</span>)
+
+    <span class="cm"># Deduplicate by sale_id — keep latest</span>
+    valid = valid.drop_duplicates(subset=[<span class="st">"sale_id"</span>], keep=<span class="st">"last"</span>)
+
+    <span class="cm"># Derive helpful columns</span>
+    valid[<span class="st">"year_month"</span>]  = valid[<span class="st">"sale_date"</span>].dt.strftime(<span class="st">"%Y-%m"</span>)
+    valid[<span class="st">"loaded_at"</span>]   = pd.Timestamp.utcnow()
+
+    <span class="kw">return</span> valid, invalid
+
+<span class="cm"># ─────────────────── LOAD ───────────────────</span>
+<span class="kw">def</span> <span class="fn">load_to_warehouse</span>(df: pd.DataFrame, conn):
+    <span class="kw">with</span> conn.cursor() <span class="kw">as</span> cur:
+        <span class="kw">for</span> _, row <span class="kw">in</span> df.iterrows():
+            cur.execute(<span class="st">"""
+                INSERT INTO sales.daily_sales
+                  (sale_id, sale_date, product_sku, amount, year_month, loaded_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (sale_id) DO UPDATE SET
+                  amount    = EXCLUDED.amount,
+                  loaded_at = EXCLUDED.loaded_at
+            """</span>, (row.sale_id, row.sale_date, row.product_sku,
+                     row.amount, row.year_month, row.loaded_at))
+    conn.commit()
+    log.info(f<span class="st">"Loaded {len(df)} rows to warehouse"</span>)
+
+<span class="cm"># ─────────────────── ORCHESTRATE ───────────────────</span>
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    raw             = extract_from_s3(<span class="st">"my-data-bucket"</span>, <span class="st">"sales/today.csv"</span>)
+    clean, rejected = transform_sales(raw)
+    <span class="kw">if</span> len(rejected) > <span class="nu">0</span>:
+        rejected.to_csv(<span class="st">"quarantine/sales_rejected.csv"</span>, index=<span class="kw">False</span>)
+    conn = psycopg2.connect(os.environ[<span class="st">"WAREHOUSE_URL"</span>])
+    load_to_warehouse(clean, conn)
+    conn.close()</div>
+    </div>
+
+    <h3>Example 2 — dbt SQL transform (ELT)</h3>
+    <p class="prose">In an ELT pattern, raw data lands in your warehouse first. dbt then transforms it into analytics-ready models using SQL.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">dbt SQL — Staging Model (models/staging/stg_orders.sql)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">-- models/staging/stg_orders.sql</span>
+<span class="cm">-- This is the first transform layer — rename, cast, clean raw data</span>
+
+<span class="kw">WITH</span> source <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> * <span class="kw">FROM</span> {{ source(<span class="st">'ecommerce'</span>, <span class="st">'orders'</span>) }}
+),
+
+renamed <span class="kw">AS</span> (
+    <span class="kw">SELECT</span>
+        <span class="cm">-- Rename to snake_case</span>
+        orderID::TEXT               <span class="kw">AS</span> order_id,
+        customerID::TEXT            <span class="kw">AS</span> customer_id,
+        LOWER(orderStatus)          <span class="kw">AS</span> order_status,
+
+        <span class="cm">-- Cast and normalise</span>
+        TotalAmount::NUMERIC(<span class="nu">12</span>,<span class="nu">2</span>)   <span class="kw">AS</span> total_amount,
+        UPPER(currencyCode)         <span class="kw">AS</span> currency_code,
+
+        <span class="cm">-- Standardise timestamps to UTC</span>
+        created_at AT TIME ZONE <span class="st">'UTC'</span> <span class="kw">AS</span> created_at_utc,
+        created_at::DATE            <span class="kw">AS</span> order_date
+
+    <span class="kw">FROM</span> source
+    <span class="kw">WHERE</span> orderID IS NOT NULL
+      <span class="kw">AND</span> TotalAmount > <span class="nu">0</span>
+)
+
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> renamed
+
+<span class="cm">-- dbt tests live in schema.yml — they run automatically</span>
+<span class="cm">-- tests: unique(order_id), not_null(order_id), accepted_values(order_status)</span></div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">dbt SQL — Fact Model (models/marts/fct_daily_revenue.sql)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">-- models/marts/fct_daily_revenue.sql</span>
+<span class="cm">-- Aggregated fact table — what the BI tool and analysts query</span>
+
+<span class="kw">WITH</span> orders <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> * <span class="kw">FROM</span> {{ ref(<span class="st">'stg_orders'</span>) }}  <span class="cm">-- ref() creates dependency lineage</span>
+    <span class="kw">WHERE</span> order_status = <span class="st">'confirmed'</span>
+),
+
+fx_rates <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> * <span class="kw">FROM</span> {{ ref(<span class="st">'seed_fx_rates'</span>) }}
+)
+
+<span class="kw">SELECT</span>
+    o.order_date,
+    COUNT(DISTINCT o.order_id)                          <span class="kw">AS</span> order_count,
+    COUNT(DISTINCT o.customer_id)                       <span class="kw">AS</span> unique_customers,
+    SUM(o.total_amount * fx.rate_to_usd)                <span class="kw">AS</span> revenue_usd,
+    AVG(o.total_amount * fx.rate_to_usd)                <span class="kw">AS</span> avg_order_value_usd,
+    SUM(o.total_amount * fx.rate_to_usd)
+        FILTER (<span class="kw">WHERE</span> o.total_amount * fx.rate_to_usd >= <span class="nu">500</span>)  <span class="kw">AS</span> high_value_revenue_usd
+
+<span class="kw">FROM</span>       orders o
+<span class="kw">LEFT JOIN</span>  fx_rates fx <span class="kw">USING</span> (currency_code)
+<span class="kw">GROUP BY</span>   o.order_date
+<span class="kw">ORDER BY</span>   o.order_date <span class="kw">DESC</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 11 ERRORS ══ -->
+  <section id="errors">
+    <div class="section-header">
+      <div class="sec-num">11</div>
+      <div class="sec-titles">
+        <h2>Errors &amp; Common Pitfalls</h2>
+        <div class="sec-sub">// WHAT BREAKS &amp; HOW TO FIX IT</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card accent-rust">
+        <div class="card-head">Schema Drift <span class="tag tag-rust">Very Common</span></div>
+        <p>The source system adds, removes, or renames a column. Your pipeline breaks silently or crashes loudly. <strong>Fix:</strong> Validate schemas at extraction time. Use schema registries for streaming. Write contracts/tests for expected columns.</p>
+      </div>
+      <div class="card accent-rust">
+        <div class="card-head">Timezone Bugs <span class="tag tag-rust">Painful</span></div>
+        <p>Source A sends UTC, source B sends local time, source C omits timezone entirely. After joining you have off-by-hours errors. <strong>Fix:</strong> Store everything as UTC from the first transform step. Convert at query time for display only.</p>
+      </div>
+      <div class="card accent-gold">
+        <div class="card-head">Duplicate Records</div>
+        <p>Re-running a pipeline that appends (rather than upserts) double-counts records. A failed run at step 3/4 restarts from step 1 and loads rows twice. <strong>Fix:</strong> Always use upsert semantics. Make every pipeline idempotent.</p>
+      </div>
+      <div class="card accent-gold">
+        <div class="card-head">Silent Data Loss</div>
+        <p>A transform drops rows that fail validation without logging them. A month later: "where did these 4,000 customer records go?" <strong>Fix:</strong> Always write rejected records to a quarantine location with a rejection reason.</p>
+      </div>
+      <div class="card accent-navy">
+        <div class="card-head">Not Testing Transforms</div>
+        <p>You ship a transform that looks right but silently produces wrong aggregations for edge cases (empty strings treated as nulls, etc.). <strong>Fix:</strong> Unit test transform functions with known inputs and expected outputs. Use dbt tests or Great Expectations for warehouse data.</p>
+      </div>
+      <div class="card accent-navy">
+        <div class="card-head">Hardcoded Credentials</div>
+        <p>Database passwords in Python scripts, pushed to git. Credentials in environment variables baked into Docker images. <strong>Fix:</strong> Always use a secrets manager (AWS Secrets Manager, HashiCorp Vault, environment variables injected at runtime). Never commit secrets.</p>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>The NULL problem:</strong> NULL means different things in different systems — "unknown", "not applicable", "zero", or "this field didn't exist yet". Define explicit rules for NULL handling in your transform spec before you write a line of code. "<code>NULL</code> revenue means zero" vs "<code>NULL</code> revenue means we don't know" produce completely different business insights.</div>
+    </div>
+  </section>
+
+  <!-- ══ 12 MATURITY ══ -->
+  <section id="maturity">
+    <div class="section-header">
+      <div class="sec-num">12</div>
+      <div class="sec-titles">
+        <h2>Your ETL Maturity Path</h2>
+        <div class="sec-sub">// WHERE YOU ARE &amp; WHERE TO GO NEXT</div>
+      </div>
+    </div>
+
+    <p class="prose">ETL maturity is a journey, not a destination. Don't try to build a Spotify-grade data platform on day one. Build what you need, learn what hurts, then level up. Here's the honest path most data teams walk.</p>
+
+    <div class="maturity">
+      <div class="maturity-block mb-1">
+        <div class="m-level">Level 01</div>
+        <div class="m-title">Manual / Scripted</div>
+        <ul>
+          <li>Python or SQL scripts run by hand</li>
+          <li>No scheduling — someone remembers</li>
+          <li>No error handling or logging</li>
+          <li>Credentials in plaintext</li>
+          <li>Full re-loads every time</li>
+          <li>One person knows how it works</li>
+        </ul>
+      </div>
+      <div class="maturity-block mb-2">
+        <div class="m-level">Level 02</div>
+        <div class="m-title">Automated &amp; Reliable</div>
+        <ul>
+          <li>Scheduled (cron, Airflow, Prefect)</li>
+          <li>Error handling + alerting on failure</li>
+          <li>Incremental loads where possible</li>
+          <li>Secrets in environment / secrets manager</li>
+          <li>Invalid records quarantined and logged</li>
+          <li>Basic data quality checks pass/fail</li>
+        </ul>
+      </div>
+      <div class="maturity-block mb-3">
+        <div class="m-level">Level 03</div>
+        <div class="m-title">Observable &amp; Governed</div>
+        <ul>
+          <li>dbt models with tests + documentation</li>
+          <li>Data lineage visible end-to-end</li>
+          <li>SLA monitoring (pipelines complete by X)</li>
+          <li>Row count &amp; statistical anomaly checks</li>
+          <li>PII identified, masked, &amp; governed</li>
+          <li>Multiple team members can maintain</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phases">
+      <div class="phase p1">
+        <div class="phase-num">WEEK 1-2</div>
+        <div class="phase-name">Write your first pipeline</div>
+        <div class="phase-desc">One source → Pandas transform → database</div>
+      </div>
+      <div class="phase p2">
+        <div class="phase-num">MONTH 1</div>
+        <div class="phase-name">Add scheduling &amp; alerting</div>
+        <div class="phase-desc">Prefect or Airflow, Slack alerts on failure</div>
+      </div>
+      <div class="phase p3">
+        <div class="phase-num">MONTH 2–3</div>
+        <div class="phase-name">Introduce dbt</div>
+        <div class="phase-desc">SQL transforms, tests, staging → mart pattern</div>
+      </div>
+      <div class="phase p4">
+        <div class="phase-num">MONTH 4–6</div>
+        <div class="phase-name">Data quality layer</div>
+        <div class="phase-desc">Great Expectations or dbt tests, quarantine queues</div>
+      </div>
+      <div class="phase p5">
+        <div class="phase-num">MONTH 6+</div>
+        <div class="phase-name">Governance &amp; lineage</div>
+        <div class="phase-desc">Cataloguing (DataHub), PII classification, SLAs</div>
+      </div>
+    </div>
+
+    <div class="callout idea">
+      <span class="callout-icon">📚</span>
+      <div class="callout-body"><strong>Resources to go deeper:</strong> <code>docs.getdbt.com</code> — the best free SQL transform education · <code>docs.prefect.io</code> — modern orchestration docs · <em>Designing Data-Intensive Applications</em> (Kleppmann) — the canonical systems book · <em>Fundamentals of Data Engineering</em> (Reis &amp; Housley) — end-to-end data engineering overview · <code>greatexpectations.io</code> — automated data quality · <code>github.com/great-expectations/great_expectations</code> for examples.</div>
+    </div>
+
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'copied';
+    btn.style.color = 'var(--teal)';
+    btn.style.borderColor = 'var(--teal)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-58px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

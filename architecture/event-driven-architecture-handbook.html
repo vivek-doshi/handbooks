@@ -1,0 +1,2118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event-Driven Architecture — Engineering Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Azeret+Mono:wght@300;400;500;600;700&family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;1,300;1,600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink:         #0c0b09;
+  --ink2:        #111009;
+  --ink3:        #181610;
+  --ink4:        #201d15;
+  --ink5:        #2a261c;
+  --paper:       #f0ead8;
+  --paper2:      #e8e0c8;
+  --border:      rgba(240,234,216,0.08);
+  --border2:     rgba(240,234,216,0.15);
+  --text:        #e8e2d0;
+  --text2:       #9e9580;
+  --muted:       #5a5445;
+  --amber:       #f5a623;
+  --amber2:      #d4891a;
+  --amber-glow:  rgba(245,166,35,0.12);
+  --amber-dim:   rgba(245,166,35,0.07);
+  --rust:        #c94b2a;
+  --rust-dim:    rgba(201,75,42,0.1);
+  --teal:        #2bb5a0;
+  --teal-dim:    rgba(43,181,160,0.1);
+  --violet:      #8b6fcb;
+  --violet-dim:  rgba(139,111,203,0.1);
+  --sage:        #6b9e7a;
+  --sage-dim:    rgba(107,158,122,0.1);
+  --mono:        'Azeret Mono', monospace;
+  --serif:       'Fraunces', serif;
+  --display:     'Familjen Grotesk', sans-serif;
+  --sidebar-w:   268px;
+  --top-h:       56px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 14px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* grain overlay */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  opacity: 0.6;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(12,11,9,0.97);
+  border-bottom: 2px solid var(--amber);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  backdrop-filter: blur(12px);
+}
+.topbar-left { display: flex; align-items: center; gap: 20px; }
+.topbar-emblem {
+  width: 34px; height: 34px;
+  border: 2px solid var(--amber);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  color: var(--amber); letter-spacing: -0.5px;
+  position: relative;
+}
+.topbar-emblem::before {
+  content: '';
+  position: absolute; inset: 3px;
+  background: var(--amber-dim);
+}
+.topbar-title {
+  font-family: var(--display); font-size: 15px; font-weight: 700;
+  letter-spacing: 0.5px; color: var(--text);
+}
+.topbar-title span { color: var(--amber); }
+.topbar-right {
+  display: flex; align-items: center; gap: 16px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 1.5px;
+}
+.topbar-ver {
+  padding: 3px 12px;
+  border: 1px solid rgba(245,166,35,0.3);
+  color: var(--amber); background: var(--amber-dim);
+  border-radius: 2px; letter-spacing: 1px;
+}
+.pulse-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+  animation: blink 2.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* ─── LAYOUT ─── */
+.layout {
+  display: flex;
+  margin-top: var(--top-h);
+  min-height: calc(100vh - var(--top-h));
+  position: relative; z-index: 1;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--ink2);
+  border-right: 1px solid var(--border2);
+  padding-bottom: 48px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sb-brand {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(245,166,35,0.05) 0%, transparent 100%);
+}
+.sb-doc {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 3px; text-transform: uppercase; color: var(--amber);
+  margin-bottom: 6px;
+}
+.sb-tagline {
+  font-family: var(--serif); font-style: italic;
+  font-size: 12px; color: var(--muted); line-height: 1.5;
+}
+
+.nav-section {
+  padding: 16px 0 4px;
+}
+.nav-section-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--muted); padding: 0 22px 6px;
+}
+.nav-link {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 7px 22px;
+  text-decoration: none; font-size: 13px; font-weight: 400;
+  color: var(--text2); font-family: var(--display);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-num {
+  font-family: var(--mono); font-size: 9px;
+  color: var(--muted); width: 20px; flex-shrink: 0; text-align: right;
+}
+.nav-link:hover {
+  color: var(--text); background: rgba(245,166,35,0.04);
+  border-left-color: var(--border2);
+}
+.nav-link.active {
+  color: var(--amber); border-left-color: var(--amber);
+  background: var(--amber-glow); font-weight: 500;
+}
+.nav-link.active .nav-num { color: var(--amber2); }
+
+/* ─── MAIN ─── */
+.main {
+  flex: 1; min-width: 0;
+  padding: 52px 64px 100px;
+  max-width: 1000px;
+}
+
+/* ─── HERO ─── */
+.hero {
+  position: relative; overflow: hidden;
+  background: var(--ink3);
+  border: 1px solid var(--border2);
+  border-top: 3px solid var(--amber);
+  padding: 56px 60px 48px;
+  margin-bottom: 72px;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 40%;
+  background: radial-gradient(ellipse at 80% 30%, rgba(245,166,35,0.07) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero-kicker {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 4px; text-transform: uppercase;
+  color: var(--amber); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+.hero-kicker::after {
+  content: ''; flex: 1; max-width: 60px; height: 1px;
+  background: linear-gradient(to right, var(--amber2), transparent);
+}
+.hero h1 {
+  font-family: var(--serif); font-size: 68px; font-weight: 300;
+  line-height: 0.95; letter-spacing: -2px;
+  color: var(--text); margin-bottom: 6px;
+}
+.hero h1 em {
+  font-style: italic; color: var(--amber); font-weight: 300;
+}
+.hero-sub {
+  font-family: var(--serif); font-size: 22px; font-weight: 300;
+  font-style: italic; color: var(--text2); margin-bottom: 24px;
+}
+.hero-desc {
+  font-size: 15px; color: var(--text2);
+  max-width: 560px; line-height: 1.8; margin-bottom: 28px;
+}
+.hero-quote {
+  font-family: var(--serif); font-style: italic;
+  font-size: 14px; color: var(--amber2);
+  border-left: 2px solid var(--amber2);
+  padding: 8px 14px;
+  background: var(--amber-dim);
+  display: inline-block; margin-bottom: 28px;
+  max-width: 540px;
+}
+.tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 1px; padding: 4px 12px;
+  border: 1px solid; border-radius: 2px;
+}
+.tag-amber  { color: var(--amber);  border-color: rgba(245,166,35,0.4);  background: var(--amber-dim); }
+.tag-rust   { color: var(--rust);   border-color: rgba(201,75,42,0.4);   background: var(--rust-dim); }
+.tag-teal   { color: var(--teal);   border-color: rgba(43,181,160,0.4);  background: var(--teal-dim); }
+.tag-violet { color: var(--violet); border-color: rgba(139,111,203,0.4); background: var(--violet-dim); }
+.tag-sage   { color: var(--sage);   border-color: rgba(107,158,122,0.4); background: var(--sage-dim); }
+
+/* ─── SECTIONS ─── */
+section {
+  margin-bottom: 80px;
+  scroll-margin-top: calc(var(--top-h) + 20px);
+}
+.section-header {
+  display: flex; align-items: flex-start; gap: 18px;
+  margin-bottom: 28px; padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 64px; height: 2px; background: var(--amber);
+}
+.section-num {
+  font-family: var(--mono); font-size: 10px; color: var(--amber2);
+  margin-top: 4px; flex-shrink: 0; width: 36px;
+}
+.section-title h2 {
+  font-family: var(--serif); font-size: 32px; font-weight: 600;
+  color: var(--text); line-height: 1; letter-spacing: -0.5px;
+}
+.section-title .sub {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 2px; text-transform: uppercase; margin-top: 6px;
+}
+
+/* ─── PROSE ─── */
+.prose {
+  color: var(--text2); font-size: 14.5px;
+  line-height: 1.85; margin-bottom: 20px;
+}
+.prose strong { color: var(--text); font-weight: 600; }
+.prose em { font-style: italic; color: var(--amber2); font-family: var(--serif); }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--ink3);
+  border: 1px solid var(--border);
+  padding: 22px 24px; margin-bottom: 12px;
+  position: relative;
+  transition: border-color 0.2s, background 0.2s;
+}
+.card:hover { border-color: var(--border2); background: var(--ink4); }
+.card.amber  { border-left: 3px solid var(--amber);  }
+.card.rust   { border-left: 3px solid var(--rust);   }
+.card.teal   { border-left: 3px solid var(--teal);   }
+.card.violet { border-left: 3px solid var(--violet); }
+.card.sage   { border-left: 3px solid var(--sage);   }
+
+.card-title {
+  font-family: var(--display); font-size: 15px; font-weight: 700;
+  color: var(--text); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.badge {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 2px;
+}
+.b-amber  { color: var(--amber);  background: var(--amber-dim);  border: 1px solid rgba(245,166,35,0.3); }
+.b-rust   { color: var(--rust);   background: var(--rust-dim);   border: 1px solid rgba(201,75,42,0.3); }
+.b-teal   { color: var(--teal);   background: var(--teal-dim);   border: 1px solid rgba(43,181,160,0.3); }
+.b-violet { color: var(--violet); background: var(--violet-dim); border: 1px solid rgba(139,111,203,0.3); }
+.b-sage   { color: var(--sage);   background: var(--sage-dim);   border: 1px solid rgba(107,158,122,0.3); }
+.b-muted  { color: var(--muted);  background: rgba(90,84,69,0.12); border: 1px solid rgba(90,84,69,0.3); }
+
+.card p, .card li { color: var(--text2); font-size: 13.5px; line-height: 1.7; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 4px; }
+
+/* ─── GRIDS ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+
+/* ─── CODE ─── */
+.code-wrap {
+  background: #080806;
+  border: 1px solid var(--border2);
+  margin: 18px 0;
+  font-family: var(--mono);
+  position: relative;
+}
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 18px;
+  background: rgba(245,166,35,0.05);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang {
+  font-size: 10px; font-weight: 600; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--amber2);
+}
+.copy-btn {
+  font-size: 10px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--amber); border-color: var(--amber); }
+.code-block {
+  padding: 18px 22px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.8; white-space: pre; tab-size: 2; color: #8a8270;
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* syntax */
+.kw  { color: #c994e8; }
+.st  { color: #8ec882; }
+.cm  { color: #4a4436; font-style: italic; }
+.fn  { color: #7eb8d4; }
+.cl  { color: var(--amber); }
+.nu  { color: var(--rust); }
+.at  { color: var(--teal); }
+.hl  { background: rgba(245,166,35,0.04); display: block; margin: 0 -22px; padding: 0 22px; border-left: 2px solid var(--amber); }
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(245,166,35,0.08); color: var(--amber);
+  padding: 1px 7px; border: 1px solid rgba(245,166,35,0.2);
+}
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 14px;
+  padding: 14px 18px; margin: 18px 0;
+  border-left: 3px solid; font-size: 13.5px;
+}
+.callout-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.callout.tip     { background: var(--amber-dim);  border-color: var(--amber); }
+.callout.warn    { background: var(--rust-dim);   border-color: var(--rust); }
+.callout.note    { background: var(--teal-dim);   border-color: var(--teal); }
+.callout.insight { background: var(--violet-dim); border-color: var(--violet); }
+
+/* ─── TABLES ─── */
+.tbl-wrap { border: 1px solid var(--border); margin: 16px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: rgba(245,166,35,0.05);
+  color: var(--amber2); font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 2px; font-weight: 600;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+td code { font-size: 11px; }
+.ok      { color: var(--sage);   font-weight: 700; font-family: var(--mono); }
+.warn-t  { color: var(--amber);  font-weight: 700; font-family: var(--mono); }
+.bad     { color: var(--rust);   font-weight: 700; font-family: var(--mono); }
+
+/* ─── HEADINGS ─── */
+h3 {
+  font-family: var(--serif); font-size: 20px; font-weight: 600;
+  color: var(--text); margin: 32px 0 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+h3::before {
+  content: '§';
+  font-family: var(--mono); font-size: 12px;
+  color: var(--amber2); opacity: 0.7;
+}
+h4 {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--muted);
+  margin: 22px 0 8px;
+}
+
+/* ─── COMPARE ─── */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 18px 0; border: 1px solid var(--border); }
+.compare-col { padding: 0; }
+.compare-head {
+  padding: 11px 20px;
+  font-family: var(--display); font-size: 13px; font-weight: 700;
+  letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;
+}
+.compare-col:first-child .compare-head { background: var(--rust-dim); color: var(--rust); border-bottom: 1px solid rgba(201,75,42,0.2); border-right: 1px solid var(--border); }
+.compare-col:last-child  .compare-head { background: var(--teal-dim); color: var(--teal); border-bottom: 1px solid rgba(43,181,160,0.2); }
+.compare-body { padding: 16px 20px; }
+.compare-col:first-child .compare-body { border-right: 1px solid var(--border); }
+.compare-body li { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+.compare-body ul { padding-left: 16px; }
+
+/* ─── BROKER PROFILE ─── */
+.broker-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin: 20px 0; }
+.broker-card {
+  background: var(--ink3); border: 1px solid var(--border);
+  overflow: hidden; position: relative;
+  transition: border-color 0.2s;
+}
+.broker-card:hover { border-color: var(--border2); }
+.broker-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.broker-accent {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.kafka-accent  { background: linear-gradient(to right, var(--amber), var(--amber2)); }
+.pulsar-accent { background: linear-gradient(to right, var(--teal), #1a8a7a); }
+.rabbit-accent { background: linear-gradient(to right, var(--violet), #6b52b0); }
+.broker-name {
+  font-family: var(--serif); font-size: 22px; font-weight: 600;
+  color: var(--text); margin-bottom: 4px;
+}
+.broker-maker {
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  letter-spacing: 2px; text-transform: uppercase;
+}
+.broker-body { padding: 16px 20px; }
+.broker-stat {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.broker-stat:last-of-type { border-bottom: none; margin-bottom: 0; }
+.stat-label { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+.stat-val   { font-family: var(--mono); font-size: 12px; color: var(--text); font-weight: 500; }
+.kafka-val  { color: var(--amber); }
+.pulsar-val { color: var(--teal); }
+.rabbit-val { color: var(--violet); }
+
+/* ─── FLOW DIAGRAM ─── */
+.flow-diagram {
+  background: var(--ink3); border: 1px solid var(--border);
+  padding: 28px 24px; margin: 20px 0; overflow-x: auto;
+}
+.flow {
+  display: flex; align-items: center; gap: 0;
+  min-width: max-content;
+}
+.flow-node {
+  flex-shrink: 0; text-align: center;
+  padding: 12px 16px; min-width: 100px;
+  background: var(--ink4); border: 1px solid var(--border2);
+  position: relative;
+}
+.flow-node-type { font-family: var(--mono); font-size: 8px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+.flow-node-name { font-family: var(--display); font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.flow-arrow { font-size: 18px; margin: 0 6px; flex-shrink: 0; }
+.fa-amber { color: var(--amber); }
+.fa-teal  { color: var(--teal); }
+.fa-rust  { color: var(--rust); }
+
+.flow-label {
+  font-family: var(--mono); font-size: 8px; color: var(--muted);
+  text-align: center; margin-top: 6px; letter-spacing: 1px;
+}
+
+/* ─── MATURITY / STAGE ─── */
+.maturity { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin: 18px 0; }
+.stage {
+  background: var(--ink3); border: 1px solid var(--border);
+  padding: 18px 16px; position: relative; overflow: hidden;
+}
+.stage::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.s1::before { background: var(--muted); }
+.s2::before { background: var(--rust); }
+.s3::before { background: var(--amber); }
+.s4::before { background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+.stage-num  { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 5px; }
+.stage-name { font-family: var(--serif); font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.s1 .stage-name { color: var(--muted); }
+.s2 .stage-name { color: var(--rust); }
+.s3 .stage-name { color: var(--amber); }
+.s4 .stage-name { color: var(--teal); }
+.stage ul { padding-left: 14px; }
+.stage li { font-size: 11.5px; color: var(--muted); margin-bottom: 3px; line-height: 1.5; }
+
+/* ─── DECISION MATRIX ─── */
+.decision-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); margin: 18px 0; }
+.decision-cell {
+  background: var(--ink3); padding: 16px 18px;
+}
+.decision-cell.header { background: var(--ink4); }
+.decision-cell.header .dc-title {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--amber2);
+}
+.dc-title { font-family: var(--display); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+.dc-body  { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+/* ─── TIMELINE / ROADMAP ─── */
+.roadmap { margin: 20px 0; }
+.rm-phase { display: flex; gap: 20px; margin-bottom: 0; position: relative; padding-left: 40px; }
+.rm-phase::before {
+  content: '';
+  position: absolute; left: 14px; top: 0; bottom: 0; width: 2px;
+  background: var(--border);
+}
+.rm-phase:last-child::before { display: none; }
+.rm-dot {
+  position: absolute; left: 8px; top: 16px;
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid; background: var(--ink3);
+  z-index: 1;
+}
+.rm-dot.amber  { border-color: var(--amber);  box-shadow: 0 0 8px var(--amber2); background: var(--amber-dim); }
+.rm-dot.rust   { border-color: var(--rust);   background: var(--rust-dim); }
+.rm-dot.teal   { border-color: var(--teal);   background: var(--teal-dim); }
+.rm-dot.violet { border-color: var(--violet); background: var(--violet-dim); }
+.rm-content {
+  flex: 1; background: var(--ink3); border: 1px solid var(--border);
+  padding: 18px 20px; margin-bottom: 14px;
+}
+.rm-label { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+.rm-title { font-family: var(--serif); font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.rm-items { padding-left: 16px; }
+.rm-items li { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+
+/* ─── PATTERN CARDS ─── */
+.pattern-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
+.pattern {
+  background: var(--ink3); border: 1px solid var(--border);
+  padding: 22px 24px; position: relative;
+}
+.pattern-num {
+  font-family: var(--mono); font-size: 9px; color: var(--amber2);
+  letter-spacing: 2px; margin-bottom: 8px;
+}
+.pattern-name {
+  font-family: var(--serif); font-size: 17px; font-weight: 600;
+  color: var(--text); margin-bottom: 10px;
+}
+.pattern p { color: var(--text2); font-size: 13.5px; line-height: 1.7; }
+
+/* ─── SCROLL / MISC ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .grid-2, .grid-3, .broker-grid, .maturity, .decision-grid, .pattern-row, .compare { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 44px; }
+  .flow { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-emblem">EDA</div>
+    <div class="topbar-title">Event-Driven <span>Architecture</span></div>
+  </div>
+  <div class="topbar-right">
+    <span>EDA-HB-2024</span>
+    <span class="topbar-ver">v2.0</span>
+    <span class="pulse-dot"></span>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-doc">// EDA-FIELD-001</div>
+    <div class="sb-tagline">Kafka · Pulsar · RabbitMQ<br>Events, Streams & Messaging</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Foundations</div>
+    <a class="nav-link active" href="#intro"      ><span class="nav-num">01</span>What is EDA</a>
+    <a class="nav-link"        href="#patterns"   ><span class="nav-num">02</span>Core Patterns</a>
+    <a class="nav-link"        href="#anatomy"    ><span class="nav-num">03</span>Event Anatomy</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Paradigms</div>
+    <a class="nav-link" href="#pubsub"       ><span class="nav-num">04</span>Pub/Sub</a>
+    <a class="nav-link" href="#eventsourcing"><span class="nav-num">05</span>Event Sourcing</a>
+    <a class="nav-link" href="#cqrs"         ><span class="nav-num">06</span>CQRS</a>
+    <a class="nav-link" href="#streaming"    ><span class="nav-num">07</span>Stream Processing</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Brokers</div>
+    <a class="nav-link" href="#kafka"  ><span class="nav-num">08</span>Apache Kafka</a>
+    <a class="nav-link" href="#pulsar" ><span class="nav-num">09</span>Apache Pulsar</a>
+    <a class="nav-link" href="#rabbit" ><span class="nav-num">10</span>RabbitMQ</a>
+    <a class="nav-link" href="#choose" ><span class="nav-num">11</span>Broker Selection</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Engineering</div>
+    <a class="nav-link" href="#schema"    ><span class="nav-num">12</span>Schema & Contracts</a>
+    <a class="nav-link" href="#ordering"  ><span class="nav-num">13</span>Ordering & Delivery</a>
+    <a class="nav-link" href="#dlq"       ><span class="nav-num">14</span>Error Handling & DLQ</a>
+    <a class="nav-link" href="#idempotent"><span class="nav-num">15</span>Idempotency</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Operations</div>
+    <a class="nav-link" href="#observability"><span class="nav-num">16</span>Observability</a>
+    <a class="nav-link" href="#saga"         ><span class="nav-num">17</span>Saga Pattern</a>
+    <a class="nav-link" href="#antipatterns" ><span class="nav-num">18</span>Anti-Patterns</a>
+    <a class="nav-link" href="#roadmap"      ><span class="nav-num">19</span>Migration Roadmap</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-kicker">Engineering Handbook</div>
+    <h1>Event-<em>Driven</em><br>Architecture</h1>
+    <div class="hero-sub">The backbone of modern enterprise scaling</div>
+    <div class="hero-quote">"Don't call us, we'll call you — the Hollywood Principle applied to distributed systems."</div>
+    <p class="hero-desc">The definitive field guide to building systems that react, not poll. Covers the full spectrum: Kafka partitions to RabbitMQ routing, event sourcing to CQRS, saga orchestration to schema evolution — everything required to design, build, and operate event-driven systems at scale.</p>
+    <div class="tags">
+      <span class="tag tag-amber">Apache Kafka</span>
+      <span class="tag tag-teal">Apache Pulsar</span>
+      <span class="tag tag-violet">RabbitMQ</span>
+      <span class="tag tag-rust">Event Sourcing</span>
+      <span class="tag tag-sage">Pub/Sub</span>
+    </div>
+  </div>
+
+  <!-- ══ 01 WHAT IS EDA ══ -->
+  <section id="intro">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title">
+        <h2>What is Event-Driven Architecture</h2>
+        <div class="sub">// FUNDAMENTALS & MOTIVATIONS</div>
+      </div>
+    </div>
+
+    <p class="prose">Event-Driven Architecture (EDA) is a design paradigm in which system components communicate by producing and consuming <em>events</em> — immutable records of things that have happened — rather than calling each other directly. Producers have no knowledge of consumers. Consumers have no knowledge of producers. The broker sits in between and is the only coupling point.</p>
+
+    <p class="prose">This inversion is the source of EDA's power: <strong>temporal decoupling</strong> (producer and consumer need not be available simultaneously), <strong>spatial decoupling</strong> (they need not know each other's address), and <strong>semantic decoupling</strong> (they agree only on the event schema, not on processing logic).</p>
+
+    <div class="grid-3">
+      <div class="card amber">
+        <div class="card-title">Temporal Decoupling <span class="badge b-amber">Core</span></div>
+        <p>Producer and consumer do not need to be online at the same time. Events persist in the broker until consumed. Services scale and deploy independently without coordination windows.</p>
+      </div>
+      <div class="card teal">
+        <div class="card-title">Spatial Decoupling <span class="badge b-teal">Core</span></div>
+        <p>Producers publish to a topic, not to a specific consumer endpoint. Adding new consumers requires zero changes to producers. Services discover data through subscriptions, not service registries.</p>
+      </div>
+      <div class="card violet">
+        <div class="card-title">Scale & Resilience <span class="badge b-violet">Benefit</span></div>
+        <p>Consumers scale horizontally against the event backlog. Slow consumers don't block producers. Back-pressure is managed by the broker, not by synchronous timeouts cascading through a call chain.</p>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>EDA vs REST vs RPC:</strong> REST/RPC is request/response — caller blocks waiting for a reply, both parties must be up, and the caller must know the callee's address. EDA is fire-and-forget at the producer side. For read-heavy query paths, REST is still appropriate. EDA shines on write/mutation flows and anywhere you need fan-out, replay, or audit.</div>
+    </div>
+
+    <h3>When EDA is the right choice</h3>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Scenario</th><th>EDA Fit</th><th>Why</th></tr>
+        <tr><td>Order placed → multiple downstream actions (fulfillment, email, analytics)</td><td><span class="ok">EXCELLENT</span></td><td>Fan-out without producer knowing consumers; consumers added independently</td></tr>
+        <tr><td>Real-time fraud detection on transactions</td><td><span class="ok">EXCELLENT</span></td><td>Stream processing on event log; millisecond latency with Kafka Streams/Flink</td></tr>
+        <tr><td>Audit trail / compliance log</td><td><span class="ok">EXCELLENT</span></td><td>Immutable event log is the audit record; replay for compliance queries</td></tr>
+        <tr><td>Simple CRUD API, single consumer</td><td><span class="warn-t">POOR</span></td><td>Adds operational complexity with no benefit; use REST</td></tr>
+        <tr><td>Interactive query (user asks for their profile data)</td><td><span class="warn-t">POOR</span></td><td>Synchronous response required; use REST + query model (CQRS read side)</td></tr>
+        <tr><td>Cross-service saga / distributed transaction</td><td><span class="ok">GOOD</span></td><td>Choreography or orchestration via events; avoids 2PC distributed locking</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 02 CORE PATTERNS ══ -->
+  <section id="patterns">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title">
+        <h2>Core Messaging Patterns</h2>
+        <div class="sub">// THE FOUR BUILDING BLOCKS</div>
+      </div>
+    </div>
+
+    <p class="prose">Every EDA system is built from four primitive patterns. These compose into the larger architectures — pub/sub, event sourcing, stream processing — described in later sections. Understanding the primitives clarifies why different brokers make different design choices.</p>
+
+    <div class="pattern-row">
+      <div class="pattern">
+        <div class="pattern-num">PATTERN 01 — MESSAGE QUEUE</div>
+        <div class="pattern-name">Point-to-Point Queue</div>
+        <p>Each message is consumed by exactly one consumer. Multiple consumers compete for messages from the same queue — load balancing with guaranteed single delivery. Classic use: background job processing, task distribution. Work queue model.</p>
+      </div>
+      <div class="pattern">
+        <div class="pattern-num">PATTERN 02 — PUBLISH/SUBSCRIBE</div>
+        <div class="pattern-name">Topic Fan-Out</div>
+        <p>Each message is delivered to all subscribers. Producers publish to a topic; every subscription receives a copy. Classic use: event notification, audit events, data replication. N consumers all see every event.</p>
+      </div>
+      <div class="pattern">
+        <div class="pattern-num">PATTERN 03 — EVENT STREAMING</div>
+        <div class="pattern-name">Durable Ordered Log</div>
+        <p>Events are written to an immutable, ordered, partitioned log. Consumers track their own offset. Any consumer can re-read history. New consumers can start from the beginning. Classic use: Kafka, Kinesis. Time-travel is the superpower.</p>
+      </div>
+      <div class="pattern">
+        <div class="pattern-num">PATTERN 04 — REQUEST/REPLY</div>
+        <div class="pattern-name">Async RPC over Events</div>
+        <p>Caller publishes a request event with a <code>correlationId</code> and a <code>replyTo</code> queue. Responder publishes the reply to that queue. Caller awaits. Bridges synchronous-seeming semantics over async infrastructure. Use sparingly.</p>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Kafka blurs the queue/pub-sub boundary</strong> using consumer groups: all consumers in the same group share partitions (queue semantics — each message processed once); consumers in different groups each receive all messages (pub-sub semantics). This single primitive covers both use cases.</div>
+    </div>
+  </section>
+
+  <!-- ══ 03 EVENT ANATOMY ══ -->
+  <section id="anatomy">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title">
+        <h2>Event Anatomy</h2>
+        <div class="sub">// WHAT AN EVENT IS (AND ISN'T)</div>
+      </div>
+    </div>
+
+    <p class="prose">An event is <strong>an immutable record of a fact that occurred in the past</strong>. Not a command (don't say "please process this"). Not a request. A fact: <em>"Order 8271 was placed by user 903 at 14:22:05 UTC containing 3 items totalling $142.00."</em> Events are named in past tense.</p>
+
+    <div class="compare">
+      <div class="compare-col">
+        <div class="compare-head">✕ Commands (avoid as events)</div>
+        <div class="compare-body">
+          <ul>
+            <li><code>ProcessOrder</code> — imperative, implies a specific handler</li>
+            <li><code>SendEmail</code> — prescribes implementation</li>
+            <li><code>UpdateInventory</code> — tells receiver what to do</li>
+            <li><code>ChargeCustomer</code> — couples business logic to event</li>
+            <li>Present/future tense names</li>
+            <li>Contains processing instructions</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-col">
+        <div class="compare-head">✓ Domain Events (correct)</div>
+        <div class="compare-body">
+          <ul>
+            <li><code>OrderPlaced</code> — past tense, describes reality</li>
+            <li><code>PaymentSucceeded</code> — fact, consumer decides what to do</li>
+            <li><code>InventoryReserved</code> — records what happened</li>
+            <li><code>CustomerCharged</code> — consequence, not instruction</li>
+            <li>Past tense names always</li>
+            <li>Contains only the data of what happened</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Canonical Event Envelope</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">JSON / CloudEvents v1.0</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// CloudEvents v1.0 — industry standard envelope</span>
+{
+  <span class="cm">// ─── Required: CloudEvents attributes ───────────────────</span>
+  <span class="at">"specversion"</span>: <span class="st">"1.0"</span>,
+  <span class="at">"id"</span>:          <span class="st">"01HWZR5F4P7TKMXX9BQ2GV1ERD"</span>,       <span class="cm">// ULID — sortable UUID</span>
+  <span class="at">"source"</span>:      <span class="st">"/orders-service/production"</span>,
+  <span class="at">"type"</span>:        <span class="st">"com.acme.orders.OrderPlaced"</span>,         <span class="cm">// reverse-DNS + past tense</span>
+  <span class="at">"time"</span>:        <span class="st">"2024-09-14T14:22:05.182Z"</span>,            <span class="cm">// ISO 8601 UTC always</span>
+
+  <span class="cm">// ─── Standard optional attributes ───────────────────────</span>
+  <span class="at">"datacontenttype"</span>: <span class="st">"application/json"</span>,
+  <span class="at">"dataschema"</span>:      <span class="st">"https://schemas.acme.com/orders/v2/order-placed.json"</span>,
+  <span class="at">"subject"</span>:         <span class="st">"order/8271"</span>,                        <span class="cm">// resource identifier</span>
+
+  <span class="cm">// ─── Custom extensions ───────────────────────────────────</span>
+  <span class="at">"correlationid"</span>: <span class="st">"sess_abc123"</span>,                      <span class="cm">// trace correlation</span>
+  <span class="at">"causationid"</span>:   <span class="st">"cmd_xyz789"</span>,                       <span class="cm">// triggering command</span>
+  <span class="at">"tenantid"</span>:      <span class="st">"acme-corp"</span>,                        <span class="cm">// multi-tenancy</span>
+  <span class="at">"version"</span>:       <span class="nu">2</span>,                                  <span class="cm">// schema version</span>
+
+  <span class="cm">// ─── Domain payload ──────────────────────────────────────</span>
+  <span class="at">"data"</span>: {
+    <span class="at">"orderId"</span>:     <span class="st">"8271"</span>,
+    <span class="at">"customerId"</span>:  <span class="st">"cust_903"</span>,
+    <span class="at">"placedAt"</span>:    <span class="st">"2024-09-14T14:22:05.182Z"</span>,
+    <span class="at">"currency"</span>:    <span class="st">"USD"</span>,
+    <span class="at">"totalAmount"</span>: <span class="nu">142.00</span>,
+    <span class="at">"lineItems"</span>: [
+      { <span class="at">"sku"</span>: <span class="st">"PROD-441"</span>, <span class="at">"qty"</span>: <span class="nu">2</span>, <span class="at">"unitPrice"</span>: <span class="nu">49.99</span> },
+      { <span class="at">"sku"</span>: <span class="st">"PROD-109"</span>, <span class="at">"qty"</span>: <span class="nu">1</span>, <span class="at">"unitPrice"</span>: <span class="nu">42.02</span> }
+    ],
+    <span class="at">"shippingAddress"</span>: { <span class="cm">/* ... */</span> }
+  }
+}</div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Fat vs Thin events:</strong> Fat events include full payload (the order data above). Thin events include only the ID and type — consumers must fetch full state if needed. Fat events are self-contained but expensive at scale. Thin events require consumers to have read access to the source system. Prefer fat events for loose coupling; use thin events when payloads are very large or contain regulated data.</div>
+    </div>
+  </section>
+
+  <!-- ══ 04 PUB/SUB ══ -->
+  <section id="pubsub">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div class="section-title">
+        <h2>Publish / Subscribe</h2>
+        <div class="sub">// DECOUPLED FAN-OUT AT SCALE</div>
+      </div>
+    </div>
+
+    <p class="prose">In a pub/sub model, producers (publishers) emit events to a <strong>topic</strong>. Subscribers express interest in topics and receive all matching events. The broker is responsible for delivering the event to all registered subscribers. Neither party knows the other exists — only the topic name is shared.</p>
+
+    <div class="flow-diagram">
+      <div class="flow">
+        <div class="flow-node">
+          <div class="flow-node-type">Producer</div>
+          <div class="flow-node-name">Order<br>Service</div>
+        </div>
+        <div class="flow-arrow fa-amber">→</div>
+        <div class="flow-node" style="background:var(--ink5); border-color: rgba(245,166,35,0.4);">
+          <div class="flow-node-type">Topic</div>
+          <div class="flow-node-name" style="color:var(--amber);">orders.placed</div>
+        </div>
+        <div class="flow-arrow fa-amber">→</div>
+        <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+          <div class="flow-node">
+            <div class="flow-node-type">Consumer 1</div>
+            <div class="flow-node-name">Email<br>Service</div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-node-type">Consumer 2</div>
+            <div class="flow-node-name">Fulfillment<br>Service</div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-node-type">Consumer 3</div>
+            <div class="flow-node-name">Analytics<br>Service</div>
+          </div>
+        </div>
+      </div>
+      <div class="flow-label" style="text-align:left; margin-top:10px;">Each consumer receives every event independently — adding Consumer 4 requires zero changes to Order Service</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card amber">
+        <div class="card-title">Strengths <span class="badge b-amber">Use When</span></div>
+        <ul>
+          <li>Multiple downstream reactions to a single business event</li>
+          <li>Adding new consumers without touching producers</li>
+          <li>Event notification — "this happened, react however you want"</li>
+          <li>Cross-domain data propagation (CDC events, domain events)</li>
+        </ul>
+      </div>
+      <div class="card rust">
+        <div class="card-title">Limitations <span class="badge b-rust">Watch Out</span></div>
+        <ul>
+          <li>No built-in ordering guarantee across consumers</li>
+          <li>Consumer failures need independent dead-letter handling</li>
+          <li>Complex debugging — causality chains are non-obvious</li>
+          <li>Schema changes propagate to all consumers simultaneously</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 05 EVENT SOURCING ══ -->
+  <section id="eventsourcing">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div class="section-title">
+        <h2>Event Sourcing</h2>
+        <div class="sub">// STATE AS A FUNCTION OF HISTORY</div>
+      </div>
+    </div>
+
+    <p class="prose">Event Sourcing is a persistence pattern where the <strong>state of an entity is never stored directly</strong>. Instead, only the sequence of events that led to the current state is persisted. Current state is derived by replaying events from the beginning (or from a snapshot). The event log <em>is</em> the database.</p>
+
+    <div class="compare">
+      <div class="compare-col">
+        <div class="compare-head">✕ Traditional CRUD State Store</div>
+        <div class="compare-body">
+          <ul>
+            <li>Store current state only — history is lost</li>
+            <li>UPDATE overwrites — no audit trail</li>
+            <li>Temporal queries impossible (what did order look like last Tuesday?)</li>
+            <li>Can't replay to fix a bug in processing logic</li>
+            <li>Simple read path: SELECT * WHERE id = X</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-col">
+        <div class="compare-head">✓ Event Sourced Store</div>
+        <div class="compare-body">
+          <ul>
+            <li>Append-only event log — full history preserved</li>
+            <li>Audit trail is free — every change recorded</li>
+            <li>Time travel: replay to any point in time</li>
+            <li>Fix bugs: replay with corrected logic to rebuild projections</li>
+            <li>Write is fast (append); reads need projection rebuild</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">TypeScript — Event Sourced Aggregate</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// Events are the source of truth — append only</span>
+<span class="kw">type</span> <span class="cl">OrderEvent</span> =
+  | { <span class="at">type</span>: <span class="st">'OrderPlaced'</span>;     <span class="at">orderId</span>: <span class="kw">string</span>; <span class="at">customerId</span>: <span class="kw">string</span>; <span class="at">total</span>: <span class="kw">number</span> }
+  | { <span class="at">type</span>: <span class="st">'ItemAdded'</span>;       <span class="at">orderId</span>: <span class="kw">string</span>; <span class="at">sku</span>: <span class="kw">string</span>;        <span class="at">qty</span>: <span class="kw">number</span>  }
+  | { <span class="at">type</span>: <span class="st">'PaymentReceived'</span>; <span class="at">orderId</span>: <span class="kw">string</span>; <span class="at">amount</span>: <span class="kw">number</span>;      <span class="at">txId</span>: <span class="kw">string</span>  }
+  | { <span class="at">type</span>: <span class="st">'OrderShipped'</span>;    <span class="at">orderId</span>: <span class="kw">string</span>; <span class="at">trackingNo</span>: <span class="kw">string</span>            }
+  | { <span class="at">type</span>: <span class="st">'OrderCancelled'</span>; <span class="at">orderId</span>: <span class="kw">string</span>; <span class="at">reason</span>: <span class="kw">string</span>                 };
+
+<span class="cm">// State is a pure function of events (fold/reduce)</span>
+<span class="kw">function</span> <span class="fn">applyEvent</span>(state: <span class="cl">OrderState</span>, event: <span class="cl">OrderEvent</span>): <span class="cl">OrderState</span> {
+  <span class="kw">switch</span> (event.type) {
+    <span class="kw">case</span> <span class="st">'OrderPlaced'</span>:
+      <span class="kw">return</span> { ...state, status: <span class="st">'pending'</span>, total: event.total, customerId: event.customerId };
+    <span class="kw">case</span> <span class="st">'PaymentReceived'</span>:
+      <span class="kw">return</span> { ...state, status: <span class="st">'paid'</span>, paidAmount: event.amount };
+    <span class="kw">case</span> <span class="st">'OrderShipped'</span>:
+      <span class="kw">return</span> { ...state, status: <span class="st">'shipped'</span>, trackingNo: event.trackingNo };
+    <span class="kw">case</span> <span class="st">'OrderCancelled'</span>:
+      <span class="kw">return</span> { ...state, status: <span class="st">'cancelled'</span>, cancelReason: event.reason };
+    <span class="kw">default</span>: <span class="kw">return</span> state;
+  }
+}
+
+<span class="cm">// Reconstitute state from event history</span>
+<span class="kw">async function</span> <span class="fn">loadOrder</span>(orderId: <span class="kw">string</span>): <span class="cl">Promise</span>&lt;<span class="cl">OrderState</span>&gt; {
+  <span class="kw">const</span> events = <span class="kw">await</span> eventStore.<span class="fn">load</span>(orderId);              <span class="cm">// or from snapshot</span>
+  <span class="kw">return</span> events.<span class="fn">reduce</span>(applyEvent, INITIAL_STATE);
+}
+
+<span class="cm">// Append a new event — never UPDATE, only INSERT</span>
+<span class="kw">async function</span> <span class="fn">shipOrder</span>(orderId: <span class="kw">string</span>, trackingNo: <span class="kw">string</span>, expectedVersion: <span class="kw">number</span>) {
+  <span class="kw">const</span> event: <span class="cl">OrderEvent</span> = { type: <span class="st">'OrderShipped'</span>, orderId, trackingNo };
+  <span class="kw">await</span> eventStore.<span class="fn">append</span>(orderId, event, expectedVersion); <span class="cm">// optimistic concurrency</span>
+  <span class="kw">await</span> eventBus.<span class="fn">publish</span>(<span class="st">'orders.shipped'</span>, event);           <span class="cm">// fan-out to consumers</span>
+}</div>
+    </div>
+
+    <h3>Snapshots — Performance at Scale</h3>
+    <p class="prose">Replaying thousands of events to reconstitute state on every read is expensive. <strong>Snapshots</strong> periodically capture current state alongside the event sequence number. On load, restore from the latest snapshot and replay only subsequent events.</p>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Event sourcing is not a silver bullet.</strong> The write model is simple; the read model is complex. You need projections (read models) for every query pattern. Schema evolution of historical events is a significant engineering challenge. Use event sourcing when audit trail, time-travel, or event replay are genuine business requirements — not by default.</div>
+    </div>
+  </section>
+
+  <!-- ══ 06 CQRS ══ -->
+  <section id="cqrs">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div class="section-title">
+        <h2>CQRS — Command Query Responsibility Segregation</h2>
+        <div class="sub">// SEPARATE READ AND WRITE PATHS</div>
+      </div>
+    </div>
+
+    <p class="prose">CQRS separates the model used for writes (commands) from the model used for reads (queries). They can use different databases, different schemas, and scale independently. Commands mutate state and publish events; queries read from purpose-built projections optimized for the specific view.</p>
+
+    <div class="flow-diagram">
+      <div class="flow">
+        <div class="flow-node">
+          <div class="flow-node-type">Client</div>
+          <div class="flow-node-name">API</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:28px; margin: 0 8px; flex-shrink:0; align-self: stretch; justify-content: space-around;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="flow-arrow fa-amber" style="margin:0">→</span>
+            <div class="flow-node" style="min-width:88px;">
+              <div class="flow-node-type">Command</div>
+              <div class="flow-node-name" style="font-size:11px;">PlaceOrder<br>CancelOrder</div>
+            </div>
+            <span class="flow-arrow fa-amber" style="margin:0">→</span>
+            <div class="flow-node" style="min-width:88px; border-color:rgba(245,166,35,0.4); background:var(--ink5);">
+              <div class="flow-node-type">Write DB</div>
+              <div class="flow-node-name" style="color:var(--amber); font-size:11px;">Event Store<br>PostgreSQL</div>
+            </div>
+            <span class="flow-arrow fa-amber" style="margin:0">→</span>
+            <div class="flow-node" style="border-color:rgba(245,166,35,0.4); background:var(--ink5);">
+              <div class="flow-node-type">Event Bus</div>
+              <div class="flow-node-name" style="color:var(--amber);">Kafka</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="flow-arrow fa-teal" style="margin:0">→</span>
+            <div class="flow-node" style="min-width:88px;">
+              <div class="flow-node-type">Query</div>
+              <div class="flow-node-name" style="font-size:11px;">GetOrder<br>ListOrders</div>
+            </div>
+            <span class="flow-arrow fa-teal" style="margin:0">→</span>
+            <div class="flow-node" style="min-width:88px; border-color:rgba(43,181,160,0.4); background:var(--ink5);">
+              <div class="flow-node-type">Read DB</div>
+              <div class="flow-node-name" style="color:var(--teal); font-size:11px;">Elasticsearch<br>Redis</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flow-label" style="text-align:left; margin-top:10px;">Event bus (Kafka) feeds projectors that maintain purpose-built read models — denormalized, query-optimized, polyglot</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card teal">
+        <div class="card-title">Read Model Design Rules</div>
+        <ul>
+          <li>One read model per query pattern — no compromise</li>
+          <li>Denormalize ruthlessly — joins at read time are expensive</li>
+          <li>Optimize for the exact query shape the UI needs</li>
+          <li>Rebuild-ability is a requirement: projectors must be replayable</li>
+          <li>Eventual consistency with the write model — always</li>
+        </ul>
+      </div>
+      <div class="card violet">
+        <div class="card-title">Projection Technology Choices</div>
+        <ul>
+          <li><strong>Elasticsearch:</strong> full-text search, faceted navigation</li>
+          <li><strong>Redis:</strong> hot read paths, leaderboards, counters</li>
+          <li><strong>PostgreSQL (materialized view):</strong> complex relational queries</li>
+          <li><strong>DynamoDB:</strong> single-table design, predictable latency</li>
+          <li><strong>ClickHouse / BigQuery:</strong> analytics queries over large datasets</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 07 STREAM PROCESSING ══ -->
+  <section id="streaming">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div class="section-title">
+        <h2>Stream Processing</h2>
+        <div class="sub">// COMPUTE OVER CONTINUOUS EVENT FLOWS</div>
+      </div>
+    </div>
+
+    <p class="prose">Stream processing is real-time computation over unbounded event sequences. Unlike batch processing (which operates on finite datasets at rest), stream processing applies transformations, aggregations, and joins continuously as events arrive — with sub-second latency.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Framework</th><th>Model</th><th>Latency</th><th>Best For</th><th>Managed Option</th></tr>
+        <tr>
+          <td><strong>Kafka Streams</strong></td>
+          <td>Library (no cluster)</td>
+          <td><span class="ok">ms</span></td>
+          <td>Kafka-native, small-medium topologies, microservice-embedded</td>
+          <td>Confluent Cloud</td>
+        </tr>
+        <tr>
+          <td><strong>Apache Flink</strong></td>
+          <td>Cluster, stateful DAG</td>
+          <td><span class="ok">ms</span></td>
+          <td>Complex CEP, large state, exactly-once, SQL over streams</td>
+          <td>AWS Kinesis Analytics, Confluent</td>
+        </tr>
+        <tr>
+          <td><strong>Apache Spark Streaming</strong></td>
+          <td>Micro-batch</td>
+          <td><span class="warn-t">seconds</span></td>
+          <td>ML pipelines, batch+stream unified, large cluster analytics</td>
+          <td>Databricks, EMR, Dataproc</td>
+        </tr>
+        <tr>
+          <td><strong>ksqlDB</strong></td>
+          <td>SQL over Kafka</td>
+          <td><span class="ok">ms</span></td>
+          <td>SQL-native stream queries, materialized tables, no-code streaming</td>
+          <td>Confluent Cloud</td>
+        </tr>
+        <tr>
+          <td><strong>Pulsar Functions</strong></td>
+          <td>Serverless functions</td>
+          <td><span class="ok">ms</span></td>
+          <td>Pulsar-native, simple transform/filter pipelines</td>
+          <td>StreamNative, Astra Streaming</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Java — Kafka Streams: Real-Time Order Analytics</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cl">StreamsBuilder</span> builder = <span class="kw">new</span> <span class="cl">StreamsBuilder</span>();
+
+<span class="cm">// 1. Source stream from Kafka topic</span>
+<span class="cl">KStream</span>&lt;<span class="cl">String</span>, <span class="cl">OrderEvent</span>&gt; orders = builder
+    .<span class="fn">stream</span>(<span class="st">"orders.placed"</span>, <span class="cl">Consumed</span>.<span class="fn">with</span>(Serdes.String(), orderSerde));
+
+<span class="cm">// 2. Filter: only paid orders over $100</span>
+<span class="cl">KStream</span>&lt;<span class="cl">String</span>, <span class="cl">OrderEvent</span>&gt; highValue = orders
+    .<span class="fn">filter</span>((key, order) -&gt; order.getTotal() &gt; <span class="nu">100.0</span> &amp;&amp; order.isPaid());
+
+<span class="cm">// 3. Group by region, count in 5-minute tumbling window</span>
+<span class="cl">KTable</span>&lt;<span class="cl">Windowed</span>&lt;<span class="cl">String</span>&gt;, <span class="cl">Long</span>&gt; countByRegion = highValue
+    .<span class="fn">groupBy</span>((key, order) -&gt; order.getRegion())
+    .<span class="fn">windowedBy</span>(<span class="cl">TimeWindows</span>.<span class="fn">ofSizeWithNoGrace</span>(<span class="cl">Duration</span>.<span class="fn">ofMinutes</span>(<span class="nu">5</span>)))
+    .<span class="fn">count</span>(<span class="cl">Materialized</span>.<span class="fn">as</span>(<span class="st">"high-value-orders-by-region"</span>));   <span class="cm">// queryable state store</span>
+
+<span class="cm">// 4. Join enrichment: fetch product catalog (KTable)</span>
+<span class="cl">KTable</span>&lt;<span class="cl">String</span>, <span class="cl">Product</span>&gt; products = builder
+    .<span class="fn">table</span>(<span class="st">"products.catalog"</span>, <span class="cl">Consumed</span>.<span class="fn">with</span>(Serdes.String(), productSerde));
+
+<span class="cl">KStream</span>&lt;<span class="cl">String</span>, <span class="cl">EnrichedOrder</span>&gt; enriched = orders
+    .<span class="fn">join</span>(products,
+        (order, product) -&gt; <span class="kw">new</span> <span class="cl">EnrichedOrder</span>(order, product),
+        <span class="cl">Joined</span>.<span class="fn">with</span>(Serdes.String(), orderSerde, productSerde));
+
+<span class="cm">// 5. Sink to output topic</span>
+enriched.<span class="fn">to</span>(<span class="st">"orders.enriched"</span>, <span class="cl">Produced</span>.<span class="fn">with</span>(Serdes.String(), enrichedSerde));
+
+<span class="cm">// 6. Build and start topology</span>
+<span class="cl">KafkaStreams</span> streams = <span class="kw">new</span> <span class="cl">KafkaStreams</span>(builder.<span class="fn">build</span>(), config);
+streams.<span class="fn">start</span>();   <span class="cm">// Runs embedded in your microservice — no separate cluster needed</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 08 KAFKA ══ -->
+  <section id="kafka">
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <div class="section-title">
+        <h2>Apache Kafka</h2>
+        <div class="sub">// DISTRIBUTED COMMIT LOG AT PLANETARY SCALE</div>
+      </div>
+    </div>
+
+    <p class="prose">Kafka is a distributed, partitioned, replicated commit log. It is not a message queue in the traditional sense — it is a <strong>durable, ordered, replayable event log</strong> that producers append to and consumers read from at their own pace. Kafka's architecture makes it the dominant choice for high-throughput event streaming at enterprise scale.</p>
+
+    <h3>Core Architecture Concepts</h3>
+    <div class="grid-3">
+      <div class="card amber">
+        <div class="card-title">Topics & Partitions</div>
+        <p>A topic is split into N partitions. Each partition is an ordered, immutable sequence of records. Partitions are the unit of parallelism — you can have at most as many active consumers as partitions in a group. Choose partition count based on target throughput.</p>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Offsets & Consumer Groups</div>
+        <p>Each message has a monotonically increasing offset per partition. Consumer groups track their committed offset per partition — Kafka never deletes data based on consumption. Multiple groups can read the same topic independently at their own offsets.</p>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Replication & Durability</div>
+        <p>Each partition has a leader and N-1 follower replicas. <code>acks=all</code> + <code>min.insync.replicas=2</code> ensures no data loss under broker failure. Replication factor 3 is standard for production. KRaft (since 3.3) eliminates ZooKeeper dependency.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Properties — Kafka Producer (High Durability)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Producer configuration for financial-grade durability</span>
+
+<span class="cm"># Durability: wait for all in-sync replicas to acknowledge</span>
+<span class="at">acks</span>=all                    <span class="cm"># 0=fire-forget | 1=leader only | all=full durability</span>
+<span class="at">min.insync.replicas</span>=2       <span class="cm"># Set on topic — broker rejects if fewer ISRs available</span>
+<span class="at">enable.idempotence</span>=true     <span class="cm"># Exactly-once semantics per partition (dedup by sequence no.)</span>
+
+<span class="cm"># Retry behavior</span>
+<span class="at">retries</span>=2147483647           <span class="cm"># Retry indefinitely (with idempotence, safe to do so)</span>
+<span class="at">max.in.flight.requests.per.connection</span>=5  <span class="cm"># Must be ≤5 with idempotence</span>
+<span class="at">delivery.timeout.ms</span>=120000  <span class="cm"># 2-min total retry window</span>
+<span class="at">retry.backoff.ms</span>=1000
+
+<span class="cm"># Batching for throughput (tune for your latency/throughput trade-off)</span>
+<span class="at">batch.size</span>=65536             <span class="cm"># 64KB batch size (default 16KB — too small for high throughput)</span>
+<span class="at">linger.ms</span>=10                 <span class="cm"># Wait up to 10ms to fill batch (0 = lowest latency)</span>
+<span class="at">compression.type</span>=snappy      <span class="cm"># snappy (balanced) | lz4 (fast) | zstd (best ratio)</span>
+<span class="at">buffer.memory</span>=67108864       <span class="cm"># 64MB producer buffer</span>
+
+<span class="cm"># Serialization (use Schema Registry for schema evolution)</span>
+<span class="at">key.serializer</span>=org.apache.kafka.common.serialization.StringSerializer
+<span class="at">value.serializer</span>=io.confluent.kafka.serializers.KafkaAvroSerializer
+<span class="at">schema.registry.url</span>=https://schema-registry:8081</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Properties — Kafka Consumer (Exactly-Once Processing)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Consumer configuration for reliable at-least-once (default)</span>
+<span class="at">group.id</span>=fulfillment-service-v2
+<span class="at">auto.offset.reset</span>=earliest     <span class="cm"># earliest | latest — new group starts from beginning</span>
+<span class="at">enable.auto.commit</span>=false        <span class="cm"># NEVER use auto-commit for business-critical consumers</span>
+                                 <span class="cm"># Commit manually AFTER successful processing</span>
+
+<span class="cm"># Failure resilience</span>
+<span class="at">max.poll.records</span>=100            <span class="cm"># Process 100 records per poll — size to your DB batch capacity</span>
+<span class="at">max.poll.interval.ms</span>=300000     <span class="cm"># 5 min — consumer kicked from group if poll takes longer</span>
+<span class="at">session.timeout.ms</span>=45000        <span class="cm"># Heartbeat timeout before rebalance</span>
+<span class="at">heartbeat.interval.ms</span>=15000     <span class="cm"># Should be 1/3 of session.timeout</span>
+
+<span class="cm"># Fetch tuning (throughput)</span>
+<span class="at">fetch.min.bytes</span>=1048576         <span class="cm"># 1MB minimum before broker responds (reduces round trips)</span>
+<span class="at">fetch.max.wait.ms</span>=500           <span class="cm"># Max wait if fetch.min.bytes not met</span>
+
+<span class="cm"># Commit after successful processing pattern:</span>
+<span class="cm">#   consumer.poll() → process batch → commitSync() → repeat</span>
+<span class="cm">#   On exception: do NOT commit → messages re-delivered after rebalance</span></div>
+    </div>
+
+    <h3>Kafka Topic Design Rules</h3>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Decision</th><th>Recommendation</th><th>Rationale</th></tr>
+        <tr><td><strong>Partition count</strong></td><td>Start with 6–12 per topic; multiply expected consumer group size by 2–3</td><td>Cannot decrease partitions; over-partition rather than under-partition</td></tr>
+        <tr><td><strong>Replication factor</strong></td><td>3 for production; 1 for dev only</td><td>Survives 1 broker failure with RF=3</td></tr>
+        <tr><td><strong>Retention</strong></td><td>7 days default; event store topics: 1 year or compact+delete</td><td>Log compaction keeps last value per key (good for state topics)</td></tr>
+        <tr><td><strong>Message key</strong></td><td>Use entity ID (orderId, userId) — ensures ordering per entity</td><td>All events for the same key land in the same partition</td></tr>
+        <tr><td><strong>Topic naming</strong></td><td><code>{domain}.{entity}.{event-type}</code> e.g. <code>orders.order.placed</code></td><td>Hierarchical, discoverable, schema-registry friendly</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 09 PULSAR ══ -->
+  <section id="pulsar">
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <div class="section-title">
+        <h2>Apache Pulsar</h2>
+        <div class="sub">// MULTI-TENANCY, GEO-REPLICATION, UNIFIED QUEUING</div>
+      </div>
+    </div>
+
+    <p class="prose">Pulsar separates compute (brokers) from storage (Apache BookKeeper), enabling instant elastic scaling of brokers without data rebalancing. It supports both streaming and queuing natively, built-in multi-tenancy, and geo-replication across data centers — features that require significant additional tooling in Kafka.</p>
+
+    <div class="grid-2">
+      <div class="card teal">
+        <div class="card-title">Pulsar's Architectural Advantages <span class="badge b-teal">Unique</span></div>
+        <ul>
+          <li><strong>Separated storage:</strong> Scale brokers independently from BookKeeper storage nodes</li>
+          <li><strong>Built-in multi-tenancy:</strong> Namespaces, tenants, and quotas are first-class primitives</li>
+          <li><strong>Native geo-replication:</strong> Async or sync replication across regions configured declaratively</li>
+          <li><strong>Unified model:</strong> Topic supports streaming + queue + pub-sub in a single API</li>
+          <li><strong>Functions:</strong> Serverless compute embedded in the broker (Pulsar Functions)</li>
+        </ul>
+      </div>
+      <div class="card rust">
+        <div class="card-title">When Kafka Still Wins <span class="badge b-rust">Trade-offs</span></div>
+        <ul>
+          <li>Kafka ecosystem is vastly larger (Kafka Connect, ksqlDB, 200+ connectors)</li>
+          <li>Kafka Streams is more mature than Pulsar's streaming APIs</li>
+          <li>Operational expertise far more available for Kafka</li>
+          <li>BookKeeper adds operational complexity (3-tier: ZK + BK + Broker)</li>
+          <li>Schema registry is third-party (not built-in like Pulsar's)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Pulsar Producer & Consumer</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> <span class="cl">pulsar</span>
+<span class="kw">from</span> <span class="cl">pulsar.schema</span> <span class="kw">import</span> JsonSchema, Record, String, Float
+
+<span class="cm"># Schema definition — Pulsar has a built-in schema registry</span>
+<span class="kw">class</span> <span class="cl">OrderPlaced</span>(<span class="cl">Record</span>):
+    order_id    = <span class="cl">String</span>(required=<span class="kw">True</span>)
+    customer_id = <span class="cl">String</span>(required=<span class="kw">True</span>)
+    total       = <span class="cl">Float</span>(required=<span class="kw">True</span>)
+
+<span class="cm"># Producer</span>
+client   = pulsar.<span class="fn">Client</span>(<span class="st">'pulsar://broker:6650'</span>)
+producer = client.<span class="fn">create_producer</span>(
+    topic=<span class="st">'persistent://acme/orders/order-placed'</span>,  <span class="cm"># tenant/namespace/topic</span>
+    schema=<span class="cl">JsonSchema</span>(<span class="cl">OrderPlaced</span>),
+    producer_name=<span class="st">'orders-service-prod'</span>,
+    send_timeout_millis=<span class="nu">30000</span>,
+    block_if_queue_full=<span class="kw">True</span>,
+    batching_enabled=<span class="kw">True</span>,
+    batching_max_publish_delay_ms=<span class="nu">10</span>,
+    compression_type=pulsar.CompressionType.Snappy
+)
+producer.<span class="fn">send</span>(<span class="cl">OrderPlaced</span>(order_id=<span class="st">'8271'</span>, customer_id=<span class="st">'903'</span>, total=<span class="nu">142.0</span>))
+
+<span class="cm"># Consumer (shared subscription = queue semantics among consumers)</span>
+consumer = client.<span class="fn">subscribe</span>(
+    topic=<span class="st">'persistent://acme/orders/order-placed'</span>,
+    subscription_name=<span class="st">'fulfillment-service'</span>,      <span class="cm"># durable subscription name</span>
+    consumer_type=pulsar.<span class="cl">ConsumerType</span>.Shared,       <span class="cm"># Shared|Exclusive|Failover|KeyShared</span>
+    schema=<span class="cl">JsonSchema</span>(<span class="cl">OrderPlaced</span>),
+    receiver_queue_size=<span class="nu">1000</span>
+)
+<span class="kw">while True</span>:
+    msg = consumer.<span class="fn">receive</span>(timeout_millis=<span class="nu">5000</span>)
+    <span class="kw">try</span>:
+        <span class="fn">process_order</span>(msg.value())
+        consumer.<span class="fn">acknowledge</span>(msg)                  <span class="cm"># Ack = message removed from sub</span>
+    <span class="kw">except Exception</span> <span class="kw">as</span> e:
+        consumer.<span class="fn">negative_acknowledge</span>(msg)          <span class="cm"># Nack = redeliver after backoff</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 10 RABBITMQ ══ -->
+  <section id="rabbit">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title">
+        <h2>RabbitMQ</h2>
+        <div class="sub">// FLEXIBLE ROUTING, CLASSIC MESSAGING</div>
+      </div>
+    </div>
+
+    <p class="prose">RabbitMQ is a traditional message broker implementing AMQP. Its power lies in its <strong>flexible routing model</strong>: messages flow through <em>exchanges</em> that apply routing rules to deliver to one or more queues. This makes complex routing topologies (fanout, topic-based, header-based, direct) easy to configure without writing code. RabbitMQ prioritizes low-latency delivery and a rich broker-side feature set over raw throughput.</p>
+
+    <h3>Exchange Types — RabbitMQ's Routing Power</h3>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Exchange Type</th><th>Routing Rule</th><th>Use Case</th><th>Example Key</th></tr>
+        <tr>
+          <td><strong>Direct</strong></td>
+          <td>Routes to queues where binding key = routing key (exact match)</td>
+          <td>Task queues, error routing, targeted delivery</td>
+          <td><code>order.created</code></td>
+        </tr>
+        <tr>
+          <td><strong>Topic</strong></td>
+          <td>Routing key with wildcards: <code>*</code> (one word) and <code>#</code> (zero or more)</td>
+          <td>Selective subscriptions, hierarchical event routing</td>
+          <td><code>orders.*.placed</code>, <code>orders.#</code></td>
+        </tr>
+        <tr>
+          <td><strong>Fanout</strong></td>
+          <td>Broadcasts to ALL bound queues, ignores routing key</td>
+          <td>Pub/sub, notifications, cache invalidation</td>
+          <td>— (ignored)</td>
+        </tr>
+        <tr>
+          <td><strong>Headers</strong></td>
+          <td>Routes based on message header attributes (x-match: all/any)</td>
+          <td>Content-based routing, multi-attribute filtering</td>
+          <td><code>{region: eu, priority: high}</code></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — RabbitMQ Topic Exchange Pattern</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> <span class="cl">pika</span>, json
+
+connection = pika.<span class="fn">BlockingConnection</span>(pika.<span class="cl">ConnectionParameters</span>(
+    host=<span class="st">'rabbitmq'</span>, port=<span class="nu">5672</span>,
+    credentials=pika.<span class="cl">PlainCredentials</span>(<span class="st">'app'</span>, <span class="st">'secret'</span>),
+    heartbeat=<span class="nu">600</span>,
+    blocked_connection_timeout=<span class="nu">300</span>
+))
+channel = connection.<span class="fn">channel</span>()
+
+<span class="cm"># Declare the topic exchange (idempotent)</span>
+channel.<span class="fn">exchange_declare</span>(
+    exchange=<span class="st">'domain.events'</span>,
+    exchange_type=<span class="st">'topic'</span>,
+    durable=<span class="kw">True</span>  <span class="cm"># Survives broker restart</span>
+)
+
+<span class="cm"># ─── PRODUCER: publish with routing key ───────────────────────</span>
+<span class="kw">def</span> <span class="fn">publish_event</span>(routing_key: str, payload: dict):
+    channel.<span class="fn">basic_publish</span>(
+        exchange=<span class="st">'domain.events'</span>,
+        routing_key=routing_key,           <span class="cm"># e.g. "orders.eu.placed"</span>
+        body=json.<span class="fn">dumps</span>(payload),
+        properties=pika.<span class="cl">BasicProperties</span>(
+            content_type=<span class="st">'application/json'</span>,
+            delivery_mode=<span class="nu">2</span>,              <span class="cm"># 2 = persistent (survives restart)</span>
+            message_id=<span class="st">'uuid-here'</span>,
+            correlation_id=<span class="st">'trace-id'</span>
+        )
+    )
+
+<span class="cm"># ─── CONSUMER: bind queue with wildcard pattern ────────────────</span>
+channel.<span class="fn">queue_declare</span>(queue=<span class="st">'fulfillment.eu.orders'</span>, durable=<span class="kw">True</span>)
+channel.<span class="fn">queue_bind</span>(
+    queue=<span class="st">'fulfillment.eu.orders'</span>,
+    exchange=<span class="st">'domain.events'</span>,
+    routing_key=<span class="st">'orders.eu.*'</span>  <span class="cm"># matches orders.eu.placed, orders.eu.cancelled, etc.</span>
+)
+
+channel.<span class="fn">basic_qos</span>(prefetch_count=<span class="nu">10</span>)  <span class="cm"># Process 10 in-flight max — back-pressure</span>
+
+<span class="kw">def</span> <span class="fn">on_message</span>(ch, method, properties, body):
+    <span class="kw">try</span>:
+        event = json.<span class="fn">loads</span>(body)
+        <span class="fn">process</span>(event)
+        ch.<span class="fn">basic_ack</span>(delivery_tag=method.delivery_tag)    <span class="cm"># explicit ack</span>
+    <span class="kw">except Exception</span>:
+        ch.<span class="fn">basic_nack</span>(delivery_tag=method.delivery_tag, requeue=<span class="kw">False</span>)  <span class="cm"># → DLX</span>
+
+channel.<span class="fn">basic_consume</span>(<span class="st">'fulfillment.eu.orders'</span>, on_message)
+channel.<span class="fn">start_consuming</span>()</div>
+    </div>
+  </section>
+
+  <!-- ══ 11 BROKER SELECTION ══ -->
+  <section id="choose">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div class="section-title">
+        <h2>Broker Selection Guide</h2>
+        <div class="sub">// CHOOSING THE RIGHT TOOL FOR THE JOB</div>
+      </div>
+    </div>
+
+    <div class="broker-grid">
+      <div class="broker-card">
+        <div class="broker-header">
+          <div class="broker-accent kafka-accent"></div>
+          <div class="broker-name">Kafka</div>
+          <div class="broker-maker">Apache / Confluent</div>
+        </div>
+        <div class="broker-body">
+          <div class="broker-stat">
+            <span class="stat-label">Throughput</span>
+            <span class="stat-val kafka-val">Millions/sec</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Latency</span>
+            <span class="stat-val kafka-val">2–10ms</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Model</span>
+            <span class="stat-val">Log / Streaming</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Retention</span>
+            <span class="stat-val kafka-val">Days–Forever</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Replayable</span>
+            <span class="stat-val kafka-val">Yes — offsets</span>
+          </div>
+          <div class="broker-stat" style="border:none">
+            <span class="stat-label">Best For</span>
+            <span class="stat-val" style="font-size:11px; text-align:right; max-width:110px">High throughput streaming, event sourcing, audit log</span>
+          </div>
+        </div>
+      </div>
+      <div class="broker-card">
+        <div class="broker-header">
+          <div class="broker-accent pulsar-accent"></div>
+          <div class="broker-name">Pulsar</div>
+          <div class="broker-maker">Apache / StreamNative</div>
+        </div>
+        <div class="broker-body">
+          <div class="broker-stat">
+            <span class="stat-label">Throughput</span>
+            <span class="stat-val pulsar-val">High</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Latency</span>
+            <span class="stat-val pulsar-val">5–15ms</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Model</span>
+            <span class="stat-val">Streaming + Queue</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Retention</span>
+            <span class="stat-val pulsar-val">Configurable</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Replayable</span>
+            <span class="stat-val pulsar-val">Yes — cursors</span>
+          </div>
+          <div class="broker-stat" style="border:none">
+            <span class="stat-label">Best For</span>
+            <span class="stat-val" style="font-size:11px; text-align:right; max-width:110px">Multi-tenant SaaS, geo-replication, unified messaging</span>
+          </div>
+        </div>
+      </div>
+      <div class="broker-card">
+        <div class="broker-header">
+          <div class="broker-accent rabbit-accent"></div>
+          <div class="broker-name">RabbitMQ</div>
+          <div class="broker-maker">Broadcom / CNCF</div>
+        </div>
+        <div class="broker-body">
+          <div class="broker-stat">
+            <span class="stat-label">Throughput</span>
+            <span class="stat-val rabbit-val">~50K/sec</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Latency</span>
+            <span class="stat-val rabbit-val">&lt;1ms</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Model</span>
+            <span class="stat-val">Message Queue</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Retention</span>
+            <span class="stat-val rabbit-val">Until consumed</span>
+          </div>
+          <div class="broker-stat">
+            <span class="stat-label">Replayable</span>
+            <span class="stat-val" style="color:var(--muted)">No (shovel plugin)</span>
+          </div>
+          <div class="broker-stat" style="border:none">
+            <span class="stat-label">Best For</span>
+            <span class="stat-val" style="font-size:11px; text-align:right; max-width:110px">Complex routing, task queues, low-latency, RPC</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>If you need…</th><th>Choose</th><th>Why</th></tr>
+        <tr><td>Millions of events/sec, durable replay, event sourcing</td><td><span class="ok">Kafka</span></td><td>Log-based, partitioned, designed for this workload</td></tr>
+        <tr><td>Complex routing rules, fanout, priority queues</td><td><span class="warn-t">RabbitMQ</span></td><td>Exchange model, broker-side routing logic</td></tr>
+        <tr><td>Multi-tenant SaaS, built-in geo-replication</td><td><span class="ok">Pulsar</span></td><td>First-class tenant/namespace primitives</td></tr>
+        <tr><td>Simple task queue / background jobs</td><td><span class="warn-t">RabbitMQ</span></td><td>Simpler ops, lower overhead for this use case</td></tr>
+        <tr><td>SQL-based stream queries, BI on event streams</td><td><span class="ok">Kafka + ksqlDB</span></td><td>ksqlDB provides ANSI SQL over Kafka topics</td></tr>
+        <tr><td>Starting fresh, limited ops expertise</td><td><span class="warn-t">Managed Kafka</span></td><td>Confluent Cloud / MSK / Aiven — outsource ops complexity</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 12 SCHEMA ══ -->
+  <section id="schema">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div class="section-title">
+        <h2>Schema & Event Contracts</h2>
+        <div class="sub">// SCHEMA EVOLUTION WITHOUT BREAKING CONSUMERS</div>
+      </div>
+    </div>
+
+    <p class="prose">Schema management is the hardest long-term problem in EDA. Producers and consumers are deployed independently — a schema change can break a consumer that hasn't been updated. <strong>Schema registries</strong> (Confluent Schema Registry, AWS Glue Schema Registry) enforce compatibility rules at publish time, preventing breaking changes from reaching the broker.</p>
+
+    <div class="grid-2">
+      <div class="card teal">
+        <div class="card-title">Backward Compatibility <span class="badge b-teal">Preferred</span></div>
+        <p><strong>Old consumers can read new events.</strong> You can add optional fields with defaults. You cannot remove fields or change types. New producers publish v2 events; old consumers still process them using default values for new fields.</p>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Forward Compatibility</div>
+        <p><strong>New consumers can read old events.</strong> Old producers publish v1; new consumers handle missing new fields gracefully. Allows consumer upgrades before producer upgrades.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Avro Schema — OrderPlaced v1 → v2 (Backward Compatible)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// v1 — original schema</span>
+{
+  <span class="at">"type"</span>: <span class="st">"record"</span>,
+  <span class="at">"name"</span>: <span class="st">"OrderPlaced"</span>,
+  <span class="at">"namespace"</span>: <span class="st">"com.acme.orders.v1"</span>,
+  <span class="at">"fields"</span>: [
+    { <span class="at">"name"</span>: <span class="st">"orderId"</span>,    <span class="at">"type"</span>: <span class="st">"string"</span> },
+    { <span class="at">"name"</span>: <span class="st">"customerId"</span>, <span class="at">"type"</span>: <span class="st">"string"</span> },
+    { <span class="at">"name"</span>: <span class="st">"total"</span>,      <span class="at">"type"</span>: <span class="st">"double"</span> }
+  ]
+}
+
+<span class="cm">// v2 — adding optional fields with defaults (BACKWARD COMPATIBLE ✓)</span>
+{
+  <span class="at">"type"</span>: <span class="st">"record"</span>,
+  <span class="at">"name"</span>: <span class="st">"OrderPlaced"</span>,
+  <span class="at">"namespace"</span>: <span class="st">"com.acme.orders.v2"</span>,
+  <span class="at">"fields"</span>: [
+    { <span class="at">"name"</span>: <span class="st">"orderId"</span>,    <span class="at">"type"</span>: <span class="st">"string"</span> },
+    { <span class="at">"name"</span>: <span class="st">"customerId"</span>, <span class="at">"type"</span>: <span class="st">"string"</span> },
+    { <span class="at">"name"</span>: <span class="st">"total"</span>,      <span class="at">"type"</span>: <span class="st">"double"</span> },
+    <span class="hl">    { <span class="at">"name"</span>: <span class="st">"currency"</span>,   <span class="at">"type"</span>: <span class="st">"string"</span>,  <span class="at">"default"</span>: <span class="st">"USD"</span> },  <span class="cm">// NEW — has default ✓</span></span>
+<span class="hl">    { <span class="at">"name"</span>: <span class="st">"region"</span>,    <span class="at">"type"</span>: [<span class="st">"null"</span>, <span class="st">"string"</span>], <span class="at">"default"</span>: <span class="kw">null</span> }  <span class="cm">// NEW — nullable ✓</span></span>
+  ]
+}
+
+<span class="cm">// BREAKING CHANGES — never do these with BACKWARD compatibility mode:</span>
+<span class="cm">// ❌  Remove existing field (orderId, customerId, total)</span>
+<span class="cm">// ❌  Change field type (double → string)</span>
+<span class="cm">// ❌  Rename field without alias</span>
+<span class="cm">// ❌  Add required field without default</span>
+
+<span class="cm">// Schema Registry enforces compatibility before accepting new schema version</span>
+<span class="cm">// curl -X POST -H "Content-Type: application/json" \</span>
+<span class="cm">//   --data '{"schema": "..."}' \</span>
+<span class="cm">//   http://schema-registry:8081/subjects/orders.placed-value/versions</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 13 ORDERING & DELIVERY ══ -->
+  <section id="ordering">
+    <div class="section-header">
+      <div class="section-num">13</div>
+      <div class="section-title">
+        <h2>Ordering & Delivery Guarantees</h2>
+        <div class="sub">// THE HOLY TRINITY OF DISTRIBUTED MESSAGING</div>
+      </div>
+    </div>
+
+    <p class="prose">Every broker makes trade-offs across three guarantees: ordering, delivery semantics, and throughput. Understanding these is essential for designing correct systems — especially under failure conditions.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Guarantee</th><th>Definition</th><th>Kafka</th><th>Pulsar</th><th>RabbitMQ</th></tr>
+        <tr>
+          <td><strong>At-Most-Once</strong></td>
+          <td>Messages may be lost, never duplicated</td>
+          <td><code>acks=0</code></td>
+          <td>Non-persistent sub</td>
+          <td>auto-ack, <code>noAck</code></td>
+        </tr>
+        <tr>
+          <td><strong>At-Least-Once</strong></td>
+          <td>No loss, but duplicates possible on retry</td>
+          <td><span class="ok">Default</span> <code>acks=1</code></td>
+          <td><span class="ok">Default</span> ack-based</td>
+          <td><span class="ok">Default</span> manual ack</td>
+        </tr>
+        <tr>
+          <td><strong>Exactly-Once</strong></td>
+          <td>No loss, no duplicates — hardest guarantee</td>
+          <td><span class="warn-t">Transactions</span> + idempotence</td>
+          <td><span class="warn-t">Transactions</span> (limited)</td>
+          <td><span class="bad">No</span> (use idempotent consumers)</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout insight">
+      <span class="callout-icon">◆</span>
+      <div class="callout-body"><strong>Exactly-once is expensive and rarely necessary.</strong> The practical target for most systems is <em>at-least-once delivery + idempotent consumers</em>. Design your consumer to handle duplicate delivery safely (using a deduplication key), and you get effectively-once semantics at much lower overhead than true exactly-once transactions.</div>
+    </div>
+
+    <h3>Ordering Guarantees in Kafka</h3>
+    <p class="prose">Kafka guarantees ordering <strong>within a partition</strong>. All messages with the same key go to the same partition — so all events for <code>orderId=8271</code> are processed in order. Events across different partitions (different orderIds) may interleave. If global ordering across entities is required, use a single partition — but this eliminates parallelism.</p>
+  </section>
+
+  <!-- ══ 14 DLQ ══ -->
+  <section id="dlq">
+    <div class="section-header">
+      <div class="section-num">14</div>
+      <div class="section-title">
+        <h2>Error Handling & Dead Letter Queues</h2>
+        <div class="sub">// FAILURES ARE EVENTS TOO</div>
+      </div>
+    </div>
+
+    <p class="prose">In EDA, processing failures must not block the message pipeline. A Dead Letter Queue (DLQ) captures messages that failed processing after all retry attempts. The DLQ preserves failed messages for investigation and re-processing without stalling the main consumer.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Retry with Exponential Backoff + DLQ</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> <span class="cl">time</span>, <span class="cl">math</span>, <span class="cl">json</span>, <span class="cl">logging</span>
+<span class="kw">from</span> <span class="cl">dataclasses</span> <span class="kw">import</span> dataclass
+
+<span class="at">@dataclass</span>
+<span class="kw">class</span> <span class="cl">RetryPolicy</span>:
+    max_attempts: int = <span class="nu">5</span>
+    base_delay_ms: int = <span class="nu">200</span>
+    max_delay_ms: int = <span class="nu">30_000</span>
+    jitter: bool = <span class="kw">True</span>
+
+<span class="kw">def</span> <span class="fn">backoff_delay</span>(attempt: int, policy: <span class="cl">RetryPolicy</span>) -&gt; float:
+    <span class="cm">"""Exponential backoff: 200ms, 400ms, 800ms, 1.6s, 3.2s, ..."""</span>
+    delay = policy.base_delay_ms * (<span class="nu">2</span> ** attempt)
+    delay = min(delay, policy.max_delay_ms)
+    <span class="kw">if</span> policy.jitter:
+        delay *= (<span class="nu">0.5</span> + <span class="cl">math</span>.<span class="fn">random</span>() * <span class="nu">0.5</span>)   <span class="cm"># ±25% jitter prevents thundering herd</span>
+    <span class="kw">return</span> delay / <span class="nu">1000</span>                            <span class="cm"># convert to seconds</span>
+
+<span class="kw">def</span> <span class="fn">process_with_retry</span>(consumer, dlq_producer, policy: <span class="cl">RetryPolicy</span>):
+    <span class="kw">while True</span>:
+        msg = consumer.<span class="fn">poll</span>(timeout_ms=<span class="nu">5000</span>)
+        <span class="kw">if not</span> msg: <span class="kw">continue</span>
+
+        attempt = <span class="nu">0</span>
+        <span class="kw">while</span> attempt &lt; policy.max_attempts:
+            <span class="kw">try</span>:
+                <span class="fn">process_event</span>(msg.value())
+                consumer.<span class="fn">commit</span>()
+                <span class="kw">break</span>
+            <span class="kw">except</span> <span class="cl">TransientError</span> <span class="kw">as</span> e:            <span class="cm"># DB timeout, downstream 503, etc.</span>
+                attempt += <span class="nu">1</span>
+                <span class="kw">if</span> attempt &gt;= policy.max_attempts:
+                    <span class="fn">send_to_dlq</span>(dlq_producer, msg, e, attempt)
+                    consumer.<span class="fn">commit</span>()              <span class="cm"># commit to advance — don't re-process</span>
+                <span class="kw">else</span>:
+                    time.<span class="fn">sleep</span>(<span class="fn">backoff_delay</span>(attempt, policy))
+            <span class="kw">except</span> <span class="cl">PoisonPillError</span> <span class="kw">as</span> e:           <span class="cm"># Malformed message — don't retry</span>
+                <span class="fn">send_to_dlq</span>(dlq_producer, msg, e, attempt=<span class="nu">0</span>)
+                consumer.<span class="fn">commit</span>()
+                <span class="kw">break</span>
+
+<span class="kw">def</span> <span class="fn">send_to_dlq</span>(producer, original_msg, error, attempt):
+    dlq_event = {
+        <span class="at">"originalTopic"</span>: original_msg.topic(),
+        <span class="at">"originalPartition"</span>: original_msg.partition(),
+        <span class="at">"originalOffset"</span>: original_msg.offset(),
+        <span class="at">"payload"</span>: original_msg.value(),
+        <span class="at">"error"</span>: str(error),
+        <span class="at">"errorType"</span>: type(error).__name__,
+        <span class="at">"failedAt"</span>: <span class="cl">datetime</span>.<span class="fn">utcnow</span>().<span class="fn">isoformat</span>(),
+        <span class="at">"attempts"</span>: attempt
+    }
+    producer.<span class="fn">produce</span>(<span class="st">'orders.placed.dlq'</span>, json.<span class="fn">dumps</span>(dlq_event))
+    logging.<span class="fn">error</span>(<span class="st">f"Message sent to DLQ after {attempt} attempts: {error}"</span>)</div>
+    </div>
+  </section>
+
+  <!-- ══ 15 IDEMPOTENCY ══ -->
+  <section id="idempotent">
+    <div class="section-header">
+      <div class="section-num">15</div>
+      <div class="section-title">
+        <h2>Idempotency</h2>
+        <div class="sub">// SAFE TO PROCESS TWICE — ALWAYS</div>
+      </div>
+    </div>
+
+    <p class="prose">At-least-once delivery means <strong>your consumer will receive the same message more than once</strong> — guaranteed. A consumer that can be safely re-executed with the same message (same result as processing it once) is <em>idempotent</em>. Idempotency is the practical alternative to expensive exactly-once transactions.</p>
+
+    <div class="grid-2">
+      <div class="card sage">
+        <div class="card-title">Database-Level Idempotency</div>
+        <p>Use the event's unique ID (<code>eventId</code> or <code>messageId</code>) as a deduplication key. Store processed IDs in a <code>processed_events</code> table with a unique constraint. <code>INSERT … ON CONFLICT DO NOTHING</code> makes re-processing a no-op. Prune old records after your retention window.</p>
+      </div>
+      <div class="card sage">
+        <div class="card-title">Natural Idempotency</div>
+        <p>Design operations to be naturally idempotent where possible: <code>SET balance = 142.00</code> is idempotent; <code>INCREMENT balance BY 10</code> is not. <code>UPSERT</code> is idempotent; <code>INSERT</code> is not. Use version fields and optimistic locking to detect and discard stale re-deliveries.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">SQL — Idempotent Event Processing Pattern</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">-- Deduplication table (partitioned by month for pruning)</span>
+<span class="kw">CREATE TABLE</span> processed_events (
+    event_id        <span class="cl">VARCHAR</span>(<span class="nu">64</span>)  <span class="kw">NOT NULL</span>,
+    consumer_group  <span class="cl">VARCHAR</span>(<span class="nu">64</span>)  <span class="kw">NOT NULL</span>,
+    processed_at    <span class="cl">TIMESTAMPTZ</span>  <span class="kw">NOT NULL DEFAULT NOW</span>(),
+    <span class="kw">PRIMARY KEY</span> (event_id, consumer_group)
+) <span class="kw">PARTITION BY</span> <span class="cl">RANGE</span> (processed_at);
+
+<span class="cm">-- Idempotent event handling in a single transaction</span>
+<span class="kw">BEGIN</span>;
+
+<span class="cm">-- 1. Record that we're processing this event (dedup check)</span>
+<span class="kw">INSERT INTO</span> processed_events (event_id, consumer_group)
+<span class="kw">VALUES</span> (<span class="st">'01HWZR5F4P7TKMXX9BQ2GV1ERD'</span>, <span class="st">'fulfillment-service'</span>)
+<span class="kw">ON CONFLICT</span> (event_id, consumer_group)
+<span class="kw">DO NOTHING</span>;
+
+<span class="cm">-- 2. Check if row was inserted (affected rows = 0 → already processed)</span>
+<span class="kw">GET DIAGNOSTICS</span> v_affected = <span class="cl">ROW_COUNT</span>;
+<span class="kw">IF</span> v_affected = <span class="nu">0</span> <span class="kw">THEN</span>
+    <span class="kw">ROLLBACK</span>;              <span class="cm">-- skip silently — duplicate delivery</span>
+    <span class="kw">RETURN</span>;
+<span class="kw">END IF</span>;
+
+<span class="cm">-- 3. Apply business logic (now guaranteed to run exactly once)</span>
+<span class="kw">UPDATE</span> orders
+<span class="kw">SET</span> status = <span class="st">'fulfilling'</span>, updated_at = <span class="kw">NOW</span>()
+<span class="kw">WHERE</span> id = v_order_id
+  <span class="kw">AND</span> status = <span class="st">'paid'</span>;    <span class="cm">-- state machine guard prevents double-fulfillment</span>
+
+<span class="kw">COMMIT</span>;</div>
+    </div>
+  </section>
+
+  <!-- ══ 16 OBSERVABILITY ══ -->
+  <section id="observability">
+    <div class="section-header">
+      <div class="section-num">16</div>
+      <div class="section-title">
+        <h2>Observability</h2>
+        <div class="sub">// DISTRIBUTED TRACING ACROSS EVENT HOPS</div>
+      </div>
+    </div>
+
+    <p class="prose">Debugging an event-driven system without proper observability is nearly impossible — causality chains span multiple services, brokers, and asynchronous hops. The three pillars of EDA observability are <strong>distributed tracing</strong> (propagate trace context through event headers), <strong>consumer lag monitoring</strong> (the key health metric for any Kafka consumer), and <strong>event lineage</strong> (which events caused which downstream events).</p>
+
+    <div class="grid-3">
+      <div class="card amber">
+        <div class="card-title">Consumer Lag — The Primary SLA</div>
+        <p>Consumer lag = messages produced but not yet consumed. Rising lag = consumer can't keep up. Alert when lag &gt; N events or lag grows for &gt;5 minutes. Monitor per-partition. Tools: Kafka Exporter + Prometheus, Confluent Control Center, Burrow.</p>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Distributed Tracing</div>
+        <p>Propagate <code>traceparent</code> (W3C Trace Context) in event headers. Consumers extract trace context and start a child span. Kafka instrumentation libraries (OpenTelemetry) handle this automatically. Platforms: Jaeger, Tempo, Honeycomb.</p>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Key Metrics to Alert On</div>
+        <ul>
+          <li>Consumer lag per group per partition</li>
+          <li>DLQ message count (should be zero)</li>
+          <li>Processing error rate per consumer</li>
+          <li>End-to-end event latency (produce → consume)</li>
+          <li>Broker disk utilization and ISR shrink events</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 17 SAGA ══ -->
+  <section id="saga">
+    <div class="section-header">
+      <div class="section-num">17</div>
+      <div class="section-title">
+        <h2>Saga Pattern</h2>
+        <div class="sub">// DISTRIBUTED TRANSACTIONS WITHOUT 2PC</div>
+      </div>
+    </div>
+
+    <p class="prose">A Saga is a sequence of local transactions, each publishing an event or message that triggers the next transaction. If any step fails, compensating transactions undo the preceding steps. Sagas replace distributed ACID transactions (2PC) — which don't scale and are unavailable under network partition — with eventual consistency and explicit compensation logic.</p>
+
+    <div class="compare">
+      <div class="compare-col">
+        <div class="compare-head">Choreography-based Saga</div>
+        <div class="compare-body">
+          <ul>
+            <li>Each service reacts to events from the previous step</li>
+            <li>No central coordinator — fully decentralized</li>
+            <li>Simple for linear flows; complex for branching</li>
+            <li>Hard to visualize the overall saga state</li>
+            <li>Good for: simple, stable flows with few steps</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-col">
+        <div class="compare-head">Orchestration-based Saga</div>
+        <div class="compare-body">
+          <ul>
+            <li>Central saga orchestrator issues commands, awaits events</li>
+            <li>Saga state is explicit and queryable</li>
+            <li>Easier to add steps, error handling, timeouts</li>
+            <li>Saga orchestrator is a single point of failure (mitigated by persistence)</li>
+            <li>Good for: complex flows, audit requirements, many services</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">TypeScript — Orchestration Saga: Order Fulfillment</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// Saga steps: Reserve Inventory → Charge Payment → Notify Fulfillment</span>
+<span class="cm">// Compensations (on failure): Release Inventory ← Refund Payment ← Cancel Fulfillment</span>
+
+<span class="kw">enum</span> <span class="cl">SagaState</span> {
+  STARTED, INVENTORY_RESERVED, PAYMENT_CHARGED,
+  COMPLETED, COMPENSATING, FAILED
+}
+
+<span class="kw">class</span> <span class="cl">OrderFulfillmentSaga</span> {
+  <span class="kw">async</span> <span class="fn">execute</span>(orderId: <span class="kw">string</span>) {
+    <span class="kw">const</span> saga = <span class="kw">await</span> sagaStore.<span class="fn">create</span>({ orderId, state: <span class="cl">SagaState</span>.STARTED });
+
+    <span class="cm">// Step 1: Reserve inventory</span>
+    <span class="kw">try</span> {
+      <span class="kw">await</span> commandBus.<span class="fn">send</span>(<span class="st">'inventory'</span>, { type: <span class="st">'ReserveItems'</span>, orderId });
+      <span class="kw">await</span> saga.<span class="fn">transition</span>(<span class="cl">SagaState</span>.INVENTORY_RESERVED);
+    } <span class="kw">catch</span> { <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">fail</span>(saga, []); }
+
+    <span class="cm">// Step 2: Charge payment</span>
+    <span class="kw">try</span> {
+      <span class="kw">await</span> commandBus.<span class="fn">send</span>(<span class="st">'payments'</span>, { type: <span class="st">'ChargeOrder'</span>, orderId });
+      <span class="kw">await</span> saga.<span class="fn">transition</span>(<span class="cl">SagaState</span>.PAYMENT_CHARGED);
+    } <span class="kw">catch</span> {
+      <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">compensate</span>(saga, [
+        () =&gt; commandBus.<span class="fn">send</span>(<span class="st">'inventory'</span>, { type: <span class="st">'ReleaseItems'</span>, orderId })
+      ]);
+    }
+
+    <span class="cm">// Step 3: Trigger fulfillment</span>
+    <span class="kw">await</span> commandBus.<span class="fn">send</span>(<span class="st">'fulfillment'</span>, { type: <span class="st">'FulfillOrder'</span>, orderId });
+    <span class="kw">await</span> saga.<span class="fn">transition</span>(<span class="cl">SagaState</span>.COMPLETED);
+    <span class="kw">await</span> eventBus.<span class="fn">publish</span>(<span class="st">'orders.fulfilled'</span>, { orderId });
+  }
+
+  <span class="kw">async</span> <span class="fn">compensate</span>(saga, compensations: <span class="cl">Array</span>&lt;() =&gt; <span class="cl">Promise</span>&lt;<span class="kw">void</span>&gt;&gt;) {
+    <span class="kw">await</span> saga.<span class="fn">transition</span>(<span class="cl">SagaState</span>.COMPENSATING);
+    <span class="kw">for</span> (<span class="kw">const</span> comp <span class="kw">of</span> compensations.reverse()) {
+      <span class="kw">await</span> <span class="fn">retry</span>(() =&gt; comp());   <span class="cm">// compensations must also be retried until success</span>
+    }
+    <span class="kw">await</span> saga.<span class="fn">transition</span>(<span class="cl">SagaState</span>.FAILED);
+    <span class="kw">await</span> eventBus.<span class="fn">publish</span>(<span class="st">'orders.fulfillment-failed'</span>, { orderId: saga.orderId });
+  }
+}</div>
+    </div>
+  </section>
+
+  <!-- ══ 18 ANTI-PATTERNS ══ -->
+  <section id="antipatterns">
+    <div class="section-header">
+      <div class="section-num">18</div>
+      <div class="section-title">
+        <h2>EDA Anti-Patterns</h2>
+        <div class="sub">// WHAT NOT TO DO — LESSONS LEARNED EXPENSIVELY</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card rust">
+        <div class="card-title">Event Spaghetti <span class="badge b-rust">Arch Smell</span></div>
+        <p>Every service subscribes to every other service's events, creating a tangle of implicit dependencies. No one can trace what triggers what. Solution: domain-driven topic boundaries, bounded contexts, explicit event catalogs.</p>
+      </div>
+      <div class="card rust">
+        <div class="card-title">God Topics <span class="badge b-rust">Avoid</span></div>
+        <p>A single <code>events</code> topic carrying all event types from all services. Consumers must filter; schema evolution breaks everyone. Solution: one topic per event type or per aggregate root.</p>
+      </div>
+      <div class="card rust">
+        <div class="card-title">Synchronous Expectations <span class="badge b-rust">Mindset</span></div>
+        <p>Treating events as synchronous RPC — expecting an immediate response, timing out if not received in 200ms. EDA is inherently asynchronous. Design UX around eventual consistency with progress indicators, not blocking spinners.</p>
+      </div>
+      <div class="card rust">
+        <div class="card-title">No Schema Contract <span class="badge b-rust">Critical</span></div>
+        <p>Publishing raw JSON with no schema registry. Works fine until the producer team renames a field and 8 downstream consumers silently start failing. Always register schemas. Always version them.</p>
+      </div>
+      <div class="card rust">
+        <div class="card-title">Storing Business State in Kafka <span class="badge b-rust">Misuse</span></div>
+        <p>Using Kafka as the primary queryable state store. Kafka is not a database. Consumers need their own materialized views (CQRS read models) for queries. Use Kafka for the event log; project into queryable stores.</p>
+      </div>
+      <div class="card rust">
+        <div class="card-title">Non-Idempotent Consumers <span class="badge b-rust">Bug</span></div>
+        <p>Assuming each message is delivered exactly once. At-least-once delivery is the guarantee. Any consumer that double-charges a customer or double-books a slot on redelivery has a production bug waiting to happen.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 19 MIGRATION ROADMAP ══ -->
+  <section id="roadmap">
+    <div class="section-header">
+      <div class="section-num">19</div>
+      <div class="section-title">
+        <h2>Migration Roadmap</h2>
+        <div class="sub">// FROM MONOLITH OR REST TO EDA</div>
+      </div>
+    </div>
+
+    <p class="prose">Migrating to event-driven architecture is a multi-phase journey. The strangler fig pattern — gradually replacing direct calls with event flows without a big-bang rewrite — is the most reliable approach. Begin at the edges with high-value, high-volume flows before tackling the core domain.</p>
+
+    <div class="roadmap">
+      <div class="rm-phase">
+        <div class="rm-dot amber"></div>
+        <div class="rm-content">
+          <div class="rm-label">Phase 0 — Months 1–2</div>
+          <div class="rm-title">Observe & Instrument</div>
+          <ul class="rm-items">
+            <li>Map existing data flows — which services call which, volumes, latency</li>
+            <li>Identify top fan-out candidates (one call triggers N downstream side effects)</li>
+            <li>Choose broker and deploy in non-critical path first</li>
+            <li>Establish schema registry and naming conventions</li>
+            <li>Define consumer group naming, DLQ topology, and on-call runbooks</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-phase">
+        <div class="rm-dot rust"></div>
+        <div class="rm-content">
+          <div class="rm-label">Phase 1 — Months 2–5</div>
+          <div class="rm-title">Dual-Write Strangler</div>
+          <ul class="rm-items">
+            <li>Augment existing writes to also publish domain events (transactional outbox pattern)</li>
+            <li>New consumers read from events; existing consumers from DB — run in parallel</li>
+            <li>Validate event-derived state matches DB state for 30 days</li>
+            <li>Migrate notification, analytics, and audit consumers to events first (low risk)</li>
+            <li>Implement DLQ monitoring and reprocessing tooling</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-phase">
+        <div class="rm-dot teal"></div>
+        <div class="rm-content">
+          <div class="rm-label">Phase 2 — Months 5–10</div>
+          <div class="rm-title">Choreography Cutover</div>
+          <ul class="rm-items">
+            <li>Replace synchronous service-to-service calls with event-driven choreography</li>
+            <li>Implement saga orchestration for multi-step flows</li>
+            <li>Remove direct DB coupling between services — consume events, not shared tables</li>
+            <li>Introduce CQRS read models for query-heavy paths</li>
+            <li>Establish SLAs: max consumer lag, DLQ response time</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-phase">
+        <div class="rm-dot violet"></div>
+        <div class="rm-content">
+          <div class="rm-label">Phase 3 — Months 10–18</div>
+          <div class="rm-title">Stream Processing & Optimization</div>
+          <ul class="rm-items">
+            <li>Introduce real-time stream processing (Kafka Streams / Flink) for analytics and enrichment</li>
+            <li>Migrate high-throughput audit and CDC flows to Kafka Connect</li>
+            <li>Evaluate event sourcing for core domain aggregates where audit/replay is critical</li>
+            <li>Implement schema evolution governance and consumer group ownership registry</li>
+            <li>Continuous maturity assessment against EDA pillars</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Transactional Outbox — Safe Dual-Write</h3>
+    <p class="prose">The hardest problem when introducing events into an existing system: how to atomically update your database <em>and</em> publish an event. A crash between the two creates inconsistency. The <strong>Transactional Outbox</strong> pattern solves this by writing the event to an <code>outbox</code> table in the same database transaction. A separate relay process (Debezium CDC) reads the outbox and publishes to Kafka — guaranteed, ordered, and recoverable.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">SQL + Config — Transactional Outbox + Debezium</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">-- 1. Outbox table (created alongside your domain tables)</span>
+<span class="kw">CREATE TABLE</span> outbox_events (
+    id           <span class="cl">UUID</span>         <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+    aggregate_id <span class="cl">VARCHAR</span>(<span class="nu">64</span>)  <span class="kw">NOT NULL</span>,
+    event_type   <span class="cl">VARCHAR</span>(<span class="nu">128</span>) <span class="kw">NOT NULL</span>,
+    payload      <span class="cl">JSONB</span>        <span class="kw">NOT NULL</span>,
+    created_at   <span class="cl">TIMESTAMPTZ</span>  <span class="kw">NOT NULL DEFAULT NOW</span>(),
+    published    <span class="cl">BOOLEAN</span>      <span class="kw">NOT NULL DEFAULT FALSE</span>
+);
+
+<span class="cm">-- 2. Write to domain table AND outbox in ONE transaction (atomic)</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">INSERT INTO</span> orders (id, customer_id, total, status)
+    <span class="kw">VALUES</span> (<span class="st">'8271'</span>, <span class="st">'903'</span>, <span class="nu">142.00</span>, <span class="st">'pending'</span>);
+
+<span class="kw">INSERT INTO</span> outbox_events (aggregate_id, event_type, payload)
+    <span class="kw">VALUES</span> (<span class="st">'8271'</span>, <span class="st">'com.acme.orders.OrderPlaced'</span>,
+        <span class="st">'{"orderId":"8271","customerId":"903","total":142.00}'</span>);
+<span class="kw">COMMIT</span>;  <span class="cm">-- Either both succeed or both rollback — no inconsistency possible</span>
+
+<span class="cm">-- 3. Debezium connector reads PostgreSQL WAL (Change Data Capture)</span>
+<span class="cm">--    and publishes outbox events to Kafka automatically</span>
+<span class="cm">--    (debezium-connector-postgres with outbox.event.router SMT)</span>
+
+<span class="cm">-- Debezium Kafka Connect config snippet:</span>
+<span class="cm">-- {</span>
+<span class="cm">--   "connector.class": "io.debezium.connector.postgresql.PostgresConnector",</span>
+<span class="cm">--   "database.hostname": "postgres", "database.dbname": "orders",</span>
+<span class="cm">--   "table.include.list": "public.outbox_events",</span>
+<span class="cm">--   "transforms": "outbox",</span>
+<span class="cm">--   "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",</span>
+<span class="cm">--   "transforms.outbox.table.field.event.type": "event_type",</span>
+<span class="cm">--   "transforms.outbox.route.topic.replacement": "${routedByValue}"</span>
+<span class="cm">-- }</span></div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Reference implementations & further reading:</strong> Martin Fowler's Event Sourcing pattern (martinfowler.com) · Chris Richardson's microservices.io (Saga, Outbox, CQRS patterns) · Confluent Developer docs (Kafka Streams, Schema Registry) · CloudEvents spec (cloudevents.io) · Lightbend Akka (reactive event-driven microservices) · Axon Framework (Java CQRS/ES framework).</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'copied';
+    btn.style.color = 'var(--teal)';
+    btn.style.borderColor = 'var(--teal)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+// Active nav highlighting
+const sections = document.querySelectorAll('section[id]');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-56px 0px -68% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

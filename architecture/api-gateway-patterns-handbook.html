@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Gateway Patterns — Field Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink:         #0e0c09;
+  --ink2:        #141109;
+  --ink3:        #1a160e;
+  --ink4:        #221d13;
+  --ink5:        #2c2517;
+  --border:      rgba(210,165,60,0.1);
+  --border2:     rgba(210,165,60,0.2);
+  --text:        #f0e6cc;
+  --text2:       #a89570;
+  --muted:       #5a4e38;
+  --gold:        #d4a83c;
+  --gold-dim:    #a87c28;
+  --gold-glow:   rgba(212,168,60,0.1);
+  --gold-glow2:  rgba(212,168,60,0.05);
+  --amber:       #f5a623;
+  --amber-dim:   rgba(245,166,35,0.1);
+  --rust:        #c0392b;
+  --rust-dim:    rgba(192,57,43,0.1);
+  --sage:        #27ae60;
+  --sage-dim:    rgba(39,174,96,0.1);
+  --sky:         #2980b9;
+  --sky-dim:     rgba(41,128,185,0.1);
+  --violet:      #8e44ad;
+  --violet-dim:  rgba(142,68,173,0.1);
+  --teal:        #16a085;
+  --teal-dim:    rgba(22,160,133,0.1);
+  --mono:        'Geist Mono', monospace;
+  --display:     'Outfit', sans-serif;
+  --serif:       'DM Serif Display', serif;
+  --sidebar-w:   270px;
+  --top-h:       54px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 14px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* Grain texture */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.6;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(14,12,9,0.97);
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  backdrop-filter: blur(12px);
+}
+.topbar-left { display: flex; align-items: center; gap: 18px; }
+.topbar-mark {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 2px; color: var(--ink);
+  background: var(--gold); padding: 4px 14px 3px;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 100%, 0 100%);
+  padding-right: 20px;
+}
+.topbar-title {
+  font-family: var(--display); font-size: 15px; font-weight: 600;
+  letter-spacing: 0.5px; color: var(--text);
+}
+.topbar-sep { color: var(--muted); font-family: var(--mono); font-size: 13px; }
+.topbar-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+.topbar-right {
+  display: flex; align-items: center; gap: 20px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px;
+}
+.live-dot {
+  display: flex; align-items: center; gap: 7px; color: var(--sage);
+}
+.dot-pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--sage); box-shadow: 0 0 8px var(--sage);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* ─── LAYOUT ─── */
+.layout {
+  display: flex;
+  margin-top: var(--top-h);
+  min-height: calc(100vh - var(--top-h));
+  position: relative; z-index: 1;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--ink2);
+  border-right: 1px solid var(--border);
+  padding-bottom: 60px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sb-top {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(212,168,60,0.06) 0%, transparent 100%);
+}
+.sb-code { font-family: var(--mono); font-size: 10px; color: var(--gold); letter-spacing: 2px; margin-bottom: 4px; }
+.sb-tagline { font-size: 11px; color: var(--muted); font-family: var(--mono); line-height: 1.5; }
+
+.nav-section-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 3px; text-transform: uppercase; color: var(--muted);
+  padding: 18px 22px 6px;
+}
+.nav-item {
+  display: flex; align-items: center;
+  padding: 7px 22px 7px 18px;
+  text-decoration: none; font-size: 13px; font-weight: 400;
+  color: var(--text2);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+  gap: 10px;
+}
+.nav-item:hover { color: var(--text); background: rgba(212,168,60,0.04); border-left-color: var(--border2); }
+.nav-item.active { color: var(--gold); border-left-color: var(--gold); background: var(--gold-glow2); font-weight: 500; }
+.nav-item .n { font-family: var(--mono); font-size: 9px; color: var(--muted); width: 22px; text-align: right; flex-shrink: 0; }
+.nav-item.active .n { color: var(--gold-dim); }
+
+/* ─── MAIN ─── */
+.main { flex: 1; min-width: 0; padding: 56px 64px 120px; max-width: 1000px; }
+
+/* ─── HERO ─── */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--border2);
+  background: var(--ink3);
+  padding: 56px 60px 48px;
+  margin-bottom: 72px;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at -5% 0%, rgba(212,168,60,0.09) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 105% 100%, rgba(22,160,133,0.05) 0%, transparent 55%);
+  pointer-events: none;
+}
+.hero-corner-tl {
+  position: absolute; top: 0; left: 0;
+  width: 24px; height: 24px;
+  border-top: 2px solid var(--gold);
+  border-left: 2px solid var(--gold);
+}
+.hero-corner-br {
+  position: absolute; bottom: 0; right: 0;
+  width: 24px; height: 24px;
+  border-bottom: 2px solid var(--gold-dim);
+  border-right: 2px solid var(--gold-dim);
+}
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+  color: var(--gold); text-transform: uppercase; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 14px;
+}
+.hero-eyebrow::after { content: ''; flex: 1; max-width: 60px; height: 1px; background: var(--border2); }
+.hero h1 {
+  font-family: var(--display); font-size: 62px; font-weight: 900;
+  line-height: 0.92; letter-spacing: -2px;
+  text-transform: uppercase; color: var(--text);
+  margin-bottom: 8px;
+}
+.hero h1 em {
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  letter-spacing: -1px; color: var(--gold);
+  font-size: 0.88em;
+}
+.hero-tagline {
+  font-family: var(--mono); font-size: 12px;
+  color: var(--gold); border-left: 2px solid var(--gold);
+  padding: 8px 16px; background: var(--gold-glow);
+  display: inline-block; margin: 20px 0 24px;
+  letter-spacing: 0.5px;
+}
+.hero-desc {
+  color: var(--text2); font-size: 15px; max-width: 560px;
+  line-height: 1.75; margin-bottom: 28px;
+}
+.hero-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 4px 14px; border: 1px solid; border-radius: 2px;
+}
+.c-gold   { color: var(--gold);   border-color: rgba(212,168,60,0.4);  background: var(--gold-glow); }
+.c-sage   { color: var(--sage);   border-color: rgba(39,174,96,0.35);  background: var(--sage-dim); }
+.c-rust   { color: var(--rust);   border-color: rgba(192,57,43,0.35);  background: var(--rust-dim); }
+.c-sky    { color: var(--sky);    border-color: rgba(41,128,185,0.35); background: var(--sky-dim); }
+.c-teal   { color: var(--teal);   border-color: rgba(22,160,133,0.35); background: var(--teal-dim); }
+.c-violet { color: var(--violet); border-color: rgba(142,68,173,0.35); background: var(--violet-dim); }
+.c-amber  { color: var(--amber);  border-color: rgba(245,166,35,0.35); background: var(--amber-dim); }
+
+/* ─── SECTIONS ─── */
+section {
+  margin-bottom: 80px;
+  scroll-margin-top: calc(var(--top-h) + 24px);
+}
+
+.section-header {
+  display: flex; align-items: flex-start; gap: 18px;
+  margin-bottom: 28px; padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 64px; height: 1px; background: var(--gold);
+}
+.sec-num {
+  font-family: var(--mono); font-size: 10px; color: var(--gold);
+  padding-top: 6px; flex-shrink: 0; width: 36px;
+  letter-spacing: 1px;
+}
+.sec-title-block h2 {
+  font-family: var(--display); font-size: 28px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--text);
+  line-height: 1.05;
+}
+.sec-sub {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 2px; margin-top: 6px; text-transform: uppercase;
+}
+
+/* ─── PROSE ─── */
+.prose { color: var(--text2); font-size: 14.5px; line-height: 1.8; margin-bottom: 18px; }
+.prose strong { color: var(--text); font-weight: 600; }
+.prose em { color: var(--gold); font-style: normal; }
+
+/* ─── HEADINGS ─── */
+h3 {
+  font-family: var(--display); font-size: 17px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--text);
+  margin: 32px 0 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+h3::before { content: '//'; font-family: var(--mono); font-size: 11px; color: var(--gold); font-weight: 400; }
+h4 {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2.5px; color: var(--muted);
+  margin: 24px 0 10px;
+}
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--ink3);
+  border: 1px solid var(--border);
+  padding: 22px 24px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+  position: relative;
+}
+.card:hover { border-color: var(--border2); }
+.card-l-gold   { border-left: 3px solid var(--gold); }
+.card-l-sage   { border-left: 3px solid var(--sage); }
+.card-l-rust   { border-left: 3px solid var(--rust); }
+.card-l-sky    { border-left: 3px solid var(--sky); }
+.card-l-teal   { border-left: 3px solid var(--teal); }
+.card-l-violet { border-left: 3px solid var(--violet); }
+.card-l-amber  { border-left: 3px solid var(--amber); }
+
+.card-head {
+  font-family: var(--display); font-size: 15px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--text);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 10px;
+}
+.tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 2px;
+}
+.tag-gold   { color: var(--gold);   background: var(--gold-glow);   border: 1px solid rgba(212,168,60,0.3); }
+.tag-sage   { color: var(--sage);   background: var(--sage-dim);    border: 1px solid rgba(39,174,96,0.3); }
+.tag-rust   { color: var(--rust);   background: var(--rust-dim);    border: 1px solid rgba(192,57,43,0.3); }
+.tag-sky    { color: var(--sky);    background: var(--sky-dim);     border: 1px solid rgba(41,128,185,0.3); }
+.tag-teal   { color: var(--teal);   background: var(--teal-dim);    border: 1px solid rgba(22,160,133,0.3); }
+.tag-violet { color: var(--violet); background: var(--violet-dim);  border: 1px solid rgba(142,68,173,0.3); }
+.tag-amber  { color: var(--amber);  background: var(--amber-dim);   border: 1px solid rgba(245,166,35,0.3); }
+
+.card p, .card li { color: var(--text2); font-size: 13.5px; line-height: 1.7; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; }
+.card p + p { margin-top: 8px; }
+
+/* ─── GRIDS ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+/* ─── CODE ─── */
+.code-wrap {
+  background: #080705;
+  border: 1px solid var(--border2);
+  margin: 18px 0;
+  position: relative;
+  font-family: var(--mono);
+}
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 18px;
+  background: rgba(212,168,60,0.04);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang {
+  font-size: 10px; font-weight: 600; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--gold);
+}
+.copy-btn {
+  font-size: 10px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.18s;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--gold); border-color: var(--gold); }
+.code-block {
+  padding: 20px 22px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.8; white-space: pre; tab-size: 2; color: #7a6e58;
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* syntax */
+.kw  { color: #c5a35a; }
+.st  { color: #7dab74; }
+.cm  { color: #42392a; font-style: italic; }
+.fn  { color: #8ab4c8; }
+.nu  { color: #c07d57; }
+.at  { color: var(--gold); }
+.hl  { background: rgba(212,168,60,0.05); display: block; margin: 0 -22px; padding: 0 22px; border-left: 2px solid var(--gold); }
+.vl  { color: #93b8a8; }
+.er  { color: #b85c55; }
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(212,168,60,0.08); color: var(--gold);
+  padding: 1px 7px; border: 1px solid rgba(212,168,60,0.2);
+}
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 14px;
+  padding: 14px 20px; margin: 18px 0;
+  border-left: 3px solid; font-size: 13.5px;
+}
+.callout-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+.callout-body { color: var(--text2); line-height: 1.7; }
+.callout-body strong { color: var(--text); }
+.callout.warn   { background: rgba(192,57,43,0.06);  border-color: var(--rust); }
+.callout.tip    { background: rgba(212,168,60,0.05); border-color: var(--gold); }
+.callout.note   { background: rgba(41,128,185,0.07); border-color: var(--sky); }
+.callout.good   { background: rgba(39,174,96,0.06);  border-color: var(--sage); }
+
+/* ─── TABLES ─── */
+.table-wrap { border: 1px solid var(--border); margin: 18px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 18px;
+  background: rgba(212,168,60,0.04);
+  color: var(--gold); font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 11px 18px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.65;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(212,168,60,0.02); }
+td code { font-size: 11px; }
+.ok    { color: var(--sage);   font-weight: 700; font-family: var(--mono); }
+.no    { color: var(--rust);   font-weight: 700; font-family: var(--mono); }
+.part  { color: var(--amber);  font-weight: 700; font-family: var(--mono); }
+.bold-text { color: var(--text); font-weight: 600; }
+
+/* ─── COMPARE ─── */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0; }
+.compare-block { border: 1px solid var(--border); }
+.compare-head {
+  padding: 10px 18px; font-family: var(--display);
+  font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.cb-old .compare-head { background: var(--rust-dim);  color: var(--rust);  border-bottom: 1px solid rgba(192,57,43,0.2); }
+.cb-new .compare-head { background: var(--gold-glow); color: var(--gold);  border-bottom: 1px solid rgba(212,168,60,0.2); }
+.compare-body { padding: 14px 18px; }
+.compare-body li { font-size: 13px; color: var(--text2); margin-bottom: 6px; list-style: none; padding-left: 0; }
+.compare-body ul { padding-left: 0; }
+
+/* ─── FLOW ─── */
+.flow {
+  display: flex; align-items: center;
+  overflow-x: auto; margin: 20px 0;
+  padding: 24px 20px;
+  background: var(--ink3); border: 1px solid var(--border);
+  gap: 0;
+}
+.flow-step {
+  flex-shrink: 0; text-align: center;
+  padding: 14px 16px;
+  background: var(--ink4);
+  border: 1px solid var(--border2);
+  min-width: 110px;
+}
+.flow-label {
+  font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 6px;
+}
+.flow-name {
+  font-family: var(--display); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; color: var(--text); letter-spacing: 0.3px; line-height: 1.3;
+}
+.flow-arrow { color: var(--gold); font-size: 18px; margin: 0 6px; flex-shrink: 0; opacity: 0.6; }
+.flow-arrow-deny { color: var(--rust); }
+.flow-note {
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  margin-top: 5px; line-height: 1.4;
+}
+
+/* ─── RATE LIMIT VISUAL ─── */
+.rl-bars { display: flex; gap: 4px; margin: 18px 0; align-items: flex-end; height: 60px; }
+.rl-bar {
+  flex: 1; border-radius: 2px 2px 0 0;
+  position: relative; cursor: default;
+  transition: opacity 0.2s;
+}
+.rl-bar:hover { opacity: 0.85; }
+.rl-bar-label {
+  position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 8px; color: var(--muted); white-space: nowrap;
+}
+.rl-bar-val {
+  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 9px; font-weight: 700; white-space: nowrap;
+}
+
+/* ─── TIER BLOCKS ─── */
+.tier-stack { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+.tier {
+  display: flex; gap: 0; align-items: stretch;
+  border: 1px solid var(--border);
+}
+.tier-label {
+  width: 140px; flex-shrink: 0; padding: 14px 16px;
+  display: flex; flex-direction: column; justify-content: center;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  border-right: 1px solid var(--border);
+}
+.tier-body {
+  flex: 1; padding: 14px 18px;
+  font-size: 13px; color: var(--text2); display: flex; flex-direction: column; justify-content: center;
+}
+.tier-body strong { color: var(--text); }
+.t-gold   .tier-label { color: var(--gold);   background: var(--gold-glow);   }
+.t-sky    .tier-label { color: var(--sky);    background: var(--sky-dim);     }
+.t-teal   .tier-label { color: var(--teal);   background: var(--teal-dim);    }
+.t-sage   .tier-label { color: var(--sage);   background: var(--sage-dim);    }
+.t-violet .tier-label { color: var(--violet); background: var(--violet-dim);  }
+.t-amber  .tier-label { color: var(--amber);  background: var(--amber-dim);   }
+
+/* ─── AI THREAT MATRIX ─── */
+.threat-row {
+  display: flex; gap: 4px; margin-bottom: 4px; align-items: stretch;
+}
+.threat-cell {
+  flex: 1; padding: 8px 10px; border: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; text-align: center;
+  line-height: 1.4;
+}
+.tc-hd { color: var(--gold); font-weight: 700; background: var(--gold-glow2); letter-spacing: 1px; }
+.tc-0  { background: transparent; color: var(--muted); }
+.tc-1  { background: rgba(39,174,96,0.08);   color: var(--sage);   border-color: rgba(39,174,96,0.2); }
+.tc-2  { background: rgba(245,166,35,0.08);  color: var(--amber);  border-color: rgba(245,166,35,0.2); }
+.tc-3  { background: rgba(192,57,43,0.1);    color: var(--rust);   border-color: rgba(192,57,43,0.2); }
+
+/* ─── SCROLL ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .grid-2, .grid-3, .compare { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 42px; }
+  .flow { flex-direction: column; align-items: flex-start; }
+  .tier { flex-direction: column; }
+  .tier-label { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-mark">Field Manual</div>
+    <div class="topbar-title">API Gateway Patterns</div>
+    <span class="topbar-sep">/</span>
+    <div class="topbar-sub">Kong · Apigee · AI Exposure</div>
+  </div>
+  <div class="topbar-right">
+    <span>APIGW-2025</span>
+    <div class="live-dot"><span class="dot-pulse"></span>LIVE</div>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-top">
+    <div class="sb-code">// APIGW-FIELD-001</div>
+    <div class="sb-tagline">Rate limiting · Throttling<br>AI tool exposure · Security</div>
+  </div>
+
+  <div class="nav-section-label">Foundations</div>
+  <a class="nav-item active" href="#overview" ><span class="n">01</span>What is an API Gateway</a>
+  <a class="nav-item"        href="#anatomy"  ><span class="n">02</span>Gateway Anatomy</a>
+  <a class="nav-item"        href="#kong"     ><span class="n">03</span>Kong Gateway</a>
+  <a class="nav-item"        href="#apigee"   ><span class="n">04</span>Apigee</a>
+
+  <div class="nav-section-label">Traffic Control</div>
+  <a class="nav-item" href="#ratelimiting"><span class="n">05</span>Rate Limiting</a>
+  <a class="nav-item" href="#throttling"  ><span class="n">06</span>Throttling Strategies</a>
+  <a class="nav-item" href="#quotas"      ><span class="n">07</span>Quotas &amp; Plans</a>
+  <a class="nav-item" href="#circuit"     ><span class="n">08</span>Circuit Breakers</a>
+
+  <div class="nav-section-label">Security</div>
+  <a class="nav-item" href="#authn"   ><span class="n">09</span>Auth Patterns</a>
+  <a class="nav-item" href="#mtls"    ><span class="n">10</span>mTLS &amp; Zero Trust</a>
+  <a class="nav-item" href="#threat"  ><span class="n">11</span>Threat Protection</a>
+
+  <div class="nav-section-label">AI Exposure</div>
+  <a class="nav-item" href="#ai-gateway"  ><span class="n">12</span>AI Gateway Patterns</a>
+  <a class="nav-item" href="#llm-risks"   ><span class="n">13</span>LLM-Specific Risks</a>
+  <a class="nav-item" href="#token-limit" ><span class="n">14</span>Token-Aware Limiting</a>
+  <a class="nav-item" href="#prompt-guard"><span class="n">15</span>Prompt Inspection</a>
+
+  <div class="nav-section-label">Operations</div>
+  <a class="nav-item" href="#observability"><span class="n">16</span>Observability</a>
+  <a class="nav-item" href="#policies"     ><span class="n">17</span>Policy-as-Code</a>
+  <a class="nav-item" href="#reference"    ><span class="n">18</span>Quick Reference</a>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-corner-tl"></div>
+  <div class="hero-corner-br"></div>
+  <div class="hero-eyebrow">API Gateway Patterns — Field Handbook</div>
+  <h1>Gateway<br><em>Patterns</em></h1>
+  <div class="hero-tagline">// Kong · Apigee · Rate Limiting · Throttling · Safe AI Exposure</div>
+  <p class="hero-desc">
+    The definitive operational guide to API gateway architecture. Covers Kong and Apigee deep-dives, rate limiting algorithms, quota management, threat protection, and the emerging discipline of safely exposing AI tools and LLM endpoints to the outside world.
+  </p>
+  <div class="hero-chips">
+    <span class="chip c-gold">Kong Gateway</span>
+    <span class="chip c-teal">Apigee</span>
+    <span class="chip c-rust">Rate Limiting</span>
+    <span class="chip c-sky">Throttling</span>
+    <span class="chip c-sage">mTLS / Zero Trust</span>
+    <span class="chip c-violet">AI Tool Exposure</span>
+    <span class="chip c-amber">Prompt Guard</span>
+  </div>
+</div>
+
+<!-- ══ 01 OVERVIEW ══ -->
+<section id="overview">
+  <div class="section-header">
+    <div class="sec-num">01</div>
+    <div class="sec-title-block">
+      <h2>What Is an API Gateway</h2>
+      <div class="sec-sub">// THE FRONT DOOR TO YOUR BACKEND UNIVERSE</div>
+    </div>
+  </div>
+
+  <p class="prose">An API gateway is the single entry point through which all external (and increasingly, internal) API traffic passes before reaching your backend services. It is simultaneously a <strong>reverse proxy</strong>, a <strong>policy enforcement point</strong>, a <strong>traffic shaper</strong>, and an <strong>observability hub</strong>. Unlike a basic load balancer, a gateway understands the HTTP/gRPC/WebSocket application layer and can make intelligent decisions per-request.</p>
+
+  <div class="grid-3">
+    <div class="card card-l-gold">
+      <div class="card-head">Traffic Control</div>
+      <p>Rate limiting, throttling, load balancing, circuit breaking, retries, and timeouts — all enforced before requests reach your services.</p>
+    </div>
+    <div class="card card-l-sky">
+      <div class="card-head">Security Enforcement</div>
+      <p>Authentication, authorization, mTLS termination, JWT validation, API key management, WAF rules, and threat protection in a centralized layer.</p>
+    </div>
+    <div class="card card-l-teal">
+      <div class="card-head">Observability</div>
+      <p>Unified access logs, distributed traces, latency histograms, and error-rate metrics across all services — without instrumenting each service individually.</p>
+    </div>
+  </div>
+
+  <h3>Gateway vs. Other Patterns</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Pattern</th><th>Layer</th><th>Use When</th><th>Limitations</th></tr>
+      <tr><td class="bold-text">API Gateway</td><td>L7 — app aware</td><td>Public APIs, multi-consumer, policy enforcement</td><td>Potential single point of failure; latency overhead</td></tr>
+      <tr><td class="bold-text">Load Balancer</td><td>L4/L7 basic</td><td>Distributing traffic to identical backends</td><td>No auth, rate limiting, or transform logic</td></tr>
+      <tr><td class="bold-text">Service Mesh</td><td>L7 — east-west</td><td>Internal service-to-service (mTLS, observability)</td><td>Not designed for north-south external traffic</td></tr>
+      <tr><td class="bold-text">BFF (Backend-for-Frontend)</td><td>Application</td><td>Client-specific API aggregation</td><td>Custom code, not declarative, no shared policy</td></tr>
+      <tr><td class="bold-text">Reverse Proxy (nginx)</td><td>L7 basic</td><td>Static routing, SSL termination, caching</td><td>No dynamic policy, auth plugins, quota management</td></tr>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">▸</span>
+    <div class="callout-body"><strong>Complementary, not competing:</strong> A real production stack typically uses all three layers — an API Gateway for north-south traffic (external consumers), a Service Mesh for east-west (internal services), and a Load Balancer underneath each. They serve different segments of the traffic matrix.</div>
+  </div>
+</section>
+
+<!-- ══ 02 ANATOMY ══ -->
+<section id="anatomy">
+  <div class="section-header">
+    <div class="sec-num">02</div>
+    <div class="sec-title-block">
+      <h2>Gateway Anatomy</h2>
+      <div class="sec-sub">// REQUEST PIPELINE INTERNALS</div>
+    </div>
+  </div>
+
+  <p class="prose">Every enterprise gateway processes requests through a <strong>plugin/policy pipeline</strong>. Knowing the execution order matters — a misconfigured plugin order can bypass authentication, double-charge rate limits, or corrupt telemetry.</p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-label">Client</div>
+      <div class="flow-name">Request Arrives</div>
+      <div class="flow-note">TLS termination<br>SNI routing</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Phase 1</div>
+      <div class="flow-name">Auth &amp; Identity</div>
+      <div class="flow-note">JWT · API Key<br>mTLS · OAuth</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Phase 2</div>
+      <div class="flow-name">Rate Limit &amp; Quota</div>
+      <div class="flow-note">Window checks<br>Token bucket</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Phase 3</div>
+      <div class="flow-name">Transform</div>
+      <div class="flow-note">Header rewrite<br>Body modify</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Phase 4</div>
+      <div class="flow-name">Route &amp; Proxy</div>
+      <div class="flow-note">Service LB<br>Circuit break</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Response</div>
+      <div class="flow-name">Log &amp; Return</div>
+      <div class="flow-note">Trace export<br>Metrics emit</div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body"><strong>Plugin order is security-critical:</strong> Authentication MUST run before rate limiting. If rate limiting runs first, unauthenticated requests consume quota, enabling quota-exhaustion DoS against legitimate users. In Kong, plugins with lower <code>priority</code> numbers run first — validate your <code>kong.conf</code> plugin order explicitly.</div>
+  </div>
+
+  <h3>Control Plane vs. Data Plane</h3>
+  <div class="grid-2">
+    <div class="card card-l-gold">
+      <div class="card-head">Control Plane</div>
+      <p>Stores gateway configuration — routes, plugins, consumers, credentials, upstream services. In Kong this is the Admin API + database (PostgreSQL or declarative YAML). In Apigee, the management console and API Management APIs.</p>
+      <p style="margin-top:10px;"><strong>Separate it.</strong> The control plane should never be publicly accessible. Admin API on Kong must be firewalled; Apigee management APIs require service account auth.</p>
+    </div>
+    <div class="card card-l-teal">
+      <div class="card-head">Data Plane</div>
+      <p>The runtime nodes that actually proxy traffic. They pull configuration from the control plane and enforce policies in-process — no database calls per request. Data plane nodes scale horizontally and can run in multiple regions.</p>
+      <p style="margin-top:10px;"><strong>Resilience:</strong> Configure data planes to operate with cached config if the control plane is unreachable (Kong's <code>declarative</code> mode, Apigee hybrid runtime).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 03 KONG ══ -->
+<section id="kong">
+  <div class="section-header">
+    <div class="sec-num">03</div>
+    <div class="sec-title-block">
+      <h2>Kong Gateway</h2>
+      <div class="sec-sub">// OSS &amp; ENTERPRISE — DECLARATIVE CONFIGURATION</div>
+    </div>
+  </div>
+
+  <p class="prose">Kong is built on <strong>nginx + OpenResty (LuaJIT)</strong> with a plugin framework that intercepts requests at each processing phase. Kong Gateway OSS is fully open-source; Kong Enterprise adds RBAC, secrets management, Dev Portal, and audit logs. Configuration can be managed via Admin API, declarative <code>deck</code> sync, or Kubernetes CRDs (Kong Ingress Controller).</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — decK declarative config (service + route + plugins)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># deck.yaml — full service definition with security plugins</span>
+<span class="cm"># Apply with: deck sync -s deck.yaml</span>
+
+_format_version: <span class="st">"3.0"</span>
+
+services:
+  - name: <span class="st">payments-api</span>
+    url: <span class="st">http://payments-svc.internal:8080</span>
+    connect_timeout: <span class="nu">5000</span>
+    read_timeout: <span class="nu">30000</span>
+    write_timeout: <span class="nu">30000</span>
+    retries: <span class="nu">2</span>
+
+    routes:
+      - name: <span class="st">payments-v1</span>
+        paths: [<span class="st">"/v1/payments"</span>]
+        methods: [<span class="st">"POST"</span>, <span class="st">"GET"</span>]
+        strip_path: <span class="kw">false</span>
+        preserve_host: <span class="kw">true</span>
+
+    plugins:
+      <span class="hl">      - name: jwt                               # Phase 1: authenticate</span>
+        config:
+          key_claim_name: <span class="st">kid</span>
+          claims_to_verify: [<span class="st">exp</span>, <span class="st">nbf</span>]
+          secret_is_base64: <span class="kw">false</span>
+
+      <span class="hl">      - name: rate-limiting                     # Phase 2: enforce quota</span>
+        config:
+          minute: <span class="nu">60</span>              <span class="cm"># 60 req/min per consumer</span>
+          hour: <span class="nu">1000</span>
+          policy: <span class="st">redis</span>           <span class="cm"># shared counter across nodes</span>
+          redis_host: <span class="st">redis.internal</span>
+          redis_port: <span class="nu">6379</span>
+          hide_client_headers: <span class="kw">false</span>
+          error_code: <span class="nu">429</span>
+          error_message: <span class="st">"Rate limit exceeded. Retry-After is in the response header."</span>
+
+      - name: request-size-limiting           <span class="cm"># Protect against large payloads</span>
+        config:
+          allowed_payload_size: <span class="nu">2</span>           <span class="cm"># 2 MB max</span>
+          size_unit: <span class="st">megabytes</span>
+
+      - name: cors
+        config:
+          origins: [<span class="st">"https://app.example.com"</span>]
+          methods: [<span class="st">"GET"</span>, <span class="st">"POST"</span>]
+          headers: [<span class="st">"Authorization"</span>, <span class="st">"Content-Type"</span>]
+          max_age: <span class="nu">3600</span>
+
+      - name: prometheus                       <span class="cm"># Metrics emission</span>
+        config:
+          per_consumer: <span class="kw">true</span>
+
+      - name: opentelemetry                   <span class="cm"># Distributed tracing</span>
+        config:
+          endpoint: <span class="st">"http://otel-collector:4318/v1/traces"</span></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-l-gold">
+      <div class="card-head">Consumer &amp; Credential Model <span class="tag tag-gold">Core Concept</span></div>
+      <p>Kong's authorization unit is the <strong>Consumer</strong> — a representation of a client app or user. Credentials (API keys, JWTs, OAuth tokens) are attached to consumers. Rate limits, ACLs, and quotas can be scoped per-consumer, allowing different limits for free vs. paid tiers.</p>
+    </div>
+    <div class="card card-l-sky">
+      <div class="card-head">Plugin Priority Order <span class="tag tag-sky">Security-Critical</span></div>
+      <ul>
+        <li><strong>1000+</strong>: Bot detection, IP restriction</li>
+        <li><strong>~999</strong>: Authentication (JWT, Key Auth, OAuth)</li>
+        <li><strong>~900</strong>: ACL, authorization checks</li>
+        <li><strong>~901</strong>: Rate Limiting (post-auth, per consumer)</li>
+        <li><strong>~800</strong>: Request transforms, validation</li>
+        <li><strong>~0</strong>: Logging, tracing, metrics</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Shell — Kong Admin API operations</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Create a consumer and attach an API key</span>
+curl -X POST http://localhost:8001/consumers \
+  --data username=acme-corp \
+  --data custom_id=tenant-001
+
+curl -X POST http://localhost:8001/consumers/acme-corp/key-auth \
+  --data key=sk-prod-abc123xyz
+
+<span class="cm"># Apply per-consumer rate limit override (Enterprise)</span>
+curl -X POST http://localhost:8001/consumers/acme-corp/plugins \
+  --data name=rate-limiting \
+  --data config.minute=<span class="nu">300</span> \           <span class="cm"># 5x the default — paid tier</span>
+  --data config.hour=<span class="nu">5000</span> \
+  --data config.policy=redis
+
+<span class="cm"># Rotate API key (old key stays active during grace period)</span>
+curl -X POST http://localhost:8001/consumers/acme-corp/key-auth \
+  --data key=sk-prod-newkey456
+
+<span class="cm"># Revoke old key after client confirms migration</span>
+curl -X DELETE http://localhost:8001/consumers/acme-corp/key-auth/&lt;key-id&gt;
+
+<span class="cm"># Health check — data plane node status</span>
+curl http://localhost:8001/status | jq '.database, .server'</div>
+  </div>
+</section>
+
+<!-- ══ 04 APIGEE ══ -->
+<section id="apigee">
+  <div class="section-header">
+    <div class="sec-num">04</div>
+    <div class="sec-title-block">
+      <h2>Apigee (Google Cloud)</h2>
+      <div class="sec-sub">// ENTERPRISE API MANAGEMENT — POLICY-DRIVEN</div>
+    </div>
+  </div>
+
+  <p class="prose">Apigee is Google Cloud's full-lifecycle API management platform. Unlike Kong's plugin model, Apigee uses <strong>XML policy bundles</strong> attached to proxy flows (PreFlow → Conditional Flows → PostFlow). Apigee X runs entirely on Google Cloud; Apigee hybrid deploys runtime pods in your own Kubernetes cluster while keeping management in GCP.</p>
+
+  <h3>Proxy Structure</h3>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-label">Inbound</div>
+      <div class="flow-name">ProxyEndpoint<br>PreFlow</div>
+      <div class="flow-note">Auth, rate limit,<br>spike arrest</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Routing</div>
+      <div class="flow-name">Conditional<br>Flows</div>
+      <div class="flow-note">Path/verb<br>matching</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Backend</div>
+      <div class="flow-name">TargetEndpoint</div>
+      <div class="flow-note">LB, health,<br>mTLS to upstream</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Response</div>
+      <div class="flow-name">PostFlow<br>Response</div>
+      <div class="flow-note">Header mask<br>error transform</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">Client</div>
+      <div class="flow-name">Final Response</div>
+      <div class="flow-note">Logged, traced,<br>metered</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">XML — Apigee proxy bundle (ProxyEndpoint)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block">&lt;<span class="at">ProxyEndpoint</span> name=<span class="st">"default"</span>&gt;
+  &lt;<span class="at">PreFlow</span> name=<span class="st">"PreFlow"</span>&gt;
+    &lt;<span class="at">Request</span>&gt;
+      <span class="hl">      &lt;<span class="at">Step</span>&gt;&lt;<span class="at">Name</span>&gt;VA-OAuthV2-Token&lt;/<span class="at">Name</span>&gt;&lt;/<span class="at">Step</span>&gt;          &lt;!-- 1. Verify OAuth --&gt;</span>
+      &lt;<span class="at">Step</span>&gt;&lt;<span class="at">Name</span>&gt;SC-SpikeArrest-Global&lt;/<span class="at">Name</span>&gt;&lt;/<span class="at">Step</span>&gt;   <span class="cm">&lt;!-- 2. Global burst limit --&gt;</span>
+      &lt;<span class="at">Step</span>&gt;&lt;<span class="at">Name</span>&gt;QL-Quota-PerAppPerMin&lt;/<span class="at">Name</span>&gt;&lt;/<span class="at">Step</span>&gt;   <span class="cm">&lt;!-- 3. Per-app quota --&gt;</span>
+      &lt;<span class="at">Step</span>&gt;&lt;<span class="at">Name</span>&gt;AM-SetTarget-Headers&lt;/<span class="at">Name</span>&gt;&lt;/<span class="at">Step</span>&gt;    <span class="cm">&lt;!-- 4. Inject context --&gt;</span>
+    &lt;/<span class="at">Request</span>&gt;
+  &lt;/<span class="at">PreFlow</span>&gt;
+
+  &lt;<span class="at">Flows</span>&gt;
+    &lt;<span class="at">Flow</span> name=<span class="st">"GetPayments"</span>&gt;
+      &lt;<span class="at">Condition</span>&gt;(proxy.pathsuffix MatchesPath <span class="st">"/payments"</span>) and (request.verb = <span class="st">"GET"</span>)&lt;/<span class="at">Condition</span>&gt;
+      &lt;<span class="at">Request</span>&gt;
+        &lt;<span class="at">Step</span>&gt;&lt;<span class="at">Name</span>&gt;RL-RaiseFault-ReadOnly&lt;/<span class="at">Name</span>&gt;&lt;/<span class="at">Step</span>&gt;
+      &lt;/<span class="at">Request</span>&gt;
+    &lt;/<span class="at">Flow</span>&gt;
+  &lt;/<span class="at">Flows</span>&gt;
+
+  &lt;<span class="at">PostFlow</span> name=<span class="st">"PostFlow"</span>&gt;
+    &lt;<span class="at">Response</span>&gt;
+      &lt;<span class="at">Step</span>&gt;&lt;<span class="at">Name</span>&gt;AM-RemoveInternalHeaders&lt;/<span class="at">Name</span>&gt;&lt;/<span class="at">Step</span>&gt;
+      &lt;<span class="at">Step</span>&gt;&lt;<span class="at">Name</span>&gt;ST-StatisticsCollector&lt;/<span class="at">Name</span>&gt;&lt;/<span class="at">Step</span>&gt;
+    &lt;/<span class="at">Response</span>&gt;
+  &lt;/<span class="at">PostFlow</span>&gt;
+&lt;/<span class="at">ProxyEndpoint</span>&gt;
+
+<span class="cm">&lt;!-- SpikeArrest Policy: caps instantaneous burst --&gt;</span>
+&lt;<span class="at">SpikeArrest</span> name=<span class="st">"SC-SpikeArrest-Global"</span>&gt;
+  &lt;<span class="at">Rate</span>&gt;<span class="nu">500</span>ps&lt;/<span class="at">Rate</span>&gt;           <span class="cm">&lt;!-- 500 req/second global cap --&gt;</span>
+  &lt;<span class="at">UseEffectiveCount</span>&gt;<span class="kw">true</span>&lt;/<span class="at">UseEffectiveCount</span>&gt;
+&lt;/<span class="at">SpikeArrest</span>&gt;
+
+<span class="cm">&lt;!-- Quota Policy: per-app per-minute limit --&gt;</span>
+&lt;<span class="at">Quota</span> name=<span class="st">"QL-Quota-PerAppPerMin"</span>&gt;
+  &lt;<span class="at">Allow</span> countRef=<span class="st">"verifyapikey.VA-APIKey.apiproduct.developer.quota.limit"</span>/&gt;
+  &lt;<span class="at">Interval</span> ref=<span class="st">"verifyapikey.VA-APIKey.apiproduct.developer.quota.interval"</span>&gt;<span class="nu">1</span>&lt;/<span class="at">Interval</span>&gt;
+  &lt;<span class="at">TimeUnit</span> ref=<span class="st">"verifyapikey.VA-APIKey.apiproduct.developer.quota.timeunit"</span>&gt;minute&lt;/<span class="at">TimeUnit</span>&gt;
+  &lt;<span class="at">Identifier</span> ref=<span class="st">"client_id"</span>/&gt;   <span class="cm">&lt;!-- unique counter per app --&gt;</span>
+  &lt;<span class="at">Distributed</span>&gt;<span class="kw">true</span>&lt;/<span class="at">Distributed</span>&gt;
+  &lt;<span class="at">Synchronous</span>&gt;<span class="kw">true</span>&lt;/<span class="at">Synchronous</span>&gt;
+&lt;/<span class="at">Quota</span>&gt;</div>
+  </div>
+
+  <div class="compare">
+    <div class="compare-block cb-old">
+      <div class="compare-head">Kong Strengths</div>
+      <div class="compare-body">
+        <ul>
+          <li>✓ Open-source core — no vendor lock-in</li>
+          <li>✓ Lua plugin framework — extend anything</li>
+          <li>✓ Kubernetes-native (KIC)</li>
+          <li>✓ Lower operational cost at scale</li>
+          <li>✓ Fast data plane (nginx/OpenResty)</li>
+          <li>✗ Less mature developer portal</li>
+          <li>✗ Analytics require external stack</li>
+        </ul>
+      </div>
+    </div>
+    <div class="compare-block cb-new">
+      <div class="compare-head">Apigee Strengths</div>
+      <div class="compare-body">
+        <ul>
+          <li>✓ Full developer portal + monetization</li>
+          <li>✓ Built-in analytics + custom dashboards</li>
+          <li>✓ Advanced API product/plan management</li>
+          <li>✓ GCP-native IAM, Secret Manager</li>
+          <li>✓ Integrated threat protection rules</li>
+          <li>✗ Higher cost, GCP dependency</li>
+          <li>✗ XML policies: verbose and complex</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 05 RATE LIMITING ══ -->
+<section id="ratelimiting">
+  <div class="section-header">
+    <div class="sec-num">05</div>
+    <div class="sec-title-block">
+      <h2>Rate Limiting</h2>
+      <div class="sec-sub">// ALGORITHMS, WINDOWS, AND DISTRIBUTED COUNTERS</div>
+    </div>
+  </div>
+
+  <p class="prose">Rate limiting controls <em>how many requests</em> a client can send in a time window. The choice of algorithm determines fairness, burst tolerance, and implementation complexity. All production gateway deployments need <strong>distributed counters</strong> — local-only counters undercount in multi-node deployments.</p>
+
+  <h3>The Four Algorithms</h3>
+  <div class="grid-2">
+    <div class="card card-l-gold">
+      <div class="card-head">Fixed Window Counter <span class="tag tag-amber">Simple</span></div>
+      <p>Divide time into fixed windows (e.g., each minute). Count requests per window. Reset at window boundary.</p>
+      <p style="margin-top:10px;"><strong>Problem:</strong> "Boundary burst" — a client can send 100 req at 00:59 and 100 more at 01:00, effectively 200 req in 2 seconds while staying within limits.</p>
+    </div>
+    <div class="card card-l-sky">
+      <div class="card-head">Sliding Window Log <span class="tag tag-sky">Accurate</span></div>
+      <p>Store timestamp of every request. Count only requests within the last N seconds. Evict old entries.</p>
+      <p style="margin-top:10px;"><strong>Trade-off:</strong> Most accurate, but O(n) memory per consumer at high volume. Acceptable for low-QPS privileged endpoints; not for public APIs.</p>
+    </div>
+    <div class="card card-l-teal">
+      <div class="card-head">Sliding Window Counter <span class="tag tag-teal">Balanced</span></div>
+      <p>Hybrid: two fixed windows + weighted interpolation. Count = (prev_window × weight) + current_window. Weight = 1 − (elapsed / window_size).</p>
+      <p style="margin-top:10px;"><strong>Best trade-off</strong> for most use cases — O(1) storage, near-accurate smoothing, no boundary burst. Kong's sliding window mode uses this approach.</p>
+    </div>
+    <div class="card card-l-violet">
+      <div class="card-head">Token Bucket <span class="tag tag-violet">Burst-Friendly</span></div>
+      <p>Tokens fill at a constant rate (e.g., 10/sec). Each request consumes 1 token. Bucket has a max capacity — allows short bursts up to bucket size.</p>
+      <p style="margin-top:10px;"><strong>Ideal for AI endpoints</strong> where one request may cost vastly different amounts of computation. Pair with token-weight logic for LLM APIs.</p>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Python — Token bucket implementation (Redis-backed)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="kw">import</span> time
+<span class="kw">import</span> redis
+
+r = redis.Redis(host=<span class="st">'redis.internal'</span>, decode_responses=<span class="kw">True</span>)
+
+<span class="kw">def</span> <span class="fn">token_bucket_check</span>(consumer_id: <span class="fn">str</span>, cost: <span class="fn">int</span> = <span class="nu">1</span>) -&gt; <span class="fn">dict</span>:
+    <span class="st">"""
+    Redis Lua script ensures atomic read-modify-write.
+    Returns: {allowed: bool, tokens_remaining: int, retry_after: float}
+    """</span>
+    key        = <span class="fn">f</span><span class="st">"rl:token_bucket:{consumer_id}"</span>
+    rate       = <span class="nu">10</span>          <span class="cm"># tokens added per second</span>
+    capacity   = <span class="nu">50</span>          <span class="cm"># max burst size</span>
+    now        = time.time()
+
+    lua_script = <span class="st">"""
+    local key      = KEYS[1]
+    local rate     = tonumber(ARGV[1])
+    local capacity = tonumber(ARGV[2])
+    local now      = tonumber(ARGV[3])
+    local cost     = tonumber(ARGV[4])
+
+    local data     = redis.call('HMGET', key, 'tokens', 'last_refill')
+    local tokens   = tonumber(data[1]) or capacity
+    local last     = tonumber(data[2]) or now
+
+    -- Refill tokens based on elapsed time
+    local elapsed  = math.max(0, now - last)
+    tokens = math.min(capacity, tokens + elapsed * rate)
+
+    if tokens >= cost then
+        tokens = tokens - cost
+        redis.call('HMSET', key, 'tokens', tokens, 'last_refill', now)
+        redis.call('EXPIRE', key, 3600)
+        return {1, math.floor(tokens), 0}
+    else
+        local wait = (cost - tokens) / rate
+        return {0, math.floor(tokens), wait}
+    end
+    """</span>
+
+    result = r.eval(lua_script, <span class="nu">1</span>, key, rate, capacity, now, cost)
+    <span class="kw">return</span> {
+        <span class="st">"allowed"</span>:           <span class="fn">bool</span>(result[<span class="nu">0</span>]),
+        <span class="st">"tokens_remaining"</span>:  <span class="fn">int</span>(result[<span class="nu">1</span>]),
+        <span class="st">"retry_after_secs"</span>:  <span class="fn">float</span>(result[<span class="nu">2</span>])
+    }</div>
+  </div>
+
+  <h3>Required Response Headers (RFC 6585 + Best Practice)</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Header</th><th>Value</th><th>Required?</th></tr>
+      <tr><td><code>RateLimit-Limit</code></td><td>Max requests in the window (e.g., <code>100</code>)</td><td><span class="ok">YES</span></td></tr>
+      <tr><td><code>RateLimit-Remaining</code></td><td>Requests left in current window</td><td><span class="ok">YES</span></td></tr>
+      <tr><td><code>RateLimit-Reset</code></td><td>Unix timestamp when window resets</td><td><span class="ok">YES</span></td></tr>
+      <tr><td><code>Retry-After</code></td><td>Seconds until client may retry (429 responses only)</td><td><span class="ok">YES on 429</span></td></tr>
+      <tr><td><code>X-RateLimit-Limit-Minute</code></td><td>Kong-specific: per-window breakdown</td><td><span class="part">OPTIONAL</span></td></tr>
+      <tr><td><code>X-RateLimit-Limit-Hour</code></td><td>Kong-specific: hourly limit</td><td><span class="part">OPTIONAL</span></td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ══ 06 THROTTLING ══ -->
+<section id="throttling">
+  <div class="section-header">
+    <div class="sec-num">06</div>
+    <div class="sec-title-block">
+      <h2>Throttling Strategies</h2>
+      <div class="sec-sub">// SHAPING TRAFFIC WITHOUT DROPPING IT</div>
+    </div>
+  </div>
+
+  <p class="prose">Throttling is the act of <em>slowing down</em> requests rather than rejecting them. Where rate limiting drops excess requests with 429, throttling queues or delays them. The right strategy depends on your SLA, consumer expectations, and backend capacity model.</p>
+
+  <div class="tier-stack">
+    <div class="tier t-rust">
+      <div class="tier-label">Hard Limit</div>
+      <div class="tier-body"><strong>Reject immediately — 429 Too Many Requests.</strong> For burst abuse, DDoS mitigation, unauthenticated traffic. No queue, no delay. Use SpikeArrest in Apigee or the <code>rate-limiting</code> plugin in Kong with <code>error_code: 429</code>.</div>
+    </div>
+    <div class="tier t-amber">
+      <div class="tier-label">Soft Throttle</div>
+      <div class="tier-body"><strong>Add artificial delay — slow the client without dropping.</strong> Useful for preventing hot consumers from starving others. Inject a response delay (e.g., 200ms–2s) when a consumer hits 80% of their limit. The client experiences degraded performance before hitting the hard wall.</div>
+    </div>
+    <div class="tier t-sky">
+      <div class="tier-label">Queue &amp; Retry</div>
+      <div class="tier-body"><strong>Accept the request, queue it, drain at allowed rate.</strong> Gateway returns 202 Accepted immediately with a job ID; client polls for completion. Requires async architecture. Ideal for expensive operations (AI inference, report generation).</div>
+    </div>
+    <div class="tier t-sage">
+      <div class="tier-label">Priority Queue</div>
+      <div class="tier-body"><strong>Tiered queue with guaranteed SLAs per plan.</strong> Enterprise tier gets dedicated queue capacity. Free tier requests wait behind paid tier. Implement with Redis Sorted Sets scored by consumer tier + arrival time.</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Kong request queuing with response transformer</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Pattern: return 202 immediately, process async</span>
+<span class="cm"># Requires: custom Kong plugin or upstream async handler</span>
+
+plugins:
+  - name: request-termination         <span class="cm"># used when queue is full</span>
+    config:
+      status_code: <span class="nu">503</span>
+      message: <span class="st">"Queue at capacity. Retry in 30 seconds."</span>
+      trigger: <span class="st">"queue_depth > 500"</span>  <span class="cm"># evaluated by pre-function plugin</span>
+
+  - name: pre-function                <span class="cm"># Lua to check queue depth</span>
+    config:
+      access:
+        - |
+          local queue_depth = kong.redis:get("queue:ai-inference:depth")
+          if tonumber(queue_depth) &gt; <span class="nu">500</span> then
+            kong.response.set_header(<span class="st">"Retry-After"</span>, <span class="st">"30"</span>)
+            kong.response.exit(<span class="nu">503</span>, <span class="st">"{ \"error\": \"queue_full\" }"</span>)
+          end
+
+          <span class="cm">-- Tag request with consumer tier for priority routing</span>
+          <span class="kw">local</span> tier = kong.ctx.shared.consumer_tier <span class="kw">or</span> <span class="st">"free"</span>
+          kong.service.request.set_header(<span class="st">"X-Consumer-Tier"</span>, tier)
+
+  - name: response-transformer
+    config:
+      add:
+        headers:
+          - <span class="st">"X-Queue-Position: $(queue_position)"</span>
+          - <span class="st">"X-Estimated-Wait: $(estimated_wait_secs)s"</span></div>
+  </div>
+</section>
+
+<!-- ══ 07 QUOTAS ══ -->
+<section id="quotas">
+  <div class="section-header">
+    <div class="sec-num">07</div>
+    <div class="sec-title-block">
+      <h2>Quotas &amp; API Plans</h2>
+      <div class="sec-sub">// MONETIZATION &amp; ENTITLEMENT ARCHITECTURE</div>
+    </div>
+  </div>
+
+  <p class="prose">Rate limits protect infrastructure; quotas enforce business entitlements. Quotas are typically longer-lived (daily, monthly) and tied to API products or subscription plans. A free-tier consumer may be rate-limited to 60 req/min AND quota-capped at 10,000 req/month — both apply simultaneously.</p>
+
+  <div class="tier-stack">
+    <div class="tier t-gold">
+      <div class="tier-label">Free Tier</div>
+      <div class="tier-body">
+        <strong>60 req/min · 10,000 req/month · No SLA guarantee</strong><br>
+        No auth for some endpoints; API key required for others. Quota hard-stops at monthly cap. Upgrade prompt embedded in 429 response body.
+      </div>
+    </div>
+    <div class="tier t-sky">
+      <div class="tier-label">Developer</div>
+      <div class="tier-body">
+        <strong>300 req/min · 100,000 req/month · 99.5% SLA</strong><br>
+        OAuth 2.0 required. Access to beta endpoints. Quota rollover: unused 10% carries to next month. Dashboard with usage analytics.
+      </div>
+    </div>
+    <div class="tier t-teal">
+      <div class="tier-label">Business</div>
+      <div class="tier-body">
+        <strong>1,000 req/min · 1M req/month · 99.9% SLA</strong><br>
+        Priority queue. Dedicated gateway pool in Enterprise plans. Burst allowance: up to 3× for 30-second windows. Webhook-based quota alerts.
+      </div>
+    </div>
+    <div class="tier t-violet">
+      <div class="tier-label">Enterprise</div>
+      <div class="tier-body">
+        <strong>Custom limits · Unlimited or metered · 99.99% SLA</strong><br>
+        Per-contract negotiation. BYOK encryption. Dedicated egress IPs. Private gateway deployment. Custom SLAs with financial penalties.
+      </div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Apigee API Product quota configuration</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Apigee API Product definition (via management API)</span>
+{
+  <span class="at">"name"</span>: <span class="st">"InferenceAPI-Business"</span>,
+  <span class="at">"displayName"</span>: <span class="st">"Inference API — Business Plan"</span>,
+  <span class="at">"proxies"</span>: [<span class="st">"inference-api-v1"</span>],
+  <span class="at">"environments"</span>: [<span class="st">"production"</span>],
+  <span class="at">"quota"</span>: <span class="st">"1000"</span>,            <span class="cm">// 1000 requests</span>
+  <span class="at">"quotaInterval"</span>: <span class="st">"1"</span>,       <span class="cm">// per</span>
+  <span class="at">"quotaTimeUnit"</span>: <span class="st">"minute"</span>, <span class="cm">// minute</span>
+
+  <span class="cm">// Monthly absolute cap — enforced by second Quota policy</span>
+  <span class="at">"attributes"</span>: [
+    { <span class="at">"name"</span>: <span class="st">"monthly_quota"</span>,   <span class="at">"value"</span>: <span class="st">"1000000"</span> },
+    { <span class="at">"name"</span>: <span class="st">"burst_multiplier"</span>, <span class="at">"value"</span>: <span class="st">"3"</span> },       <span class="cm">// 3x burst for 30s</span>
+    { <span class="at">"name"</span>: <span class="st">"consumer_tier"</span>,    <span class="at">"value"</span>: <span class="st">"business"</span> },
+    { <span class="at">"name"</span>: <span class="st">"sla_target"</span>,      <span class="at">"value"</span>: <span class="st">"99.9"</span> }
+  ],
+
+  <span class="cm">// Scoped API operations included in this product</span>
+  <span class="at">"operationGroup"</span>: {
+    <span class="at">"operationConfigs"</span>: [{
+      <span class="at">"apiSource"</span>: <span class="st">"inference-api-v1"</span>,
+      <span class="at">"operations"</span>: [
+        { <span class="at">"resource"</span>: <span class="st">"/v1/chat/completions"</span>,  <span class="at">"methods"</span>: [<span class="st">"POST"</span>] },
+        { <span class="at">"resource"</span>: <span class="st">"/v1/embeddings"</span>,         <span class="at">"methods"</span>: [<span class="st">"POST"</span>] }
+      ]
+    }]
+  }
+}</div>
+  </div>
+</section>
+
+<!-- ══ 08 CIRCUIT BREAKERS ══ -->
+<section id="circuit">
+  <div class="section-header">
+    <div class="sec-num">08</div>
+    <div class="sec-title-block">
+      <h2>Circuit Breakers</h2>
+      <div class="sec-sub">// FAIL FAST, RECOVER GRACEFULLY</div>
+    </div>
+  </div>
+
+  <p class="prose">A circuit breaker prevents cascading failures by stopping requests to a failing upstream before those failures propagate. Without a circuit breaker, a slow or failed backend causes gateway threads to block, consuming resources until the gateway itself degrades.</p>
+
+  <div class="flow">
+    <div class="flow-step" style="border-color:rgba(39,174,96,0.4);">
+      <div class="flow-label">State: CLOSED</div>
+      <div class="flow-name">Normal Traffic</div>
+      <div class="flow-note">Count failures<br>vs threshold</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color:rgba(192,57,43,0.5);">
+      <div class="flow-label">State: OPEN</div>
+      <div class="flow-name">Fail Fast 503</div>
+      <div class="flow-note">No upstream<br>calls made</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color:rgba(245,166,35,0.5);">
+      <div class="flow-label">State: HALF-OPEN</div>
+      <div class="flow-name">Probe Upstream</div>
+      <div class="flow-note">1 req allowed<br>per window</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color:rgba(39,174,96,0.4);">
+      <div class="flow-label">Recovery</div>
+      <div class="flow-name">Back to CLOSED</div>
+      <div class="flow-note">If probe<br>succeeds</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Kong upstream circuit breaker + passive health checks</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block">upstreams:
+  - name: <span class="st">payments-upstream</span>
+    algorithm: <span class="st">round-robin</span>
+    slots: <span class="nu">10000</span>
+
+    <span class="hl">    healthchecks:</span>
+<span class="hl">      passive:                        # Tracks real traffic — no extra probes</span>
+        healthy:
+          http_statuses: [<span class="nu">200</span>, <span class="nu">201</span>, <span class="nu">204</span>]
+          successes: <span class="nu">1</span>               <span class="cm"># 1 success reopens</span>
+        unhealthy:
+          http_statuses: [<span class="nu">500</span>, <span class="nu">502</span>, <span class="nu">503</span>, <span class="nu">504</span>]
+          http_failures: <span class="nu">5</span>           <span class="cm"># 5 failures → mark node down</span>
+          timeouts: <span class="nu">3</span>               <span class="cm"># 3 timeouts also counts</span>
+
+      active:                         <span class="cm"># Periodic health probe</span>
+        type: <span class="st">http</span>
+        http_path: <span class="st">/health</span>
+        healthy:
+          interval: <span class="nu">10</span>              <span class="cm"># probe every 10s</span>
+          successes: <span class="nu">2</span>              <span class="cm"># 2 successes to mark healthy</span>
+        unhealthy:
+          interval: <span class="nu">5</span>               <span class="cm"># probe sick nodes more often</span>
+          http_failures: <span class="nu">3</span>
+
+    targets:
+      - target: <span class="st">payments-1.internal:8080</span>
+        weight: <span class="nu">100</span>
+      - target: <span class="st">payments-2.internal:8080</span>
+        weight: <span class="nu">100</span></div>
+  </div>
+</section>
+
+<!-- ══ 09 AUTHN ══ -->
+<section id="authn">
+  <div class="section-header">
+    <div class="sec-num">09</div>
+    <div class="sec-title-block">
+      <h2>Authentication Patterns</h2>
+      <div class="sec-sub">// API KEYS, OAUTH 2.0, JWT, AND SAML</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Method</th><th>Best For</th><th>Revocability</th><th>Gateway Support</th></tr>
+      <tr>
+        <td class="bold-text">API Key</td>
+        <td>Machine-to-machine, simple integrations, public APIs</td>
+        <td><span class="part">MANUAL</span> — must be rotated explicitly</td>
+        <td><span class="ok">UNIVERSAL</span> — all gateways</td>
+      </tr>
+      <tr>
+        <td class="bold-text">OAuth 2.0 + PKCE</td>
+        <td>User-delegated access, mobile/web apps</td>
+        <td><span class="ok">REAL-TIME</span> — token revocation via introspection</td>
+        <td><span class="ok">UNIVERSAL</span></td>
+      </tr>
+      <tr>
+        <td class="bold-text">JWT (stateless)</td>
+        <td>High-throughput internal auth, claims-bearing tokens</td>
+        <td><span class="no">HARD</span> — requires blocklist or short TTL</td>
+        <td><span class="ok">UNIVERSAL</span></td>
+      </tr>
+      <tr>
+        <td class="bold-text">mTLS</td>
+        <td>Service-to-service, highest assurance, zero-trust</td>
+        <td><span class="ok">REAL-TIME</span> — CRL/OCSP revocation</td>
+        <td><span class="ok">UNIVERSAL</span></td>
+      </tr>
+      <tr>
+        <td class="bold-text">HMAC Signature</td>
+        <td>Webhook validation, financial APIs, tamper-proof requests</td>
+        <td><span class="part">MEDIUM</span> — key rotation required</td>
+        <td><span class="part">PLUGIN</span> — may require custom</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Kong OAuth 2.0 plugin with PKCE</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block">plugins:
+  - name: oauth2
+    config:
+      scopes: [<span class="st">"read:payments"</span>, <span class="st">"write:payments"</span>, <span class="st">"read:profile"</span>]
+      mandatory_scope: <span class="kw">true</span>
+      enable_authorization_code: <span class="kw">true</span>
+      enable_client_credentials: <span class="kw">true</span>
+      enable_implicit_grant: <span class="kw">false</span>   <span class="cm"># deprecated, insecure</span>
+      enable_password_grant: <span class="kw">false</span>    <span class="cm"># deprecated, avoid</span>
+      token_expiration: <span class="nu">3600</span>           <span class="cm"># 1 hour access token</span>
+      refresh_token_ttl: <span class="nu">1209600</span>       <span class="cm"># 14 days refresh token</span>
+      pkce: <span class="st">S256</span>                        <span class="cm"># PKCE required for public clients</span>
+      accept_http_if_already_terminated: <span class="kw">false</span>  <span class="cm"># reject non-TLS</span>
+
+<span class="cm"># Token introspection for short-lived JWT validation</span>
+  - name: jwt
+    config:
+      uri_param_names: []              <span class="cm"># never accept token in URL — header only</span>
+      cookie_names: []
+      claims_to_verify: [<span class="st">"exp"</span>, <span class="st">"nbf"</span>, <span class="st">"iss"</span>]
+      maximum_expiration: <span class="nu">3600</span>         <span class="cm"># reject tokens > 1h lifetime</span>
+      key_claim_name: <span class="st">"kid"</span>
+      run_on_preflight: <span class="kw">false</span></div>
+  </div>
+</section>
+
+<!-- ══ 10 mTLS ══ -->
+<section id="mtls">
+  <div class="section-header">
+    <div class="sec-num">10</div>
+    <div class="sec-title-block">
+      <h2>mTLS &amp; Zero Trust at the Gateway</h2>
+      <div class="sec-sub">// MUTUAL AUTHENTICATION — BOTH SIDES PROVE IDENTITY</div>
+    </div>
+  </div>
+
+  <p class="prose">Mutual TLS (mTLS) extends standard TLS by requiring the <em>client</em> to present a certificate, not just the server. At the gateway, this means only clients holding a certificate signed by your corporate CA can establish connections — credential theft alone is insufficient to gain access.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Kong mTLS plugin + client cert validation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># 1. Upload CA certificate to Kong</span>
+curl -X POST http://localhost:8001/ca_certificates \
+  --data-urlencode <span class="st">"cert=$(cat /path/to/corporate-ca.pem)"</span>
+
+<span class="cm"># 2. Configure service to require client cert</span>
+services:
+  - name: <span class="st">high-assurance-api</span>
+    url: <span class="st">https://backend.internal:8443</span>
+    <span class="cm"># Gateway → Backend: also mTLS (gateway presents its own cert)</span>
+    tls_verify: <span class="kw">true</span>
+    ca_certificates: [<span class="st">"&lt;ca-cert-uuid&gt;"</span>]
+    client_certificate: <span class="st">"&lt;gateway-cert-uuid&gt;"</span>
+
+    plugins:
+      <span class="hl">      - name: mtls-auth                      # Client → Gateway: mTLS</span>
+        config:
+          ca_certificates: [<span class="st">"&lt;ca-cert-uuid&gt;"</span>]
+          certificate_bound_access_tokens: <span class="kw">true</span>  <span class="cm"># bind OAuth token to cert</span>
+          revocation_check_mode: <span class="st">IGNORE_CA_ERROR</span>
+          skip_consumer_lookup: <span class="kw">false</span>            <span class="cm"># map cert CN to Kong consumer</span>
+          authenticated_group_by: <span class="st">DN</span>             <span class="cm"># group by Distinguished Name</span>
+
+      - name: acl
+        config:
+          allow: [<span class="st">"tier:enterprise"</span>, <span class="st">"service:internal"</span>]  <span class="cm"># cert-derived groups</span></div>
+  </div>
+
+  <div class="callout good">
+    <span class="callout-icon">✓</span>
+    <div class="callout-body"><strong>Certificate-Bound Tokens (RFC 8705):</strong> Combine OAuth 2.0 with mTLS by binding access tokens to the client certificate thumbprint. The token is useless without the certificate — credential theft alone doesn't grant access. Enable in Kong with <code>certificate_bound_access_tokens: true</code>. Required for FAPI 2.0 (Financial-grade API) compliance.</div>
+  </div>
+</section>
+
+<!-- ══ 11 THREAT ══ -->
+<section id="threat">
+  <div class="section-header">
+    <div class="sec-num">11</div>
+    <div class="sec-title-block">
+      <h2>Threat Protection</h2>
+      <div class="sec-sub">// WAF, INJECTION, SCHEMA VALIDATION</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-l-rust">
+      <div class="card-head">Injection Defense <span class="tag tag-rust">Critical</span></div>
+      <ul>
+        <li>Validate all inputs against strict JSON Schema before routing</li>
+        <li>Block SQLi, XSS, SSRF, path traversal via regex deny-lists at gateway</li>
+        <li>Reject unexpected content types: <code>application/x-www-form-urlencoded</code> should never reach a JSON API</li>
+        <li>Limit request body depth (JSON bomb protection — max 5 levels)</li>
+      </ul>
+    </div>
+    <div class="card card-l-amber">
+      <div class="card-head">Resource Exhaustion <span class="tag tag-amber">DoS</span></div>
+      <ul>
+        <li>Max request body size: enforce at gateway, not backend</li>
+        <li>Max URL length: 2048 chars (reject longer)</li>
+        <li>Max header count: 100; max header size: 8KB</li>
+        <li>Max query string parameters: 50</li>
+        <li>Timeout cascade: gateway timeout &lt; backend timeout (prevent thread exhaustion)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Kong request-validator + bot detection</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># JSON Schema validation — reject malformed payloads at gateway layer</span>
+plugins:
+  - name: request-validator
+    config:
+      body_schema: |
+        {
+          "$schema": "http://json-schema.org/draft-07/schema",
+          "type": "object",
+          "required": ["model", "messages"],
+          "properties": {
+            "model": {
+              "type": "string",
+              "enum": ["gpt-4o", "claude-3-7-sonnet-20250219"]  <span class="cm"># allowlist only</span>
+            },
+            "messages": {
+              "type": "array",
+              "maxItems": 50,                   <span class="cm"># prevent context stuffing</span>
+              "items": {
+                "type": "object",
+                "required": ["role", "content"],
+                "properties": {
+                  "role":    { "type": "string", "enum": ["user", "assistant", "system"] },
+                  "content": { "type": "string", "maxLength": 32000 }  <span class="cm"># ~8k tokens</span>
+                }
+              }
+            },
+            "max_tokens": { "type": "integer", "minimum": 1, "maximum": 4096 },
+            "temperature": { "type": "number", "minimum": 0, "maximum": 2 }
+          },
+          "additionalProperties": false          <span class="cm"># reject unknown fields</span>
+        }
+      allowed_content_types: [<span class="st">"application/json"</span>]
+      verbose_response: <span class="kw">false</span>                  <span class="cm"># don't leak schema in errors</span>
+
+  <span class="cm"># Bot detection (Kong Enterprise)</span>
+  - name: bot-detection
+    config:
+      allow: []
+      deny: [<span class="st">"generic-bot"</span>, <span class="st">"crawler"</span>, <span class="st">"scanner"</span>]</div>
+  </div>
+</section>
+
+<!-- ══ 12 AI GATEWAY ══ -->
+<section id="ai-gateway">
+  <div class="section-header">
+    <div class="sec-num">12</div>
+    <div class="sec-title-block">
+      <h2>AI Gateway Patterns</h2>
+      <div class="sec-sub">// SAFELY EXPOSING AI TOOLS TO THE OUTSIDE WORLD</div>
+    </div>
+  </div>
+
+  <p class="prose">Exposing AI model endpoints externally introduces risks that standard API gateway patterns don't fully cover. LLMs are <em>non-deterministic</em>, <em>computationally expensive</em>, and susceptible to <em>prompt injection</em>, <em>data leakage</em>, and <em>jailbreaking</em>. An AI gateway layer adds controls specific to this threat model, sitting between your consumers and the model API.</p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-label">Consumer</div>
+      <div class="flow-name">API Request</div>
+      <div class="flow-note">External app<br>or user</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color:rgba(212,168,60,0.5);">
+      <div class="flow-label">Gateway Layer 1</div>
+      <div class="flow-name">Auth + Rate<br>Limit + Quota</div>
+      <div class="flow-note">Standard<br>policies</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color:rgba(142,68,173,0.5);">
+      <div class="flow-label">Gateway Layer 2</div>
+      <div class="flow-name">AI-Specific<br>Controls</div>
+      <div class="flow-note">Token limit<br>Prompt guard</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color:rgba(22,160,133,0.5);">
+      <div class="flow-label">Model Router</div>
+      <div class="flow-name">Semantic Cache<br>+ Model Select</div>
+      <div class="flow-note">Cost control<br>fallback</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-label">LLM API</div>
+      <div class="flow-name">OpenAI · Claude<br>Gemini · Self-host</div>
+      <div class="flow-note">Actual<br>inference</div>
+    </div>
+  </div>
+
+  <h3>AI Gateway Capabilities</h3>
+  <div class="grid-2">
+    <div class="card card-l-violet">
+      <div class="card-head">Semantic Caching <span class="tag tag-violet">Cost Control</span></div>
+      <p>Cache LLM responses by semantic similarity of prompts, not exact string match. If a new prompt is >95% similar to a cached query, return the cached response. Reduces inference costs by 30–70% for repetitive query patterns (FAQs, code completion, classification).</p>
+      <p style="margin-top:8px;"><strong>Tools:</strong> Kong AI Gateway, LiteLLM, Portkey, GPTCache</p>
+    </div>
+    <div class="card card-l-teal">
+      <div class="card-head">Model Routing &amp; Fallback <span class="tag tag-teal">Resilience</span></div>
+      <p>Route to cheaper models for simple tasks; escalate to frontier models for complex ones. If primary model is unavailable (429, 503), auto-fallback to alternative — with model mapping for API compatibility. Maintain per-model rate limits separately.</p>
+      <p style="margin-top:8px;"><strong>Pattern:</strong> GPT-4o-mini → GPT-4o → Claude as fallback chain</p>
+    </div>
+    <div class="card card-l-gold">
+      <div class="card-head">PII Scrubbing <span class="tag tag-gold">Compliance</span></div>
+      <p>Detect and redact PII (names, emails, SSNs, credit cards, phone numbers) from prompts before sending to external model APIs. Use regex + NER model in the gateway pipeline. Log the redaction event but never the original PII.</p>
+    </div>
+    <div class="card card-l-rust">
+      <div class="card-head">Output Filtering <span class="tag tag-rust">Safety</span></div>
+      <p>Inspect LLM responses before returning to consumer. Strip: PII leakage, hallucinated credentials, toxic content, competitor mentions (per policy). Apply regex + classifier in the response pipeline. Log filtered content for fine-tuning feedback.</p>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Kong AI Gateway plugin configuration</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Kong AI Gateway (KonnectAI / Kong 3.6+)</span>
+plugins:
+  - name: ai-proxy
+    config:
+      route_type: <span class="st">llm/v1/chat</span>
+      auth:
+        header_name: <span class="st">Authorization</span>
+        header_value: <span class="st">"Bearer $(vault://secrets/openai-key)"</span>
+      model:
+        provider: <span class="st">openai</span>
+        name: <span class="st">gpt-4o</span>
+        options:
+          max_tokens: <span class="nu">2048</span>
+          temperature: <span class="nu">0.7</span>
+          input_cost: <span class="nu">2.5</span>          <span class="cm"># USD per 1M input tokens (for metering)</span>
+          output_cost: <span class="nu">10.0</span>         <span class="cm"># USD per 1M output tokens</span>
+
+  <span class="hl">  - name: ai-semantic-cache</span>
+<span class="hl">    config:</span>
+<span class="hl">      embeddings_provider: openai</span>
+<span class="hl">      embeddings_model: text-embedding-3-small</span>
+<span class="hl">      similarity_threshold: 0.95          # 95%+ match = cache hit</span>
+<span class="hl">      cache_ttl: 3600</span>
+<span class="hl">      vectordb:</span>
+<span class="hl">        strategy: redis</span>
+<span class="hl">        redis:</span>
+<span class="hl">          host: redis.internal</span>
+<span class="hl">          port: 6379</span>
+
+  - name: ai-prompt-guard
+    config:
+      allow_patterns: []
+      deny_patterns:
+        - pattern: <span class="st">"ignore previous instructions"</span>
+        - pattern: <span class="st">"DAN mode"</span>
+        - pattern: <span class="st">"jailbreak"</span>
+        - pattern: <span class="st">"\\bSSN\\b.*\\d{3}-\\d{2}-\\d{4}"</span>   <span class="cm"># SSN in prompt</span>
+        - pattern: <span class="st">"\\b4[0-9]{12}(?:[0-9]{3})?\\b"</span>     <span class="cm"># Visa card number</span>
+      match_all_roles: <span class="kw">true</span>
+
+  - name: ai-rate-limiting-advanced
+    config:
+      limit_by: consumer
+      limits:
+        - tokens_per_minute: <span class="nu">100000</span>     <span class="cm"># input + output tokens</span>
+        - tokens_per_hour:   <span class="nu">1000000</span>
+        - requests_per_minute: <span class="nu">60</span></div>
+  </div>
+</section>
+
+<!-- ══ 13 LLM RISKS ══ -->
+<section id="llm-risks">
+  <div class="section-header">
+    <div class="sec-num">13</div>
+    <div class="sec-title-block">
+      <h2>LLM-Specific Security Risks</h2>
+      <div class="sec-sub">// OWASP LLM TOP 10 AT THE GATEWAY</div>
+    </div>
+  </div>
+
+  <p class="prose">The OWASP Top 10 for LLM Applications defines risks specific to AI systems. The gateway is the first — and most scalable — line of defense against several of these, though some require application-layer mitigations.</p>
+
+  <h3>Threat Coverage Matrix</h3>
+  <div class="threat-row">
+    <div class="threat-cell tc-hd">Risk</div>
+    <div class="threat-cell tc-hd">Gateway Can Block</div>
+    <div class="threat-cell tc-hd">App-Layer Also Needed</div>
+    <div class="threat-cell tc-hd">Severity</div>
+  </div>
+  <div class="threat-row">
+    <div class="threat-cell tc-0">LLM01: Prompt Injection</div>
+    <div class="threat-cell tc-2">Partial — regex deny-lists</div>
+    <div class="threat-cell tc-3">Input sanitization, system prompt hardening</div>
+    <div class="threat-cell tc-3">CRITICAL</div>
+  </div>
+  <div class="threat-row">
+    <div class="threat-cell tc-0">LLM02: Insecure Output Handling</div>
+    <div class="threat-cell tc-2">Response content filtering</div>
+    <div class="threat-cell tc-3">Output encoding before rendering</div>
+    <div class="threat-cell tc-3">HIGH</div>
+  </div>
+  <div class="threat-row">
+    <div class="threat-cell tc-0">LLM03: Training Data Poisoning</div>
+    <div class="threat-cell tc-1">Not applicable at gateway</div>
+    <div class="threat-cell tc-3">Model provenance, red-teaming</div>
+    <div class="threat-cell tc-2">MEDIUM</div>
+  </div>
+  <div class="threat-row">
+    <div class="threat-cell tc-0">LLM04: Model DoS</div>
+    <div class="threat-cell tc-3">Token limits, rate limiting, request size</div>
+    <div class="threat-cell tc-1">Backend timeouts</div>
+    <div class="threat-cell tc-2">HIGH</div>
+  </div>
+  <div class="threat-row">
+    <div class="threat-cell tc-0">LLM06: Sensitive Data Disclosure</div>
+    <div class="threat-cell tc-2">PII scrubbing in request + response</div>
+    <div class="threat-cell tc-3">RAG access controls, data classification</div>
+    <div class="threat-cell tc-3">CRITICAL</div>
+  </div>
+  <div class="threat-row">
+    <div class="threat-cell tc-0">LLM07: Insecure Plugin Design</div>
+    <div class="threat-cell tc-2">Tool/function allowlisting in request schema</div>
+    <div class="threat-cell tc-3">Capability sandboxing, principle of least privilege</div>
+    <div class="threat-cell tc-3">CRITICAL</div>
+  </div>
+  <div class="threat-row">
+    <div class="threat-cell tc-0">LLM09: Overreliance</div>
+    <div class="threat-cell tc-1">Not applicable at gateway</div>
+    <div class="threat-cell tc-2">Human-in-the-loop for high-stakes decisions</div>
+    <div class="threat-cell tc-2">MEDIUM</div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body"><strong>Tool/Function call allowlisting:</strong> If you expose function-calling or tool-use APIs, the gateway MUST validate that <code>tools</code> arrays in requests only reference approved function names and schemas. An attacker crafting a malicious tool definition can invoke arbitrary code if your application naively executes whatever the model returns. Treat every LLM output as untrusted.</div>
+  </div>
+</section>
+
+<!-- ══ 14 TOKEN LIMITING ══ -->
+<section id="token-limit">
+  <div class="section-header">
+    <div class="sec-num">14</div>
+    <div class="sec-title-block">
+      <h2>Token-Aware Rate Limiting</h2>
+      <div class="sec-sub">// REQUEST COUNT IS THE WRONG METRIC FOR LLMs</div>
+    </div>
+  </div>
+
+  <p class="prose">Standard rate limiting counts <em>requests</em>. For LLM APIs, two requests can differ by 1000× in computational cost — a 100-token prompt vs a 128,000-token context window. <strong>Token-based limiting</strong> controls actual resource consumption, not request count.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Python — Token-aware gateway middleware</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="kw">import</span> tiktoken
+<span class="kw">import</span> redis
+<span class="kw">from</span> fastapi <span class="kw">import</span> Request, HTTPException
+
+enc = tiktoken.encoding_for_model(<span class="st">"gpt-4o"</span>)
+r   = redis.Redis(host=<span class="st">"redis.internal"</span>, decode_responses=<span class="kw">True</span>)
+
+TOKEN_LIMITS = {
+    <span class="st">"free"</span>:       {<span class="st">"minute"</span>: <span class="nu">10_000</span>,  <span class="st">"day"</span>: <span class="nu">100_000</span>},
+    <span class="st">"developer"</span>:  {<span class="st">"minute"</span>: <span class="nu">50_000</span>,  <span class="st">"day"</span>: <span class="nu">1_000_000</span>},
+    <span class="st">"business"</span>:   {<span class="st">"minute"</span>: <span class="nu">200_000</span>, <span class="st">"day"</span>: <span class="nu">10_000_000</span>},
+}
+
+<span class="kw">async def</span> <span class="fn">token_limit_middleware</span>(request: Request, consumer_id: <span class="fn">str</span>, tier: <span class="fn">str</span>):
+    body = <span class="kw">await</span> request.json()
+
+    <span class="cm"># Pre-flight: count input tokens BEFORE sending to model</span>
+    messages_text = <span class="st">" "</span>.join(
+        m[<span class="st">"content"</span>] <span class="kw">for</span> m <span class="kw">in</span> body.get(<span class="st">"messages"</span>, [])
+        <span class="kw">if</span> <span class="fn">isinstance</span>(m.get(<span class="st">"content"</span>), <span class="fn">str</span>)
+    )
+    input_tokens = <span class="fn">len</span>(enc.encode(messages_text))
+
+    <span class="cm"># Add max_tokens from request as expected output cost</span>
+    max_output   = body.get(<span class="st">"max_tokens"</span>, <span class="nu">1024</span>)
+    expected_cost = input_tokens + max_output
+
+    limits = TOKEN_LIMITS.get(tier, TOKEN_LIMITS[<span class="st">"free"</span>])
+    pipe   = r.pipeline()
+
+    <span class="kw">for</span> window, limit <span class="kw">in</span> [(<span class="st">"minute"</span>, limits[<span class="st">"minute"</span>]), (<span class="st">"day"</span>, limits[<span class="st">"day"</span>])]:
+        key   = <span class="fn">f</span><span class="st">"tokens:{consumer_id}:{window}"</span>
+        used  = <span class="fn">int</span>(r.get(key) <span class="kw">or</span> <span class="nu">0</span>)
+        <span class="kw">if</span> used + expected_cost > limit:
+            <span class="kw">raise</span> HTTPException(
+                status_code=<span class="nu">429</span>,
+                detail={
+                    <span class="st">"error"</span>: <span class="st">"token_limit_exceeded"</span>,
+                    <span class="st">"window"</span>: window,
+                    <span class="st">"limit"</span>: limit,
+                    <span class="st">"used"</span>: used,
+                    <span class="st">"request_cost"</span>: expected_cost,
+                    <span class="st">"remaining"</span>: max(<span class="nu">0</span>, limit - used),
+                }
+            )
+        pipe.incrby(key, expected_cost)
+        pipe.expire(key, <span class="nu">60</span> <span class="kw">if</span> window == <span class="st">"minute"</span> <span class="kw">else</span> <span class="nu">86400</span>)
+
+    pipe.execute()
+
+    <span class="cm"># After response: reconcile actual usage (tokens_used from API response)</span>
+    <span class="cm"># Subtract over-estimate if model returned fewer tokens than max_tokens</span>
+    <span class="kw">return</span> input_tokens, max_output</div>
+  </div>
+</section>
+
+<!-- ══ 15 PROMPT GUARD ══ -->
+<section id="prompt-guard">
+  <div class="section-header">
+    <div class="sec-num">15</div>
+    <div class="sec-title-block">
+      <h2>Prompt Inspection &amp; Guardrails</h2>
+      <div class="sec-sub">// DETECT INJECTION, JAILBREAKS, AND PII BEFORE INFERENCE</div>
+    </div>
+  </div>
+
+  <p class="prose">Prompt inspection at the gateway layer is the first — and cheapest — defense against malicious inputs. Combine <em>rule-based pattern matching</em> (fast, low cost) with <em>classifier-based detection</em> (higher accuracy, higher latency) tiered by risk level.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Python — Prompt inspection pipeline</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="kw">import</span> re
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+<span class="kw">from</span> enum <span class="kw">import</span> Enum
+
+<span class="kw">class</span> <span class="fn">Verdict</span>(Enum):
+    ALLOW    = <span class="st">"allow"</span>
+    WARN     = <span class="st">"warn"</span>       <span class="cm"># log + continue</span>
+    SANITIZE = <span class="st">"sanitize"</span>  <span class="cm"># redact PII, then continue</span>
+    BLOCK    = <span class="st">"block"</span>     <span class="cm"># reject with 400</span>
+
+INJECTION_PATTERNS = [
+    <span class="cm"># Direct jailbreak attempts</span>
+    <span class="kw">re.compile</span>(<span class="st">r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions?"</span>, re.I),
+    <span class="kw">re.compile</span>(<span class="st">r"(you are|act as|pretend to be)\s+(dan|evil|unrestricted)"</span>, re.I),
+    <span class="kw">re.compile</span>(<span class="st">r"(DAN|jailbreak|GPT-4-DAN|STAN)\s+(mode|prompt)"</span>, re.I),
+    <span class="cm"># System prompt extraction</span>
+    <span class="kw">re.compile</span>(<span class="st">r"(reveal|print|repeat|output)\s+(your\s+)?(system|initial)\s+(prompt|instruction)"</span>, re.I),
+    <span class="cm"># Indirect injection via data</span>
+    <span class="kw">re.compile</span>(<span class="st">r"&lt;(s|INST|SYS|SYSTEM|human|assistant)&gt;"</span>),  <span class="cm"># model-specific control tokens</span>
+    <span class="kw">re.compile</span>(<span class="st">r"\[\[HUMAN\]\]|\[\[ASSISTANT\]\]"</span>),
+]
+
+PII_PATTERNS = {
+    <span class="st">"ssn"</span>:         <span class="kw">re.compile</span>(<span class="st">r"\b\d{3}-\d{2}-\d{4}\b"</span>),
+    <span class="st">"credit_card"</span>: <span class="kw">re.compile</span>(<span class="st">r"\b(?:4[0-9]{12}|5[1-5][0-9]{14}|3[47][0-9]{13})\b"</span>),
+    <span class="st">"email"</span>:       <span class="kw">re.compile</span>(<span class="st">r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"</span>),
+    <span class="st">"api_key"</span>:     <span class="kw">re.compile</span>(<span class="st">r"\b(sk-[a-zA-Z0-9]{32,}|ghp_[a-zA-Z0-9]{36})\b"</span>),
+}
+
+<span class="kw">def</span> <span class="fn">inspect_prompt</span>(text: <span class="fn">str</span>) -&gt; <span class="fn">tuple</span>[Verdict, <span class="fn">str</span>, <span class="fn">dict</span>]:
+    <span class="cm"># 1. Injection check — block immediately</span>
+    <span class="kw">for</span> pattern <span class="kw">in</span> INJECTION_PATTERNS:
+        <span class="kw">if</span> pattern.search(text):
+            <span class="kw">return</span> Verdict.BLOCK, text, {<span class="st">"reason"</span>: <span class="st">"prompt_injection_detected"</span>}
+
+    <span class="cm"># 2. PII check — sanitize, don't block</span>
+    sanitized = text
+    found_pii = []
+    <span class="kw">for</span> pii_type, pattern <span class="kw">in</span> PII_PATTERNS.items():
+        <span class="kw">if</span> pattern.search(sanitized):
+            sanitized = pattern.sub(<span class="fn">f</span><span class="st">"[REDACTED:{pii_type.upper()}]"</span>, sanitized)
+            found_pii.append(pii_type)
+
+    <span class="kw">if</span> found_pii:
+        <span class="kw">return</span> Verdict.SANITIZE, sanitized, {<span class="st">"redacted"</span>: found_pii}
+
+    <span class="kw">return</span> Verdict.ALLOW, text, {}</div>
+  </div>
+
+  <div class="callout note">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>Classifier-based detection:</strong> Regex is fast but easily evaded with Unicode normalization, zero-width characters, or paraphrasing. For high-security deployments, add a secondary ML classifier (LlamaGuard, ShieldLM, or a fine-tuned BERT) that evaluates semantics, not syntax. Run classifiers asynchronously and cache verdicts by prompt hash to minimize latency overhead (&lt;50ms target).</div>
+  </div>
+</section>
+
+<!-- ══ 16 OBSERVABILITY ══ -->
+<section id="observability">
+  <div class="section-header">
+    <div class="sec-num">16</div>
+    <div class="sec-title-block">
+      <h2>Observability</h2>
+      <div class="sec-sub">// METRICS, TRACES, LOGS — THE GATEWAY TELEMETRY STACK</div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card card-l-gold">
+      <div class="card-head">Golden Signals</div>
+      <ul>
+        <li><strong>Latency</strong> — p50/p95/p99 per route</li>
+        <li><strong>Traffic</strong> — req/sec, tokens/sec</li>
+        <li><strong>Errors</strong> — 4xx/5xx rates by consumer</li>
+        <li><strong>Saturation</strong> — connection pool, CPU</li>
+      </ul>
+    </div>
+    <div class="card card-l-teal">
+      <div class="card-head">AI-Specific Metrics</div>
+      <ul>
+        <li>Input / output tokens per minute</li>
+        <li>Token cost (USD) per consumer</li>
+        <li>Cache hit rate (semantic cache)</li>
+        <li>Prompt injection block rate</li>
+        <li>Model fallback frequency</li>
+        <li>Time-to-first-token (streaming)</li>
+      </ul>
+    </div>
+    <div class="card card-l-sky">
+      <div class="card-head">Alert Thresholds</div>
+      <ul>
+        <li>p99 latency > 3s: PagerDuty P2</li>
+        <li>Error rate > 5% (5m): P1</li>
+        <li>429 rate > 20%: quota tuning</li>
+        <li>Token cost anomaly > 3σ: billing alert</li>
+        <li>Cache hit rate &lt; 20%: cache review</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Prometheus + Grafana alert rules for AI gateway</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># prometheus/rules/ai-gateway.yml</span>
+groups:
+  - name: ai_gateway
+    rules:
+      - alert: HighTokenCostAnomaly
+        expr: |
+          rate(ai_gateway_tokens_total{direction="output"}[5m])
+          > 3 * avg_over_time(
+              rate(ai_gateway_tokens_total{direction="output"}[5m])[1h:5m]
+            )
+        for: <span class="nu">2m</span>
+        labels:
+          severity: warning
+        annotations:
+          summary: <span class="st">"Token usage spike detected — possible prompt stuffing"</span>
+
+      - alert: PromptInjectionSpike
+        expr: |
+          rate(ai_gateway_prompt_blocked_total[5m]) > <span class="nu">10</span>
+        for: <span class="nu">1m</span>
+        labels:
+          severity: critical
+        annotations:
+          summary: <span class="st">"&gt;10 prompt injections/min — possible coordinated attack"</span>
+
+      - alert: ModelFallbackHigh
+        expr: |
+          rate(ai_gateway_model_fallback_total[10m]) /
+          rate(ai_gateway_requests_total[10m]) > <span class="nu">0.1</span>
+        for: <span class="nu">5m</span>
+        annotations:
+          summary: <span class="st">"&gt;10% of requests falling back — primary model degraded"</span>
+
+      - alert: SemanticCacheHitRateLow
+        expr: |
+          rate(ai_gateway_cache_hit_total[1h]) /
+          rate(ai_gateway_requests_total[1h]) &lt; <span class="nu">0.2</span>
+        for: <span class="nu">30m</span>
+        annotations:
+          summary: <span class="st">"Cache hit rate &lt;20% — review embedding similarity threshold"</span></div>
+  </div>
+</section>
+
+<!-- ══ 17 POLICY-AS-CODE ══ -->
+<section id="policies">
+  <div class="section-header">
+    <div class="sec-num">17</div>
+    <div class="sec-title-block">
+      <h2>Policy-as-Code</h2>
+      <div class="sec-sub">// OPA, CEDAR, AND DECLARATIVE GATEWAY CONFIG</div>
+    </div>
+  </div>
+
+  <p class="prose">Gateway policies should be version-controlled, tested, and deployed through CI/CD — not configured manually via UIs. For complex authorization logic, offload to a policy engine (OPA, Cedar) that the gateway calls synchronously at the enforcement point.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Rego — OPA policy for AI API authorization</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># policy/ai_api.rego</span>
+<span class="kw">package</span> <span class="fn">ai.api.authz</span>
+
+<span class="kw">import</span> future.keywords
+
+<span class="cm"># Default: deny all</span>
+<span class="kw">default</span> allow = <span class="kw">false</span>
+
+<span class="cm"># Consumers may only use models in their tier's allowlist</span>
+allow <span class="kw">if</span> {
+    requested_model := input.request.body.model
+    consumer_tier   := input.consumer.tier
+    allowed_models[consumer_tier][requested_model]
+}
+
+allowed_models := {
+    <span class="st">"free"</span>:       {<span class="st">"gpt-4o-mini"</span>: <span class="kw">true</span>, <span class="st">"text-embedding-3-small"</span>: <span class="kw">true</span>},
+    <span class="st">"developer"</span>:  {<span class="st">"gpt-4o-mini"</span>: <span class="kw">true</span>, <span class="st">"gpt-4o"</span>: <span class="kw">true</span>, <span class="st">"text-embedding-3-large"</span>: <span class="kw">true</span>},
+    <span class="st">"business"</span>:   {<span class="st">"gpt-4o"</span>: <span class="kw">true</span>, <span class="st">"claude-3-7-sonnet-20250219"</span>: <span class="kw">true</span>, <span class="st">"o3"</span>: <span class="kw">true</span>},
+    <span class="st">"enterprise"</span>: {<span class="st">"_all"</span>: <span class="kw">true</span>},
+}
+
+<span class="cm"># Enterprise override: any model allowed</span>
+allow <span class="kw">if</span> {
+    input.consumer.tier == <span class="st">"enterprise"</span>
+}
+
+<span class="cm"># Block tool/function calls for free tier (prevents code execution)</span>
+<span class="kw">deny</span>[reason] <span class="kw">if</span> {
+    input.consumer.tier == <span class="st">"free"</span>
+    count(input.request.body.tools) > <span class="nu">0</span>
+    reason := <span class="st">"Free tier does not support function calling"</span>
+}
+
+<span class="cm"># Enforce max_tokens ceiling per tier</span>
+<span class="kw">deny</span>[reason] <span class="kw">if</span> {
+    input.request.body.max_tokens > max_tokens_ceiling[input.consumer.tier]
+    reason := <span class="fn">sprintf</span>(<span class="st">"max_tokens exceeds tier ceiling of %v"</span>,
+                       [max_tokens_ceiling[input.consumer.tier]])
+}
+
+max_tokens_ceiling := {
+    <span class="st">"free"</span>:       <span class="nu">512</span>,
+    <span class="st">"developer"</span>:  <span class="nu">4096</span>,
+    <span class="st">"business"</span>:   <span class="nu">16384</span>,
+    <span class="st">"enterprise"</span>: <span class="nu">128000</span>,
+}</div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">▸</span>
+    <div class="callout-body"><strong>CI Pipeline for Gateway Config:</strong> Store all Kong/Apigee config in Git → lint with <code>deck validate</code> or <code>apigeelint</code> → run policy unit tests (<code>opa test</code>) → diff against prod with <code>deck diff</code> → deploy via <code>deck sync</code> in CD pipeline. Never mutate production via Admin API manually — treat it as infra drift.</div>
+  </div>
+</section>
+
+<!-- ══ 18 REFERENCE ══ -->
+<section id="reference">
+  <div class="section-header">
+    <div class="sec-num">18</div>
+    <div class="sec-title-block">
+      <h2>Quick Reference</h2>
+      <div class="sec-sub">// STATUS CODES, LIMITS, COMMANDS, CHEATSHEET</div>
+    </div>
+  </div>
+
+  <h3>HTTP Status Code Guide for Gateway</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Code</th><th>Meaning</th><th>When Gateway Returns It</th></tr>
+      <tr><td><code>400</code></td><td>Bad Request</td><td>Schema validation failure, malformed JSON, disallowed parameters</td></tr>
+      <tr><td><code>401</code></td><td>Unauthorized</td><td>Missing or malformed credentials (no Authorization header)</td></tr>
+      <tr><td><code>403</code></td><td>Forbidden</td><td>Valid credentials, but insufficient scope or ACL denial</td></tr>
+      <tr><td><code>404</code></td><td>Not Found</td><td>Route not matched — or dark SDP hiding the endpoint</td></tr>
+      <tr><td><code>408</code></td><td>Request Timeout</td><td>Client took too long to send request body</td></tr>
+      <tr><td><code>413</code></td><td>Payload Too Large</td><td>Request body exceeds <code>allowed_payload_size</code></td></tr>
+      <tr><td><code>422</code></td><td>Unprocessable Entity</td><td>Syntactically valid JSON but semantically invalid (OPA denial)</td></tr>
+      <tr><td><code>429</code></td><td>Too Many Requests</td><td>Rate limit or quota exceeded — include <code>Retry-After</code></td></tr>
+      <tr><td><code>502</code></td><td>Bad Gateway</td><td>Upstream returned an invalid response</td></tr>
+      <tr><td><code>503</code></td><td>Service Unavailable</td><td>All upstream nodes unhealthy (circuit open); queue full</td></tr>
+      <tr><td><code>504</code></td><td>Gateway Timeout</td><td>Upstream did not respond within <code>read_timeout</code></td></tr>
+    </table>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-l-gold">
+      <div class="card-head">Kong CLI Cheatsheet</div>
+      <div class="code-wrap" style="margin:10px 0 0">
+        <div class="code-block" style="font-size:12px;padding:12px 14px"><span class="cm"># Validate declarative config</span>
+deck validate -s deck.yaml
+
+<span class="cm"># Diff current vs what would be synced</span>
+deck diff -s deck.yaml
+
+<span class="cm"># Apply configuration</span>
+deck sync -s deck.yaml
+
+<span class="cm"># Dump current config to file</span>
+deck dump -o current.yaml
+
+<span class="cm"># Live reload (no downtime)</span>
+kong reload
+
+<span class="cm"># Check gateway status</span>
+curl localhost:8001/status | jq .
+
+<span class="cm"># List all plugins with priority</span>
+curl localhost:8001/plugins | jq \
+  '[.data[] | {name,priority:.instance_config}]'</div>
+      </div>
+    </div>
+    <div class="card card-l-teal">
+      <div class="card-head">Apigee CLI Cheatsheet</div>
+      <div class="code-wrap" style="margin:10px 0 0">
+        <div class="code-block" style="font-size:12px;padding:12px 14px"><span class="cm"># Authenticate</span>
+gcloud auth application-default login
+
+<span class="cm"># Deploy a proxy bundle</span>
+apigeecli apis create bundle \
+  --name my-api --proxy ./apiproxy \
+  --org $ORG --env production
+
+<span class="cm"># List deployments</span>
+apigeecli deployments list \
+  --org $ORG --env production
+
+<span class="cm"># Create API product</span>
+apigeecli products create \
+  --name "AI-Business" \
+  --proxies "inference-api-v1" \
+  --quota 1000 --interval 1 \
+  --unit minute --org $ORG
+
+<span class="cm"># Check proxy traffic (last 1h)</span>
+apigeecli stats get \
+  --org $ORG --env production \
+  --dims apiproxy --metric message_count</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>AI Gateway Configuration Checklist</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Checklist — AI endpoint exposure</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm">## Authentication &amp; Authorization</span>
+<span class="at">□</span> OAuth 2.0 with PKCE or mTLS for all consumers
+<span class="at">□</span> Scopes defined per capability (e.g., ai:chat, ai:embed, ai:tools)
+<span class="at">□</span> OPA/Cedar policy: model allowlist per consumer tier
+<span class="at">□</span> Tool/function calling disabled for free tier
+
+<span class="cm">## Traffic Control</span>
+<span class="at">□</span> Request-count rate limit: per minute AND per hour (per consumer)
+<span class="at">□</span> Token-count rate limit: input+output tokens per minute AND per day
+<span class="at">□</span> Max request body size: 1–10 MB depending on use case
+<span class="at">□</span> max_tokens ceiling enforced per tier (schema validation)
+<span class="at">□</span> Spike arrest: global burst cap before per-consumer limits
+<span class="at">□</span> Circuit breaker: passive + active health checks on model API
+
+<span class="cm">## Prompt Security</span>
+<span class="at">□</span> JSON Schema validation: allowlist known fields, reject additionalProperties
+<span class="at">□</span> Prompt injection pattern matching (regex deny-list)
+<span class="at">□</span> PII scrubbing in request: SSN, credit card, email, API keys
+<span class="at">□</span> PII scrubbing in response: model may hallucinate or echo PII
+<span class="at">□</span> Tool/function call schema validation: only approved function names
+<span class="at">□</span> Context depth limit: max messages array length
+
+<span class="cm">## Cost Control</span>
+<span class="at">□</span> Semantic cache enabled with similarity threshold
+<span class="at">□</span> Token cost metered per consumer (input + output separately)
+<span class="at">□</span> Billing alert on anomalous token spend (&gt;3σ)
+<span class="at">□</span> Model fallback chain configured (expensive → cheap on 429/503)
+
+<span class="cm">## Observability</span>
+<span class="at">□</span> Distributed tracing: inject trace-id into all upstream requests
+<span class="at">□</span> Token usage exported to Prometheus/Datadog per consumer
+<span class="at">□</span> Prompt injection block rate alerting
+<span class="at">□</span> Per-model error rates and latency histograms
+<span class="at">□</span> Audit log: every request logged (consumer, model, tokens, verdict)</div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">▸</span>
+    <div class="callout-body"><strong>Reference Resources:</strong> Kong documentation at <code>docs.konghq.com</code> · Apigee docs at <code>cloud.google.com/apigee/docs</code> · OWASP LLM Top 10 at <code>owasp.org/www-project-top-10-for-large-language-model-applications</code> · RFC 6585 (429 Status Code) · RFC 8705 (Certificate-Bound Tokens) · NIST AI RMF at <code>airc.nist.gov</code> · LiteLLM AI gateway at <code>litellm.ai</code></div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = 'var(--gold)';
+    btn.style.borderColor = 'var(--gold)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-item');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-54px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
