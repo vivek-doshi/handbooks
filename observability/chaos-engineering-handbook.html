@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chaos Engineering — Field Handbook</title>
+<link rel="stylesheet" href="../styles/shared-ui.css">
+<link rel="stylesheet" href="../styles/content-utilities.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Archivo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --void:        #06070a;
+  --void2:       #0c0e14;
+  --void3:       #111420;
+  --void4:       #181c28;
+  --void5:       #1f2335;
+  --border:      rgba(255,255,255,0.07);
+  --border2:     rgba(255,255,255,0.13);
+  --text:        #d9e2f0;
+  --text2:       #7e92b0;
+  --muted:       #3d4e65;
+  --fire:        #ff6b00;
+  --fire-dim:    #cc5500;
+  --fire-glow:   rgba(255,107,0,0.13);
+  --fire-soft:   rgba(255,107,0,0.07);
+  --ember:       #ffae00;
+  --ember-dim:   rgba(255,174,0,0.1);
+  --danger:      #ff3232;
+  --danger-dim:  rgba(255,50,50,0.1);
+  --safe:        #00d97e;
+  --safe-dim:    rgba(0,217,126,0.09);
+  --blue:        #3d8eff;
+  --blue-dim:    rgba(61,142,255,0.09);
+  --violet:      #a855f7;
+  --violet-dim:  rgba(168,85,247,0.09);
+  --mono:        'DM Mono', monospace;
+  --display:     'Bebas Neue', sans-serif;
+  --body:        'Archivo', sans-serif;
+  --sidebar-w:   268px;
+  --top-h:       54px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.75;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* ── CIRCUIT GRID BACKGROUND ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,107,0,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,107,0,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,107,0,0.05) 0%, transparent 55%);
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(6,7,10,0.97);
+  border-bottom: 2px solid var(--fire);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+}
+
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+
+.topbar-badge {
+  background: var(--fire);
+  color: #000;
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 4px 12px;
+  clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+}
+
+.topbar-title {
+  font-family: var(--display);
+  font-size: 22px; letter-spacing: 3px; color: var(--text);
+  text-transform: uppercase;
+}
+
+.topbar-right {
+  display: flex; align-items: center; gap: 24px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1.5px;
+}
+
+.topbar-live {
+  display: flex; align-items: center; gap: 7px;
+  color: var(--fire);
+}
+
+.live-ring {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--fire);
+  box-shadow: 0 0 0 0 rgba(255,107,0,0.6);
+  animation: ring-pulse 1.6s infinite;
+}
+
+@keyframes ring-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255,107,0,0.7); }
+  70%  { box-shadow: 0 0 0 8px rgba(255,107,0,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,107,0,0); }
+}
+
+/* ── LAYOUT ── */
+.layout {
+  display: flex;
+  margin-top: var(--top-h);
+  min-height: calc(100vh - var(--top-h));
+  position: relative; z-index: 1;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--void2);
+  border-right: 1px solid var(--border2);
+  padding-bottom: 60px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sb-top {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--fire-soft) 0%, transparent 100%);
+}
+
+.sb-doc { font-family: var(--mono); font-size: 9px; color: var(--fire); letter-spacing: 3px; margin-bottom: 4px; }
+.sb-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.sb-warning {
+  margin: 12px 20px;
+  padding: 9px 12px;
+  background: var(--fire-soft);
+  border: 1px solid rgba(255,107,0,0.3);
+  font-family: var(--mono); font-size: 10px; color: var(--fire);
+  letter-spacing: 0.5px; line-height: 1.5;
+}
+
+.nav-group {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 3px; text-transform: uppercase; color: var(--muted);
+  padding: 16px 20px 5px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 0;
+  padding: 0;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.nav-item:hover { border-left-color: var(--border2); background: rgba(255,255,255,0.025); }
+.nav-item.active { border-left-color: var(--fire); background: var(--fire-soft); }
+
+.nav-num {
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  width: 38px; flex-shrink: 0; text-align: right; padding: 8px 10px 8px 0;
+}
+
+.nav-item.active .nav-num { color: var(--fire); }
+
+.nav-label {
+  font-size: 12.5px; color: var(--text2); padding: 8px 16px 8px 0; flex: 1;
+}
+
+.nav-item:hover .nav-label { color: var(--text); }
+.nav-item.active .nav-label { color: var(--fire); font-weight: 500; }
+
+/* ── MAIN ── */
+.main {
+  flex: 1; min-width: 0;
+  padding: 52px 64px 100px;
+  max-width: 1000px;
+}
+
+/* ── HERO ── */
+.hero {
+  position: relative; overflow: hidden;
+  margin-bottom: 72px;
+  border: 1px solid var(--fire);
+  background: var(--void3);
+}
+
+/* hazard stripe header */
+.hero-stripe {
+  height: 10px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--fire) 0px,
+    var(--fire) 16px,
+    #000 16px,
+    #000 32px
+  );
+}
+
+.hero-body {
+  padding: 48px 56px 52px;
+  position: relative;
+}
+
+.hero-body::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(255,107,0,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 0% 100%, rgba(61,142,255,0.05) 0%, transparent 50%);
+}
+
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+  color: var(--fire); text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+
+.hero-eyebrow::before { content: '▶▶'; font-size: 8px; opacity: 0.6; }
+
+.hero h1 {
+  font-family: var(--display);
+  font-size: 96px; line-height: 0.88;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text); margin-bottom: 30px;
+}
+
+.hero h1 .fire { color: var(--fire); }
+.hero h1 .slash { color: var(--muted); font-size: 60px; }
+
+.hero-axiom {
+  font-family: var(--mono); font-size: 13px;
+  color: var(--ember); border-left: 3px solid var(--fire);
+  padding: 10px 18px;
+  background: var(--fire-soft);
+  margin-bottom: 28px;
+  display: inline-block;
+  max-width: 680px;
+}
+
+.hero-desc {
+  color: var(--text2); font-size: 15px; max-width: 600px;
+  line-height: 1.75; margin-bottom: 32px;
+}
+
+.hero-meta {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 1px;
+  padding-top: 24px; border-top: 1px solid var(--border);
+}
+
+.meta-item { display: flex; align-items: center; gap: 6px; }
+.meta-dot { width: 5px; height: 5px; border-radius: 50%; }
+.md-fire   { background: var(--fire); }
+.md-ember  { background: var(--ember); }
+.md-safe   { background: var(--safe); }
+.md-blue   { background: var(--blue); }
+
+/* ── SECTIONS ── */
+section {
+  margin-bottom: 80px;
+  scroll-margin-top: calc(var(--top-h) + 24px);
+}
+
+.section-hd {
+  display: flex; align-items: flex-start; gap: 18px;
+  margin-bottom: 28px; padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.section-hd::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 60px; height: 2px; background: var(--fire);
+}
+
+.sec-num {
+  font-family: var(--display); font-size: 42px; line-height: 1;
+  color: var(--fire); opacity: 0.25; flex-shrink: 0; margin-top: -4px;
+  letter-spacing: 2px;
+}
+
+.sec-title-block h2 {
+  font-family: var(--display); font-size: 36px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text); line-height: 1;
+}
+
+.sec-sub {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 2px; margin-top: 6px;
+}
+
+/* ── PROSE ── */
+.prose {
+  color: var(--text2); font-size: 14px; line-height: 1.8;
+  margin-bottom: 20px;
+}
+.prose strong { color: var(--text); font-weight: 600; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--void3);
+  border: 1px solid var(--border);
+  padding: 22px 24px; margin-bottom: 12px;
+  position: relative; transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
+
+.card-accent-fire   { border-left: 3px solid var(--fire); }
+.card-accent-ember  { border-left: 3px solid var(--ember); }
+.card-accent-danger { border-left: 3px solid var(--danger); }
+.card-accent-safe   { border-left: 3px solid var(--safe); }
+.card-accent-blue   { border-left: 3px solid var(--blue); }
+.card-accent-violet { border-left: 3px solid var(--violet); }
+
+.card-title {
+  font-family: var(--display); font-size: 18px; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 10px;
+}
+
+.pill {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 2px 9px;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+.pill-fire   { background: var(--fire-glow);   color: var(--fire);   border: 1px solid rgba(255,107,0,0.4); }
+.pill-ember  { background: var(--ember-dim);   color: var(--ember);  border: 1px solid rgba(255,174,0,0.35); }
+.pill-danger { background: var(--danger-dim);  color: var(--danger); border: 1px solid rgba(255,50,50,0.35); }
+.pill-safe   { background: var(--safe-dim);    color: var(--safe);   border: 1px solid rgba(0,217,126,0.3); }
+.pill-blue   { background: var(--blue-dim);    color: var(--blue);   border: 1px solid rgba(61,142,255,0.3); }
+.pill-violet { background: var(--violet-dim);  color: var(--violet); border: 1px solid rgba(168,85,247,0.3); }
+
+.card p, .card li { color: var(--text2); font-size: 13.5px; line-height: 1.7; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; }
+
+/* ── GRIDS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+
+/* ── CODE ── */
+.code-wrap {
+  background: #03040a;
+  border: 1px solid var(--border2);
+  margin: 16px 0;
+  font-family: var(--mono);
+  position: relative;
+}
+
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 18px;
+  background: rgba(255,107,0,0.05);
+  border-bottom: 1px solid var(--border);
+}
+
+.code-lang {
+  font-size: 10px; font-weight: 500; letter-spacing: 2.5px;
+  text-transform: uppercase; color: var(--fire);
+}
+
+.copy-btn {
+  font-size: 10px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--fire); border-color: var(--fire); }
+
+.code-block {
+  padding: 20px 22px; overflow-x: auto;
+  font-size: 12.5px; line-height: 1.8; white-space: pre; tab-size: 2;
+  color: #7e92b0;
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* syntax */
+.kw  { color: var(--violet); }
+.st  { color: var(--safe); }
+.cm  { color: var(--muted); font-style: italic; }
+.fn  { color: var(--blue); }
+.nu  { color: var(--fire); }
+.at  { color: var(--ember); }
+.hl  { background: rgba(255,107,0,0.06); display: block; margin: 0 -22px; padding: 0 22px; border-left: 2px solid var(--fire); }
+
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(255,107,0,0.09); color: var(--fire);
+  padding: 1px 7px; border: 1px solid rgba(255,107,0,0.25);
+}
+
+/* ── CALLOUTS ── */
+.callout {
+  display: flex; gap: 14px;
+  padding: 15px 20px; margin: 16px 0;
+  border-left: 3px solid; font-size: 13.5px;
+}
+.callout-icon { flex-shrink: 0; font-size: 15px; margin-top: 2px; }
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.callout.blast   { background: rgba(255,50,50,0.07);   border-color: var(--danger); }
+.callout.tip     { background: rgba(0,217,126,0.06);   border-color: var(--safe); }
+.callout.note    { background: rgba(61,142,255,0.07);  border-color: var(--blue); }
+.callout.caution { background: rgba(255,107,0,0.07);   border-color: var(--fire); }
+
+/* ── TABLES ── */
+.table-wrap {
+  border: 1px solid var(--border); margin: 16px 0; overflow-x: auto;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: rgba(255,107,0,0.06);
+  color: var(--fire); font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+td code { font-size: 11px; }
+
+.ok     { color: var(--safe);   font-weight: 700; font-family: var(--mono); font-size: 11px; }
+.bad    { color: var(--danger); font-weight: 700; font-family: var(--mono); font-size: 11px; }
+.warn   { color: var(--ember);  font-weight: 700; font-family: var(--mono); font-size: 11px; }
+.hi     { color: var(--fire);   font-weight: 700; font-family: var(--mono); font-size: 11px; }
+
+/* ── EXPERIMENT CARD ── */
+.experiment {
+  border: 1px solid var(--border2);
+  background: var(--void3);
+  margin: 12px 0;
+  position: relative; overflow: hidden;
+}
+
+.exp-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,107,0,0.04);
+}
+
+.exp-id {
+  font-family: var(--mono); font-size: 10px; color: var(--fire);
+  letter-spacing: 2px; flex-shrink: 0;
+}
+
+.exp-name {
+  font-family: var(--display); font-size: 17px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--text); flex: 1;
+}
+
+.exp-body { padding: 16px 20px; }
+
+.exp-row {
+  display: grid; grid-template-columns: 100px 1fr;
+  gap: 8px 14px; font-size: 13px; margin-bottom: 8px;
+}
+
+.exp-label {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 1px; text-transform: uppercase; padding-top: 2px;
+}
+
+.exp-val { color: var(--text2); }
+.exp-val code { font-size: 11px; }
+
+/* ── PHASES / TIMELINE ── */
+.phases { display: flex; gap: 0; margin: 20px 0; }
+.phase {
+  flex: 1; padding: 18px 14px; text-align: center;
+  background: var(--void3); border: 1px solid var(--border); border-right: none;
+  position: relative;
+}
+.phase:last-child { border-right: 1px solid var(--border); }
+.phase-arrow {
+  position: absolute; right: -13px; top: 50%; transform: translateY(-50%);
+  font-size: 16px; color: var(--fire); z-index: 1;
+}
+.phase:last-child .phase-arrow { display: none; }
+
+.ph-step { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 5px; }
+.ph-name { font-family: var(--display); font-size: 16px; letter-spacing: 1px; text-transform: uppercase; color: var(--text); margin-bottom: 4px; line-height: 1; }
+.ph-sub  { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+.ph-fire   { border-top: 3px solid var(--fire); }
+.ph-ember  { border-top: 3px solid var(--ember); }
+.ph-safe   { border-top: 3px solid var(--safe); }
+.ph-blue   { border-top: 3px solid var(--blue); }
+.ph-violet { border-top: 3px solid var(--violet); }
+
+/* ── BLAST RADIUS GAUGE ── */
+.blast-bar { display: flex; gap: 3px; align-items: center; margin: 14px 0; }
+.bb-seg {
+  flex: 1; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+.bb-1 { background: rgba(0,217,126,0.12);  color: var(--safe);   border: 1px solid rgba(0,217,126,0.3); }
+.bb-2 { background: rgba(61,142,255,0.12); color: var(--blue);   border: 1px solid rgba(61,142,255,0.3); }
+.bb-3 { background: rgba(255,174,0,0.12);  color: var(--ember);  border: 1px solid rgba(255,174,0,0.3); }
+.bb-4 { background: rgba(255,107,0,0.14);  color: var(--fire);   border: 1px solid rgba(255,107,0,0.4); }
+.bb-5 { background: rgba(255,50,50,0.15);  color: var(--danger); border: 1px solid rgba(255,50,50,0.4); box-shadow: inset 0 0 14px rgba(255,50,50,0.06); }
+
+/* ── MATURITY ── */
+.maturity { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin: 16px 0; }
+.m-stage {
+  background: var(--void3); border: 1px solid var(--border);
+  padding: 18px 16px; position: relative; overflow: hidden;
+}
+.m-stage::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.ms-1::before { background: var(--muted); }
+.ms-2::before { background: var(--ember); }
+.ms-3::before { background: var(--blue); }
+.ms-4::before { background: var(--fire); box-shadow: 0 0 10px var(--fire); }
+
+.m-level { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+.m-name { font-family: var(--display); font-size: 18px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; line-height: 1; }
+.ms-1 .m-name { color: var(--muted); }
+.ms-2 .m-name { color: var(--ember); }
+.ms-3 .m-name { color: var(--blue); }
+.ms-4 .m-name { color: var(--fire); }
+.m-stage ul { padding-left: 12px; }
+.m-stage li { font-size: 12px; color: var(--muted); margin-bottom: 3px; line-height: 1.5; }
+
+/* ── H3 / H4 ── */
+h3 {
+  font-family: var(--display); font-size: 22px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text);
+  margin: 30px 0 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+h3::before { content: '//'; font-family: var(--mono); font-size: 13px; color: var(--fire); font-weight: 400; }
+
+h4 {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--muted);
+  margin: 22px 0 8px;
+}
+
+/* ── COMPARE ── */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.cmp-block { border: 1px solid var(--border); }
+.cmp-hd {
+  padding: 10px 18px; font-family: var(--display);
+  font-size: 15px; letter-spacing: 1px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+}
+.cmp-bad .cmp-hd { background: var(--danger-dim); color: var(--danger); border-bottom: 1px solid rgba(255,50,50,0.2); }
+.cmp-good .cmp-hd { background: var(--fire-soft); color: var(--fire); border-bottom: 1px solid rgba(255,107,0,0.2); }
+.cmp-body { padding: 14px 18px; }
+.cmp-body li { font-size: 13px; color: var(--text2); margin-bottom: 5px; }
+.cmp-body ul { padding-left: 14px; }
+
+/* ── FLOW ── */
+.flow {
+  display: flex; align-items: center; gap: 0;
+  overflow-x: auto; margin: 20px 0;
+  background: var(--void3); border: 1px solid var(--border);
+  padding: 22px 20px;
+}
+.flow-step {
+  flex-shrink: 0; text-align: center;
+  padding: 14px 16px; min-width: 105px;
+  background: var(--void4); border: 1px solid var(--border2);
+}
+.flow-label { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 5px; }
+.flow-name { font-family: var(--display); font-size: 14px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text); line-height: 1.2; }
+.flow-arrow { color: var(--fire); font-size: 18px; margin: 0 8px; flex-shrink: 0; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .grid-2, .grid-3, .maturity, .compare { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 64px; }
+  .phases { flex-direction: column; }
+  .phase-arrow { display: none; }
+  .phase { border-right: 1px solid var(--border); border-bottom: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-badge">Chaos Eng</div>
+    <div class="topbar-title">Field Handbook</div>
+  </div>
+  <div class="topbar-right">
+    <span>DOC-CHE-2024</span>
+    <div class="topbar-live"><span class="live-ring"></span>ACTIVE</div>
+  </div>
+</header>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sb-top">
+    <div class="sb-doc">// CHE-FIELD-001</div>
+    <div class="sb-sub">Break things · learn · harden</div>
+  </div>
+
+  <div class="sb-warning">⚠ NEVER run against production without a fully documented gameday plan and rollback procedure.</div>
+
+  <div class="nav-group">Foundations</div>
+  <a class="nav-item active" href="#overview" ><span class="nav-num">01</span><span class="nav-label">Overview &amp; Philosophy</span></a>
+  <a class="nav-item"        href="#principles"><span class="nav-num">02</span><span class="nav-label">Core Principles</span></a>
+  <a class="nav-item"        href="#why"       ><span class="nav-num">03</span><span class="nav-label">Why Chaos Engineering</span></a>
+
+  <div class="nav-group">Methodology</div>
+  <a class="nav-item" href="#scientific"><span class="nav-num">04</span><span class="nav-label">Scientific Method</span></a>
+  <a class="nav-item" href="#hypothesis"><span class="nav-num">05</span><span class="nav-label">Hypothesis Design</span></a>
+  <a class="nav-item" href="#blast">     <span class="nav-num">06</span><span class="nav-label">Blast Radius Control</span></a>
+
+  <div class="nav-group">Tooling</div>
+  <a class="nav-item" href="#gremlin"> <span class="nav-num">07</span><span class="nav-label">Gremlin</span></a>
+  <a class="nav-item" href="#litmus">  <span class="nav-num">08</span><span class="nav-label">LitmusChaos</span></a>
+  <a class="nav-item" href="#other">   <span class="nav-num">09</span><span class="nav-label">Other Tools</span></a>
+
+  <div class="nav-group">Experiment Types</div>
+  <a class="nav-item" href="#resource">  <span class="nav-num">10</span><span class="nav-label">Resource Attacks</span></a>
+  <a class="nav-item" href="#network-ch"><span class="nav-num">11</span><span class="nav-label">Network Chaos</span></a>
+  <a class="nav-item" href="#state">     <span class="nav-num">12</span><span class="nav-label">State &amp; Process</span></a>
+
+  <div class="nav-group">Operations</div>
+  <a class="nav-item" href="#gameday">   <span class="nav-num">13</span><span class="nav-label">GameDay Runbook</span></a>
+  <a class="nav-item" href="#metrics">   <span class="nav-num">14</span><span class="nav-label">Observability</span></a>
+  <a class="nav-item" href="#maturity-m"><span class="nav-num">15</span><span class="nav-label">Maturity Model</span></a>
+  <a class="nav-item" href="#roadmap">   <span class="nav-num">16</span><span class="nav-label">Roadmap</span></a>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-stripe"></div>
+  <div class="hero-body">
+    <div class="hero-eyebrow">Resilience Engineering · Field Handbook</div>
+    <h1><span class="fire">Chaos</span><br>Engineering</h1>
+    <div class="hero-axiom">// "If it hurts, do it more often — in a controlled way, before your users do it for you."</div>
+    <p class="hero-desc">The practitioner's guide to intentional failure injection. Covers Gremlin, LitmusChaos, network fault experiments, resource exhaustion, gameday planning, and a maturity model for building provably resilient systems.</p>
+    <div class="hero-meta">
+      <div class="meta-item"><span class="meta-dot md-fire"></span>NIST SP 800-160</div>
+      <div class="meta-item"><span class="meta-dot md-ember"></span>Gremlin · LitmusChaos</div>
+      <div class="meta-item"><span class="meta-dot md-safe"></span>SRE Aligned</div>
+      <div class="meta-item"><span class="meta-dot md-blue"></span>CNCF Landscape</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 01 OVERVIEW ══ -->
+<section id="overview">
+  <div class="section-hd">
+    <div class="sec-num">01</div>
+    <div class="sec-title-block">
+      <h2>Overview &amp; Philosophy</h2>
+      <div class="sec-sub">// WHAT IS CHAOS ENGINEERING</div>
+    </div>
+  </div>
+
+  <p class="prose">Chaos Engineering is the discipline of <strong>experimenting on a system to build confidence in its ability to withstand turbulent conditions in production</strong>. Popularized by Netflix's Simian Army, formalized in the 2016 "Principles of Chaos Engineering" manifesto, and now a CNCF project ecosystem, it is the engineering practice of proactively injecting controlled failure to discover weaknesses before they manifest as incidents.</p>
+
+  <p class="prose">The key word is <em>experiment</em>. Chaos Engineering is not random destruction. It is a scientific process: define steady state, propose a hypothesis, inject failure, observe, and learn. Every experiment should answer a specific question about system behavior under adverse conditions.</p>
+
+  <div class="grid-3">
+    <div class="card card-accent-danger">
+      <div class="card-title">Break It First</div>
+      <p>Proactively cause failures in a controlled environment before your users cause them accidentally — at 3 AM, during peak traffic, with no runbook.</p>
+    </div>
+    <div class="card card-accent-fire">
+      <div class="card-title">Learn From It</div>
+      <p>Every experiment produces knowledge. Either your hypothesis is confirmed (system is resilient), or you've discovered a real weakness — before it costs you uptime.</p>
+    </div>
+    <div class="card card-accent-safe">
+      <div class="card-title">Harden It</div>
+      <p>Weaknesses become hardening tasks. Fix the failure mode. Re-run the experiment. Repeat until the system is provably resilient — not just presumably resilient.</p>
+    </div>
+  </div>
+
+  <div class="callout caution">
+    <span class="callout-icon">🔥</span>
+    <div class="callout-body"><strong>Chaos ≠ Random:</strong> Breaking things randomly is sabotage. Chaos Engineering is a structured scientific method with defined scope, observability pre-requisites, rollback procedures, and explicit hypotheses. If you can't measure the impact, you're not doing chaos engineering — you're just breaking things.</div>
+  </div>
+</section>
+
+<!-- ══ 02 PRINCIPLES ══ -->
+<section id="principles">
+  <div class="section-hd">
+    <div class="sec-num">02</div>
+    <div class="sec-title-block">
+      <h2>Core Principles</h2>
+      <div class="sec-sub">// THE FIVE PRINCIPLES OF CHAOS ENGINEERING</div>
+    </div>
+  </div>
+
+  <p class="prose">The <a href="https://principlesofchaos.org" style="color:var(--fire)">Principles of Chaos Engineering</a> define five foundational rules, evolved from Netflix's decade of production experimentation.</p>
+
+  <div class="experiment">
+    <div class="exp-header">
+      <div class="exp-id">PRINCIPLE-01</div>
+      <div class="exp-name">Build a Hypothesis Around Steady State</div>
+    </div>
+    <div class="exp-body">
+      <p style="color:var(--text2); font-size:13.5px;">Focus on the measurable output of the system — not internal attributes. <strong>Steady state</strong> is any metric you can observe that represents normal operation: request throughput, error rate, p99 latency, orders per minute. Your hypothesis must be quantitative: <em>"Steady state is maintained when error rate remains &lt;0.1% and p99 latency remains &lt;250ms."</em></p>
+    </div>
+  </div>
+
+  <div class="experiment">
+    <div class="exp-header">
+      <div class="exp-id">PRINCIPLE-02</div>
+      <div class="exp-name">Vary Real-World Events</div>
+    </div>
+    <div class="exp-body">
+      <p style="color:var(--text2); font-size:13.5px;">Inject events that reflect real failure modes: hardware failures, network partitions, dependency timeouts, traffic surges, malicious inputs. Don't invent fictional failure modes — model experiments on post-mortems and known failure patterns from your incident history and from industry reports (AWS us-east-1 outages, BGP leaks, memory leak patterns).</p>
+    </div>
+  </div>
+
+  <div class="experiment">
+    <div class="exp-header">
+      <div class="exp-id">PRINCIPLE-03</div>
+      <div class="exp-name">Run Experiments in Production</div>
+    </div>
+    <div class="exp-body">
+      <p style="color:var(--text2); font-size:13.5px;">Staging environments don't reflect production traffic patterns, data shapes, or dependency graphs. Experiments in staging teach you about staging. The goal is production confidence — which requires production experiments, with appropriate blast radius controls. <strong>Start with canary cohorts</strong> (e.g., 1% of hosts) and expand only after validation.</p>
+    </div>
+  </div>
+
+  <div class="experiment">
+    <div class="exp-header">
+      <div class="exp-id">PRINCIPLE-04</div>
+      <div class="exp-name">Automate Experiments to Run Continuously</div>
+    </div>
+    <div class="exp-body">
+      <p style="color:var(--text2); font-size:13.5px;">Systems change constantly — new deployments, dependency version bumps, config changes. A resilience property confirmed last month may not hold today. Integrate experiments into your CI/CD pipeline and run them on a schedule. A passing chaos experiment is a green build signal, same as a passing unit test.</p>
+    </div>
+  </div>
+
+  <div class="experiment">
+    <div class="exp-header">
+      <div class="exp-id">PRINCIPLE-05</div>
+      <div class="exp-name">Minimize Blast Radius</div>
+    </div>
+    <div class="exp-body">
+      <p style="color:var(--text2); font-size:13.5px;">The cost of discovery must always be less than the cost of a production incident. Scope every experiment precisely — limit target population (1 pod, 1 region, 1% of users), set a maximum duration, pre-configure automatic rollback, and have a human kill-switch always accessible. Expand scope only when smaller tests confirm safety.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 03 WHY ══ -->
+<section id="why">
+  <div class="section-hd">
+    <div class="sec-num">03</div>
+    <div class="sec-title-block">
+      <h2>Why Chaos Engineering</h2>
+      <div class="sec-sub">// THE CASE FOR INTENTIONAL FAILURE</div>
+    </div>
+  </div>
+
+  <p class="prose">Complex distributed systems have failure modes that cannot be reasoned about from first principles or detected by unit tests. The number of possible state combinations in a microservices architecture with 50+ services exceeds what any human or test suite can enumerate. The only way to know how the system behaves is to observe it under stress.</p>
+
+  <div class="compare">
+    <div class="cmp-block cmp-bad">
+      <div class="cmp-hd">✕ Without Chaos Engineering</div>
+      <div class="cmp-body">
+        <ul>
+          <li>Unknown failure modes discovered during incidents</li>
+          <li>Resilience assumptions based on hope, not evidence</li>
+          <li>Dependency failures cause cascading outages</li>
+          <li>Runbooks untested — fail during the actual incident</li>
+          <li>Engineers fear production; deploys are risky rituals</li>
+          <li>MTTR measured in hours, not minutes</li>
+          <li>"We thought we had circuit breakers, but..."</li>
+        </ul>
+      </div>
+    </div>
+    <div class="cmp-block cmp-good">
+      <div class="cmp-hd">✓ With Chaos Engineering</div>
+      <div class="cmp-body">
+        <ul>
+          <li>Failure modes discovered and remediated proactively</li>
+          <li>Resilience properties are measured, not assumed</li>
+          <li>Dependency failures are isolated behind tested circuit breakers</li>
+          <li>Runbooks executed under experiment conditions — battle-tested</li>
+          <li>Engineers build confidence through regular controlled failures</li>
+          <li>MTTR driven down through practiced recovery</li>
+          <li>Every incident produces a new chaos experiment</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout note">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>Netflix origin:</strong> Netflix's Chaos Monkey (2010) was created specifically because their AWS migration eliminated physical hardware failures — which had previously forced resilience. They needed to simulate the failure modes they could no longer rely on infrastructure to provide. The Simian Army grew from there. Today, Netflix runs thousands of chaos experiments per year automatically.</div>
+  </div>
+</section>
+
+<!-- ══ 04 SCIENTIFIC METHOD ══ -->
+<section id="scientific">
+  <div class="section-hd">
+    <div class="sec-num">04</div>
+    <div class="sec-title-block">
+      <h2>The Scientific Method</h2>
+      <div class="sec-sub">// EXPERIMENT LIFECYCLE</div>
+    </div>
+  </div>
+
+  <p class="prose">Every chaos experiment follows a structured scientific method. Deviating from this — especially skipping observability setup or rollback planning — converts a controlled experiment into a production incident.</p>
+
+  <div class="phases">
+    <div class="phase ph-fire">
+      <div class="ph-step">Step 01</div>
+      <div class="ph-name">Define Steady State</div>
+      <div class="ph-sub">Baseline metrics, SLO thresholds</div>
+      <div class="phase-arrow">▶</div>
+    </div>
+    <div class="phase ph-ember">
+      <div class="ph-step">Step 02</div>
+      <div class="ph-name">Hypothesize</div>
+      <div class="ph-sub">Predict system behavior under fault</div>
+      <div class="phase-arrow">▶</div>
+    </div>
+    <div class="phase ph-blue">
+      <div class="ph-step">Step 03</div>
+      <div class="ph-name">Design</div>
+      <div class="ph-sub">Scope, targets, duration, abort criteria</div>
+      <div class="phase-arrow">▶</div>
+    </div>
+    <div class="phase ph-violet">
+      <div class="ph-step">Step 04</div>
+      <div class="ph-name">Execute</div>
+      <div class="ph-sub">Inject fault, observe, monitor abort signals</div>
+      <div class="phase-arrow">▶</div>
+    </div>
+    <div class="phase ph-safe">
+      <div class="ph-step">Step 05</div>
+      <div class="ph-name">Analyze</div>
+      <div class="ph-sub">Compare actual vs expected, document findings</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Experiment Template — Structured Definition</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="at">Experiment</span>: CHE-0042
+<span class="at">Title</span>:      "Payment service degrades gracefully when database replica fails"
+<span class="at">Author</span>:     platform-reliability@company.com
+<span class="at">Date</span>:       2024-08-15
+<span class="at">Status</span>:     APPROVED
+
+<span class="at">STEADY STATE DEFINITION</span>
+  Metric:    payments.success_rate
+  Baseline:  99.95% over 5 min rolling window (measured 1h pre-experiment)
+  Threshold: Remains ≥ 99.80% throughout experiment
+  Source:    Datadog dashboard: pay-svc-resilience
+
+<span class="at">HYPOTHESIS</span>
+  "When the payments-db replica is terminated, the service automatically
+   fails over to the primary within 30s, and success rate remains above
+   the SLO threshold of 99.80% with no customer-visible errors beyond
+   the 30s failover window."
+
+<span class="at">SCOPE &amp; TARGETING</span>
+  Environment:  Production (us-east-1 only)
+  Target:       1 of 3 RDS read replicas (payments-db-replica-2)
+  User Impact:  ~0% — replica handles read-only analytics queries only
+  Duration:     10 minutes active fault + 10 minutes recovery observation
+
+<span class="at">ABORT CRITERIA (kill switch triggers)</span>
+  - payments.success_rate drops below 99.0% for more than 60s
+  - Any P1 page fires during the experiment
+  - Primary DB connections exceed 80% of max_connections
+
+<span class="at">ROLLBACK PROCEDURE</span>
+  1. RDS auto-failover promotes replica (automatic, ~30s)
+  2. Manual: aws rds reboot-db-instance --db-instance-id payments-db-replica-2
+  3. Notify: #platform-oncall in Slack immediately on abort
+
+<span class="at">OBSERVABILITY CHECKLIST</span> (must be green before starting)
+  ☑ Datadog dashboard open and streaming
+  ☑ PagerDuty muted for: payments-db-replica-health
+  ☑ Oncall engineer watching: @sre-oncall
+  ☑ Rollback command ready: terminal open, command staged</div>
+  </div>
+</section>
+
+<!-- ══ 05 HYPOTHESIS ══ -->
+<section id="hypothesis">
+  <div class="section-hd">
+    <div class="sec-num">05</div>
+    <div class="sec-title-block">
+      <h2>Hypothesis Design</h2>
+      <div class="sec-sub">// WRITING TESTABLE FAILURE HYPOTHESES</div>
+    </div>
+  </div>
+
+  <p class="prose">A well-formed chaos hypothesis has three components: a <strong>fault condition</strong> (what you inject), a <strong>predicted behavior</strong> (what the system should do), and a <strong>measurable outcome</strong> (how you verify the prediction was correct). Vague hypotheses produce uninterpretable results.</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Quality</th><th>Example Hypothesis</th><th>Verdict</th></tr>
+      <tr>
+        <td><strong>Weak</strong></td>
+        <td>"The system will handle a database failure."</td>
+        <td><span class="bad">REJECT</span> — no measurable outcome, no specific fault</td>
+      </tr>
+      <tr>
+        <td><strong>Weak</strong></td>
+        <td>"If we kill a pod, the service stays up."</td>
+        <td><span class="warn">WEAK</span> — binary outcome, no quantitative threshold</td>
+      </tr>
+      <tr>
+        <td><strong>Good</strong></td>
+        <td>"When 1 of 3 api-gateway pods is terminated, Kubernetes schedules a replacement within 45s, and error rate remains &lt;0.5% throughout."</td>
+        <td><span class="ok">ACCEPT</span> — specific fault, quantitative threshold, time-bound</td>
+      </tr>
+      <tr>
+        <td><strong>Good</strong></td>
+        <td>"When 100ms of latency is added to all calls from payment-service to fraud-service, the circuit breaker opens within 10s and payments fall back to the allow-by-default path with 0 payment failures."</td>
+        <td><span class="ok">ACCEPT</span> — fault, expected mechanism, measurable outcome</td>
+      </tr>
+      <tr>
+        <td><strong>Excellent</strong></td>
+        <td>"Under 200% of peak CPU load on 50% of cart-service instances, autoscaling provisions additional capacity within 90s, p99 checkout latency remains &lt;800ms, and 0 shopping carts are lost."</td>
+        <td><span class="hi">EXCELLENT</span> — scoped, multiple metrics, mechanism + outcome</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>The Hypothesis Formula</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Hypothesis Structure</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm">## Template</span>
+<span class="st">"When [FAULT CONDITION] is introduced to [SPECIFIC TARGET],"</span>
+<span class="st">"[SYSTEM MECHANISM] will respond within [TIME BOUND],"</span>
+<span class="st">"and [METRIC] will remain [COMPARATOR] [THRESHOLD]."</span>
+
+<span class="cm">## Fault Condition examples:</span>
+<span class="st">"50% packet loss is injected on all egress from payment-service"</span>
+<span class="st">"the primary Postgres node is stopped"</span>
+<span class="st">"CPU is pinned at 90% on 2 of 5 API server instances"</span>
+<span class="st">"the Redis cache cluster is made unavailable for 2 minutes"</span>
+
+<span class="cm">## System Mechanism examples:</span>
+<span class="st">"circuit breaker opens and serves cached responses"</span>
+<span class="st">"HPA scales from 3 to 6 replicas"</span>
+<span class="st">"read traffic fails over from replica to primary"</span>
+<span class="st">"retry logic with exponential backoff absorbs transient errors"</span>
+
+<span class="cm">## Measurable Outcomes (tie to SLOs):</span>
+<span class="st">"error rate &lt; 0.1%"</span>
+<span class="st">"p99 latency &lt; 500ms"</span>
+<span class="st">"0 data loss events in transaction log"</span>
+<span class="st">"checkout completion rate &gt; 98%"</span></div>
+  </div>
+</section>
+
+<!-- ══ 06 BLAST RADIUS ══ -->
+<section id="blast">
+  <div class="section-hd">
+    <div class="sec-num">06</div>
+    <div class="sec-title-block">
+      <h2>Blast Radius Control</h2>
+      <div class="sec-sub">// THE MOST IMPORTANT CONCEPT IN CHAOS ENGINEERING</div>
+    </div>
+  </div>
+
+  <p class="prose">Blast radius is the scope of potential impact of a chaos experiment. Minimizing blast radius is not timidity — it's engineering discipline. You learn the most from the smallest experiment that reveals information about system behavior. Expand only after smaller experiments confirm safety.</p>
+
+  <div class="blast-bar">
+    <div class="bb-seg bb-1">Dev<br><span style="font-size:8px">SANDBOX</span></div>
+    <div class="bb-seg bb-2">Staging<br><span style="font-size:8px">SAFE</span></div>
+    <div class="bb-seg bb-3">Prod Canary<br><span style="font-size:8px">SCOPED</span></div>
+    <div class="bb-seg bb-4">Prod Partial<br><span style="font-size:8px">CONTROLLED</span></div>
+    <div class="bb-seg bb-5">Prod Full<br><span style="font-size:8px">HIGH CONFIDENCE ONLY</span></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-accent-safe">
+      <div class="card-title">Blast Radius Limiting Techniques <span class="pill pill-safe">Enforce</span></div>
+      <ul>
+        <li><strong>Target selectors:</strong> scope to labels, namespaces, instance IDs — never "all"</li>
+        <li><strong>Percentage-based:</strong> attack 1 of N, not all N simultaneously</li>
+        <li><strong>Canary cohort:</strong> route a fraction of traffic to the experiment population</li>
+        <li><strong>Time boxing:</strong> hard duration limits with automatic rollback at T+N</li>
+        <li><strong>Feature flags:</strong> isolate experiment to users with a chaos-test flag enabled</li>
+        <li><strong>Off-peak timing:</strong> run destructive experiments during low-traffic windows</li>
+      </ul>
+    </div>
+    <div class="card card-accent-danger">
+      <div class="card-title">Abort Criteria — Kill Switches <span class="pill pill-danger">Required</span></div>
+      <ul>
+        <li><strong>SLO breach:</strong> halt if error budget is being consumed at 2× normal rate</li>
+        <li><strong>Alert fires:</strong> any P1/P2 page halts the experiment immediately</li>
+        <li><strong>Manual abort:</strong> single command or button to stop all fault injection</li>
+        <li><strong>Time limit:</strong> auto-halt if experiment exceeds N minutes regardless of state</li>
+        <li><strong>Dependency health:</strong> halt if unrelated downstream services show degradation</li>
+        <li><strong>Customer signal:</strong> support ticket spike or social media monitoring trigger</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout blast">
+    <span class="callout-icon">💥</span>
+    <div class="callout-body"><strong>The Three Unbreakable Rules:</strong> (1) Always have observability in place <em>before</em> the experiment starts — if you can't measure it, you can't control it. (2) Always have an abort button that anyone on the team can press in under 10 seconds. (3) Never run destructive experiments without an oncall engineer actively watching dashboards. Automation is not a substitute for human oversight during active fault injection.</div>
+  </div>
+</section>
+
+<!-- ══ 07 GREMLIN ══ -->
+<section id="gremlin">
+  <div class="section-hd">
+    <div class="sec-num">07</div>
+    <div class="sec-title-block">
+      <h2>Gremlin</h2>
+      <div class="sec-sub">// COMMERCIAL CHAOS PLATFORM — ENTERPRISE GRADE</div>
+    </div>
+  </div>
+
+  <p class="prose">Gremlin is the leading commercial chaos engineering platform. It provides a broad attack library (resource, network, state, host), target selectors, scheduled experiments, scenario composition, reliability score reporting, and an always-on kill switch. It is infrastructure-agnostic — bare metal, VMs, containers, Kubernetes, and cloud-managed services.</p>
+
+  <div class="grid-2">
+    <div class="card card-accent-fire">
+      <div class="card-title">Gremlin Attack Categories</div>
+      <ul>
+        <li><strong>Resource:</strong> CPU, memory, disk fill, I/O — exhaust resources to expose capacity limits</li>
+        <li><strong>Network:</strong> latency, packet loss, packet corruption, bandwidth throttle, DNS failure, blackhole</li>
+        <li><strong>State:</strong> process killer, time travel, power outage simulation, container kill</li>
+        <li><strong>Application:</strong> HTTP error injection, exception injection, custom scripts</li>
+      </ul>
+    </div>
+    <div class="card card-accent-ember">
+      <div class="card-title">Gremlin Scenarios</div>
+      <p>Scenarios chain multiple attacks into multi-step experiments — e.g., "CPU spike → latency → pod kill" — testing how the system responds to compound failures. Scenarios can be scheduled, run in parallel, and include dependency checks before execution.</p>
+    </div>
+  </div>
+
+  <h3>Gremlin CLI — Common Operations</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Bash — Gremlin CLI</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Install Gremlin agent (Ubuntu/Debian)</span>
+curl https://rpm.gremlin.com/gremlin.repo -o /etc/yum.repos.d/gremlin.repo
+apt-get install -y gremlin gremlind
+
+<span class="cm"># Authenticate</span>
+gremlin init --team-id $GREMLIN_TEAM_ID --secret $GREMLIN_SECRET
+
+<span class="cm"># ── RESOURCE ATTACKS ──────────────────────────────────</span>
+
+<span class="cm"># CPU attack — spike to 90% on 4 cores for 120s</span>
+gremlin attack-cpu \
+  --length 120 \
+  --cores 4 \
+  --percent 90 \
+  --target-labels "env=production,service=payment-api"
+
+<span class="cm"># Memory attack — consume 2GB for 60s</span>
+gremlin attack-memory \
+  --length 60 \
+  --mb 2048 \
+  --target-count 1 \
+  --target-labels "k8s.namespace=payments"
+
+<span class="cm"># Disk fill — fill /tmp to 90% capacity for 30s</span>
+gremlin attack-disk \
+  --length 30 \
+  --volume-path /tmp \
+  --percent 90 \
+  --block-size 4 \
+  --target-count 1
+
+<span class="cm"># ── NETWORK ATTACKS ───────────────────────────────────</span>
+
+<span class="cm"># Latency — add 200ms to egress traffic on port 5432 (PostgreSQL)</span>
+gremlin attack-latency \
+  --length 120 \
+  --delay 200 \
+  --egress-ports 5432 \
+  --target-labels "service=order-service"
+
+<span class="cm"># Packet loss — 30% loss affecting Redis traffic</span>
+gremlin attack-packet-loss \
+  --length 60 \
+  --percent 30 \
+  --egress-ports 6379 \
+  --target-count 1 \
+  --target-labels "env=production"
+
+<span class="cm"># Blackhole — block ALL traffic to a specific IP (simulate AZ failure)</span>
+gremlin attack-blackhole \
+  --length 120 \
+  --ip-addresses 10.0.2.45 \
+  --target-labels "tier=api"
+
+<span class="cm"># ── STATE ATTACKS ─────────────────────────────────────</span>
+
+<span class="cm"># Kill a process by name</span>
+gremlin attack-process \
+  --length 1 \
+  --process nginx \
+  --target-count 1 \
+  --target-labels "service=api-gateway"
+
+<span class="cm"># Kill with immediate halt (sigkill, no graceful shutdown)</span>
+gremlin attack-shutdown \
+  --delay 5 \
+  --reboot true \
+  --target-count 1 \
+  --target-labels "service=api-gateway"</div>
+  </div>
+
+  <h3>Gremlin Scenarios via API</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">JSON — Gremlin Scenario Definition</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block">{
+  <span class="at">"name"</span>: <span class="st">"Payment Service Dependency Failure"</span>,
+  <span class="at">"description"</span>: <span class="st">"Simulate Redis cache unavailability and verify fallback path"</span>,
+  <span class="at">"hypothesis"</span>: <span class="st">"Payment success rate stays above 99.5% with Redis unavailable"</span>,
+
+  <span class="at">"steps"</span>: [
+    {
+      <span class="at">"type"</span>: <span class="st">"delay"</span>,
+      <span class="at">"delay"</span>: <span class="nu">30</span>,          <span class="cm">// 30s observation baseline before fault</span>
+      <span class="at">"description"</span>: <span class="st">"Establish steady-state baseline"</span>
+    },
+    {
+      <span class="at">"type"</span>: <span class="st">"attack"</span>,
+      <span class="at">"attack"</span>: {
+        <span class="at">"type"</span>: <span class="st">"blackhole"</span>,
+        <span class="at">"args"</span>: {
+          <span class="at">"length"</span>: <span class="nu">120</span>,
+          <span class="at">"egress_ports"</span>: [<span class="nu">6379</span>],   <span class="cm">// Redis port</span>
+          <span class="at">"protocol"</span>: <span class="st">"TCP"</span>
+        }
+      },
+      <span class="at">"target"</span>: {
+        <span class="at">"labels"</span>: { <span class="at">"service"</span>: <span class="st">"payment-api"</span>, <span class="at">"env"</span>: <span class="st">"production"</span> },
+        <span class="at">"count"</span>: <span class="nu">1</span>              <span class="cm">// Only 1 pod, not all</span>
+      },
+      <span class="at">"description"</span>: <span class="st">"Block Redis egress on 1 payment-api pod"</span>
+    },
+    {
+      <span class="at">"type"</span>: <span class="st">"delay"</span>,
+      <span class="at">"delay"</span>: <span class="nu">120</span>,
+      <span class="at">"description"</span>: <span class="st">"Recovery observation period"</span>
+    }
+  ],
+
+  <span class="at">"hypothesis_checks"</span>: [
+    {
+      <span class="at">"metric"</span>: <span class="st">"payment.success_rate"</span>,
+      <span class="at">"threshold"</span>: <span class="nu">0.995</span>,
+      <span class="at">"comparison"</span>: <span class="st">"gte"</span>,
+      <span class="at">"source"</span>: <span class="st">"datadog"</span>
+    }
+  ],
+
+  <span class="at">"halt_conditions"</span>: [
+    { <span class="at">"metric"</span>: <span class="st">"payment.success_rate"</span>, <span class="at">"threshold"</span>: <span class="nu">0.99</span>, <span class="at">"comparison"</span>: <span class="st">"lt"</span> },
+    { <span class="at">"metric"</span>: <span class="st">"pagerduty.active_p1_count"</span>, <span class="at">"threshold"</span>: <span class="nu">0</span>, <span class="at">"comparison"</span>: <span class="st">"gt"</span> }
+  ]
+}</div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">✓</span>
+    <div class="callout-body"><strong>Gremlin Reliability Score:</strong> Gremlin produces a Reliability Score across your infrastructure by analyzing experiment results and system configurations. It tracks which services have been tested, which vulnerabilities have been confirmed and fixed, and provides a coverage heatmap across your MITRE-aligned failure taxonomy. Use it to track program maturity over time.</div>
+  </div>
+</section>
+
+<!-- ══ 08 LITMUS ══ -->
+<section id="litmus">
+  <div class="section-hd">
+    <div class="sec-num">08</div>
+    <div class="sec-title-block">
+      <h2>LitmusChaos</h2>
+      <div class="sec-sub">// CNCF GRADUATED PROJECT — KUBERNETES-NATIVE</div>
+    </div>
+  </div>
+
+  <p class="prose">LitmusChaos is a CNCF graduated open-source chaos engineering framework for Kubernetes. It provides a rich library of ChaosExperiments (200+), a ChaosCenter UI for experiment management, workflow orchestration via Argo Workflows, and deep Kubernetes integration using CRDs. It is the default choice for cloud-native Kubernetes environments.</p>
+
+  <div class="grid-3">
+    <div class="card card-accent-blue">
+      <div class="card-title">Architecture</div>
+      <ul>
+        <li><strong>ChaosEngine:</strong> CR linking a target app to an experiment</li>
+        <li><strong>ChaosExperiment:</strong> CR defining the fault type and parameters</li>
+        <li><strong>ChaosResult:</strong> CR storing experiment results and verdict</li>
+        <li><strong>Chaos Runner:</strong> Job that orchestrates experiment execution</li>
+        <li><strong>ChaosCenter:</strong> Web UI for workflows and reporting</li>
+      </ul>
+    </div>
+    <div class="card card-accent-violet">
+      <div class="card-title">Experiment Hub</div>
+      <ul>
+        <li><strong>Pod faults:</strong> pod-delete, pod-cpu-hog, pod-memory-hog, pod-io-stress, pod-network-latency, pod-network-loss, pod-network-corruption</li>
+        <li><strong>Node faults:</strong> node-cpu-hog, node-memory-hog, node-drain, node-taint, node-restart</li>
+        <li><strong>Cloud:</strong> ec2-stop, ebs-loss, rds-instance-stop, azure-instance-stop</li>
+      </ul>
+    </div>
+    <div class="card card-accent-safe">
+      <div class="card-title">Steady-State Probes</div>
+      <ul>
+        <li><strong>HTTP probe:</strong> validate endpoint returns expected status code</li>
+        <li><strong>Command probe:</strong> run a shell command, check exit code / output</li>
+        <li><strong>Prometheus probe:</strong> query PromQL expression, validate value range</li>
+        <li><strong>Kubernetes probe:</strong> check pod/service/node status in the cluster</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>LitmusChaos — ChaosEngine Manifest</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Pod Delete Experiment</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Install LitmusChaos</span>
+<span class="cm"># kubectl apply -f https://litmuschaos.github.io/litmus/litmus-operator-v3.x.x.yaml</span>
+
+<span class="at">apiVersion</span>: litmuschaos.io/v1alpha1
+<span class="at">kind</span>: ChaosEngine
+<span class="at">metadata</span>:
+  name: payment-pod-delete-chaos
+  namespace: production
+<span class="at">spec</span>:
+  <span class="cm"># Target application</span>
+  appinfo:
+    appns: production
+    applabel: <span class="st">"app=payment-api"</span>
+    appkind: deployment
+
+  <span class="cm"># Abort if target goes unhealthy before experiment</span>
+  engineState: <span class="st">"active"</span>
+  annotationCheck: <span class="st">"true"</span>   <span class="cm"># Only target annotated pods (opt-in)</span>
+
+  <span class="cm"># Steady-State hypothesis probes</span>
+  experiments:
+    - name: pod-delete
+      spec:
+        probe:
+          - name: <span class="st">"check-payment-api-availability"</span>
+            type: <span class="st">"httpProbe"</span>
+            httpProbe/inputs:
+              url: <span class="st">"https://payment-api.internal/health"</span>
+              insecureSkipVerify: <span class="kw">false</span>
+              method:
+                get:
+                  criteria: <span class="st">"=="</span>
+                  responseCode: <span class="st">"200"</span>
+            mode: <span class="st">"Continuous"</span>         <span class="cm"># probe runs throughout experiment</span>
+            runProperties:
+              probeTimeout: 5
+              interval: 2              <span class="cm"># every 2s</span>
+              attempt: 3
+              stopOnFailure: <span class="kw">true</span>   <span class="cm"># ABORT if probe fails</span>
+
+          - name: <span class="st">"check-success-rate-prometheus"</span>
+            type: <span class="st">"promProbe"</span>
+            promProbe/inputs:
+              endpoint: <span class="st">"http://prometheus:9090"</span>
+              query: <span class="st">"sum(rate(payment_requests_total{status='200'}[2m])) / sum(rate(payment_requests_total[2m]))"</span>
+              comparator:
+                criteria: <span class="st">">="</span>
+                value: <span class="st">"0.998"</span>
+            mode: <span class="st">"EOT"</span>              <span class="cm"># check at End Of Test</span>
+            runProperties:
+              probeTimeout: 10
+              interval: 5
+              attempt: 3
+
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: <span class="st">"120"</span>          <span class="cm"># 120s experiment duration</span>
+            - name: CHAOS_INTERVAL
+              value: <span class="st">"20"</span>           <span class="cm"># delete a pod every 20s</span>
+            - name: PODS_AFFECTED_PERC
+              value: <span class="st">"33"</span>           <span class="cm"># affect ~1/3 of matching pods</span>
+            - name: FORCE
+              value: <span class="st">"false"</span>        <span class="cm"># graceful termination (SIGTERM)</span>
+            - name: TARGET_PODS
+              value: <span class="st">""</span>             <span class="cm"># empty = random selection</span></div>
+  </div>
+
+  <h3>LitmusChaos — Network Latency Experiment</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML — Pod Network Latency</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="at">apiVersion</span>: litmuschaos.io/v1alpha1
+<span class="at">kind</span>: ChaosEngine
+<span class="at">metadata</span>:
+  name: order-svc-latency-chaos
+  namespace: production
+<span class="at">spec</span>:
+  appinfo:
+    appns: production
+    applabel: <span class="st">"app=order-service"</span>
+    appkind: deployment
+  engineState: <span class="st">"active"</span>
+
+  experiments:
+    - name: pod-network-latency
+      spec:
+        probe:
+          - name: <span class="st">"checkout-latency-check"</span>
+            type: <span class="st">"promProbe"</span>
+            promProbe/inputs:
+              endpoint: <span class="st">"http://prometheus:9090"</span>
+              <span class="cm"># p99 checkout latency must remain under 800ms</span>
+              query: <span class="st">"histogram_quantile(0.99, sum(rate(checkout_duration_seconds_bucket[2m])) by (le))"</span>
+              comparator:
+                criteria: <span class="st">"<="</span>
+                value: <span class="st">"0.8"</span>
+            mode: <span class="st">"Continuous"</span>
+            runProperties:
+              probeTimeout: 10
+              interval: 10
+              attempt: 5
+              stopOnFailure: <span class="kw">true</span>
+
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: <span class="st">"120"</span>
+            - name: NETWORK_LATENCY
+              value: <span class="st">"200"</span>         <span class="cm"># 200ms added latency (ms)</span>
+            - name: JITTER
+              value: <span class="st">"50"</span>          <span class="cm"># ±50ms jitter</span>
+            - name: PODS_AFFECTED_PERC
+              value: <span class="st">"50"</span>          <span class="cm"># 50% of matching pods</span>
+            - name: DESTINATION_IPS
+              value: <span class="st">""</span>            <span class="cm"># empty = all egress</span>
+            - name: DESTINATION_HOSTS
+              value: <span class="st">"fraud-service.production.svc.cluster.local"</span>
+            - name: CONTAINER_RUNTIME
+              value: <span class="st">"containerd"</span>
+            - name: SOCKET_PATH
+              value: <span class="st">"/run/containerd/containerd.sock"</span></div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Bash — Query ChaosResult after experiment</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Check experiment verdict</span>
+kubectl get chaosresult -n production
+
+<span class="cm"># Detailed result including probe status</span>
+kubectl describe chaosresult payment-pod-delete-chaos-pod-delete -n production
+
+<span class="cm"># Get verdict in script-friendly form</span>
+<span class="kw">VERDICT</span>=$(kubectl get chaosresult payment-pod-delete-chaos-pod-delete \
+  -n production -o jsonpath=<span class="st">'{.status.experimentStatus.verdict}'</span>)
+
+<span class="kw">if</span> [ <span class="st">"$VERDICT"</span> == <span class="st">"Pass"</span> ]; <span class="kw">then</span>
+  echo <span class="st">"✓ Experiment PASSED — system behaved as hypothesized"</span>
+<span class="kw">elif</span> [ <span class="st">"$VERDICT"</span> == <span class="st">"Fail"</span> ]; <span class="kw">then</span>
+  echo <span class="st">"✗ Experiment FAILED — weakness detected, creating remediation ticket"</span>
+  <span class="cm"># CI/CD integration: fail the pipeline</span>
+  exit 1
+<span class="kw">fi</span></div>
+  </div>
+</section>
+
+<!-- ══ 09 OTHER TOOLS ══ -->
+<section id="other">
+  <div class="section-hd">
+    <div class="sec-num">09</div>
+    <div class="sec-title-block">
+      <h2>Other Tools</h2>
+      <div class="sec-sub">// THE CHAOS ENGINEERING ECOSYSTEM</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Tool</th><th>Type</th><th>Best For</th><th>Model</th></tr>
+      <tr>
+        <td><strong>Chaos Monkey</strong></td>
+        <td>Instance termination</td>
+        <td>AWS EC2 random termination — the original. Production-only. Tests auto-scaling and self-healing infrastructure.</td>
+        <td><span class="ok">OSS</span></td>
+      </tr>
+      <tr>
+        <td><strong>Chaos Toolkit</strong></td>
+        <td>Multi-target CLI</td>
+        <td>Open-source, extensible, driver-based. AWS, GCP, Azure, Kubernetes, Prometheus integrations. Best for scripted, composable experiments via JSON/YAML.</td>
+        <td><span class="ok">OSS</span></td>
+      </tr>
+      <tr>
+        <td><strong>AWS Fault Injection Service (FIS)</strong></td>
+        <td>AWS-native</td>
+        <td>Managed chaos for EC2, ECS, EKS, RDS, DynamoDB. Native AWS integration — no agent. IAM-controlled. Ideal for AWS-centric stacks.</td>
+        <td><span class="warn">MANAGED</span></td>
+      </tr>
+      <tr>
+        <td><strong>Azure Chaos Studio</strong></td>
+        <td>Azure-native</td>
+        <td>Azure PaaS/IaaS fault injection — VM, AKS, CosmosDB, App Service, network, disk. Integrated with Azure Monitor for abort conditions.</td>
+        <td><span class="warn">MANAGED</span></td>
+      </tr>
+      <tr>
+        <td><strong>tc (Linux Traffic Control)</strong></td>
+        <td>Network fault primitive</td>
+        <td>Kernel-level network emulation. The underlying mechanism most tools use. Useful for custom network experiments without additional tooling.</td>
+        <td><span class="ok">OSS</span></td>
+      </tr>
+      <tr>
+        <td><strong>stress-ng</strong></td>
+        <td>Resource stress</td>
+        <td>CPU, memory, I/O, and OS resource stressors. Foundational tool for manual resource exhaustion testing before adopting a full chaos platform.</td>
+        <td><span class="ok">OSS</span></td>
+      </tr>
+      <tr>
+        <td><strong>ChaosBlade</strong></td>
+        <td>Multi-layer</td>
+        <td>Host, container, Kubernetes, JVM (Java/Node) fault injection. Strong Java process-level chaos (method-level delays/exceptions). CNCF project.</td>
+        <td><span class="ok">OSS</span></td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>AWS Fault Injection Service — Quick Example</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">JSON — AWS FIS Experiment Template</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block">{
+  <span class="at">"description"</span>: <span class="st">"Inject CPU stress on 1 production ECS task"</span>,
+  <span class="at">"targets"</span>: {
+    <span class="at">"PaymentECSTasks"</span>: {
+      <span class="at">"resourceType"</span>: <span class="st">"aws:ecs:task"</span>,
+      <span class="at">"resourceTags"</span>: { <span class="at">"service"</span>: <span class="st">"payment-api"</span>, <span class="at">"env"</span>: <span class="st">"production"</span> },
+      <span class="at">"selectionMode"</span>: <span class="st">"COUNT(1)"</span>   <span class="cm">// exactly 1 task</span>
+    }
+  },
+  <span class="at">"actions"</span>: {
+    <span class="at">"InjectCPUStress"</span>: {
+      <span class="at">"actionId"</span>: <span class="st">"aws:ecs:cpu-stress"</span>,
+      <span class="at">"parameters"</span>: {
+        <span class="at">"duration"</span>: <span class="st">"PT2M"</span>,        <span class="cm">// ISO 8601: 2 minutes</span>
+        <span class="at">"percent"</span>: <span class="st">"80"</span>,          <span class="cm">// 80% CPU</span>
+        <span class="at">"workers"</span>: <span class="st">"0"</span>           <span class="cm">// 0 = use all available cores</span>
+      },
+      <span class="at">"targets"</span>: { <span class="at">"Tasks"</span>: <span class="st">"PaymentECSTasks"</span> }
+    }
+  },
+  <span class="at">"stopConditions"</span>: [
+    {
+      <span class="at">"source"</span>: <span class="st">"aws:cloudwatch:alarm"</span>,
+      <span class="at">"value"</span>: <span class="st">"payment-api-error-rate-high"</span>  <span class="cm">// halt if alarm fires</span>
+    }
+  ],
+  <span class="at">"roleArn"</span>: <span class="st">"arn:aws:iam::123456789:role/FISExperimentRole"</span>,
+  <span class="at">"tags"</span>: { <span class="at">"purpose"</span>: <span class="st">"chaos-experiment"</span>, <span class="at">"experiment-id"</span>: <span class="st">"CHE-0042"</span> }
+}</div>
+  </div>
+</section>
+
+<!-- ══ 10 RESOURCE ATTACKS ══ -->
+<section id="resource">
+  <div class="section-hd">
+    <div class="sec-num">10</div>
+    <div class="sec-title-block">
+      <h2>Resource Attacks</h2>
+      <div class="sec-sub">// CPU · MEMORY · DISK · I/O</div>
+    </div>
+  </div>
+
+  <p class="prose">Resource attacks simulate the conditions of runaway processes, memory leaks, disk-filling log floods, and I/O saturation. These are among the most common real-world failure modes — every system should be tested against them before they happen accidentally.</p>
+
+  <div class="grid-2">
+    <div class="card card-accent-fire">
+      <div class="card-title">CPU Exhaustion <span class="pill pill-fire">Common</span></div>
+      <ul>
+        <li><strong>What it tests:</strong> CPU throttling behavior, request queue growth, timeout propagation, HPA scaling trigger time</li>
+        <li><strong>What good looks like:</strong> autoscaler provisions new pods within SLO window; graceful degradation of low-priority work; no cascading failures to downstream services</li>
+        <li><strong>Tool:</strong> <code>stress-ng --cpu 4 --cpu-load 90 --timeout 120s</code></li>
+        <li><strong>Gremlin:</strong> CPU attack on 1 pod at 90% for 120s, observe HPA events</li>
+      </ul>
+    </div>
+    <div class="card card-accent-ember">
+      <div class="card-title">Memory Exhaustion <span class="pill pill-ember">Important</span></div>
+      <ul>
+        <li><strong>What it tests:</strong> OOM killer behavior, container restart policy, memory limits vs requests, pod eviction priority</li>
+        <li><strong>What good looks like:</strong> OOM kills the specific container; k8s restarts within 30s; service remains available via other replicas; alerting fires</li>
+        <li><strong>Tool:</strong> <code>stress-ng --vm 1 --vm-bytes 4G --timeout 60s</code></li>
+        <li><strong>Tip:</strong> Test both the hit-limit-and-OOM path and the slow-leak path (gradual consumption over hours)</li>
+      </ul>
+    </div>
+    <div class="card card-accent-blue">
+      <div class="card-title">Disk Fill <span class="pill pill-blue">Critical</span></div>
+      <ul>
+        <li><strong>What it tests:</strong> log rotation effectiveness, ephemeral storage limits, disk-full error handling in databases</li>
+        <li><strong>What good looks like:</strong> service degrades gracefully (not crashes); alerts fire before 100%; log rotation kicks in; recovery after space is freed</li>
+        <li><strong>Tool:</strong> <code>fallocate -l 10G /tmp/chaos-fill</code> (cleanup: <code>rm /tmp/chaos-fill</code>)</li>
+      </ul>
+    </div>
+    <div class="card card-accent-violet">
+      <div class="card-title">I/O Saturation <span class="pill pill-violet">Often Missed</span></div>
+      <ul>
+        <li><strong>What it tests:</strong> disk I/O scheduling under load, read vs write contention, database buffer pool behavior under slow disk</li>
+        <li><strong>What it reveals:</strong> applications that don't set I/O timeouts, synchronous I/O blocking async event loops, database lock contention amplification</li>
+        <li><strong>Tool:</strong> <code>stress-ng --io 4 --hdd 2 --timeout 120s</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 11 NETWORK CHAOS ══ -->
+<section id="network-ch">
+  <div class="section-hd">
+    <div class="sec-num">11</div>
+    <div class="sec-title-block">
+      <h2>Network Chaos</h2>
+      <div class="sec-sub">// LATENCY · LOSS · PARTITION · CORRUPTION</div>
+    </div>
+  </div>
+
+  <p class="prose">Network chaos is the highest-value category of experiments for distributed systems. The network is the most common and most variable failure mode in cloud infrastructure. Microservice architectures have hundreds of network paths — every one of them needs circuit breakers, timeouts, and retries that actually work under adverse conditions.</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Fault Type</th><th>Models</th><th>What It Validates</th><th>tc Command</th></tr>
+      <tr>
+        <td><strong>Latency Injection</strong></td>
+        <td>Fixed delay, jitter, distribution</td>
+        <td>Timeout configs are set; circuit breakers open at correct threshold; p99 stays within SLO</td>
+        <td><code>tc qdisc add dev eth0 root netem delay 200ms 50ms</code></td>
+      </tr>
+      <tr>
+        <td><strong>Packet Loss</strong></td>
+        <td>% random loss, burst loss (Gilber model)</td>
+        <td>TCP retransmit behavior; application-level retry logic; error rate under partial loss</td>
+        <td><code>tc qdisc add dev eth0 root netem loss 10%</code></td>
+      </tr>
+      <tr>
+        <td><strong>Packet Corruption</strong></td>
+        <td>Random bit errors</td>
+        <td>Protocol-level error detection; TLS integrity; application checksum validation</td>
+        <td><code>tc qdisc add dev eth0 root netem corrupt 5%</code></td>
+      </tr>
+      <tr>
+        <td><strong>Packet Duplication</strong></td>
+        <td>% duplicate packets</td>
+        <td>Idempotency of request handlers; deduplication logic; double-charge prevention</td>
+        <td><code>tc qdisc add dev eth0 root netem duplicate 5%</code></td>
+      </tr>
+      <tr>
+        <td><strong>Bandwidth Throttle</strong></td>
+        <td>Rate limiting to N Mbit/s</td>
+        <td>Large payload transfers (uploads, exports); streaming behavior under constrained bandwidth</td>
+        <td><code>tc qdisc add dev eth0 root tbf rate 1mbit burst 32kbit latency 400ms</code></td>
+      </tr>
+      <tr>
+        <td><strong>Network Partition</strong></td>
+        <td>Complete blackhole to specific host/port</td>
+        <td>Circuit breaker opens; fallback activates; database failover works; split-brain handling</td>
+        <td><code>iptables -A OUTPUT -d 10.0.1.5 -j DROP</code></td>
+      </tr>
+      <tr>
+        <td><strong>DNS Failure</strong></td>
+        <td>NXDOMAIN, SERVFAIL, timeout</td>
+        <td>DNS caching behavior; connection pooling reuse; service discovery failure path</td>
+        <td>Block UDP port 53 via iptables or corrupt /etc/resolv.conf</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>Validating Circuit Breakers</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Experiment — Circuit Breaker Validation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="at">Experiment</span>: CHE-0021
+<span class="at">Hypothesis</span>: "When fraud-service returns 100% HTTP 503 for 30s,
+              the circuit breaker in payment-api opens within 10s,
+              and payments fall back to allow-by-default, maintaining
+              payment success rate > 99.5%."
+
+<span class="at">SETUP</span>: Inject HTTP 503 responses using a Toxiproxy fault proxy:
+
+<span class="cm"># Deploy Toxiproxy as a sidecar or standalone fault proxy</span>
+docker run -d --name toxiproxy \
+  -p 8474:8474 \   <span class="cm"># API port</span>
+  -p 9000:9000 \   <span class="cm"># proxied port</span>
+  ghcr.io/shopify/toxiproxy
+
+<span class="cm"># Create proxy: payment-api → fraud-service via toxiproxy</span>
+curl -X POST http://localhost:8474/proxies \
+  -H "Content-Type: application/json" \
+  -d <span class="st">'{"name": "fraud-svc", "listen": "0.0.0.0:9000", "upstream": "fraud-service:8080"}'</span>
+
+<span class="cm"># INJECT: Return HTTP 503 on all requests (simulates service crash)</span>
+curl -X POST http://localhost:8474/proxies/fraud-svc/toxics \
+  -H "Content-Type: application/json" \
+  -d <span class="st">'{
+    "name": "http-503-fault",
+    "type": "limit_data",
+    "attributes": {"bytes": 0}
+  }'</span>
+
+<span class="cm"># OBSERVE: Watch circuit breaker state in payment-api metrics</span>
+<span class="cm"># Look for: resilience4j_circuitbreaker_state{name="fraud-service"} == 2 (OPEN)</span>
+watch -n 2 curl -s http://payment-api:8080/actuator/health | jq .
+
+<span class="cm"># CLEANUP: Remove toxic (restore normal behavior)</span>
+curl -X DELETE http://localhost:8474/proxies/fraud-svc/toxics/http-503-fault</div>
+  </div>
+</section>
+
+<!-- ══ 12 STATE CHAOS ══ -->
+<section id="state">
+  <div class="section-hd">
+    <div class="sec-num">12</div>
+    <div class="sec-title-block">
+      <h2>State &amp; Process Chaos</h2>
+      <div class="sec-sub">// POD KILLS · PROCESS CRASHES · CLOCK SKEW · ZONE FAILURE</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-accent-danger">
+      <div class="card-title">Pod / Process Termination <span class="pill pill-danger">High Value</span></div>
+      <p>The most basic chaos experiment. Kill one or more pods and verify the service remains available. Tests Kubernetes scheduling, readiness probes, pod disruption budgets, and graceful shutdown behavior (SIGTERM → drain → SIGKILL).</p>
+      <div style="margin-top:10px">
+        <code>kubectl delete pod payment-api-7d9f4b-xk2zr -n production</code>
+      </div>
+      <p style="margin-top:8px"><strong>Key checks:</strong> downtime during pod death, replacement scheduling time, connection draining (no in-flight 500s during graceful shutdown), PDB enforcement prevents all-pods deletion.</p>
+    </div>
+    <div class="card card-accent-fire">
+      <div class="card-title">Time Travel / Clock Skew <span class="pill pill-fire">Subtle</span></div>
+      <p>Shift the system clock forward or backward on target nodes. Tests: JWT expiry validation (tokens suddenly "expired"), certificate validity window checks, distributed lock TTLs, time-series data ordering, cron job timing. Often reveals hidden assumptions about clock synchronization.</p>
+      <div style="margin-top:10px">
+        <code>date -s "+2 hours"</code> — Gremlin time-travel attack: ±1h to ±30d
+      </div>
+    </div>
+    <div class="card card-accent-ember">
+      <div class="card-title">Availability Zone Failure <span class="pill pill-ember">Critical</span></div>
+      <p>Simulate the loss of an entire AZ by blackholing all traffic to that zone's CIDRs, stopping all instances in that AZ, or removing them from load balancer target groups. This is the experiment that reveals whether your "multi-AZ deployment" is actually active-active or just active-passive with undiscovered split-brain conditions.</p>
+    </div>
+    <div class="card card-accent-blue">
+      <div class="card-title">Dependency Timeouts <span class="pill pill-blue">Systemic</span></div>
+      <p>Inject high latency (10s, 30s, 60s) on calls to external dependencies — not to cause failures, but to verify that <strong>every service has a configured timeout</strong> and that timeout expiry is handled gracefully. The most common real-world failure: a dependency hangs indefinitely, exhausting the caller's connection pool.</p>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Bash — Graceful Shutdown Verification</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Test that in-flight requests complete before pod terminates</span>
+<span class="cm"># Run load against the service while deleting the pod</span>
+
+<span class="cm"># Terminal 1: generate continuous load</span>
+hey -z 120s -c 10 -q 50 https://payment-api.internal/v1/checkout
+
+<span class="cm"># Terminal 2: delete a specific pod while load is running</span>
+<span class="kw">POD</span>=<span class="fn">$(kubectl get pods -n production -l app=payment-api -o name | head -1)</span>
+kubectl delete $<span class="kw">POD</span> -n production
+
+<span class="cm"># EXPECTED RESULT:</span>
+<span class="cm"># - Zero HTTP 5xx errors during pod deletion</span>
+<span class="cm"># - pod terminates after preStop hook drains connections</span>
+<span class="cm"># - hey summary shows 0% error rate</span>
+
+<span class="cm"># Verify terminationGracePeriodSeconds is sufficient</span>
+kubectl get pod $<span class="kw">POD</span> -n production -o jsonpath=<span class="st">'{.spec.terminationGracePeriodSeconds}'</span>
+
+<span class="cm"># Verify preStop hook is configured</span>
+kubectl get deployment payment-api -n production \
+  -o jsonpath=<span class="st">'{.spec.template.spec.containers[0].lifecycle}'</span> | jq .</div>
+  </div>
+</section>
+
+<!-- ══ 13 GAMEDAY ══ -->
+<section id="gameday">
+  <div class="section-hd">
+    <div class="sec-num">13</div>
+    <div class="sec-title-block">
+      <h2>GameDay Runbook</h2>
+      <div class="sec-sub">// RUNNING LIVE CHAOS EVENTS</div>
+    </div>
+  </div>
+
+  <p class="prose">A GameDay is a structured event where a team runs chaos experiments together, testing both technical resilience and the human/process response — alert quality, runbook accuracy, oncall ergonomics, and communication flows. GameDays are the chaos engineering equivalent of a fire drill.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">GameDay Runbook — Full Template</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">GAMEDAY: Payment Service Resilience</span>   Date: 2024-Q3
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+Facilitator:     @sre-lead
+Observers:       @payment-team, @platform-team
+War Room:        #gameday-2024-q3 (Slack)
+Dashboard:       https://datadog.company.com/dashboard/gameday-q3
+Rollback Owner:  @oncall-engineer (has kill-switch access)
+Duration:        3 hours (14:00 - 17:00 UTC)
+
+<span class="at">PRE-GAME CHECKLIST</span> (30 minutes before)
+  ☐ All experiment scripts prepared and tested in staging
+  ☐ Dashboards verified streaming — no data gaps
+  ☐ PagerDuty configured: test alerts suppressed, real alerts active
+  ☐ Rollback procedures documented and reviewed with team
+  ☐ Stakeholder notification sent (support, leadership aware)
+  ☐ Baseline metrics captured (last 1h avg for all key metrics)
+  ☐ Kill-switch access confirmed: @oncall has gremlin halt + kubectl access
+  ☐ External dependency owners on standby (DB team, infra team)
+
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">SCENARIO 1 — 14:00 UTC</span>: Redis Cache Unavailability (20 min)
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  Hypothesis: "Cache miss fallback serves all requests from DB.
+               Success rate > 99.5%. Latency p99 < 500ms."
+  Fault:      Gremlin blackhole on port 6379 — 1 of 3 payment-api pods
+  Duration:   10 min fault + 10 min recovery observation
+  Abort:      success_rate < 99.0% for 30s OR any P1 fires
+  Observer:   Watch payment.success_rate, payment.latency.p99
+
+<span class="at">SCENARIO 2 — 14:30 UTC</span>: Downstream Timeout Injection (20 min)
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  Hypothesis: "5s timeout on fraud-service calls triggers circuit
+               breaker. Payments default to ALLOW. Zero failures."
+  Fault:      Toxiproxy latency 6000ms on fraud-service egress
+  Duration:   8 min fault + 10 min CB state recovery observation
+  Abort:      Any payment transaction errors > 0.5% for 60s
+
+<span class="at">SCENARIO 3 — 15:00 UTC</span>: Pod Kill Cascade (30 min)
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  Hypothesis: "Sequential termination of 2 of 3 payment-api pods
+               maintains service availability. k8s schedules
+               replacements within 60s. p99 < 400ms throughout."
+  Fault:      kubectl delete 1 pod, wait 45s, delete 1 more
+  Duration:   20 min (including pod scheduling observation)
+  Abort:      PDB violation (k8s should prevent 3rd pod deletion)
+
+<span class="at">POST-GAME PROCESS</span> (17:00 UTC)
+  1. IMMEDIATE (same day):
+     ☐ Document all findings in #gameday-findings
+     ☐ Confirm all faults removed (no lingering tc rules, toxics, etc.)
+     ☐ Verify all metrics returned to pre-game baseline
+     ☐ Create tickets for all identified weaknesses (P1 within 24h)
+
+  2. WITHIN 1 WEEK:
+     ☐ Post-mortem document published
+     ☐ Remediation tickets assigned with owners
+     ☐ New chaos experiments created from discovered weaknesses
+     ☐ Next GameDay date set (target: quarterly cadence)</div>
+  </div>
+</section>
+
+<!-- ══ 14 OBSERVABILITY ══ -->
+<section id="metrics">
+  <div class="section-hd">
+    <div class="sec-num">14</div>
+    <div class="sec-title-block">
+      <h2>Observability for Chaos</h2>
+      <div class="sec-sub">// METRICS · LOGS · TRACES · EVENTS</div>
+    </div>
+  </div>
+
+  <p class="prose">Chaos Engineering without observability is just breaking things. You need sufficient signal <strong>before you start</strong> — not just to detect problems, but to validate the hypothesis. The experiment is only as good as your ability to measure its impact.</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Signal Type</th><th>What to Capture</th><th>Tooling</th><th>Purpose</th></tr>
+      <tr>
+        <td><strong>Steady-State Metrics</strong></td>
+        <td>Request rate, error rate, latency (p50/p95/p99), saturation (CPU/mem/connections), SLO burn rate</td>
+        <td>Prometheus, Datadog, CloudWatch</td>
+        <td>Hypothesis validation — did the metric cross the threshold?</td>
+      </tr>
+      <tr>
+        <td><strong>Experiment Events</strong></td>
+        <td>Fault start/stop timestamps, target identifiers, experiment ID — injected as annotations</td>
+        <td>Datadog Events API, Grafana Annotations</td>
+        <td>Correlate metric changes to exact fault injection moment</td>
+      </tr>
+      <tr>
+        <td><strong>Distributed Traces</strong></td>
+        <td>Request traces from client through all services — show where latency or errors originate</td>
+        <td>Jaeger, Zipkin, Datadog APM, OTEL</td>
+        <td>Identify which hop in the call chain is affected by the fault</td>
+      </tr>
+      <tr>
+        <td><strong>Kubernetes Events</strong></td>
+        <td>Pod scheduling, OOM kills, evictions, autoscaler decisions, PDB violations</td>
+        <td><code>kubectl get events -n production --sort-by='.lastTimestamp'</code></td>
+        <td>Verify cluster response to pod failures — scheduling time, restart counts</td>
+      </tr>
+      <tr>
+        <td><strong>Structured Logs</strong></td>
+        <td>Circuit breaker state changes, fallback activations, retry counts, timeout events</td>
+        <td>ELK, Datadog Log Analytics, CloudWatch Insights</td>
+        <td>Confirm the intended failure mode triggered the right fallback path</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>Annotating Experiments in Dashboards</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Python — Auto-annotate Datadog during experiment</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="kw">import</span> <span class="cl">time</span>
+<span class="kw">from</span> <span class="cl">datadog</span> <span class="kw">import</span> initialize, api
+
+initialize(api_key=<span class="st">"$DD_API_KEY"</span>, app_key=<span class="st">"$DD_APP_KEY"</span>)
+
+EXPERIMENT_ID = <span class="st">"CHE-0042"</span>
+START_TIME = int(time.time())
+
+<span class="cm"># Mark experiment START on all dashboards</span>
+api.Event.create(
+    title=<span class="st">f"[CHAOS] {EXPERIMENT_ID} — START"</span>,
+    text=<span class="st">"Injecting: Redis blackhole on payment-api (1 of 3 pods). Hypothesis: success_rate > 99.8%"</span>,
+    tags=[<span class="st">"chaos"</span>, <span class="st">"env:production"</span>, <span class="st">"service:payment-api"</span>, <span class="st">f"experiment:{EXPERIMENT_ID}"</span>],
+    alert_type=<span class="st">"warning"</span>,
+    source_type_name=<span class="st">"chaos-engineering"</span>
+)
+
+<span class="cm"># — RUN EXPERIMENT —</span>
+time.sleep(120)  <span class="cm"># experiment duration</span>
+
+<span class="cm"># Mark experiment END</span>
+api.Event.create(
+    title=<span class="st">f"[CHAOS] {EXPERIMENT_ID} — COMPLETE"</span>,
+    text=<span class="st">"Fault injection complete. Entering recovery observation."</span>,
+    tags=[<span class="st">"chaos"</span>, <span class="st">"env:production"</span>, <span class="st">f"experiment:{EXPERIMENT_ID}"</span>],
+    alert_type=<span class="st">"success"</span>
+)
+
+<span class="cm"># Query metrics during experiment window</span>
+results = api.Metric.query(
+    start=START_TIME,
+    end=int(time.time()),
+    query=<span class="st">f"avg:payment.success_rate{{env:production}}.rollup(min, 10)"</span>
+)
+
+min_success_rate = min(point[<span class="nu">1</span>] <span class="kw">for</span> point <span class="kw">in</span> results[<span class="st">'series'</span>][<span class="nu">0</span>][<span class="st">'pointlist'</span>])
+<span class="kw">print</span>(<span class="st">f"Min success rate during experiment: {min_success_rate:.3%}"</span>)
+<span class="kw">print</span>(<span class="st">f"Hypothesis: {'PASS ✓' if min_success_rate >= 0.998 else 'FAIL ✗'}"</span>)</div>
+  </div>
+</section>
+
+<!-- ══ 15 MATURITY ══ -->
+<section id="maturity-m">
+  <div class="section-hd">
+    <div class="sec-num">15</div>
+    <div class="sec-title-block">
+      <h2>Chaos Maturity Model</h2>
+      <div class="sec-sub">// WHERE ARE YOU TODAY</div>
+    </div>
+  </div>
+
+  <p class="prose">The Chaos Engineering Maturity Model measures how systematically an organization applies chaos engineering — from ad-hoc manual experiments to continuous automated resilience verification across the full production stack.</p>
+
+  <div class="maturity">
+    <div class="m-stage ms-1">
+      <div class="m-level">Stage 01</div>
+      <div class="m-name">Ad-hoc</div>
+      <ul>
+        <li>Manual, one-off experiments</li>
+        <li>No formal hypothesis</li>
+        <li>Dev/staging only</li>
+        <li>No tracking or reporting</li>
+        <li>Hero-driven (one SRE does it)</li>
+        <li>No runbooks or rollback</li>
+      </ul>
+    </div>
+    <div class="m-stage ms-2">
+      <div class="m-level">Stage 02</div>
+      <div class="m-name">Defined</div>
+      <ul>
+        <li>Hypothesis-driven experiments</li>
+        <li>Documented templates exist</li>
+        <li>Quarterly GameDays</li>
+        <li>Blast radius documented</li>
+        <li>Findings tracked as tickets</li>
+        <li>Basic observability in place</li>
+      </ul>
+    </div>
+    <div class="m-stage ms-3">
+      <div class="m-level">Stage 03</div>
+      <div class="m-name">Managed</div>
+      <ul>
+        <li>Platform in place (Gremlin/Litmus)</li>
+        <li>Regular prod experiments</li>
+        <li>Reliability score tracked</li>
+        <li>CI/CD integration (some tests)</li>
+        <li>Xfn ownership across teams</li>
+        <li>Post-mortems include chaos tasks</li>
+      </ul>
+    </div>
+    <div class="m-stage ms-4">
+      <div class="m-level">Stage 04</div>
+      <div class="m-name">Optimized</div>
+      <ul>
+        <li>Continuous automated experiments</li>
+        <li>Every incident → new experiment</li>
+        <li>Full MITRE-style coverage map</li>
+        <li>Dynamic, risk-based targeting</li>
+        <li>Chaos as a release gate</li>
+        <li>Org-wide resilience SLOs</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">✓</span>
+    <div class="callout-body"><strong>Start with Stage 2, not Stage 4:</strong> Most teams over-invest in tooling before building the cultural practices — hypothesis documentation, gameday cadence, findings tracking. A quarterly GameDay with a spreadsheet and <code>kubectl delete pod</code> delivers more value than a fully instrumented platform that nobody runs experiments on. Nail the scientific discipline first, then automate it.</div>
+  </div>
+</section>
+
+<!-- ══ 16 ROADMAP ══ -->
+<section id="roadmap">
+  <div class="section-hd">
+    <div class="sec-num">16</div>
+    <div class="sec-title-block">
+      <h2>Implementation Roadmap</h2>
+      <div class="sec-sub">// GETTING FROM ZERO TO CONTINUOUS CHAOS</div>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">12-Month Chaos Engineering Roadmap</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">PHASE 0 — FOUNDATIONS (Month 1-2)</span>
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Observability audit — do you have the signals to run experiments?
+    (Prometheus metrics, distributed tracing, structured logs, dashboards)
+  ✦ Incident post-mortem review — identify top 5 failure modes from history
+  ✦ Select 1 service as pilot — ideally one with good coverage and a team
+    willing to own the experiment program
+  ✦ Run first experiment in staging: pod-delete on the pilot service
+  ✦ Establish hypothesis template and experiment log (even a spreadsheet)
+  ✦ Identify GameDay facilitator and oncall rotation integration
+
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">PHASE 1 — CONTROLLED PRODUCTION (Month 3-5)</span>
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Install chaos tool: LitmusChaos (Kubernetes) or Gremlin (multi-target)
+  ✦ First production experiment: pod-delete on 1 pod of pilot service
+  ✦ Run monthly GameDays with the pilot team — 2-3 scenarios each
+  ✦ Document all weaknesses found; create remediation tickets
+  ✦ Expand experiment catalog: network latency, dependency blackhole
+  ✦ Build abort-condition automation: Prometheus alert → halt webhook
+  ✦ Share findings with broader engineering org (build momentum)
+
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">PHASE 2 — SCALE ACROSS SERVICES (Month 6-9)</span>
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Expand to 5+ services — each team owns their experiment backlog
+  ✦ Chaos experiment template in sprint planning: each quarter, 2 new exps
+  ✦ Post-mortem → experiment policy: every P1/P2 incident gets a follow-up
+    chaos experiment that reproduces the failure mode
+  ✦ AZ failure simulation: test active-active multi-AZ claim for top services
+  ✦ Database failover: test RDS/CloudSQL promotion for all stateful services
+  ✦ Resource attack catalog: CPU/memory/disk on all services at least once
+  ✦ Quarterly cross-service GameDay: invite leadership to observe
+
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">PHASE 3 — CONTINUOUS AUTOMATION (Month 9-12)</span>
+<span class="at">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Integrate lightweight chaos experiments into CI/CD pipelines
+    (pod-delete, latency injection run automatically on staging deploys)
+  ✦ Schedule continuous low-blast-radius experiments in production
+    (e.g., random pod-delete during business hours, every weekday)
+  ✦ Reliability score / coverage heatmap — track coverage vs MITRE faults
+  ✦ Resilience SLO: "All Tier-1 services must pass pod-delete experiment"
+  ✦ Self-service chaos: teams run their own experiments via portal/CLI
+  ✦ Chaos-as-code: experiments in Git, reviewed in PRs, run in pipelines</div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-accent-danger">
+      <div class="card-title">Common Failure Modes <span class="pill pill-danger">Avoid</span></div>
+      <ul>
+        <li>Running experiments without observability in place first</li>
+        <li>Starting in production before staging validation</li>
+        <li>No abort criteria — experiment runs until it causes an incident</li>
+        <li>Fixing the weakness and not re-running the experiment to verify</li>
+        <li>Siloed — one SRE runs chaos, teams don't own experiments</li>
+        <li>Focusing on tooling before hypothesis discipline</li>
+        <li>Running chaos during major product launches or freeze windows</li>
+      </ul>
+    </div>
+    <div class="card card-accent-safe">
+      <div class="card-title">Success Factors <span class="pill pill-safe">Must-Have</span></div>
+      <ul>
+        <li>Observability precedes every experiment — measure first</li>
+        <li>Stage experiments: sandbox → staging → canary → production</li>
+        <li>Always have a human kill-switch and abort criteria defined</li>
+        <li>Every weakness found is remediated and then re-tested</li>
+        <li>Teams own their chaos backlogs — chaos is a team responsibility</li>
+        <li>Post-mortems generate experiments — close the feedback loop</li>
+        <li>Executive visibility through reliability score dashboards</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout note">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body"><strong>Reference Material:</strong> Principles of Chaos Engineering (principlesofchaos.org) · Netflix Tech Blog: Chaos Engineering (the original) · Google SRE Book: Chapter 17 (Testing for Reliability) · AWS Well-Architected: Reliability Pillar · LitmusChaos Docs (litmuschaos.io) · Gremlin Chaos Engineering Handbook (gremlin.com/community) · CNCF Chaos Engineering TAG Working Group</div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = 'var(--fire)';
+    btn.style.borderColor = 'var(--fire)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-item');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-54px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+<script src="../scripts/handbook-ui.js"></script>
+</body>
+</html>
