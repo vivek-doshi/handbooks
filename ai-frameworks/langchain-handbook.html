@@ -677,6 +677,85 @@ print(<span class="str">f"Chunk 0 metadata: {chunks[0].metadata}"</span>)</pre>
       </table>
     </div>
 
+    <h4>Common Splitters You Should Know</h4>
+    <p>Recursive is usually the best default, but you should choose splitters based on content type. Below are four commonly used splitters in production RAG pipelines.</p>
+
+    <pre><span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> (
+    CharacterTextSplitter,
+    TokenTextSplitter,
+    MarkdownHeaderTextSplitter,
+    PythonCodeTextSplitter,
+)
+
+<span class="comment"># 1) CharacterTextSplitter — simple fixed-size splitting by separator</span>
+char_splitter = CharacterTextSplitter(
+    separator=<span class="str">"\n\n"</span>,
+    chunk_size=<span class="num">900</span>,
+    chunk_overlap=<span class="num">120</span>,
+)
+
+<span class="comment"># 2) TokenTextSplitter — split by token count (better for strict context budgets)</span>
+token_splitter = TokenTextSplitter(
+    chunk_size=<span class="num">256</span>,
+    chunk_overlap=<span class="num">40</span>,
+)
+
+<span class="comment"># 3) MarkdownHeaderTextSplitter — keeps section semantics in Markdown docs</span>
+markdown_splitter = MarkdownHeaderTextSplitter(
+    headers_to_split_on=[
+        (<span class="str">"#"</span>, <span class="str">"h1"</span>),
+        (<span class="str">"##"</span>, <span class="str">"h2"</span>),
+        (<span class="str">"###"</span>, <span class="str">"h3"</span>),
+    ]
+)
+
+<span class="comment"># 4) PythonCodeTextSplitter — code-aware splitting for Python source files</span>
+python_splitter = PythonCodeTextSplitter(
+    chunk_size=<span class="num">1000</span>,
+    chunk_overlap=<span class="num">120</span>,
+)
+
+<span class="comment"># Example usage patterns:</span>
+char_chunks = char_splitter.split_documents(all_docs)
+token_chunks = token_splitter.split_documents(all_docs)
+
+md_text = <span class="str">"# Title\n## Section\nSome content..."</span>
+md_chunks = markdown_splitter.split_text(md_text)
+
+py_text = <span class="str">"def add(a, b):\n    return a + b\n"</span>
+py_chunks = python_splitter.split_text(py_text)</pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Splitter</th><th>Best For</th><th>Trade-off</th></tr>
+        <tr>
+          <td><code>RecursiveCharacterTextSplitter</code></td>
+          <td>General-purpose prose, docs, mixed content</td>
+          <td>Most robust default, but still character-based</td>
+        </tr>
+        <tr>
+          <td><code>CharacterTextSplitter</code></td>
+          <td>Simple text where structure is predictable</td>
+          <td>Can cut semantic units if separators are poor</td>
+        </tr>
+        <tr>
+          <td><code>TokenTextSplitter</code></td>
+          <td>Strict model token-window control</td>
+          <td>Tokenizer-dependent and less human-readable boundaries</td>
+        </tr>
+        <tr>
+          <td><code>MarkdownHeaderTextSplitter</code></td>
+          <td>Markdown handbooks, docs, runbooks</td>
+          <td>Needs well-formed heading structure</td>
+        </tr>
+        <tr>
+          <td><code>PythonCodeTextSplitter</code></td>
+          <td>Python source code and notebooks exported as text</td>
+          <td>Language-specific (not ideal for non-Python code)</td>
+        </tr>
+      </table>
+    </div>
+
     <h3>2.3 — Embeddings</h3>
     <p>Embeddings convert text chunks into dense vectors for similarity search. Choose the embedding model that matches your vector store and retrieval needs.</p>
 

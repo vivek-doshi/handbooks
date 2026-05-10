@@ -39,17 +39,17 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     preloader.classList.add('is-stage-2');
     if (streaksContainer) {
-      generateStreaks(streaksContainer, { min: 95, max: 125 });
+      generateStreaks(streaksContainer, { min: 140, max: 190 });
     }
-  }, 900);
+  }, 1380);
 
   setTimeout(() => {
     preloader.classList.add('is-stage-3');
-  }, 2200);
+  }, 3340);
 
   setTimeout(() => {
     finishIntro();
-  }, 4100);
+  }, 5720);
 
   function finishIntro() {
     if (finished) {
@@ -91,8 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const height = sample(88, 186);
       const xPosition = sample(-2, 102);
       const bottomPosition = sample(-12, 10);
-      const delay = sample(0, 480);
-      const duration = sample(1400, 2480);
+      const delay = sample(0, 720);
+      const duration = sample(2400, 3600);
       const drift = sample(-42, 42);
       const blur = Math.random() > 0.74 ? '0.7px' : '0px';
 
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
       container.appendChild(streak);
     }
 
-    for (let index = 0; index < 18; index += 1) {
+    for (let index = 0; index < 34; index += 1) {
       const colors = palette[(index + 1) % palette.length];
       const streak = document.createElement('span');
       streak.className = 'streak';
@@ -124,8 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
       streak.style.setProperty('--bottom', `${sample(-6, 8)}%`);
       streak.style.setProperty('--w', `${sample(2.4, 5.4)}px`);
       streak.style.setProperty('--h', `${sample(130, 210)}vh`);
-      streak.style.setProperty('--delay', `${sample(120, 520)}ms`);
-      streak.style.setProperty('--dur', `${sample(1650, 2700)}ms`);
+      streak.style.setProperty('--delay', `${sample(180, 760)}ms`);
+      streak.style.setProperty('--dur', `${sample(2800, 4200)}ms`);
       streak.style.setProperty('--drift', `${sample(-18, 22)}px`);
       streak.style.setProperty('--blur', '0px');
       streak.style.setProperty('--glow', colors[1]);
@@ -134,5 +134,52 @@ document.addEventListener('DOMContentLoaded', () => {
       streak.style.setProperty('--c3', colors[2]);
       container.appendChild(streak);
     }
+  }
+
+  setupHandbookLinkAudioNavigation();
+
+  function setupHandbookLinkAudioNavigation() {
+    const handbookLinks = document.querySelectorAll('.card-link');
+
+    if (!handbookLinks.length) {
+      return;
+    }
+
+    let isRedirecting = false;
+
+    handbookLinks.forEach((link) => {
+      link.addEventListener('click', (event) => {
+        const href = link.getAttribute('href');
+        const shouldBypass = event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+
+        if (!href || isRedirecting || shouldBypass) {
+          return;
+        }
+
+        event.preventDefault();
+        isRedirecting = true;
+
+        const navAudio = new Audio('intro.mp3');
+        navAudio.preload = 'auto';
+        navAudio.volume = 0.72;
+
+        const navigate = () => {
+          window.location.href = href;
+        };
+
+        const fallbackTimer = setTimeout(navigate, 1150);
+
+        navAudio.currentTime = 0;
+        navAudio.play().then(() => {
+          setTimeout(() => {
+            clearTimeout(fallbackTimer);
+            navigate();
+          }, 860);
+        }).catch(() => {
+          clearTimeout(fallbackTimer);
+          setTimeout(navigate, 80);
+        });
+      });
+    });
   }
 });

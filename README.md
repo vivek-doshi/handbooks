@@ -198,8 +198,8 @@ This repository is a collection of quick handbooks and reference documents that 
 - vector-databases-enterprise-handbook.html — You have Advanced RAG, but we need a dedicated refresher on Pinecone, Milvus, Qdrant, and pgvector internals. Vector DBs are the new Relational DBs. done 
 
 ### Observability & Reliability
-- opentelemetry-handbook.html — The industry standard for traces, metrics, and logs. If an engineer doesn't know OTel, they can't debug modern systems.
-- distributed-tracing-handbook.html — Jaeger, Zipkin. Following a request across 8 microservices and 3 LLM calls.
+- opentelemetry-handbook.html — The industry standard for traces, metrics, and logs. If an engineer doesn't know OTel, they can't debug modern systems. - done 
+- distributed-tracing-handbook.html — Jaeger, Zipkin. Following a request across 8 microservices and 3 LLM calls.  done
 - chaos-engineering-handbook.html — Gremlin, Litmus. How we intentionally break things to prove resilience.
 
 ### Architecture
