@@ -200,7 +200,7 @@ This repository is a collection of quick handbooks and reference documents that 
 ### Observability & Reliability
 - opentelemetry-handbook.html — The industry standard for traces, metrics, and logs. If an engineer doesn't know OTel, they can't debug modern systems. - done 
 - distributed-tracing-handbook.html — Jaeger, Zipkin. Following a request across 8 microservices and 3 LLM calls.  done
-- chaos-engineering-handbook.html — Gremlin, Litmus. How we intentionally break things to prove resilience.
+- chaos-engineering-handbook.html — Gremlin, Litmus. How we intentionally break things to prove resilience. - done 
 
 ### Architecture
 - event-driven-architecture-handbook.html — Kafka, Pulsar, RabbitMQ. Event sourcing vs. Pub/Sub. This is the backbone of modern enterprise scaling. - done
