@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Software Supply Chain Security — Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Unbounded:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-void:       #060809;
+    --bg-base:       #0a0d10;
+    --bg-surface:    #0f1419;
+    --bg-card:       #141b22;
+    --bg-code:       #080c10;
+    --bg-sidebar:    #0c1117;
+    --border:        #1a2330;
+    --border-bright: #253040;
+    --border-glow:   rgba(0,255,180,0.15);
+
+    --text-primary:  #d4e4f0;
+    --text-secondary:#7a96ab;
+    --text-muted:    #3a5060;
+    --text-dim:      #1e3040;
+
+    /* Threat palette */
+    --green:   #00ffb4;  /* safe / verified */
+    --cyan:    #00d4ff;  /* info / SBOM */
+    --amber:   #ffb830;  /* warning / risk */
+    --red:     #ff4d6a;  /* critical / vuln */
+    --purple:  #b06fff;  /* signing / crypto */
+    --pink:    #ff5fa3;  /* policy */
+    --teal:    #00c9b8;  /* tooling */
+
+    --green-dim:  rgba(0,255,180,0.08);
+    --cyan-dim:   rgba(0,212,255,0.08);
+    --amber-dim:  rgba(255,184,48,0.08);
+    --red-dim:    rgba(255,77,106,0.08);
+    --purple-dim: rgba(176,111,255,0.08);
+    --pink-dim:   rgba(255,95,163,0.08);
+    --teal-dim:   rgba(0,201,184,0.08);
+
+    --sidebar-w: 272px;
+    --top-h:     58px;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --display: 'Unbounded', sans-serif;
+    --radius: 6px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg-void);
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-size: 14px;
+  }
+
+  /* ── SCANLINE TEXTURE ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.07) 2px,
+      rgba(0,0,0,0.07) 4px
+    );
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    height: var(--top-h);
+    background: rgba(6,8,9,0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+  }
+  .topbar::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--green), var(--cyan), transparent);
+    opacity: 0.4;
+  }
+
+  .topbar-brand {
+    display: flex; align-items: center; gap: 12px;
+    text-decoration: none;
+  }
+  .brand-icon {
+    width: 30px; height: 30px;
+    border: 1px solid rgba(0,255,180,0.4);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    color: var(--green);
+    background: rgba(0,255,180,0.06);
+    letter-spacing: -0.5px;
+    box-shadow: 0 0 12px rgba(0,255,180,0.15), inset 0 0 8px rgba(0,255,180,0.05);
+  }
+  .brand-name {
+    font-family: var(--display);
+    font-size: 11px; font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+  }
+  .brand-sub { font-family: var(--sans); font-size: 10px; color: var(--text-muted); font-weight: 400; }
+
+  .topbar-pills { display: flex; align-items: center; gap: 8px; }
+  .pill {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px; letter-spacing: 0.5px;
+    border: 1px solid;
+  }
+  .pill-green  { color: var(--green);  border-color: rgba(0,255,180,0.35);  background: var(--green-dim); }
+  .pill-cyan   { color: var(--cyan);   border-color: rgba(0,212,255,0.35);  background: var(--cyan-dim); }
+  .pill-purple { color: var(--purple); border-color: rgba(176,111,255,0.3); background: var(--purple-dim); }
+  .pill-amber  { color: var(--amber);  border-color: rgba(255,184,48,0.3);  background: var(--amber-dim); }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    position: sticky; top: var(--top-h);
+    height: calc(100vh - var(--top-h));
+    overflow-y: auto; overflow-x: hidden;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    padding: 20px 0 48px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+  .nav-group {
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-dim); padding: 14px 18px 5px;
+  }
+  .nav-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 18px; text-decoration: none;
+    color: var(--text-secondary); font-size: 12.5px; font-weight: 400;
+    border-left: 2px solid transparent;
+    transition: all 0.15s; line-height: 1.3;
+    position: relative;
+  }
+  .nav-link:hover { color: var(--text-primary); background: rgba(255,255,255,0.03); border-left-color: var(--border-bright); }
+  .nav-link.active { color: var(--green); background: rgba(0,255,180,0.05); border-left-color: var(--green); }
+  .nav-icon { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+  .nav-threat {
+    margin-left: auto; font-family: var(--mono); font-size: 9px;
+    padding: 1px 6px; border-radius: 3px; font-weight: 700; letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+  .nt-critical { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,106,0.25); }
+  .nt-high     { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,184,48,0.25); }
+  .nt-med      { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(0,212,255,0.2); }
+
+  /* ── MAIN ── */
+  .main {
+    flex: 1; min-width: 0;
+    padding: 48px 56px 96px;
+    max-width: 980px;
+    position: relative; z-index: 1;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    margin-bottom: 64px;
+    padding: 44px 48px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse at 90% -10%, rgba(0,255,180,0.09) 0%, transparent 50%),
+      radial-gradient(ellipse at 0% 110%,  rgba(0,212,255,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%,  rgba(176,111,255,0.03) 0%, transparent 70%);
+  }
+  .hero::after {
+    content: 'SSCS';
+    position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
+    font-family: var(--display); font-size: 120px; font-weight: 900;
+    color: rgba(0,255,180,0.03); pointer-events: none; letter-spacing: -6px;
+    line-height: 1;
+  }
+  .hero-eyebrow {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 3px; text-transform: uppercase;
+    color: var(--green); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .hero-eyebrow::before { content: '▶'; opacity: 0.6; }
+  .hero-eyebrow::after  { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(0,255,180,0.3), transparent); }
+
+  .hero h1 {
+    font-family: var(--display);
+    font-size: 32px; font-weight: 900;
+    line-height: 1.1; letter-spacing: -1px;
+    margin-bottom: 8px; color: var(--text-primary);
+  }
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero-sub { color: var(--text-secondary); font-size: 14.5px; max-width: 560px; line-height: 1.7; margin-bottom: 26px; margin-top: 10px; }
+
+  .hero-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+  .htag {
+    font-family: var(--mono); font-size: 11px;
+    padding: 4px 12px; border-radius: 4px; border: 1px solid;
+  }
+  .htag-green  { color: var(--green);  border-color: rgba(0,255,180,0.3);  background: var(--green-dim); }
+  .htag-cyan   { color: var(--cyan);   border-color: rgba(0,212,255,0.25); background: var(--cyan-dim); }
+  .htag-purple { color: var(--purple); border-color: rgba(176,111,255,0.25); background: var(--purple-dim); }
+  .htag-amber  { color: var(--amber);  border-color: rgba(255,184,48,0.25); background: var(--amber-dim); }
+  .htag-pink   { color: var(--pink);   border-color: rgba(255,95,163,0.25); background: var(--pink-dim); }
+  .htag-teal   { color: var(--teal);   border-color: rgba(0,201,184,0.25);  background: var(--teal-dim); }
+  .htag-red    { color: var(--red);    border-color: rgba(255,77,106,0.25); background: var(--red-dim); }
+
+  /* ── SECTIONS ── */
+  .section {
+    margin-bottom: 68px;
+    scroll-margin-top: calc(var(--top-h) + 20px);
+  }
+
+  .section-header {
+    display: flex; align-items: flex-start; gap: 14px;
+    margin-bottom: 24px;
+  }
+  .section-icon {
+    width: 36px; height: 36px; flex-shrink: 0;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; margin-top: 2px;
+  }
+  .si-green  { background: rgba(0,255,180,0.1);  border: 1px solid rgba(0,255,180,0.2); }
+  .si-cyan   { background: rgba(0,212,255,0.1);  border: 1px solid rgba(0,212,255,0.2); }
+  .si-purple { background: rgba(176,111,255,0.1); border: 1px solid rgba(176,111,255,0.2); }
+  .si-amber  { background: rgba(255,184,48,0.1);  border: 1px solid rgba(255,184,48,0.2); }
+  .si-red    { background: rgba(255,77,106,0.1);   border: 1px solid rgba(255,77,106,0.2); }
+  .si-pink   { background: rgba(255,95,163,0.1);   border: 1px solid rgba(255,95,163,0.2); }
+  .si-teal   { background: rgba(0,201,184,0.1);    border: 1px solid rgba(0,201,184,0.2); }
+
+  .section-title h2 {
+    font-family: var(--display); font-size: 18px; font-weight: 700;
+    color: var(--text-primary); letter-spacing: -0.3px;
+    line-height: 1.2;
+  }
+  .section-title .stag {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--text-muted); margin-top: 3px;
+    letter-spacing: 0.5px;
+  }
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-bright), transparent);
+    margin-bottom: 28px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 22px; margin-bottom: 14px;
+  }
+  .card-title {
+    font-family: var(--sans); font-size: 14px; font-weight: 600;
+    color: var(--text-primary); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .mark { width: 5px; height: 5px; border-radius: 1px; flex-shrink: 0; transform: rotate(45deg); }
+  .mark-green  { background: var(--green); }
+  .mark-cyan   { background: var(--cyan); }
+  .mark-amber  { background: var(--amber); }
+  .mark-red    { background: var(--red); }
+  .mark-purple { background: var(--purple); }
+  .mark-pink   { background: var(--pink); }
+  .mark-teal   { background: var(--teal); }
+
+  .card p, .card li { color: var(--text-secondary); font-size: 13.5px; line-height: 1.65; }
+  .card ul { padding-left: 16px; }
+  .card ul li { margin-bottom: 5px; }
+  .card li strong { color: var(--text-primary); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+  /* ── CODE ── */
+  .code-block {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden; margin: 16px 0;
+    font-family: var(--mono);
+  }
+  .code-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-lang { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); }
+  .code-label { font-size: 10px; color: var(--text-muted); }
+  .copy-btn {
+    font-size: 10px; color: var(--text-muted); background: none;
+    border: 1px solid var(--border); border-radius: 3px; padding: 2px 9px;
+    cursor: pointer; font-family: var(--mono); letter-spacing: 0.5px;
+    transition: all 0.18s;
+  }
+  .copy-btn:hover { color: var(--green); border-color: rgba(0,255,180,0.4); }
+  .code-body {
+    padding: 16px 18px; overflow-x: auto;
+    font-size: 12.5px; line-height: 1.75; white-space: pre;
+    tab-size: 2;
+  }
+  .code-body::-webkit-scrollbar { height: 3px; }
+  .code-body::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+  /* Syntax */
+  .kw  { color: var(--purple); }
+  .st  { color: var(--green); }
+  .cm  { color: var(--text-dim); font-style: italic; }
+  .fn  { color: var(--cyan); }
+  .nm  { color: var(--amber); }
+  .at  { color: var(--teal); }
+  .op  { color: var(--text-muted); }
+  .ky  { color: #7dd3fc; }  /* yaml key */
+  .vl  { color: var(--green); } /* yaml value */
+  .hr  { color: var(--pink); }  /* header */
+
+  /* ── ALERTS ── */
+  .alert {
+    display: flex; gap: 13px;
+    padding: 14px 18px; border-radius: var(--radius);
+    margin: 14px 0; border-left: 3px solid;
+    font-size: 13.5px; line-height: 1.6;
+  }
+  .alert-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+  .alert-body { color: var(--text-secondary); }
+  .alert-body strong { color: var(--text-primary); }
+  .alert-body code {
+    font-family: var(--mono); font-size: 11.5px;
+    background: rgba(255,255,255,0.07); color: var(--amber);
+    padding: 1px 6px; border-radius: 3px;
+  }
+
+  .alert-critical { background: rgba(255,77,106,0.06);  border-color: var(--red);    }
+  .alert-warn     { background: rgba(255,184,48,0.06);  border-color: var(--amber);  }
+  .alert-info     { background: rgba(0,212,255,0.06);   border-color: var(--cyan);   }
+  .alert-secure   { background: rgba(0,255,180,0.06);   border-color: var(--green);  }
+  .alert-sig      { background: rgba(176,111,255,0.06); border-color: var(--purple); }
+
+  /* ── THREAT BOX ── */
+  .threat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 16px 0; }
+  .threat-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.18s;
+  }
+  .threat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .tc-red::before    { background: linear-gradient(90deg, var(--red), transparent); }
+  .tc-amber::before  { background: linear-gradient(90deg, var(--amber), transparent); }
+  .tc-cyan::before   { background: linear-gradient(90deg, var(--cyan), transparent); }
+  .tc-purple::before { background: linear-gradient(90deg, var(--purple), transparent); }
+
+  .threat-sev {
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .sev-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .sev-critical { color: var(--red); }   .sev-critical .sev-dot { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .sev-high     { color: var(--amber); } .sev-high .sev-dot     { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .sev-medium   { color: var(--cyan); }  .sev-medium .sev-dot   { background: var(--cyan); }
+  .sev-low      { color: var(--purple); }.sev-low .sev-dot      { background: var(--purple); }
+
+  .threat-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+  .threat-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
+  .threat-example { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+  /* ── TABLE ── */
+  .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: rgba(255,255,255,0.03);
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim);
+    padding: 10px 14px; text-align: left;
+    border-bottom: 1px solid var(--border-bright);
+  }
+  tbody td {
+    padding: 10px 14px; color: var(--text-secondary);
+    border-bottom: 1px solid rgba(26,35,48,0.7); vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.015); }
+  .td-mono { font-family: var(--mono); font-size: 11.5px; color: var(--teal); }
+  .td-green { color: var(--green); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+  .td-red   { color: var(--red); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+  .td-amber { color: var(--amber); font-weight: 600; }
+
+  /* ── INLINE CODE ── */
+  code {
+    font-family: var(--mono); font-size: 11.5px;
+    background: rgba(0,255,180,0.07); color: var(--green);
+    padding: 1px 6px; border-radius: 3px;
+    border: 1px solid rgba(0,255,180,0.15);
+  }
+
+  /* ── PROSE ── */
+  .section > p { color: var(--text-secondary); font-size: 14px; margin-bottom: 14px; }
+  h3 { font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 26px 0 12px; }
+  h4 { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; margin: 20px 0 8px; }
+
+  /* ── DIFF GRID ── */
+  .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .diff-do   .diff-head { color: var(--green); border-color: rgba(0,255,180,0.25); background: rgba(0,255,180,0.05); border-bottom: none; }
+  .diff-dont .diff-head { color: var(--red);   border-color: rgba(255,77,106,0.2);  background: rgba(255,77,106,0.05); border-bottom: none; }
+  .diff-head {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    padding: 6px 14px;
+    border: 1px solid;
+    border-radius: 4px 4px 0 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .diff-do .code-block, .diff-dont .code-block { margin: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+  .diff-do .code-block   { border-color: rgba(0,255,180,0.15); }
+  .diff-dont .code-block { border-color: rgba(255,77,106,0.12); }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    display: flex; align-items: stretch; gap: 0;
+    margin: 20px 0; flex-wrap: wrap;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .pipe-step {
+    flex: 1; min-width: 100px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; padding: 18px 12px;
+    border-right: 1px solid var(--border);
+    position: relative; text-align: center;
+  }
+  .pipe-step:last-child { border-right: none; }
+  .pipe-step::after {
+    content: '→'; position: absolute; right: -10px; top: 50%; transform: translateY(-50%);
+    color: var(--text-dim); font-size: 14px; z-index: 1;
+  }
+  .pipe-step:last-child::after { display: none; }
+  .pipe-icon { font-size: 20px; }
+  .pipe-label { font-family: var(--mono); font-size: 9px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+  .pipe-name { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+
+  .pipe-ok   { background: rgba(0,255,180,0.04); }
+  .pipe-warn { background: rgba(255,184,48,0.04); }
+  .pipe-crit { background: rgba(255,77,106,0.04); }
+  .pipe-sig  { background: rgba(176,111,255,0.04); }
+
+  /* ── TOOL ROW ── */
+  .tool-row {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 18px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    margin-bottom: 10px; transition: border-color 0.15s;
+  }
+  .tool-row:hover { border-color: var(--border-bright); }
+  .tool-emoji { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .tool-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .tool-pkg  { font-family: var(--mono); font-size: 11px; color: var(--teal); margin-top: 3px; }
+  .tool-desc { font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.5; }
+
+  /* ── RULE GRID ── */
+  .rule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 16px 0; }
+  .rule-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+  }
+  .rule-sev {
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    margin-bottom: 8px; display: inline-block;
+    padding: 2px 8px; border-radius: 3px; border: 1px solid;
+  }
+  .rs-must  { color: var(--red);   border-color: rgba(255,77,106,0.3);  background: rgba(255,77,106,0.08); }
+  .rs-should{ color: var(--amber); border-color: rgba(255,184,48,0.3);  background: rgba(255,184,48,0.08); }
+  .rs-avoid { color: var(--green); border-color: rgba(0,255,180,0.25);  background: rgba(0,255,180,0.06); }
+  .rule-title { font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 5px; }
+  .rule-body  { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+  .rule-body code { font-size: 11px; }
+
+  /* ── QUICK REF ── */
+  .qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; margin: 14px 0; }
+  .qr-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+  }
+  .qr-title { font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
+  .qr-card a { color: var(--cyan); text-decoration: none; font-size: 12.5px; display: block; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .qr-card a:last-child { border-bottom: none; }
+  .qr-card a:hover { color: var(--green); }
+
+  /* ── SBOM FORMAT CARDS ── */
+  .format-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+  .format-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .format-header {
+    padding: 12px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .format-badge {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 4px; letter-spacing: 0.5px;
+  }
+  .fb-spdx { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(0,212,255,0.3); }
+  .fb-cdx  { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(176,111,255,0.3); }
+  .format-name { font-weight: 600; font-size: 13px; color: var(--text-primary); }
+  .format-body { padding: 14px 18px; }
+  .format-body p { color: var(--text-secondary); font-size: 12.5px; line-height: 1.6; margin-bottom: 8px; }
+  .format-meta { font-family: var(--mono); font-size: 10.5px; color: var(--text-muted); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { padding: 28px 20px 60px; }
+    .grid-2, .grid-3, .diff-grid, .format-grid { grid-template-columns: 1fr; }
+    .hero { padding: 28px 24px; }
+    .hero h1 { font-size: 24px; }
+    .hero::after { display: none; }
+    .pipeline { flex-direction: column; }
+    .pipe-step { border-right: none; border-bottom: 1px solid var(--border); }
+    .pipe-step::after { content: '↓'; right: auto; left: 50%; top: auto; bottom: -12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <a class="topbar-brand" href="#">
+    <div class="brand-icon">S²CS</div>
+    <div>
+      <div class="brand-name">SUPPLY CHAIN SECURITY</div>
+      <div class="brand-sub">Software Security Handbook</div>
+    </div>
+  </a>
+  <div class="topbar-pills">
+    <span class="pill pill-green">SBOMs</span>
+    <span class="pill pill-purple">Sigstore</span>
+    <span class="pill pill-cyan">Dependencies</span>
+    <span class="pill pill-amber">AI-Era Risks</span>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="nav-group">Overview</div>
+  <a href="#threat-landscape" class="nav-link active"><span class="nav-icon">🗺</span> Threat Landscape <span class="nav-threat nt-critical">CRITICAL</span></a>
+  <a href="#attack-vectors"   class="nav-link"><span class="nav-icon">⚔️</span> Attack Vectors <span class="nav-threat nt-critical">CRITICAL</span></a>
+
+  <div class="nav-group">SBOMs</div>
+  <a href="#sbom-intro"       class="nav-link"><span class="nav-icon">📋</span> What Is an SBOM</a>
+  <a href="#sbom-formats"     class="nav-link"><span class="nav-icon">📄</span> SPDX vs CycloneDX</a>
+  <a href="#sbom-generate"    class="nav-link"><span class="nav-icon">⚙️</span> Generating SBOMs</a>
+  <a href="#sbom-consume"     class="nav-link"><span class="nav-icon">🔍</span> Consuming & Auditing</a>
+  <a href="#sbom-policy"      class="nav-link"><span class="nav-icon">📜</span> SBOM Policy & Mandates</a>
+
+  <div class="nav-group">Signing & Provenance</div>
+  <a href="#sigstore"         class="nav-link"><span class="nav-icon">🔑</span> Sigstore <span class="nav-threat nt-med">KEY</span></a>
+  <a href="#slsa"             class="nav-link"><span class="nav-icon">🏛</span> SLSA Framework <span class="nav-threat nt-high">HIGH</span></a>
+  <a href="#attestation"      class="nav-link"><span class="nav-icon">✅</span> In-Toto Attestations</a>
+
+  <div class="nav-group">Dependency Security</div>
+  <a href="#dep-risks"        class="nav-link"><span class="nav-icon">🕸</span> Dependency Risks <span class="nav-threat nt-critical">CRITICAL</span></a>
+  <a href="#dep-hardening"    class="nav-link"><span class="nav-icon">🛡</span> Hardening Deps</a>
+  <a href="#ai-era"           class="nav-link"><span class="nav-icon">🤖</span> AI-Era Threats <span class="nav-threat nt-critical">NEW</span></a>
+  <a href="#dep-scanning"     class="nav-link"><span class="nav-icon">🔭</span> Scanning & Detection</a>
+
+  <div class="nav-group">Operations</div>
+  <a href="#ci-pipeline"      class="nav-link"><span class="nav-icon">🚀</span> CI/CD Pipeline Gates</a>
+  <a href="#incident"         class="nav-link"><span class="nav-icon">🚨</span> Incident Response</a>
+  <a href="#compliance"       class="nav-link"><span class="nav-icon">⚖️</span> Compliance & Policy</a>
+  <a href="#tooling"          class="nav-link"><span class="nav-icon">🔧</span> Tooling Reference</a>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Software Supply Chain Security</div>
+    <h1>Every dependency<br>is a <em>trust decision.</em></h1>
+    <p class="hero-sub">From SBOMs to Sigstore, from typosquatting to AI-hallucinated packages — a complete practitioner's guide to securing the modern software supply chain.</p>
+    <div class="hero-tags">
+      <span class="htag htag-cyan">SBOM · SPDX · CycloneDX</span>
+      <span class="htag htag-purple">Sigstore · Cosign · Rekor</span>
+      <span class="htag htag-green">SLSA Provenance</span>
+      <span class="htag htag-amber">Dependency Confusion</span>
+      <span class="htag htag-red">Typosquatting · Protestware</span>
+      <span class="htag htag-pink">AI Package Hallucination</span>
+      <span class="htag htag-teal">VEX · OSV · CSAF</span>
+    </div>
+  </div>
+
+  <!-- ══ THREAT LANDSCAPE ══ -->
+  <section class="section" id="threat-landscape">
+    <div class="section-header">
+      <div class="section-icon si-red">🗺</div>
+      <div class="section-title">
+        <h2>Threat Landscape</h2>
+        <div class="stag">// Why supply chain security is the defining challenge of this decade</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <p>Software supply chain attacks target the trusted dependencies, tools, and build processes used to create software — not the software itself. Attackers compromise one package or build system to reach thousands of downstream consumers. The 2020 SolarWinds breach, the 2021 Log4Shell vulnerability, and the 2022 <code>node-ipc</code> protestware incident all share the same root: implicit trust in code we didn't write.</p>
+
+    <div class="alert alert-critical">
+      <div class="alert-icon">🚨</div>
+      <div class="alert-body"><strong>Scale of impact:</strong> The average enterprise application depends on hundreds of direct packages and thousands of transitive dependencies. A single compromised package at the top of the npm or PyPI popularity charts can reach millions of applications within hours. In the AI era, large language models are actively <em>inventing</em> package names that attackers then publish.</div>
+    </div>
+
+    <h3>The Three Layers of Supply Chain Risk</h3>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title"><span class="mark mark-red"></span>Source Code</div>
+        <p>Malicious contributions to open-source repos, compromised maintainer accounts, insider threats, and typosquatted package names that closely mimic trusted libraries.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="mark mark-amber"></span>Build & Packaging</div>
+        <p>Tampered build pipelines, unsigned release artifacts, compromised registries (npm, PyPI, Maven Central), and CI/CD system compromises that inject malicious code at packaging time.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="mark mark-cyan"></span>Distribution & Runtime</div>
+        <p>Mirror poisoning, CDN tampering, dependency confusion attacks exploiting internal vs. public registry resolution, and protestware that activates based on runtime conditions.</p>
+      </div>
+    </div>
+
+    <h3>Notable Incidents</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Incident</th><th>Year</th><th>Vector</th><th>Scope</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SolarWinds Orion</strong></td>
+            <td>2020</td>
+            <td>Compromised build server; backdoor injected into signed release</td>
+            <td class="td-red">18,000+ organizations</td>
+          </tr>
+          <tr>
+            <td><strong>Log4Shell (Log4j)</strong></td>
+            <td>2021</td>
+            <td>RCE via JNDI injection in ubiquitous logging library</td>
+            <td class="td-red">Billions of JVM apps</td>
+          </tr>
+          <tr>
+            <td><strong>ua-parser-js hijack</strong></td>
+            <td>2021</td>
+            <td>npm account takeover; crypto miner + credential stealer injected</td>
+            <td class="td-amber">8M weekly downloads</td>
+          </tr>
+          <tr>
+            <td><strong>node-ipc protestware</strong></td>
+            <td>2022</td>
+            <td>Maintainer intentionally added file-wiping payload for RU/BY IPs</td>
+            <td class="td-amber">1M+ weekly downloads</td>
+          </tr>
+          <tr>
+            <td><strong>PyTorch compromise</strong></td>
+            <td>2022</td>
+            <td>Dependency confusion — torchtriton published to PyPI before official</td>
+            <td class="td-amber">Nightly build users</td>
+          </tr>
+          <tr>
+            <td><strong>XZ Utils backdoor</strong></td>
+            <td>2024</td>
+            <td>Long-term social engineering of maintainer; backdoor in liblzma</td>
+            <td class="td-red">Linux distros globally</td>
+          </tr>
+          <tr>
+            <td><strong>AI package hallucination</strong></td>
+            <td>2023–</td>
+            <td>LLMs invent nonexistent package names; attackers publish them</td>
+            <td class="td-red">All AI-assisted devs</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ ATTACK VECTORS ══ -->
+  <section class="section" id="attack-vectors">
+    <div class="section-header">
+      <div class="section-icon si-red">⚔️</div>
+      <div class="section-title">
+        <h2>Attack Vectors</h2>
+        <div class="stag">// The techniques attackers use to compromise your dependencies</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="threat-grid">
+      <div class="threat-card tc-red">
+        <div class="threat-sev sev-critical"><span class="sev-dot"></span>Critical</div>
+        <div class="threat-name">Dependency Confusion</div>
+        <div class="threat-desc">Attacker publishes a public package with the same name as your private internal package. Package managers resolve public registries first, installing the malicious version.</div>
+        <div class="threat-example">Victim uses @mycompany/auth internally. Attacker publishes mycompany-auth to npm with higher version.</div>
+      </div>
+      <div class="threat-card tc-red">
+        <div class="threat-sev sev-critical"><span class="sev-dot"></span>Critical</div>
+        <div class="threat-name">Typosquatting</div>
+        <div class="threat-desc">Publishing packages with names nearly identical to popular libraries — one character off, swapped letters, or plausible misspellings that developers mistype.</div>
+        <div class="threat-example">colourama (vs colorama), lodash_ (vs lodash), requets (vs requests)</div>
+      </div>
+      <div class="threat-card tc-amber">
+        <div class="threat-sev sev-high"><span class="sev-dot"></span>High</div>
+        <div class="threat-name">Account Takeover</div>
+        <div class="threat-desc">Compromising a maintainer's registry credentials via phishing, credential stuffing, or leaked tokens — then publishing a malicious version of a trusted package.</div>
+        <div class="threat-example">ua-parser-js, event-stream, coa, rc npm packages were all hijacked this way.</div>
+      </div>
+      <div class="threat-card tc-amber">
+        <div class="threat-sev sev-high"><span class="sev-dot"></span>High</div>
+        <div class="threat-name">Protestware / Sabotage</div>
+        <div class="threat-desc">A legitimate maintainer intentionally inserts malicious code — often politically motivated, triggered conditionally by locale, IP range, or other runtime factors.</div>
+        <div class="threat-example">node-ipc (2022): file wiper activated for Russian IP addresses.</div>
+      </div>
+      <div class="threat-card tc-amber">
+        <div class="threat-sev sev-high"><span class="sev-dot"></span>High</div>
+        <div class="threat-name">Build Pipeline Compromise</div>
+        <div class="threat-desc">Injecting malicious code into the CI/CD pipeline after source code review — in build scripts, post-install hooks, or through compromised build tooling.</div>
+        <div class="threat-example">SolarWinds: malicious code injected during the build process, not present in source repo.</div>
+      </div>
+      <div class="threat-card tc-cyan">
+        <div class="threat-sev sev-medium"><span class="sev-dot"></span>Medium</div>
+        <div class="threat-name">Malicious Install Scripts</div>
+        <div class="threat-desc">Packages using <code>postinstall</code>, <code>preinstall</code> hooks to execute arbitrary shell commands the moment the package is installed — before any code review.</div>
+        <div class="threat-example">npm postinstall scripts execute automatically unless <code>--ignore-scripts</code> is used.</div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-body"><strong>The long-game attack:</strong> The XZ Utils backdoor (2024) involved a fake persona spending <em>two years</em> building trust with the maintainer, then slowly introducing the backdoor across multiple commits. Automated scanning cannot reliably catch this. Provenance verification, reproducible builds, and SLSA frameworks reduce (but cannot eliminate) this risk.</div>
+    </div>
+  </section>
+
+  <!-- ══ SBOM INTRO ══ -->
+  <section class="section" id="sbom-intro">
+    <div class="section-header">
+      <div class="section-icon si-cyan">📋</div>
+      <div class="section-title">
+        <h2>What Is an SBOM?</h2>
+        <div class="stag">// Software Bill of Materials — the ingredient list for your software</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <p>A Software Bill of Materials (SBOM) is a formal, machine-readable inventory of every component in a software artifact — direct dependencies, transitive dependencies, their versions, licenses, known vulnerabilities, and their relationships. Think of it as the nutrition label for software.</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="mark mark-cyan"></span>What an SBOM Contains</div>
+        <ul>
+          <li><strong>Component identity</strong> — name, version, package URL (PURL), CPES</li>
+          <li><strong>Supplier info</strong> — author, maintainer, originating organization</li>
+          <li><strong>Relationships</strong> — what depends on what (dependency graph)</li>
+          <li><strong>Licenses</strong> — SPDX license expressions per component</li>
+          <li><strong>Checksums</strong> — SHA-256 / SHA-512 hashes of each component</li>
+          <li><strong>VEX data</strong> — Vulnerability Exploitability eXchange status</li>
+          <li><strong>SBOM metadata</strong> — timestamp, creator, spec version, document namespace</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="mark mark-green"></span>Why SBOMs Matter</div>
+        <ul>
+          <li><strong>Vulnerability response</strong> — instantly identify if Log4j-equivalent is in any product</li>
+          <li><strong>License compliance</strong> — catch GPL in a proprietary product before shipping</li>
+          <li><strong>Procurement security</strong> — require SBOMs from vendors before purchase</li>
+          <li><strong>Incident triage</strong> — know in minutes, not days, what's affected</li>
+          <li><strong>Regulatory compliance</strong> — US EO 14028, EU Cyber Resilience Act mandate SBOMs</li>
+          <li><strong>Software composition visibility</strong> — end "I didn't know we used that"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <div class="alert-icon">ℹ️</div>
+      <div class="alert-body"><strong>Executive Order 14028 (US, 2021)</strong> mandated that any software sold to the US federal government must be accompanied by an SBOM. The EU Cyber Resilience Act (CRA, 2024) extends similar requirements to products sold in the EU. SBOMs are rapidly becoming a contractual and legal requirement, not just a best practice.</div>
+    </div>
+  </section>
+
+  <!-- ══ SBOM FORMATS ══ -->
+  <section class="section" id="sbom-formats">
+    <div class="section-header">
+      <div class="section-icon si-cyan">📄</div>
+      <div class="section-title">
+        <h2>SPDX vs CycloneDX</h2>
+        <div class="stag">// The two dominant SBOM formats — choose based on use case</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="format-grid">
+      <div class="format-card">
+        <div class="format-header">
+          <span class="format-badge fb-spdx">SPDX</span>
+          <span class="format-name">ISO/IEC 5962:2021</span>
+        </div>
+        <div class="format-body">
+          <p>The Linux Foundation standard, ISO-ratified. Originally designed for license compliance, expanded to full SBOM. Widely accepted for regulatory compliance.</p>
+          <p><strong>Formats:</strong> SPDX-TV (tag-value), JSON, RDF, YAML, XML</p>
+          <p><strong>Strengths:</strong> License expression accuracy, ISO standard status, mature tooling, NTIA minimum element coverage, legal defensibility.</p>
+          <p><strong>Best for:</strong> Legal/compliance teams, government procurement, license auditing, cross-industry interoperability.</p>
+          <p class="format-meta">Version: SPDX 2.3 / 3.0 · spdx.dev</p>
+        </div>
+      </div>
+      <div class="format-card">
+        <div class="format-header">
+          <span class="format-badge fb-cdx">CycloneDX</span>
+          <span class="format-name">OWASP Standard</span>
+        </div>
+        <div class="format-body">
+          <p>The OWASP standard, security-first design. Purpose-built for vulnerability management, VEX, and DevSecOps integration. Rich security metadata.</p>
+          <p><strong>Formats:</strong> JSON (preferred), XML, Protobuf</p>
+          <p><strong>Strengths:</strong> Security metadata depth, VEX support, services/hardware/ML model BOMs, faster tooling adoption, CSAF integration.</p>
+          <p><strong>Best for:</strong> Security teams, DevSecOps pipelines, vulnerability management, software-defined systems, AI/ML artifact tracking.</p>
+          <p class="format-meta">Version: CycloneDX 1.5 / 1.6 · cyclonedx.org</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>NTIA Minimum SBOM Elements</h3>
+    <p>The US National Telecommunications and Information Administration defines seven minimum elements any SBOM must contain regardless of format:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Element</th><th>Description</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Supplier Name</strong></td><td>Entity that creates, defines, identifies the component</td><td class="td-mono">The Apache Software Foundation</td></tr>
+          <tr><td><strong>Component Name</strong></td>  <td>Designation assigned to the unit of software</td>      <td class="td-mono">log4j-core</td></tr>
+          <tr><td><strong>Component Version</strong></strong></td><td>Identifier used by supplier to specify change</td><td class="td-mono">2.17.1</td></tr>
+          <tr><td><strong>Other Unique IDs</strong></strong></td> <td>Other identifiers — PURL, CPE, SWID</td>                 <td class="td-mono">pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1</td></tr>
+          <tr><td><strong>Dependency Relationships</strong></td><td>Characterizing the relationship between components</td><td class="td-mono">app → log4j-core@2.17.1</td></tr>
+          <tr><td><strong>Author of SBOM Data</strong></td>       <td>Entity creating the SBOM data for this component</td>   <td class="td-mono">syft@1.0.0</td></tr>
+          <tr><td><strong>Timestamp</strong></strong></td>         <td>Date/time SBOM data was assembled</td>                  <td class="td-mono">2024-03-15T14:22:00Z</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ SBOM GENERATE ══ -->
+  <section class="section" id="sbom-generate">
+    <div class="section-header">
+      <div class="section-icon si-teal">⚙️</div>
+      <div class="section-title">
+        <h2>Generating SBOMs</h2>
+        <div class="stag">// Syft, cdxgen, and language-native tools</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <h3>Syft — Universal SBOM Generator</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">bash</span><span class="code-label">Anchore Syft</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># Install Syft</span>
+curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+<span class="cm"># Generate SBOM from a Docker image (CycloneDX JSON)</span>
+syft <span class="st">nginx:1.25</span> -o cyclonedx-json=sbom.cdx.json
+
+<span class="cm"># Generate SBOM from a local directory / repo</span>
+syft dir:<span class="st">./my-app</span> -o spdx-json=sbom.spdx.json
+
+<span class="cm"># Generate SBOM from a built OCI image and attest it with cosign</span>
+syft packages <span class="st">my-registry/my-image:sha256-abc123</span> \
+  -o cyclonedx-json \
+  | cosign attest --predicate - --type cyclonedx \
+    <span class="st">my-registry/my-image:sha256-abc123</span>
+
+<span class="cm"># Output both formats simultaneously</span>
+syft <span class="st">my-image:latest</span> \
+  -o spdx-json=sbom.spdx.json \
+  -o cyclonedx-json=sbom.cdx.json \
+  -o table  <span class="cm"># human-readable summary to stdout</span></div>
+    </div>
+
+    <h3>cdxgen — CycloneDX-Native Generator</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">bash</span><span class="code-label">cdxgen (OWASP)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># Install cdxgen globally</span>
+npm install -g @cyclonedx/cdxgen
+
+<span class="cm"># Auto-detect language and generate SBOM</span>
+cdxgen -o bom.json -t auto
+
+<span class="cm"># Language-specific generation</span>
+cdxgen -o bom.json -t python      <span class="cm"># pip/poetry/conda</span>
+cdxgen -o bom.json -t java        <span class="cm"># Maven/Gradle</span>
+cdxgen -o bom.json -t nodejs      <span class="cm"># npm/yarn/pnpm</span>
+cdxgen -o bom.json -t dotnet      <span class="cm"># NuGet</span>
+cdxgen -o bom.json -t golang      <span class="cm"># go modules</span>
+cdxgen -o bom.json -t rust        <span class="cm"># cargo</span>
+
+<span class="cm"># Deep analysis including transitive deps</span>
+cdxgen -o bom.json --deep
+
+<span class="cm"># Generate for a container image</span>
+cdxgen -o bom.json -t docker <span class="st">nginx:1.25</span></div>
+    </div>
+
+    <h3>Language-Native Tools</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">bash</span><span class="code-label">Ecosystem-native SBOM generation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># Python — pip-sbom or cyclonedx-py</span>
+pip install cyclonedx-bom
+cyclonedx-py poetry -o sbom.json          <span class="cm"># from poetry.lock</span>
+cyclonedx-py requirements -i requirements.txt -o sbom.json
+
+<span class="cm"># Node.js — @cyclonedx/cyclonedx-npm</span>
+npx @cyclonedx/cyclonedx-npm --output-format json --output-file sbom.json
+
+<span class="cm"># Java (Maven plugin)</span>
+mvn org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
+
+<span class="cm"># Java (Gradle plugin) — add to build.gradle:</span>
+<span class="cm"># id("org.cyclonedx.bom") version "1.8.2"</span>
+gradle cyclonedxBom
+
+<span class="cm"># Go</span>
+go install github.com/google/osv-scanner/cmd/osv-scanner@latest
+osv-scanner --sbom sbom.json ./...
+
+<span class="cm"># .NET — Microsoft.Sbom.Tool</span>
+dotnet tool install Microsoft.Sbom.Tool -g
+sbom-tool generate -b . -bc . -pn MyApp -pv 1.0 -nsb https://mycompany.com
+
+<span class="cm"># Rust (cargo-sbom)</span>
+cargo install cargo-sbom
+cargo sbom --output-format cyclone_dx_json_1_4 > sbom.json</div>
+    </div>
+
+    <div class="alert alert-secure">
+      <div class="alert-icon">✅</div>
+      <div class="alert-body"><strong>SBOM generation in CI:</strong> Generate SBOMs at build time — not retroactively — so they accurately reflect the exact artifact produced. Attach the SBOM to the release artifact and sign it. Syft's OCI attestation support makes this straightforward for containerized workloads: the SBOM is stored alongside the image digest in the registry, not as a separate file to manage.</div>
+    </div>
+  </section>
+
+  <!-- ══ SBOM CONSUME ══ -->
+  <section class="section" id="sbom-consume">
+    <div class="section-header">
+      <div class="section-icon si-cyan">🔍</div>
+      <div class="section-title">
+        <h2>Consuming & Auditing SBOMs</h2>
+        <div class="stag">// Grype, OSV-Scanner, and VEX-driven vulnerability triage</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <h3>Vulnerability Scanning Against SBOMs</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">bash</span><span class="code-label">Grype — Anchore vulnerability scanner</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># Install Grype</span>
+curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+<span class="cm"># Scan a container image directly</span>
+grype nginx:1.25
+
+<span class="cm"># Scan an existing SBOM</span>
+grype sbom:./sbom.spdx.json
+grype sbom:./sbom.cdx.json
+
+<span class="cm"># Fail CI on Critical/High vulnerabilities only</span>
+grype sbom:./sbom.cdx.json --fail-on high
+
+<span class="cm"># Output structured JSON for pipeline consumption</span>
+grype sbom:./sbom.cdx.json -o json > vuln-report.json
+
+<span class="cm"># Use a VEX document to suppress known non-exploitable CVEs</span>
+grype sbom:./sbom.cdx.json --vex ./vex.json
+
+<span class="cm"># OSV-Scanner (Google) — cross-ecosystem, fast</span>
+osv-scanner --sbom=sbom.cdx.json
+osv-scanner --lockfile=package-lock.json  <span class="cm"># also works on lockfiles</span>
+osv-scanner -r ./my-project               <span class="cm"># recursive directory scan</span></div>
+    </div>
+
+    <h3>VEX — Vulnerability Exploitability eXchange</h3>
+    <p>VEX documents let producers communicate whether a known CVE is actually exploitable in their product. This eliminates alert fatigue from CVEs that exist in a dependency but aren't reachable in your specific build or configuration.</p>
+
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">json</span><span class="code-label">CycloneDX VEX document example</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body">{
+  <span class="ky">"bomFormat"</span>: <span class="vl">"CycloneDX"</span>,
+  <span class="ky">"specVersion"</span>: <span class="vl">"1.6"</span>,
+  <span class="ky">"version"</span>: <span class="nm">1</span>,
+  <span class="ky">"metadata"</span>: {
+    <span class="ky">"timestamp"</span>: <span class="vl">"2024-09-15T10:00:00Z"</span>,
+    <span class="ky">"component"</span>: { <span class="ky">"name"</span>: <span class="vl">"my-api"</span>, <span class="ky">"version"</span>: <span class="vl">"3.2.1"</span> }
+  },
+  <span class="ky">"vulnerabilities"</span>: [
+    {
+      <span class="ky">"id"</span>: <span class="vl">"CVE-2021-44228"</span>,         <span class="cm">// Log4Shell</span>
+      <span class="ky">"ratings"</span>: [{ <span class="ky">"severity"</span>: <span class="vl">"critical"</span> }],
+      <span class="ky">"affects"</span>: [{
+        <span class="ky">"ref"</span>: <span class="vl">"pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"</span>,
+        <span class="ky">"versions"</span>: [{ <span class="ky">"range"</span>: <span class="vl">"vers:maven/>=2.0-beta9|<=2.14.1"</span> }]
+      }],
+      <span class="ky">"analysis"</span>: {
+        <span class="ky">"state"</span>: <span class="vl">"not_affected"</span>,          <span class="cm">// ← VEX status</span>
+        <span class="ky">"justification"</span>: <span class="vl">"protected_by_mitigating_control"</span>,
+        <span class="ky">"detail"</span>: <span class="vl">"JNDI lookup disabled via LOG4J_FORMAT_MSG_NO_LOOKUPS=true; log4j-core not reachable from user-controlled input."</span>,
+        <span class="ky">"responses"</span>: [<span class="vl">"workaround_available"</span>]
+      }
+    }
+  ]
+}</div>
+    </div>
+
+    <h3>VEX Status Values</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Status</th><th>Meaning</th><th>Action for Consumer</th></tr></thead>
+        <tbody>
+          <tr><td class="td-green">not_affected</td><td>The vulnerability does not affect this product</td><td>Suppress from alerts; log justification</td></tr>
+          <tr><td class="td-red">affected</td><td>The product is affected and action is needed</td><td>Treat as active vulnerability; patch or mitigate</td></tr>
+          <tr><td class="td-amber">fixed</td><td>A fix has been applied in this version</td><td>Verify fix version; update if needed</td></tr>
+          <tr><td class="td-amber">under_investigation</td><td>Status is being analyzed</td><td>Watch for status update; don't suppress</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ SBOM POLICY ══ -->
+  <section class="section" id="sbom-policy">
+    <div class="section-header">
+      <div class="section-icon si-pink">📜</div>
+      <div class="section-title">
+        <h2>SBOM Policy & Mandates</h2>
+        <div class="stag">// Regulatory requirements and vendor expectations</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="rule-grid">
+      <div class="rule-card">
+        <div class="rule-sev rs-must">MUST — US Federal</div>
+        <div class="rule-title">US Executive Order 14028</div>
+        <div class="rule-body">Any software sold to US federal agencies must include an SBOM. CISA has published minimum element guidance aligned to NTIA standards. Required for FedRAMP authorization.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-sev rs-must">MUST — EU Market</div>
+        <div class="rule-title">EU Cyber Resilience Act (CRA)</div>
+        <div class="rule-body">Products sold in the EU with digital elements must maintain SBOMs, report actively exploited vulnerabilities, and support secure updates. Enforcement begins 2026–2027.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-sev rs-should">SHOULD — Healthcare</div>
+        <div class="rule-title">FDA Medical Device SBOMs</div>
+        <div class="rule-body">US FDA requires SBOMs for premarket submissions of medical devices with software. Must include all commercial, open-source, and off-the-shelf software components.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-sev rs-should">SHOULD — Enterprise Procurement</div>
+        <div class="rule-title">Vendor SBOM Requirements</div>
+        <div class="rule-body">Require SBOMs from all software vendors as a procurement condition. Specify CycloneDX 1.5+ or SPDX 2.3+ in contracts. Automate ingestion into your VDR (Vulnerability Disclosure Report) workflow.</div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-body"><strong>SBOM freshness:</strong> An SBOM is only useful if it reflects the current state of the artifact. Implement automated SBOM generation on every build, version it alongside release artifacts, and republish updated SBOMs when dependency updates occur — even if the application code hasn't changed.</div>
+    </div>
+  </section>
+
+  <!-- ══ SIGSTORE ══ -->
+  <section class="section" id="sigstore">
+    <div class="section-header">
+      <div class="section-icon si-purple">🔑</div>
+      <div class="section-title">
+        <h2>Sigstore</h2>
+        <div class="stag">// Keyless signing for the open-source era</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <p>Sigstore is an open standard and toolchain for signing, verifying, and protecting software artifacts without requiring teams to manage private key infrastructure. It uses ephemeral OIDC-based signing certificates and a transparency log (Rekor) to create a tamper-evident, publicly auditable record of all signing events.</p>
+
+    <h3>Sigstore Components</h3>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title"><span class="mark mark-purple"></span>Cosign</div>
+        <p>Signs and verifies container images, blobs, and OCI artifacts. Stores signatures in OCI registries alongside the artifact. The primary user-facing CLI tool.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="mark mark-cyan"></span>Rekor</div>
+        <p>The immutable, append-only transparency log. Every signature event is recorded. Anyone can query Rekor to verify when and by whom an artifact was signed.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="mark mark-green"></span>Fulcio</div>
+        <p>The OIDC-based certificate authority. Issues short-lived signing certificates (10-minute TTL) bound to an identity (GitHub Actions workflow, Google account, etc.) — no long-lived private keys.</p>
+      </div>
+    </div>
+
+    <h3>Cosign — Signing & Verification</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">bash</span><span class="code-label">Cosign — keyless signing via OIDC</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># Install cosign</span>
+brew install cosign
+<span class="cm"># or: go install github.com/sigstore/cosign/v2/cmd/cosign@latest</span>
+
+<span class="cm">─── SIGNING ───────────────────────────────────────────────────────────────</span>
+
+<span class="cm"># Keyless sign a container image (OIDC identity — GitHub Actions, GCP, etc.)</span>
+cosign sign \
+  --yes \
+  ghcr.io/myorg/my-image@sha256:abc123...
+
+<span class="cm"># Sign with a key file (for air-gapped / non-OIDC environments)</span>
+cosign generate-key-pair                  <span class="cm"># produces cosign.key + cosign.pub</span>
+cosign sign --key cosign.key ghcr.io/myorg/my-image@sha256:abc123
+
+<span class="cm"># Sign and attach an SBOM as an attestation</span>
+cosign attest \
+  --predicate sbom.cdx.json \
+  --type cyclonedx \
+  --yes \
+  ghcr.io/myorg/my-image@sha256:abc123
+
+<span class="cm"># Sign a blob / binary (e.g. a release tarball)</span>
+cosign sign-blob --yes ./my-app-linux-amd64.tar.gz \
+  --bundle bundle.json   <span class="cm"># saves sig + cert + rekor entry</span>
+
+<span class="cm">─── VERIFICATION ──────────────────────────────────────────────────────────</span>
+
+<span class="cm"># Verify keyless — enforce identity must be a GitHub Actions workflow</span>
+cosign verify \
+  --certificate-identity-regexp=https://github.com/myorg/my-repo/.* \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+  ghcr.io/myorg/my-image@sha256:abc123
+
+<span class="cm"># Verify with a public key</span>
+cosign verify --key cosign.pub ghcr.io/myorg/my-image@sha256:abc123
+
+<span class="cm"># Verify an SBOM attestation</span>
+cosign verify-attestation \
+  --type cyclonedx \
+  --certificate-identity-regexp=https://github.com/myorg/.* \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+  ghcr.io/myorg/my-image@sha256:abc123 \
+  | jq '.payload | @base64d | fromjson'
+
+<span class="cm"># Verify a blob</span>
+cosign verify-blob ./my-app-linux-amd64.tar.gz --bundle bundle.json \
+  --certificate-identity-regexp=https://github.com/myorg/.* \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com</div>
+    </div>
+
+    <h3>GitHub Actions — Keyless Signing in CI</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">yaml</span><span class="code-label">.github/workflows/release.yml</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="ky">name</span>: <span class="vl">Build, SBOM, Sign</span>
+<span class="ky">on</span>: { <span class="ky">push</span>: { <span class="ky">tags</span>: [<span class="vl">'v*'</span>] } }
+
+<span class="ky">permissions</span>:
+  <span class="ky">id-token</span>: <span class="vl">write</span>      <span class="cm"># required for keyless OIDC signing</span>
+  <span class="ky">contents</span>: <span class="vl">read</span>
+  <span class="ky">packages</span>: <span class="vl">write</span>      <span class="cm"># push to ghcr.io</span>
+  <span class="ky">attestations</span>: <span class="vl">write</span>  <span class="cm"># GitHub artifact attestations</span>
+
+<span class="ky">jobs</span>:
+  <span class="ky">release</span>:
+    <span class="ky">runs-on</span>: <span class="vl">ubuntu-latest</span>
+    <span class="ky">steps</span>:
+      - <span class="ky">uses</span>: <span class="vl">actions/checkout@v4</span>
+
+      - <span class="ky">name</span>: <span class="vl">Build image</span>
+        <span class="ky">run</span>: |
+          docker build -t ghcr.io/${{ github.repository }}:${{ github.sha }} .
+          docker push ghcr.io/${{ github.repository }}:${{ github.sha }}
+          <span class="cm"># Capture the digest — always sign the digest, never just the tag</span>
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' \
+            ghcr.io/${{ github.repository }}:${{ github.sha }})
+          echo "IMAGE_DIGEST=$DIGEST" >> $GITHUB_ENV
+
+      - <span class="ky">name</span>: <span class="vl">Generate SBOM (Syft)</span>
+        <span class="ky">uses</span>: <span class="vl">anchore/sbom-action@v0</span>
+        <span class="ky">with</span>:
+          <span class="ky">image</span>: <span class="vl">${{ env.IMAGE_DIGEST }}</span>
+          <span class="ky">format</span>: <span class="vl">cyclonedx-json</span>
+          <span class="ky">output-file</span>: <span class="vl">sbom.cdx.json</span>
+
+      - <span class="ky">name</span>: <span class="vl">Install Cosign</span>
+        <span class="ky">uses</span>: <span class="vl">sigstore/cosign-installer@v3</span>
+
+      - <span class="ky">name</span>: <span class="vl">Sign image</span>
+        <span class="ky">run</span>: |
+          cosign sign --yes ${{ env.IMAGE_DIGEST }}
+
+      - <span class="ky">name</span>: <span class="vl">Attest SBOM</span>
+        <span class="ky">run</span>: |
+          cosign attest \
+            --predicate sbom.cdx.json \
+            --type cyclonedx \
+            --yes \
+            ${{ env.IMAGE_DIGEST }}
+
+      - <span class="ky">name</span>: <span class="vl">Scan for vulnerabilities</span>
+        <span class="ky">uses</span>: <span class="vl">anchore/scan-action@v3</span>
+        <span class="ky">with</span>:
+          <span class="ky">sbom</span>: <span class="vl">sbom.cdx.json</span>
+          <span class="ky">fail-build</span>: <span class="vl">"true"</span>
+          <span class="ky">severity-cutoff</span>: <span class="vl">high</span></div>
+    </div>
+
+    <div class="alert alert-sig">
+      <div class="alert-icon">🔑</div>
+      <div class="alert-body"><strong>Always sign the digest, never the tag.</strong> Tags are mutable — <code>latest</code> can point to a different image tomorrow. Signatures attach to the immutable SHA-256 digest. If you sign <code>myimage:latest</code>, cosign resolves the digest at signing time, but consumers must verify against the digest to get the guarantee.</div>
+    </div>
+  </section>
+
+  <!-- ══ SLSA ══ -->
+  <section class="section" id="slsa">
+    <div class="section-header">
+      <div class="section-icon si-purple">🏛</div>
+      <div class="section-title">
+        <h2>SLSA Framework</h2>
+        <div class="stag">// Supply chain Levels for Software Artifacts — tamper-evident provenance</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <p>SLSA (pronounced "salsa") is a security framework and checklist of standards to prevent tampering, improve integrity, and secure packages and infrastructure in your projects. It defines four levels of build security assurance.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Level</th><th>Requirements</th><th>Guarantee</th><th>Typical Environment</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>SLSA 1</strong></td>
+            <td>Build process is scripted/automated; provenance generated (may be unverified)</td>
+            <td class="td-amber">Basic documentation; not tamper-resistant</td>
+            <td>CI with any provenance generation</td>
+          </tr>
+          <tr>
+            <td><strong>SLSA 2</strong></td>
+            <td>Hosted build service; provenance is authenticated and signed</td>
+            <td class="td-amber">Builds from a specific hosted service; prevents some tampering</td>
+            <td>GitHub Actions, GitLab CI with provenance action</td>
+          </tr>
+          <tr>
+            <td><strong>SLSA 3</strong></td>
+            <td>Hardened build platform; builds from specific source repo; provenance non-forgeable by build service</td>
+            <td class="td-green">Build source auditable; cannot be tampered by the build service itself</td>
+            <td>Hermetically sealed CI, provenance from trusted builder</td>
+          </tr>
+          <tr>
+            <td><strong>SLSA 4</strong> (proposed)</td>
+            <td>Two-party review of all source changes; hermetic, reproducible builds</td>
+            <td class="td-green">Full auditability; reproducible builds verifiable by anyone</td>
+            <td>High-assurance projects (OS distros, critical infra)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Generating SLSA Provenance in GitHub Actions</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">yaml</span><span class="code-label">SLSA Level 3 provenance for a Go binary</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="ky">name</span>: <span class="vl">Release with SLSA Provenance</span>
+<span class="ky">on</span>: { <span class="ky">release</span>: { <span class="ky">types</span>: [<span class="vl">created</span>] } }
+
+<span class="ky">permissions</span>:
+  <span class="ky">id-token</span>: <span class="vl">write</span>
+  <span class="ky">contents</span>: <span class="vl">write</span>
+  <span class="ky">actions</span>: <span class="vl">read</span>  <span class="cm"># required by SLSA generator</span>
+
+<span class="ky">jobs</span>:
+  <span class="ky">build</span>:
+    <span class="ky">runs-on</span>: <span class="vl">ubuntu-latest</span>
+    <span class="ky">outputs</span>:
+      <span class="ky">hash</span>: <span class="vl">${{ steps.hash.outputs.hash }}</span>
+    <span class="ky">steps</span>:
+      - <span class="ky">uses</span>: <span class="vl">actions/checkout@v4</span>
+      - <span class="ky">name</span>: <span class="vl">Build binary</span>
+        <span class="ky">run</span>: <span class="vl">go build -o my-app ./cmd/...</span>
+      - <span class="ky">name</span>: <span class="vl">Compute hash</span>
+        <span class="ky">id</span>: <span class="vl">hash</span>
+        <span class="ky">run</span>: |
+          sha256sum my-app > hash.txt
+          echo "hash=$(base64 -w0 hash.txt)" >> $GITHUB_OUTPUT
+      - <span class="ky">uses</span>: <span class="vl">actions/upload-artifact@v4</span>
+        <span class="ky">with</span>: { <span class="ky">name</span>: <span class="vl">binary</span>, <span class="ky">path</span>: <span class="vl">my-app</span> }
+
+  <span class="cm"># SLSA generator produces provenance signed by GitHub's OIDC</span>
+  <span class="ky">provenance</span>:
+    <span class="ky">needs</span>: [<span class="vl">build</span>]
+    <span class="ky">uses</span>: <span class="vl">slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0</span>
+    <span class="ky">with</span>:
+      <span class="ky">base64-subjects</span>: <span class="vl">${{ needs.build.outputs.hash }}</span>
+      <span class="ky">upload-assets</span>: <span class="vl">true</span>  <span class="cm"># attaches .intoto.jsonl to GitHub Release</span></div>
+    </div>
+  </section>
+
+  <!-- ══ IN-TOTO ══ -->
+  <section class="section" id="attestation">
+    <div class="section-header">
+      <div class="section-icon si-purple">✅</div>
+      <div class="section-title">
+        <h2>In-Toto Attestations</h2>
+        <div class="stag">// Structured claims about software supply chain steps</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <p>In-Toto is the attestation framework underlying SLSA provenance, SBOM attestations, and other supply chain claims. An attestation is a cryptographically signed statement: <em>"this software was built from this source, using this tool, at this time, producing this output."</em></p>
+
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">json</span><span class="code-label">In-Toto SLSA Provenance attestation structure</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body">{
+  <span class="ky">"_type"</span>: <span class="vl">"https://in-toto.io/Statement/v0.1"</span>,
+  <span class="ky">"predicateType"</span>: <span class="vl">"https://slsa.dev/provenance/v0.2"</span>,
+
+  <span class="ky">"subject"</span>: [{
+    <span class="ky">"name"</span>: <span class="vl">"my-app"</span>,
+    <span class="ky">"digest"</span>: { <span class="ky">"sha256"</span>: <span class="vl">"4d82d6854a8..."</span> }
+  }],
+
+  <span class="ky">"predicate"</span>: {
+    <span class="ky">"builder"</span>: {
+      <span class="ky">"id"</span>: <span class="vl">"https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0"</span>
+    },
+    <span class="ky">"buildType"</span>: <span class="vl">"https://slsa.dev/provenance/v0.2"</span>,
+    <span class="ky">"invocation"</span>: {
+      <span class="ky">"configSource"</span>: {
+        <span class="ky">"uri"</span>: <span class="vl">"git+https://github.com/myorg/my-repo@refs/heads/main"</span>,
+        <span class="ky">"digest"</span>: { <span class="ky">"sha1"</span>: <span class="vl">"abc123def456"</span> },
+        <span class="ky">"entryPoint"</span>: <span class="vl">".github/workflows/release.yml"</span>
+      }
+    },
+    <span class="ky">"materials"</span>: [{
+      <span class="ky">"uri"</span>: <span class="vl">"git+https://github.com/myorg/my-repo"</span>,
+      <span class="ky">"digest"</span>: { <span class="ky">"sha1"</span>: <span class="vl">"abc123def456"</span> }
+    }]
+  }
+}</div>
+    </div>
+  </section>
+
+  <!-- ══ DEPENDENCY RISKS ══ -->
+  <section class="section" id="dep-risks">
+    <div class="section-header">
+      <div class="section-icon si-amber">🕸</div>
+      <div class="section-title">
+        <h2>Dependency Risks</h2>
+        <div class="stag">// Understanding what you're actually importing</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="alert alert-critical">
+      <div class="alert-icon">🔴</div>
+      <div class="alert-body"><strong>The real scale:</strong> An average Node.js application installs <em>hundreds</em> of packages including transitive deps. A typical <code>node_modules</code> folder contains code from thousands of unique contributors worldwide. You haven't reviewed 99%+ of it. The question isn't <em>whether</em> you trust it — it's whether you've made an informed decision.</div>
+    </div>
+
+    <h3>Risk Dimensions for Every Dependency</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Dimension</th><th>Low Risk</th><th>High Risk</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Maintainer count</strong></td>
+            <td class="td-green">Multiple active maintainers, org-owned</td>
+            <td class="td-red">Single maintainer, inactive for years</td>
+          </tr>
+          <tr>
+            <td><strong>Dependency depth</strong></td>
+            <td class="td-green">Direct dep with few transitive deps</td>
+            <td class="td-red">Deep transitive dep, many sub-dependencies</td>
+          </tr>
+          <tr>
+            <td><strong>Install scripts</strong></td>
+            <td class="td-green">No postinstall/preinstall hooks</td>
+            <td class="td-red">Executes shell commands on install</td>
+          </tr>
+          <tr>
+            <td><strong>Network access in tests</strong></td>
+            <td class="td-green">All tests run offline</td>
+            <td class="td-red">Tests or build scripts reach external URLs</td>
+          </tr>
+          <tr>
+            <td><strong>Published vs. source diff</strong></td>
+            <td class="td-green">Reproducible build; source matches artifact</td>
+            <td class="td-red">Can't reproduce the published artifact from source</td>
+          </tr>
+          <tr>
+            <td><strong>License</strong></td>
+            <td class="td-green">MIT, Apache-2, BSD — permissive</td>
+            <td class="td-amber">GPL/AGPL — copyleft; Unknown — high risk</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ DEP HARDENING ══ -->
+  <section class="section" id="dep-hardening">
+    <div class="section-header">
+      <div class="section-icon si-green">🛡</div>
+      <div class="section-title">
+        <h2>Hardening Dependencies</h2>
+        <div class="stag">// Locking, pinning, private proxies, and allowlisting</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <h3>Pin Exact Versions — Use Lockfiles</h3>
+    <div class="diff-grid">
+      <div class="diff-do">
+        <div class="diff-head">✓ Pinned — reproducible</div>
+        <div class="code-block">
+          <div class="code-body"><span class="cm"># requirements.txt — exact version</span>
+requests==2.31.0
+numpy==1.26.4
+
+<span class="cm"># package.json — no range prefixes</span>
+{
+  <span class="ky">"dependencies"</span>: {
+    <span class="ky">"express"</span>: <span class="vl">"4.18.2"</span>   <span class="cm">← exact</span>
+  }
+}
+
+<span class="cm"># Always commit lockfiles</span>
+package-lock.json  <span class="cm">← commit this</span>
+poetry.lock        <span class="cm">← commit this</span>
+Cargo.lock         <span class="cm">← commit this</span></div>
+        </div>
+      </div>
+      <div class="diff-dont">
+        <div class="diff-head">✕ Unpinned — supply chain risk</div>
+        <div class="code-block">
+          <div class="code-body"><span class="cm"># requests>=2.0 — any future version</span>
+requests>=2.0.0
+
+<span class="cm"># ^ and ~ allow updates</span>
+{
+  <span class="ky">"dependencies"</span>: {
+    <span class="ky">"express"</span>: <span class="vl">"^4.0.0"</span>  <span class="cm">← allows 4.x</span>
+  }
+}
+
+<span class="cm"># .gitignore-ing lockfiles</span>
+<span class="cm"># means every install could differ</span>
+*.lock  <span class="cm">← do NOT ignore</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Private Package Proxies & Allowlisting</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">bash</span><span class="code-label">Private proxy configuration</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># npm — route all installs through Artifactory / Nexus / Verdaccio</span>
+npm config set registry https://artifactory.mycompany.com/artifactory/api/npm/npm/
+
+<span class="cm"># pip — private PyPI proxy</span>
+pip install --index-url https://nexus.mycompany.com/repository/pypi/simple/ requests
+
+<span class="cm"># pip.conf (system-wide)</span>
+[global]
+index-url = https://nexus.mycompany.com/repository/pypi-proxy/simple/
+trusted-host = nexus.mycompany.com
+
+<span class="cm"># Maven — settings.xml with mirror</span>
+&lt;mirror&gt;
+  &lt;id&gt;central-proxy&lt;/id&gt;
+  &lt;mirrorOf&gt;*&lt;/mirrorOf&gt;
+  &lt;url&gt;https://nexus.mycompany.com/repository/maven-public/&lt;/url&gt;
+&lt;/mirror&gt;
+
+<span class="cm"># Docker — always pull from internal mirror, never Docker Hub directly</span>
+DOCKER_MIRROR=registry.mycompany.com/dockerhub-proxy
+
+<span class="cm"># Prevent dependency confusion: namespace all internal packages</span>
+<span class="cm"># npm: use scoped packages @myorg/package-name</span>
+<span class="cm"># pip: register internal package names on PyPI as dummies</span>
+<span class="cm"># Or: configure Artifactory to only resolve @myorg scope from internal</span></div>
+    </div>
+
+    <h3>Dependency Confusion — Specific Mitigations</h3>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <div class="rule-sev rs-must">MUST — npm</div>
+        <div class="rule-title">Use scoped packages + overrides</div>
+        <div class="rule-body">All internal packages must use a scoped name like <code>@myorg/package</code>. Configure npm to resolve <code>@myorg/*</code> exclusively from your private registry, never from the public npm registry.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-sev rs-must">MUST — pip</div>
+        <div class="rule-title">Claim internal names on PyPI</div>
+        <div class="rule-body">Publish placeholder/dummy packages on PyPI for every internal package name you use. An attacker can't publish a malicious version of a name that's already claimed. Use <code>--no-index</code> in air-gapped builds.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-sev rs-must">MUST — All</div>
+        <div class="rule-title">Block public registry in prod build</div>
+        <div class="rule-body">Production builds should <em>only</em> resolve from your internal proxy. Network-level egress rules or firewall policies should prevent build agents from reaching public registries directly.</div>
+      </div>
+    </div>
+
+    <h3>Npm Audit & Lockfile Integrity</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">bash</span><span class="code-label">Integrity verification</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># npm — install with integrity check, no allow-downgrade</span>
+npm ci                     <span class="cm"># respects lockfile exactly; fails if lockfile inconsistent</span>
+npm audit --audit-level=high  <span class="cm"># fail on high+ severity</span>
+npm audit fix              <span class="cm"># auto-remediate</span>
+
+<span class="cm"># pip — verify checksums</span>
+pip install --require-hashes -r requirements.txt
+<span class="cm"># requirements.txt with hashes:</span>
+<span class="cm"># requests==2.31.0 \</span>
+<span class="cm">#   --hash=sha256:58cd2187423839... \</span>
+<span class="cm">#   --hash=sha256:942c5a758f98d7...</span>
+
+<span class="cm"># pip-audit — dedicated audit tool</span>
+pip install pip-audit
+pip-audit --requirement requirements.txt
+pip-audit --output-format cyclonedx-json > vuln.cdx.json
+
+<span class="cm"># cargo — audit for Rust</span>
+cargo install cargo-audit
+cargo audit
+
+<span class="cm"># Go — vulnerability check</span>
+go install golang.org/x/vuln/cmd/govulncheck@latest
+govulncheck ./...</div>
+    </div>
+  </section>
+
+  <!-- ══ AI ERA ══ -->
+  <section class="section" id="ai-era">
+    <div class="section-header">
+      <div class="section-icon si-red">🤖</div>
+      <div class="section-title">
+        <h2>AI-Era Threats</h2>
+        <div class="stag">// Package hallucination, AI-assisted attacks, and LLM supply chain risks</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="alert alert-critical">
+      <div class="alert-icon">🚨</div>
+      <div class="alert-body"><strong>AI package hallucination is a live, weaponized threat.</strong> Large language models — including coding assistants — frequently invent plausible-sounding but nonexistent package names. Attackers monitor for these hallucinated names and publish malicious packages under those names. Any developer who follows an LLM's <code>pip install</code> or <code>npm install</code> suggestion without verification may install attacker-controlled code.</div>
+    </div>
+
+    <h3>How the Attack Works</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">text</span><span class="code-label">AI hallucination → supply chain attack flow</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body">Developer asks LLM: "How do I parse YAML in Python?"
+
+LLM responds:
+  "You can use the `yaml-python-advanced` library:
+   pip install yaml-python-advanced
+   
+   import yaml_python_advanced as ypa
+   data = ypa.parse(my_string)"
+
+❌ PROBLEM: `yaml-python-advanced` doesn't exist.
+   The correct package is `pyyaml` (pip install pyyaml).
+
+Attacker flow:
+  1. Collect hallucinated package names from LLM outputs
+     (research papers show 100s of unique invented names per session)
+  2. Register the name on PyPI / npm before any legitimate package exists
+  3. Include credential harvester, crypto miner, or backdoor in the package
+  4. Wait for developers to blindly run the install command an LLM suggested
+  5. Achieve code execution on developer machines and CI/CD pipelines</div>
+    </div>
+
+    <h3>Verified Hallucination Patterns (Research Findings)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Pattern</th><th>Example Hallucination</th><th>Actual Package</th></tr></thead>
+        <tbody>
+          <tr><td>Adding "advanced" or "pro"</td><td class="td-mono">requests-advanced</td><td class="td-mono">requests</td></tr>
+          <tr><td>Adding language prefix</td><td class="td-mono">python-http-client-v2</td><td class="td-mono">httpx</td></tr>
+          <tr><td>Combining real package names</td><td class="td-mono">numpy-pandas-utils</td><td class="td-mono">numpy, pandas</td></tr>
+          <tr><td>Plausible-sounding utilities</td><td class="td-mono">csv-tools-enhanced</td><td class="td-mono">csv (stdlib)</td></tr>
+          <tr><td>Version-suffixed packages</td><td class="td-mono">flask-api-v3</td><td class="td-mono">flask</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Mitigations for AI-Assisted Development</h3>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <div class="rule-sev rs-must">MUST</div>
+        <div class="rule-title">Verify before installing</div>
+        <div class="rule-body">Always look up every package an LLM suggests on the official registry (pypi.org, npmjs.com) before running install. Verify: does this package exist? Is it what the LLM described? Check download counts, age, and maintainer history.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-sev rs-must">MUST</div>
+        <div class="rule-title">Use a package allowlist</div>
+        <div class="rule-body">Maintain an approved package list. Any package not on the list requires a security review and explicit approval before adding to the project — regardless of source (LLM, StackOverflow, colleague recommendation).</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-sev rs-must">MUST</div>
+        <div class="rule-title">Block unknown packages in CI</div>
+        <div class="rule-body">CI pipelines should only install packages that are in the lockfile and verified against your internal proxy. Any new package must go through a review gate — not added directly in a PR.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-sev rs-should">SHOULD</div>
+        <div class="rule-title">Monitor LLM suggestions in PRs</div>
+        <div class="rule-body">Review PRs for AI-suggested package additions with the same scrutiny as code changes. Treat any <code>requirements.txt</code> or <code>package.json</code> diff as a security-relevant change requiring explicit review.</div>
+      </div>
+    </div>
+
+    <h3>AI Coding Assistant Risks Beyond Package Hallucination</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="mark mark-red"></span>Outdated Dependency Advice</div>
+        <p>LLMs have training cutoffs and may recommend specific versions that are outdated or have known CVEs. The model cannot know about vulnerabilities disclosed after its training data cutoff.</p>
+        <p><strong>Mitigation:</strong> Always run <code>npm audit</code>, <code>pip-audit</code>, or Grype after adding any LLM-suggested dependency.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="mark mark-amber"></span>Poisoned Training Data</div>
+        <p>Research demonstrates that code completion models can be trained or fine-tuned to suggest insecure coding patterns — SQL injection, hardcoded credentials, unsafe deserialization — with high confidence.</p>
+        <p><strong>Mitigation:</strong> Treat all AI-generated code as untrusted user input. SAST scan everything. Code review is not optional.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ SCANNING ══ -->
+  <section class="section" id="dep-scanning">
+    <div class="section-header">
+      <div class="section-icon si-teal">🔭</div>
+      <div class="section-title">
+        <h2>Scanning & Detection</h2>
+        <div class="stag">// OSV, Grype, Trivy, Dependabot, and behavioral detection</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <h3>Vulnerability Databases</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Database</th><th>Coverage</th><th>Format</th><th>URL</th></tr></thead>
+        <tbody>
+          <tr><td><strong>OSV</strong></td><td>All ecosystems (PyPI, npm, Go, Maven, crates.io, GitHub)</td><td class="td-mono">JSON / API</td><td class="td-mono">osv.dev</td></tr>
+          <tr><td><strong>NVD</strong></td><td>CVEs across all software; authoritative CVSS scores</td><td class="td-mono">JSON / OVAL</td><td class="td-mono">nvd.nist.gov</td></tr>
+          <tr><td><strong>GitHub Advisory</strong></td><td>npm, PyPI, Maven, RubyGems, Go, NuGet, Rust</td><td class="td-mono">GraphQL / API</td><td class="td-mono">github.com/advisories</td></tr>
+          <tr><td><strong>Exploit-DB</strong></td><td>Proof-of-concept exploits for CVEs</td><td class="td-mono">Web / CSV</td><td class="td-mono">exploit-db.com</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Detecting Malicious Packages Behaviorally</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">bash</span><span class="code-label">Package Behavior Analysis</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># Socket.dev — detect malicious npm packages before install</span>
+npm install -g @socketsecurity/cli
+socket npm install lodash          <span class="cm"># audits before installing</span>
+socket report --repo myorg/my-repo <span class="cm"># full repo audit</span>
+
+<span class="cm"># guarddog — Google's malicious package detector</span>
+pip install guarddog
+guarddog pypi scan requests        <span class="cm"># scan specific package</span>
+guarddog pypi verify requirements.txt  <span class="cm"># verify lockfile</span>
+
+<span class="cm"># What guarddog checks for:</span>
+<span class="cm">#  - Typosquatting analysis</span>
+<span class="cm">#  - Install scripts presence</span>
+<span class="cm">#  - Outbound network connections in package code</span>
+<span class="cm">#  - File system access outside the package</span>
+<span class="cm">#  - Code obfuscation / eval() of dynamic strings</span>
+<span class="cm">#  - Credential environment variable access</span>
+
+<span class="cm"># Trivy — comprehensive scanner (images, repos, SBOMs)</span>
+trivy image nginx:1.25
+trivy repo https://github.com/myorg/my-repo
+trivy sbom sbom.cdx.json
+
+<span class="cm"># Dependabot (GitHub) — automated PR-based updates</span>
+<span class="cm"># .github/dependabot.yml:</span>
+version: 2
+updates:
+  - package-ecosystem: <span class="st">"npm"</span>
+    directory: <span class="st">"/"</span>
+    schedule: { interval: <span class="st">"weekly"</span> }
+    open-pull-requests-limit: <span class="nm">10</span>
+  - package-ecosystem: <span class="st">"pip"</span>
+    directory: <span class="st">"/"</span>
+    schedule: { interval: <span class="st">"daily"</span> }</div>
+    </div>
+  </section>
+
+  <!-- ══ CI PIPELINE ══ -->
+  <section class="section" id="ci-pipeline">
+    <div class="section-header">
+      <div class="section-icon si-green">🚀</div>
+      <div class="section-title">
+        <h2>CI/CD Pipeline Security Gates</h2>
+        <div class="stag">// The supply chain security checks every pipeline should enforce</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <p>Every stage of the CI/CD pipeline is an opportunity to detect and block supply chain compromise. Security gates should fail the build — not just warn — on violations.</p>
+
+    <div class="pipeline">
+      <div class="pipe-step pipe-ok">
+        <div class="pipe-icon">📥</div>
+        <div class="pipe-label">Source</div>
+        <div class="pipe-name">Checkout + Verify</div>
+      </div>
+      <div class="pipe-step pipe-warn">
+        <div class="pipe-icon">🔍</div>
+        <div class="pipe-label">Scan</div>
+        <div class="pipe-name">Dep Audit</div>
+      </div>
+      <div class="pipe-step pipe-ok">
+        <div class="pipe-icon">🏗</div>
+        <div class="pipe-label">Build</div>
+        <div class="pipe-name">Hermetic Build</div>
+      </div>
+      <div class="pipe-step pipe-ok">
+        <div class="pipe-icon">📋</div>
+        <div class="pipe-label">SBOM</div>
+        <div class="pipe-name">Generate + Sign</div>
+      </div>
+      <div class="pipe-step pipe-warn">
+        <div class="pipe-icon">🔭</div>
+        <div class="pipe-label">Scan</div>
+        <div class="pipe-name">Vuln + License</div>
+      </div>
+      <div class="pipe-step pipe-sig">
+        <div class="pipe-icon">🔑</div>
+        <div class="pipe-label">Sign</div>
+        <div class="pipe-name">Cosign + SLSA</div>
+      </div>
+      <div class="pipe-step pipe-ok">
+        <div class="pipe-icon">🚢</div>
+        <div class="pipe-label">Deploy</div>
+        <div class="pipe-name">Verify + Admit</div>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">yaml</span><span class="code-label">Complete secure pipeline template (.github/workflows/secure-build.yml)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="ky">name</span>: <span class="vl">Secure Build Pipeline</span>
+<span class="ky">on</span>: [<span class="vl">push</span>, <span class="vl">pull_request</span>]
+
+<span class="ky">permissions</span>:
+  <span class="ky">contents</span>: <span class="vl">read</span>       <span class="cm"># minimal permissions by default</span>
+  <span class="ky">security-events</span>: <span class="vl">write</span>  <span class="cm"># for SARIF upload</span>
+
+<span class="ky">jobs</span>:
+  <span class="ky">security-checks</span>:
+    <span class="ky">runs-on</span>: <span class="vl">ubuntu-latest</span>
+    <span class="ky">steps</span>:
+      <span class="cm"># ── 1. Pin action versions by SHA (not tag!) ──</span>
+      - <span class="ky">uses</span>: <span class="vl">actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683</span>  <span class="cm"># v4 SHA</span>
+        <span class="ky">with</span>:
+          <span class="ky">persist-credentials</span>: <span class="vl">false</span>  <span class="cm"># don't expose GitHub token to steps</span>
+
+      <span class="cm"># ── 2. Dependency audit (fail on high+) ──</span>
+      - <span class="ky">name</span>: <span class="vl">Audit dependencies (npm)</span>
+        <span class="ky">run</span>: npm audit --audit-level=high
+
+      - <span class="ky">name</span>: <span class="vl">Install with frozen lockfile</span>
+        <span class="ky">run</span>: npm ci  <span class="cm"># ci = frozen lockfile, fails if inconsistent</span>
+
+      <span class="cm"># ── 3. SAST scan ──</span>
+      - <span class="ky">uses</span>: <span class="vl">github/codeql-action/analyze@v3</span>
+        <span class="ky">with</span>: { <span class="ky">languages</span>: <span class="vl">javascript</span> }
+
+      <span class="cm"># ── 4. Build ──</span>
+      - <span class="ky">name</span>: <span class="vl">Build</span>
+        <span class="ky">run</span>: npm run build
+        <span class="ky">env</span>:
+          <span class="ky">NODE_ENV</span>: <span class="vl">production</span>
+          <span class="ky">NO_INTERNET</span>: <span class="vl">"1"</span>    <span class="cm"># signal: build should be hermetic</span>
+
+      <span class="cm"># ── 5. Container build + SBOM ──</span>
+      - <span class="ky">uses</span>: <span class="vl">docker/build-push-action@v5</span>
+        <span class="ky">id</span>: <span class="vl">build</span>
+        <span class="ky">with</span>:
+          <span class="ky">push</span>: <span class="vl">true</span>
+          <span class="ky">tags</span>: <span class="vl">ghcr.io/${{ github.repository }}:${{ github.sha }}</span>
+
+      - <span class="ky">uses</span>: <span class="vl">anchore/sbom-action@v0</span>
+        <span class="ky">with</span>:
+          <span class="ky">image</span>: <span class="vl">ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}</span>
+          <span class="ky">format</span>: <span class="vl">cyclonedx-json</span>
+
+      <span class="cm"># ── 6. Vulnerability scan the SBOM ──</span>
+      - <span class="ky">uses</span>: <span class="vl">anchore/scan-action@v3</span>
+        <span class="ky">with</span>:
+          <span class="ky">image</span>: <span class="vl">ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}</span>
+          <span class="ky">fail-build</span>: <span class="vl">"true"</span>
+          <span class="ky">severity-cutoff</span>: <span class="vl">high</span>
+
+      <span class="cm"># ── 7. Sign image + SBOM ──</span>
+      - <span class="ky">uses</span>: <span class="vl">sigstore/cosign-installer@v3</span>
+      - <span class="ky">name</span>: <span class="vl">Sign</span>
+        <span class="ky">run</span>: cosign sign --yes ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+        <span class="ky">permissions</span>:
+          <span class="ky">id-token</span>: <span class="vl">write</span>   <span class="cm"># OIDC signing requires elevated permission</span></div>
+    </div>
+
+    <div class="alert alert-warn">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-body"><strong>Pin GitHub Actions by SHA, not tag.</strong> <code>uses: actions/checkout@v4</code> is a mutable tag — it could point to different code tomorrow if the action repo is compromised. Use the full SHA: <code>uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683</code>. Tools like <code>Renovate</code> and <code>Dependabot</code> can keep SHA pins up to date automatically.</div>
+    </div>
+  </section>
+
+  <!-- ══ INCIDENT RESPONSE ══ -->
+  <section class="section" id="incident">
+    <div class="section-header">
+      <div class="section-icon si-red">🚨</div>
+      <div class="section-title">
+        <h2>Incident Response</h2>
+        <div class="stag">// When a dependency is compromised — the first 60 minutes</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">text</span><span class="code-label">Supply chain incident runbook</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body">T+0 min — DETECTION
+  □ Source of intelligence: CVE feed / security advisory / internal scan
+  □ Identify the affected package: name, version range, registry
+  □ Query your SBOM inventory: which products and versions use this package?
+    → grype sbom:*.cdx.json | grep package-name
+    → osv-scanner --sbom=*.json
+  □ Open incident bridge; notify security team lead
+
+T+5 min — SCOPING
+  □ Are affected versions deployed in production? Which environments?
+  □ Is the vulnerability exploitable in your usage context? (VEX analysis)
+  □ What is the CVSS score? Is there a public PoC exploit?
+  □ Are customers / external services exposed?
+
+T+15 min — CONTAINMENT (if actively exploitable)
+  □ Isolate affected services from external network if RCE/critical
+  □ Block malicious outbound connections if package exfiltrates data
+  □ Rotate any credentials that may have been exposed
+  □ Enable enhanced logging on affected systems
+
+T+20 min — REMEDIATION
+  □ Pin to patched version in all affected repos
+  □ Open emergency PRs; fast-track review + merge
+  □ Trigger emergency CI/CD pipeline run
+  □ Deploy patched artifacts to all affected environments
+  □ Rebuild and re-sign container images; push new SBOMs
+
+T+45 min — VERIFICATION
+  □ Re-run vulnerability scan against patched SBOM — confirm CVE resolved
+  □ Verify patched images are deployed across all environments
+  □ Confirm no indicators of compromise in logs (data exfil, reverse shell, etc.)
+
+T+60 min — COMMUNICATION
+  □ Customer notification (if applicable, per SLA/regulatory requirements)
+  □ Internal post-incident summary to stakeholders
+  □ Update VEX documents for any CVEs deemed not_affected in other products
+
+POST-INCIDENT
+  □ Blameless post-mortem within 5 business days
+  □ Update SBOM freshness SLA if gap discovered
+  □ Add new detection rule for class of vulnerability
+  □ Review dependency update frequency policy</div>
+    </div>
+  </section>
+
+  <!-- ══ COMPLIANCE ══ -->
+  <section class="section" id="compliance">
+    <div class="section-header">
+      <div class="section-icon si-pink">⚖️</div>
+      <div class="section-title">
+        <h2>Compliance & Policy</h2>
+        <div class="stag">// License compliance, allowlists, and policy-as-code</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <h3>License Compliance</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>License Type</th><th>Examples</th><th>Commercial Use</th><th>Copyleft Risk</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Permissive</strong></td>
+            <td>MIT, Apache-2.0, BSD-2-Clause, ISC</td>
+            <td class="td-green">✓ Free to use</td>
+            <td class="td-green">None</td>
+          </tr>
+          <tr>
+            <td><strong>Weak Copyleft</strong></td>
+            <td>LGPL-2.1, MPL-2.0, EUPL</td>
+            <td class="td-amber">Conditional — if modified, share changes</td>
+            <td class="td-amber">Library modifications must be open</td>
+          </tr>
+          <tr>
+            <td><strong>Strong Copyleft</strong></td>
+            <td>GPL-2.0, GPL-3.0</td>
+            <td class="td-red">⚠ Derivative works must be GPL</td>
+            <td class="td-red">May require open-sourcing your product</td>
+          </tr>
+          <tr>
+            <td><strong>Network Copyleft</strong></td>
+            <td>AGPL-3.0</td>
+            <td class="td-red">⚠ Even SaaS use triggers copyleft</td>
+            <td class="td-red">Most restrictive for SaaS businesses</td>
+          </tr>
+          <tr>
+            <td><strong>Commercial Restriction</strong></td>
+            <td>BUSL-1.1, SSPL, CC-NC</td>
+            <td class="td-red">✗ Commercial use prohibited or restricted</td>
+            <td class="td-red">Legal review required</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Policy-as-Code with OPA and Syft</h3>
+    <div class="code-block">
+      <div class="code-bar"><span class="code-lang">bash</span><span class="code-label">License and vulnerability policy enforcement</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># license_finder — Ruby gem, works across ecosystems</span>
+gem install license_finder
+license_finder                          <span class="cm"># scan current project</span>
+license_finder approve --name lodash    <span class="cm"># approve specific package</span>
+license_finder permitted_licenses add MIT Apache-2.0 BSD-2-Clause ISC
+license_finder restricted_licenses add AGPL-3.0 GPL-3.0
+
+<span class="cm"># In CI — fail if any restricted license detected</span>
+license_finder --decisions-file=approved_licenses.yml || exit 1
+
+<span class="cm"># Trivy — license scanning built-in</span>
+trivy image --scanners license nginx:1.25
+trivy repo --scanners license --ignored-licenses MIT,Apache-2.0 .
+
+<span class="cm"># sbom-scorecard — SBOM quality + policy scoring</span>
+go install github.com/eBay/sbom-scorecard@latest
+sbom-scorecard score sbom.cdx.json
+<span class="cm"># Reports: NTIA compliance, component completeness, has hashes, has licenses, etc.</span>
+
+<span class="cm"># Conftest (OPA) — SBOM policy-as-code</span>
+<span class="cm"># policy/sbom.rego:</span>
+package sbom
+
+deny[msg] {
+  component := input.components[_]
+  component.licenses[_].expression == "GPL-3.0-only"
+  msg := sprintf("GPL-3.0 detected in component: %v", [component.name])
+}
+
+conftest test sbom.cdx.json --policy policy/</div>
+    </div>
+  </section>
+
+  <!-- ══ TOOLING ══ -->
+  <section class="section" id="tooling">
+    <div class="section-header">
+      <div class="section-icon si-teal">🔧</div>
+      <div class="section-title">
+        <h2>Tooling Reference</h2>
+        <div class="stag">// The supply chain security toolchain</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <h4>SBOM Generation</h4>
+    <div class="tool-row">
+      <span class="tool-emoji">🔬</span>
+      <div>
+        <div class="tool-name">Syft</div>
+        <div class="tool-pkg">anchore/syft · github.com/anchore/syft</div>
+        <div class="tool-desc">Universal SBOM generator for container images, filesystems, and source repos. Outputs SPDX, CycloneDX, and custom formats. Best-in-class OCI attestation support. Pairs with Grype for vulnerability scanning.</div>
+      </div>
+    </div>
+    <div class="tool-row">
+      <span class="tool-emoji">⚡</span>
+      <div>
+        <div class="tool-name">cdxgen</div>
+        <div class="tool-pkg">@cyclonedx/cdxgen · npmjs.com/package/@cyclonedx/cdxgen</div>
+        <div class="tool-desc">CycloneDX-native SBOM generator with deep multi-language support. Handles 20+ build systems. Particularly strong for Java/Gradle and complex monorepos. Generates ML model BOMs (mlbom) for AI/ML projects.</div>
+      </div>
+    </div>
+
+    <h4>Vulnerability Scanning</h4>
+    <div class="tool-row">
+      <span class="tool-emoji">🦷</span>
+      <div>
+        <div class="tool-name">Grype</div>
+        <div class="tool-pkg">anchore/grype · github.com/anchore/grype</div>
+        <div class="tool-desc">Fast, offline-capable vulnerability scanner. Accepts container images, SBOMs (SPDX/CycloneDX), directories, and more. Integrates with VEX for suppression. Same ecosystem as Syft.</div>
+      </div>
+    </div>
+    <div class="tool-row">
+      <span class="tool-emoji">🔭</span>
+      <div>
+        <div class="tool-name">Trivy</div>
+        <div class="tool-pkg">aquasecurity/trivy · trivy.dev</div>
+        <div class="tool-desc">All-in-one scanner: container images, filesystems, Git repos, Kubernetes configs, Terraform, SBOMs. License scanning built-in. Excellent Kubernetes/cloud-native integration. Aqua Security sponsored.</div>
+      </div>
+    </div>
+    <div class="tool-row">
+      <span class="tool-emoji">🌐</span>
+      <div>
+        <div class="tool-name">OSV-Scanner</div>
+        <div class="tool-pkg">google/osv-scanner · google.github.io/osv-scanner</div>
+        <div class="tool-desc">Google's open-source scanner backed by OSV database. Scans lockfiles across 15+ ecosystems and SBOMs. Excellent false-positive rate. Can output CycloneDX for pipeline consumption.</div>
+      </div>
+    </div>
+
+    <h4>Signing & Provenance</h4>
+    <div class="tool-row">
+      <span class="tool-emoji">🔑</span>
+      <div>
+        <div class="tool-name">Cosign</div>
+        <div class="tool-pkg">sigstore/cosign · docs.sigstore.dev</div>
+        <div class="tool-desc">The primary Sigstore CLI. Signs and verifies OCI images, blobs, and SBOM attestations. Keyless OIDC signing for CI/CD environments. Signatures stored in OCI registries alongside artifacts.</div>
+      </div>
+    </div>
+    <div class="tool-row">
+      <span class="tool-emoji">🏛</span>
+      <div>
+        <div class="tool-name">slsa-github-generator</div>
+        <div class="tool-pkg">slsa-framework/slsa-github-generator</div>
+        <div class="tool-desc">Reusable GitHub Actions workflows for generating SLSA Level 3 provenance for Go binaries, generic artifacts, and container images. Provenance signed by GitHub's OIDC, stored in Rekor.</div>
+      </div>
+    </div>
+
+    <h4>Policy & Detection</h4>
+    <div class="tool-row">
+      <span class="tool-emoji">🧲</span>
+      <div>
+        <div class="tool-name">Socket</div>
+        <div class="tool-pkg">socket.dev · @socketsecurity/cli</div>
+        <div class="tool-desc">Real-time malicious package detection for npm and PyPI. Intercepts install commands, analyzes package behavior (network calls, file access, obfuscation) before installation. GitHub app for PR-level scanning.</div>
+      </div>
+    </div>
+    <div class="tool-row">
+      <span class="tool-emoji">🐕</span>
+      <div>
+        <div class="tool-name">guarddog</div>
+        <div class="tool-pkg">DataDog/guarddog · github.com/DataDog/guarddog</div>
+        <div class="tool-desc">Datadog's malicious package detector. 20+ heuristics covering typosquatting, install scripts, exfiltration patterns, obfuscation. Works on PyPI and npm. Integrates cleanly into CI pipelines.</div>
+      </div>
+    </div>
+
+    <h3>Reference Links</h3>
+    <div class="qr-grid">
+      <div class="qr-card">
+        <div class="qr-title">Standards & Frameworks</div>
+        <a href="https://slsa.dev">↗ SLSA Framework (slsa.dev)</a>
+        <a href="https://www.sigstore.dev">↗ Sigstore Project</a>
+        <a href="https://spdx.dev">↗ SPDX Standard</a>
+        <a href="https://cyclonedx.org">↗ CycloneDX Standard</a>
+        <a href="https://in-toto.io">↗ in-toto Attestations</a>
+        <a href="https://ntia.gov/page/software-bill-materials">↗ NTIA SBOM Guidance</a>
+      </div>
+      <div class="qr-card">
+        <div class="qr-title">Vulnerability Data</div>
+        <a href="https://osv.dev">↗ OSV — Open Source Vulnerabilities</a>
+        <a href="https://nvd.nist.gov">↗ NVD — NIST National Vuln Database</a>
+        <a href="https://github.com/advisories">↗ GitHub Advisory Database</a>
+        <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog">↗ CISA KEV Catalog</a>
+        <a href="https://security.snyk.io">↗ Snyk Vulnerability DB</a>
+      </div>
+      <div class="qr-card">
+        <div class="qr-title">Regulatory & Policy</div>
+        <a href="https://www.whitehouse.gov/briefing-room/presidential-actions/2021/05/12/executive-order-on-improving-the-nations-cybersecurity/">↗ US Executive Order 14028</a>
+        <a href="https://digital-strategy.ec.europa.eu/en/policies/cyber-resilience-act">↗ EU Cyber Resilience Act</a>
+        <a href="https://www.cisa.gov/resources-tools/resources/software-bill-materials-sbom">↗ CISA SBOM Resources</a>
+        <a href="https://www.fda.gov/medical-devices/digital-health-center-excellence/cybersecurity-medical-devices">↗ FDA Medical Device Cybersecurity</a>
+      </div>
+      <div class="qr-card">
+        <div class="qr-title">AI-Era Research</div>
+        <a href="https://arxiv.org/abs/2307.12166">↗ "Hallucinating packages" (arXiv)</a>
+        <a href="https://socket.dev/blog/when-an-ai-generates-malware">↗ Socket: AI-Generated Package Risks</a>
+        <a href="https://owasp.org/www-project-top-10-for-large-language-model-applications/">↗ OWASP Top 10 for LLMs</a>
+        <a href="https://www.activestate.com/resources/quick-reads/what-is-a-software-supply-chain-attack/">↗ Supply Chain Attack Overview</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const body = btn.closest('.code-block').querySelector('.code-body');
+  navigator.clipboard.writeText(body.innerText).then(() => {
+    btn.textContent = 'copied!';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'rgba(0,255,180,0.4)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 1800);
+  });
+}
+
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('.section');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+  });
+}, { rootMargin: '-58px 0px -70% 0px' });
+sections.forEach(s => io.observe(s));
+</script>
+</body>
+</html>

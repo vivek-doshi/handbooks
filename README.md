@@ -188,7 +188,7 @@ This repository is a collection of quick handbooks and reference documents that 
 
 ### Security
 - devsecops-handbook.html — Shifting security left (SAST, DAST, SCA in CI/CD). - done
-- software-supply-chain-security-handbook.html — SBOMs (Software Bill of Materials), Sigstore, and securing dependencies (crucial in the AI era where we pull unknown packages).
+- software-supply-chain-security-handbook.html — SBOMs (Software Bill of Materials), Sigstore, and securing dependencies (crucial in the AI era where we pull unknown packages) - done
 - zero-trust-architecture-handbook.html — Beyond VPNs. Identity-based access, micro-segmentation, and Zero Trust network paradigms. - done 
 - ai-security-and-adversarial-handbook.html — Prompt injection defense, data leakage prevention in LLMs, and AI red-teaming. - done 
 
@@ -204,6 +204,6 @@ This repository is a collection of quick handbooks and reference documents that 
 
 ### Architecture
 - event-driven-architecture-handbook.html — Kafka, Pulsar, RabbitMQ. Event sourcing vs. Pub/Sub. This is the backbone of modern enterprise scaling. - done
-- grpc-and-protocol-buffers-handbook.html — High-performance RPC. Crucial for inter-microservice communication.
+- grpc-and-protocol-buffers-handbook.html — High-performance RPC. Crucial for inter-microservice communication. - done 
 - graphql-enterprise-handbook.html — When to use it, when not to use it (a common ARB pushback point). - done 
 - api-gateway-patterns-handbook.html — Kong, Apigee. Rate limiting, throttling, and exposing AI tools safely to the outside world. - done

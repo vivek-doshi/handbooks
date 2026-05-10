@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gRPC & Protocol Buffers — Field Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink:        #08090b;
+  --ink2:       #0e1014;
+  --ink3:       #141820;
+  --ink4:       #1a1f2a;
+  --ink5:       #222836;
+  --wire:       rgba(255,255,255,0.055);
+  --wire2:      rgba(255,255,255,0.10);
+  --fg:         #dde3ee;
+  --fg2:        #8b98b4;
+  --muted:      #404d65;
+  --amber:      #f5a623;
+  --amber-dim:  rgba(245,166,35,0.11);
+  --amber-glow: rgba(245,166,35,0.06);
+  --red:        #e8455a;
+  --red-dim:    rgba(232,69,90,0.10);
+  --blue:       #4a90e2;
+  --blue-dim:   rgba(74,144,226,0.10);
+  --teal:       #00cbb8;
+  --teal-dim:   rgba(0,203,184,0.10);
+  --green:      #3dd68c;
+  --green-dim:  rgba(61,214,140,0.10);
+  --purple:     #a56eff;
+  --purple-dim: rgba(165,110,255,0.10);
+  --mono:       'Azeret Mono', monospace;
+  --display:    'Familjen Grotesk', sans-serif;
+  --body:       'DM Sans', sans-serif;
+  --sidebar-w:  268px;
+  --top-h:      54px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--ink);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 14.5px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* grid texture */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(8,9,11,0.97);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--wire2);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 26px;
+}
+.tb-left { display: flex; align-items: center; gap: 14px; }
+.tb-tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 3px; text-transform: uppercase;
+  background: var(--amber); color: var(--ink);
+  padding: 4px 12px;
+}
+.tb-title {
+  font-family: var(--display); font-size: 16px; font-weight: 700;
+  letter-spacing: -0.2px; color: var(--fg);
+}
+.tb-right {
+  display: flex; align-items: center; gap: 18px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px;
+}
+.tb-live { display: flex; align-items: center; gap: 6px; color: var(--amber); }
+.live-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--amber); box-shadow: 0 0 6px var(--amber);
+  animation: blink 2.4s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ─── LAYOUT ─── */
+.layout {
+  display: flex;
+  margin-top: var(--top-h);
+  min-height: calc(100vh - var(--top-h));
+  position: relative; z-index: 1;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto;
+  background: var(--ink2);
+  border-right: 1px solid var(--wire2);
+  padding-bottom: 60px;
+  scrollbar-width: thin; scrollbar-color: var(--wire2) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--wire2); }
+
+.sb-head {
+  padding: 22px 20px 16px;
+  border-bottom: 1px solid var(--wire);
+  background: linear-gradient(180deg, var(--amber-glow) 0%, transparent 100%);
+}
+.sb-doc { font-family: var(--mono); font-size: 10px; color: var(--amber); letter-spacing: 2px; margin-bottom: 3px; }
+.sb-ver { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+.nav-group {
+  padding: 16px 20px 4px;
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 20px;
+  text-decoration: none; color: var(--fg2);
+  font-size: 12.5px; font-family: var(--body);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-item::before {
+  content: attr(data-n);
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  width: 20px; flex-shrink: 0; text-align: right;
+}
+.nav-item:hover { color: var(--fg); background: rgba(255,255,255,0.03); border-left-color: var(--wire2); }
+.nav-item.active { color: var(--amber); border-left-color: var(--amber); background: var(--amber-glow); }
+.nav-item.active::before { color: var(--amber); }
+
+/* ─── MAIN ─── */
+.main {
+  flex: 1; min-width: 0;
+  padding: 52px 64px 100px;
+  max-width: 1000px;
+}
+
+/* ─── HERO ─── */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--amber);
+  background: var(--ink3);
+  padding: 52px 56px 44px;
+  margin-bottom: 72px;
+}
+.hero::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(245,166,35,0.09) 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(74,144,226,0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero-notch {
+  position: absolute; top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 72px 72px 0;
+  border-color: transparent var(--amber) transparent transparent;
+}
+.hero-notch-txt {
+  position: absolute; top: 8px; right: 5px;
+  font-family: var(--mono); font-size: 7.5px; color: var(--ink);
+  transform: rotate(45deg); letter-spacing: 1px; font-weight: 700;
+}
+.hero-eye {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+  color: var(--amber); text-transform: uppercase; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eye::before { content: '//'; opacity: 0.45; }
+.hero h1 {
+  font-family: var(--display); font-size: 68px; font-weight: 700;
+  line-height: 0.88; letter-spacing: -2px;
+  text-transform: uppercase; color: var(--fg);
+  margin-bottom: 26px;
+}
+.hero h1 em { color: var(--amber); font-style: normal; }
+.hero-sub {
+  font-family: var(--mono); font-size: 12.5px;
+  color: var(--amber); border-left: 3px solid var(--amber);
+  padding: 9px 16px; background: var(--amber-dim);
+  display: inline-block; margin-bottom: 24px; letter-spacing: 0.5px;
+}
+.hero-desc { color: var(--fg2); font-size: 15px; max-width: 560px; line-height: 1.8; margin-bottom: 28px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 4px 13px; border: 1px solid; border-radius: 2px;
+}
+.chip-amber  { color: var(--amber);  border-color: rgba(245,166,35,0.4); background: var(--amber-dim); }
+.chip-blue   { color: var(--blue);   border-color: rgba(74,144,226,0.35); background: var(--blue-dim); }
+.chip-teal   { color: var(--teal);   border-color: rgba(0,203,184,0.35); background: var(--teal-dim); }
+.chip-green  { color: var(--green);  border-color: rgba(61,214,140,0.35); background: var(--green-dim); }
+.chip-red    { color: var(--red);    border-color: rgba(232,69,90,0.35); background: var(--red-dim); }
+.chip-purple { color: var(--purple); border-color: rgba(165,110,255,0.35); background: var(--purple-dim); }
+
+/* ─── SECTIONS ─── */
+section { margin-bottom: 76px; scroll-margin-top: calc(var(--top-h) + 20px); }
+
+.sec-hdr {
+  display: flex; align-items: flex-start; gap: 16px;
+  margin-bottom: 26px; padding-bottom: 18px;
+  border-bottom: 1px solid var(--wire);
+  position: relative;
+}
+.sec-hdr::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 72px; height: 1px; background: var(--amber);
+}
+.sec-num {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--amber); flex-shrink: 0; margin-top: 4px; width: 36px;
+}
+.sec-ttl h2 {
+  font-family: var(--display); font-size: 28px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--fg); line-height: 1;
+}
+.sec-ttl .sub {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 1.5px; margin-top: 6px;
+}
+
+/* ─── PROSE ─── */
+.prose { color: var(--fg2); font-size: 14.5px; line-height: 1.8; margin-bottom: 18px; }
+.prose strong { color: var(--fg); font-weight: 600; }
+.prose em { color: var(--amber); font-style: normal; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--ink3); border: 1px solid var(--wire);
+  padding: 20px 22px; margin-bottom: 12px;
+  transition: border-color 0.18s;
+  position: relative;
+}
+.card:hover { border-color: var(--wire2); }
+.card.l-amber  { border-left: 3px solid var(--amber); }
+.card.l-blue   { border-left: 3px solid var(--blue); }
+.card.l-teal   { border-left: 3px solid var(--teal); }
+.card.l-green  { border-left: 3px solid var(--green); }
+.card.l-red    { border-left: 3px solid var(--red); }
+.card.l-purple { border-left: 3px solid var(--purple); }
+
+.card-title {
+  font-family: var(--display); font-size: 15px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--fg);
+  margin-bottom: 9px; display: flex; align-items: center; gap: 10px;
+}
+.tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 8px; border-radius: 2px;
+}
+.tag-amber  { color: var(--amber);  background: var(--amber-dim);  border: 1px solid rgba(245,166,35,0.3); }
+.tag-blue   { color: var(--blue);   background: var(--blue-dim);   border: 1px solid rgba(74,144,226,0.3); }
+.tag-green  { color: var(--green);  background: var(--green-dim);  border: 1px solid rgba(61,214,140,0.3); }
+.tag-red    { color: var(--red);    background: var(--red-dim);    border: 1px solid rgba(232,69,90,0.3); }
+.tag-teal   { color: var(--teal);   background: var(--teal-dim);   border: 1px solid rgba(0,203,184,0.3); }
+.tag-purple { color: var(--purple); background: var(--purple-dim); border: 1px solid rgba(165,110,255,0.3); }
+
+.card p, .card li { color: var(--fg2); font-size: 13.5px; line-height: 1.7; }
+.card ul { padding-left: 16px; }
+.card li { margin-bottom: 5px; }
+
+/* ─── GRIDS ─── */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+/* ─── CODE ─── */
+.code-wrap {
+  background: #040508;
+  border: 1px solid var(--wire2);
+  margin: 16px 0;
+  font-family: var(--mono);
+  position: relative;
+}
+.code-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 16px;
+  background: rgba(245,166,35,0.04);
+  border-bottom: 1px solid var(--wire);
+}
+.code-lang {
+  font-size: 9px; font-weight: 700; letter-spacing: 2.5px;
+  text-transform: uppercase; color: var(--amber);
+}
+.copy-btn {
+  font-size: 9px; color: var(--muted); background: none;
+  border: 1px solid var(--wire); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.18s;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--amber); border-color: var(--amber); }
+.code-body {
+  padding: 18px 20px; overflow-x: auto;
+  font-size: 12.5px; line-height: 1.75;
+  white-space: pre; tab-size: 2; color: #7a8ba8;
+}
+.code-body::-webkit-scrollbar { height: 3px; }
+.code-body::-webkit-scrollbar-thumb { background: var(--wire2); }
+
+/* syntax */
+.kw  { color: #b083f0; }
+.st  { color: #68d0a0; }
+.cm  { color: #35445a; font-style: italic; }
+.fn  { color: #5fa8e0; }
+.nu  { color: #e09060; }
+.at  { color: var(--amber); }
+.cl  { color: #5ecec0; }
+.op  { color: var(--muted); }
+.hl  { display: block; margin: 0 -20px; padding: 0 20px; background: rgba(245,166,35,0.05); border-left: 2px solid var(--amber); }
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(245,166,35,0.08); color: var(--amber);
+  padding: 1px 7px; border: 1px solid rgba(245,166,35,0.18);
+}
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 14px;
+  padding: 14px 18px; margin: 16px 0;
+  border-left: 3px solid; font-size: 13.5px;
+}
+.callout-ico { flex-shrink: 0; font-size: 14px; margin-top: 2px; }
+.callout-body { color: var(--fg2); line-height: 1.7; }
+.callout-body strong { color: var(--fg); }
+.tip   { background: rgba(61,214,140,0.05);  border-color: var(--green); }
+.warn  { background: rgba(245,166,35,0.06);  border-color: var(--amber); }
+.note  { background: rgba(74,144,226,0.06);  border-color: var(--blue); }
+.danger{ background: rgba(232,69,90,0.06);   border-color: var(--red); }
+
+/* ─── TABLES ─── */
+.tbl-wrap { border: 1px solid var(--wire); margin: 14px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: var(--amber-glow);
+  color: var(--amber); font-family: var(--mono);
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 1.5px;
+  font-weight: 700; border-bottom: 1px solid var(--wire2);
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--wire);
+  color: var(--fg2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+td code { font-size: 11px; }
+.ok   { color: var(--green);  font-weight: 700; font-family: var(--mono); font-size: 11px; }
+.no   { color: var(--red);    font-weight: 700; font-family: var(--mono); font-size: 11px; }
+.maybe{ color: var(--amber);  font-weight: 700; font-family: var(--mono); font-size: 11px; }
+
+/* ─── HEADINGS WITHIN ─── */
+h3 {
+  font-family: var(--display); font-size: 17px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--fg);
+  margin: 30px 0 12px; display: flex; align-items: center; gap: 10px;
+}
+h3::before { content: '//'; font-family: var(--mono); font-size: 11px; color: var(--amber); }
+h4 {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--muted);
+  margin: 20px 0 8px;
+}
+
+/* ─── COMPARE ─── */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.compare-block { border: 1px solid var(--wire); }
+.compare-hdr {
+  padding: 10px 18px; font-family: var(--display);
+  font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.c-old .compare-hdr { background: var(--red-dim); color: var(--red); border-bottom: 1px solid rgba(232,69,90,0.2); }
+.c-new .compare-hdr { background: var(--green-dim); color: var(--green); border-bottom: 1px solid rgba(61,214,140,0.2); }
+.compare-body { padding: 14px 18px; }
+.compare-body li { font-size: 13px; color: var(--fg2); margin-bottom: 6px; }
+.compare-body ul { padding-left: 14px; }
+
+/* ─── FLOW ─── */
+.flow {
+  display: flex; align-items: center;
+  overflow-x: auto; padding: 22px 24px;
+  background: var(--ink3); border: 1px solid var(--wire);
+  margin: 18px 0;
+}
+.flow-step {
+  flex-shrink: 0; text-align: center;
+  padding: 12px 16px;
+  background: var(--ink4);
+  border: 1px solid var(--wire2);
+  min-width: 100px;
+}
+.flow-lbl { font-family: var(--mono); font-size: 8.5px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 5px; }
+.flow-name { font-family: var(--display); font-size: 12.5px; font-weight: 700; text-transform: uppercase; color: var(--fg); line-height: 1.2; }
+.flow-arr { color: var(--amber); font-size: 18px; margin: 0 8px; flex-shrink: 0; }
+
+/* ─── PILLAR ROW ─── */
+.pillars {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--wire); border: 1px solid var(--wire); margin: 18px 0;
+}
+.pillar { background: var(--ink3); padding: 20px 14px; text-align: center; position: relative; }
+.pillar:hover { background: var(--ink4); }
+.pillar-ico { font-size: 24px; margin-bottom: 10px; }
+.pillar-name { font-family: var(--display); font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--fg); margin-bottom: 6px; line-height: 1.2; }
+.pillar-sub { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.pillar-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; }
+.pb-amber  { background: var(--amber); }
+.pb-blue   { background: var(--blue); }
+.pb-teal   { background: var(--teal); }
+.pb-green  { background: var(--green); }
+.pb-purple { background: var(--purple); }
+
+/* ─── STREAM TYPE CARDS ─── */
+.stream-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+
+/* ─── PROTO FIELD TYPES ─── */
+.type-table { margin: 16px 0; }
+
+/* ─── PERF BAR ─── */
+.perf-list { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+.perf-row { display: flex; align-items: center; gap: 14px; }
+.perf-label { font-family: var(--mono); font-size: 11px; color: var(--fg2); width: 120px; flex-shrink: 0; }
+.perf-track { flex: 1; height: 6px; background: var(--wire2); border-radius: 0; position: relative; }
+.perf-fill { height: 100%; border-radius: 0; }
+.perf-val { font-family: var(--mono); font-size: 10px; color: var(--muted); width: 50px; text-align: right; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--wire2); border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .g2, .g3, .g4, .compare, .stream-grid, .pillars { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 44px; }
+  .flow { flex-direction: column; align-items: flex-start; }
+  .flow-arr { transform: rotate(90deg); }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="tb-left">
+    <div class="tb-tag">Field Manual</div>
+    <div class="tb-title">gRPC &amp; Protocol Buffers</div>
+  </div>
+  <div class="tb-right">
+    <span>DOC-RPC-2024</span>
+    <div class="tb-live"><span class="live-dot"></span>LIVE</div>
+  </div>
+</header>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-doc">// GRPC-HANDBOOK-001</div>
+    <div class="sb-ver">proto3 · HTTP/2 · v1.60+</div>
+  </div>
+
+  <div class="nav-group">Foundations</div>
+  <a class="nav-item active" href="#overview" data-n="01">What is gRPC</a>
+  <a class="nav-item" href="#why" data-n="02">Why gRPC over REST</a>
+  <a class="nav-item" href="#http2" data-n="03">HTTP/2 Under the Hood</a>
+
+  <div class="nav-group">Protocol Buffers</div>
+  <a class="nav-item" href="#proto3" data-n="04">Proto3 Syntax</a>
+  <a class="nav-item" href="#types" data-n="05">Field Types &amp; Rules</a>
+  <a class="nav-item" href="#services" data-n="06">Defining Services</a>
+  <a class="nav-item" href="#encoding" data-n="07">Binary Encoding</a>
+
+  <div class="nav-group">gRPC Patterns</div>
+  <a class="nav-item" href="#streaming" data-n="08">Four RPC Modes</a>
+  <a class="nav-item" href="#metadata" data-n="09">Metadata &amp; Headers</a>
+  <a class="nav-item" href="#errors" data-n="10">Error Handling</a>
+  <a class="nav-item" href="#interceptors" data-n="11">Interceptors</a>
+
+  <div class="nav-group">Production</div>
+  <a class="nav-item" href="#security" data-n="12">TLS &amp; Auth</a>
+  <a class="nav-item" href="#loadbalancing" data-n="13">Load Balancing</a>
+  <a class="nav-item" href="#observability" data-n="14">Observability</a>
+  <a class="nav-item" href="#evolution" data-n="15">Schema Evolution</a>
+  <a class="nav-item" href="#whengrpc" data-n="16">When to Use gRPC</a>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-notch"></div>
+    <div class="hero-notch-txt">gRPC</div>
+    <div class="hero-eye">High-Performance RPC Framework</div>
+    <h1>gRPC &amp;<br><em>Protobuf</em></h1>
+    <div class="hero-sub">// Contract-first. Binary. Multiplexed. Streaming-native.</div>
+    <p class="hero-desc">The definitive guide to building high-performance inter-service communication with gRPC and Protocol Buffers. Covers the binary wire format, all four RPC modes, production hardening, and schema evolution strategies for microservice architectures.</p>
+    <div class="chips">
+      <span class="chip chip-amber">proto3</span>
+      <span class="chip chip-blue">HTTP/2</span>
+      <span class="chip chip-teal">Bidirectional Streaming</span>
+      <span class="chip chip-green">10× faster than JSON</span>
+      <span class="chip chip-purple">Code Generation</span>
+      <span class="chip chip-red">CNCF Graduated</span>
+    </div>
+  </div>
+
+  <!-- ══ 01 OVERVIEW ══ -->
+  <section id="overview">
+    <div class="sec-hdr">
+      <div class="sec-num">01</div>
+      <div class="sec-ttl">
+        <h2>What is gRPC</h2>
+        <div class="sub">// GOOGLE'S OPEN-SOURCE RPC FRAMEWORK</div>
+      </div>
+    </div>
+
+    <p class="prose">gRPC (Google Remote Procedure Call) is a high-performance, open-source RPC framework developed by Google, now a <strong>CNCF graduated project</strong>. It uses <strong>Protocol Buffers</strong> as the interface definition language and binary serialization format, transmitted over <strong>HTTP/2</strong>. Released publicly in 2016, it has become the dominant wire protocol for inter-microservice communication in polyglot environments.</p>
+
+    <div class="g3">
+      <div class="card l-amber">
+        <div class="card-title">Contract-First Design</div>
+        <p>You define your API in a <code>.proto</code> file — the contract. The <code>protoc</code> compiler generates strongly-typed client and server stubs in any supported language. The schema <em>is</em> the documentation.</p>
+      </div>
+      <div class="card l-blue">
+        <div class="card-title">Binary Wire Format</div>
+        <p>Protocol Buffers serialize to a compact binary format — typically 3–10× smaller than equivalent JSON, with significantly faster serialization and deserialization. No parsing ambiguity, no whitespace overhead.</p>
+      </div>
+      <div class="card l-teal">
+        <div class="card-title">Polyglot Native</div>
+        <p>Official code generation for Go, Java, Python, C++, C#, Node.js, Ruby, Swift, Kotlin, Dart, and more. One <code>.proto</code> file generates idiomatic clients and servers across your entire stack.</p>
+      </div>
+    </div>
+
+    <div class="pillars">
+      <div class="pillar">
+        <div class="pillar-ico">📋</div>
+        <div class="pillar-name">Proto IDL</div>
+        <div class="pillar-sub">Schema definition and code generation</div>
+        <div class="pillar-bar pb-amber"></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-ico">⚡</div>
+        <div class="pillar-name">HTTP/2</div>
+        <div class="pillar-sub">Multiplexing and flow control</div>
+        <div class="pillar-bar pb-blue"></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-ico">🔁</div>
+        <div class="pillar-name">Streaming</div>
+        <div class="pillar-sub">4 RPC modes including bidi</div>
+        <div class="pillar-bar pb-teal"></div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-ico">🛡️</div>
+        <div class="pillar-name">TLS + Auth</div>
+        <div class="pillar-sub">mTLS and token interceptors</div>
+        <div class="pillar-bar pb-green"></div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-ico">▸</span>
+      <div class="callout-body"><strong>gRPC is not just for microservices.</strong> It's used for mobile-to-backend (gRPC-Web), internal tooling, database protocols (CockroachDB, TiKV), streaming pipelines, and AI inference APIs (NVIDIA Triton). If two systems need to talk fast and reliably, gRPC is a strong default.</div>
+    </div>
+  </section>
+
+  <!-- ══ 02 WHY gRPC ══ -->
+  <section id="why">
+    <div class="sec-hdr">
+      <div class="sec-num">02</div>
+      <div class="sec-ttl">
+        <h2>Why gRPC over REST</h2>
+        <div class="sub">// WHEN THE TRADEOFFS FAVOR RPC</div>
+      </div>
+    </div>
+
+    <p class="prose">REST over HTTP/1.1 with JSON is excellent for public APIs, browser clients, and developer ergonomics. gRPC wins decisively for <strong>internal service-to-service communication</strong> where performance, type safety, and streaming matter. The question is not "which is better" — it's which tradeoffs serve your use case.</p>
+
+    <div class="compare">
+      <div class="compare-block c-old">
+        <div class="compare-hdr">REST + JSON (HTTP/1.1)</div>
+        <div class="compare-body">
+          <ul>
+            <li>Human-readable, easy to debug with curl</li>
+            <li>One request per connection (without pipelining)</li>
+            <li>JSON parsing overhead — always text → object</li>
+            <li>No enforced schema (OpenAPI is optional)</li>
+            <li>No native streaming — SSE/WebSocket are bolt-ons</li>
+            <li>Large payloads — field names repeated per object</li>
+            <li>Versioning via URL (<code>/v1/</code>, <code>/v2/</code>) is messy</li>
+            <li>Excellent browser and public API support</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-block c-new">
+        <div class="compare-hdr">gRPC + Protobuf (HTTP/2)</div>
+        <div class="compare-body">
+          <ul>
+            <li>Binary — requires tooling to inspect (grpcurl, grpc-ui)</li>
+            <li>Multiplexed — many requests over one connection</li>
+            <li>Protobuf: up to 10× faster parse, 3–10× smaller</li>
+            <li>Enforced typed contract — compiler catches breakage</li>
+            <li>First-class streaming in all four directions</li>
+            <li>Field numbers encode keys — tiny wire size</li>
+            <li>Backward-compatible field evolution via field numbers</li>
+            <li>No native browser support (gRPC-Web workaround)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Performance At a Glance</h3>
+    <div class="perf-list">
+      <div class="perf-row">
+        <div class="perf-label">Payload size</div>
+        <div class="perf-track"><div class="perf-fill" style="width:85%;background:var(--green);"></div></div>
+        <div class="perf-val" style="color:var(--green)">~7× smaller</div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">Serialize speed</div>
+        <div class="perf-track"><div class="perf-fill" style="width:80%;background:var(--green);"></div></div>
+        <div class="perf-val" style="color:var(--green)">~5× faster</div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">Connection reuse</div>
+        <div class="perf-track"><div class="perf-fill" style="width:95%;background:var(--blue);"></div></div>
+        <div class="perf-val" style="color:var(--blue)">Multiplexed</div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">Type safety</div>
+        <div class="perf-track"><div class="perf-fill" style="width:100%;background:var(--amber);"></div></div>
+        <div class="perf-val" style="color:var(--amber)">Enforced</div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">Browser support</div>
+        <div class="perf-track"><div class="perf-fill" style="width:30%;background:var(--red);"></div></div>
+        <div class="perf-val" style="color:var(--red)">gRPC-Web</div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-ico">⚠</span>
+      <div class="callout-body"><strong>Don't use gRPC for public APIs.</strong> If third-party developers, mobile browsers, or external systems need to call your API, REST/JSON remains the right choice. gRPC shines at the internal seam between your own services. Many teams run both: gRPC internally, REST externally via a gateway (Envoy, Kong, AWS API Gateway).</div>
+    </div>
+  </section>
+
+  <!-- ══ 03 HTTP/2 ══ -->
+  <section id="http2">
+    <div class="sec-hdr">
+      <div class="sec-num">03</div>
+      <div class="sec-ttl">
+        <h2>HTTP/2 Under the Hood</h2>
+        <div class="sub">// WHY THE TRANSPORT LAYER MATTERS</div>
+      </div>
+    </div>
+
+    <p class="prose">gRPC is built entirely on HTTP/2. Understanding the transport layer explains why gRPC achieves its performance characteristics and why HTTP/1.1-based REST cannot replicate them without fundamental changes.</p>
+
+    <div class="g2">
+      <div class="card l-amber">
+        <div class="card-title">Multiplexing <span class="tag tag-amber">Key Feature</span></div>
+        <p>Multiple concurrent RPC calls share a single TCP connection via <strong>streams</strong>. HTTP/1.1 requires one connection per concurrent request (or connection pooling hacks). HTTP/2 eliminates head-of-line blocking at the application layer — a slow call doesn't block other calls on the same connection.</p>
+      </div>
+      <div class="card l-blue">
+        <div class="card-title">Header Compression (HPACK)</div>
+        <p>HTTP/2 uses HPACK to compress headers. In gRPC, metadata (auth tokens, trace IDs) is sent as headers. HPACK maintains a shared compression context between client and server, meaning repeated headers (like <code>content-type: application/grpc</code>) cost near-zero after the first request.</p>
+      </div>
+      <div class="card l-teal">
+        <div class="card-title">Binary Framing Layer</div>
+        <p>HTTP/2 transmits data in binary <strong>frames</strong>, not text. Each gRPC message is wrapped in a 5-byte length-prefix (1 byte compression flag + 4 byte length), then sent as HTTP/2 DATA frames. This enables precise length-delimited message framing without text parsing.</p>
+      </div>
+      <div class="card l-green">
+        <div class="card-title">Flow Control &amp; Push</div>
+        <p>HTTP/2 has per-stream and connection-level flow control — the receiver advertises how much data it can accept. This is critical for gRPC streaming: a slow consumer can signal backpressure to the sender without dropping messages or needing application-level throttling.</p>
+      </div>
+    </div>
+
+    <h3>gRPC Frame Format on the Wire</h3>
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Wire Format</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="cm">## gRPC message framing (Length-Prefixed Message)</span>
+<span class="cm">## Sits between the HTTP/2 DATA frames and the Protobuf payload</span>
+
+┌─────────────────────────────────────────────────────────────┐
+│  Byte 0        │ Compressed-Flag (0 = no compression, 1 = gzip/snappy) │
+│  Bytes 1–4     │ Message-Length (big-endian uint32, length of proto msg) │
+│  Bytes 5–N     │ Serialized Protobuf message                             │
+└─────────────────────────────────────────────────────────────┘
+
+<span class="cm">## HTTP/2 headers for a gRPC request</span>
+:method         POST
+:scheme         https
+:path           /helloworld.Greeter/SayHello
+:authority      api.example.com
+content-type    application/grpc           <span class="cm"># required by gRPC spec</span>
+grpc-timeout    5S                         <span class="cm"># optional: 5-second deadline</span>
+grpc-encoding   gzip                       <span class="cm"># optional: message compression</span>
+authorization   Bearer &lt;token&gt;            <span class="cm"># custom metadata as headers</span>
+
+<span class="cm">## HTTP/2 trailers for gRPC response status</span>
+grpc-status     0                          <span class="cm"># 0 = OK, non-zero = error</span>
+grpc-message    ""                         <span class="cm"># human-readable error message</span></div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-ico">ℹ</span>
+      <div class="callout-body"><strong>gRPC-Web:</strong> Browsers cannot access HTTP/2 trailers, which gRPC uses for status codes. gRPC-Web works around this by encoding trailers in the response body and using an HTTP/1.1-compatible proxy (Envoy, grpc-gateway). It supports unary and server-streaming, but not client or bidirectional streaming in the browser.</div>
+    </div>
+  </section>
+
+  <!-- ══ 04 PROTO3 SYNTAX ══ -->
+  <section id="proto3">
+    <div class="sec-hdr">
+      <div class="sec-num">04</div>
+      <div class="sec-ttl">
+        <h2>Proto3 Syntax</h2>
+        <div class="sub">// WRITING YOUR FIRST .PROTO FILE</div>
+      </div>
+    </div>
+
+    <p class="prose">A <code>.proto</code> file is the single source of truth for your service contract. It defines messages (data structures) and services (RPC endpoints). The <code>protoc</code> compiler and language-specific plugins generate all boilerplate — you only write the business logic.</p>
+
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Protocol Buffers — Complete Example</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="at">syntax</span> = <span class="st">"proto3"</span>;                          <span class="cm">// always specify; proto2 is legacy</span>
+
+<span class="at">package</span> payments.v1;                          <span class="cm">// logical namespace</span>
+
+<span class="at">option</span> go_package = <span class="st">"github.com/acme/payments/gen/go/payments/v1;paymentsv1"</span>;
+<span class="at">option</span> java_package = <span class="st">"com.acme.payments.v1"</span>;
+
+<span class="at">import</span> <span class="st">"google/protobuf/timestamp.proto"</span>;    <span class="cm">// well-known types</span>
+<span class="at">import</span> <span class="st">"google/protobuf/money.proto"</span>;
+
+<span class="cm">// ── Message definitions ──</span>
+<span class="kw">message</span> <span class="cl">ChargeRequest</span> {
+  <span class="kw">string</span>   order_id     = <span class="nu">1</span>;               <span class="cm">// field number — NEVER changes</span>
+  <span class="kw">int64</span>    amount_cents  = <span class="nu">2</span>;               <span class="cm">// snake_case names, camelCase generated</span>
+  <span class="kw">string</span>   currency      = <span class="nu">3</span>;
+  <span class="kw">string</span>   customer_id   = <span class="nu">4</span>;
+  <span class="cl">PaymentMethod</span> method   = <span class="nu">5</span>;               <span class="cm">// nested enum</span>
+  <span class="kw">repeated</span> <span class="kw">string</span> tags   = <span class="nu">6</span>;              <span class="cm">// repeated = list/array</span>
+  <span class="cm">// field numbers 7–15 reserved for future use (1-byte encoding)</span>
+}
+
+<span class="kw">message</span> <span class="cl">ChargeResponse</span> {
+  <span class="kw">string</span>   transaction_id = <span class="nu">1</span>;
+  <span class="cl">ChargeStatus</span> status     = <span class="nu">2</span>;
+  google.protobuf.<span class="cl">Timestamp</span> processed_at = <span class="nu">3</span>;
+  <span class="kw">optional</span> <span class="kw">string</span> failure_reason = <span class="nu">4</span>;     <span class="cm">// proto3 optional — has presence</span>
+}
+
+<span class="kw">enum</span> <span class="cl">PaymentMethod</span> {
+  PAYMENT_METHOD_UNSPECIFIED = <span class="nu">0</span>;          <span class="cm">// enums MUST start at 0</span>
+  PAYMENT_METHOD_CARD        = <span class="nu">1</span>;
+  PAYMENT_METHOD_BANK        = <span class="nu">2</span>;
+  PAYMENT_METHOD_CRYPTO      = <span class="nu">3</span>;
+}
+
+<span class="kw">enum</span> <span class="cl">ChargeStatus</span> {
+  CHARGE_STATUS_UNSPECIFIED = <span class="nu">0</span>;
+  CHARGE_STATUS_SUCCESS     = <span class="nu">1</span>;
+  CHARGE_STATUS_DECLINED    = <span class="nu">2</span>;
+  CHARGE_STATUS_PENDING     = <span class="nu">3</span>;
+}
+
+<span class="cm">// ── Service definition ──</span>
+<span class="kw">service</span> <span class="cl">PaymentService</span> {
+  <span class="kw">rpc</span> <span class="fn">Charge</span>(<span class="cl">ChargeRequest</span>) <span class="kw">returns</span> (<span class="cl">ChargeResponse</span>);
+  <span class="kw">rpc</span> <span class="fn">StreamTransactions</span>(<span class="cl">TransactionFilter</span>) <span class="kw">returns</span> (<span class="kw">stream</span> <span class="cl">Transaction</span>);
+  <span class="kw">rpc</span> <span class="fn">BatchCharge</span>(<span class="kw">stream</span> <span class="cl">ChargeRequest</span>) <span class="kw">returns</span> (<span class="cl">BatchChargeResponse</span>);
+}</div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-ico">▸</span>
+      <div class="callout-body"><strong>Code generation:</strong> Run <code>protoc --go_out=. --go-grpc_out=. payments.proto</code> (or use <code>buf generate</code> — the modern alternative). The compiler produces a <code>payments.pb.go</code> (messages) and <code>payments_grpc.pb.go</code> (client/server stubs). Never edit generated files — regenerate from the proto.</div>
+    </div>
+  </section>
+
+  <!-- ══ 05 FIELD TYPES ══ -->
+  <section id="types">
+    <div class="sec-hdr">
+      <div class="sec-num">05</div>
+      <div class="sec-ttl">
+        <h2>Field Types &amp; Rules</h2>
+        <div class="sub">// SCALARS, WELL-KNOWN TYPES, ONEOF, MAP</div>
+      </div>
+    </div>
+
+    <h3>Scalar Types</h3>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Proto Type</th><th>Go</th><th>Java</th><th>Python</th><th>Notes</th></tr>
+        <tr><td><code>double</code></td><td>float64</td><td>double</td><td>float</td><td>64-bit IEEE 754</td></tr>
+        <tr><td><code>float</code></td><td>float32</td><td>float</td><td>float</td><td>32-bit IEEE 754</td></tr>
+        <tr><td><code>int32</code></td><td>int32</td><td>int</td><td>int</td><td>Varint; inefficient for negatives (use sint32)</td></tr>
+        <tr><td><code>int64</code></td><td>int64</td><td>long</td><td>int</td><td>Varint; inefficient for negatives</td></tr>
+        <tr><td><code>uint32/uint64</code></td><td>uint32/64</td><td>int/long</td><td>int</td><td>Unsigned varint</td></tr>
+        <tr><td><code>sint32/sint64</code></td><td>int32/64</td><td>int/long</td><td>int</td><td>ZigZag encoding — use for negative numbers</td></tr>
+        <tr><td><code>fixed32/fixed64</code></td><td>uint32/64</td><td>int/long</td><td>int</td><td>Always 4/8 bytes — faster for large numbers</td></tr>
+        <tr><td><code>bool</code></td><td>bool</td><td>boolean</td><td>bool</td><td>Varint 0 or 1</td></tr>
+        <tr><td><code>string</code></td><td>string</td><td>String</td><td>str</td><td>UTF-8 encoded, length-delimited</td></tr>
+        <tr><td><code>bytes</code></td><td>[]byte</td><td>ByteString</td><td>bytes</td><td>Arbitrary binary data</td></tr>
+      </table>
+    </div>
+
+    <h3>Advanced Field Patterns</h3>
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Proto3 — Advanced Patterns</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="cm">// ── repeated: ordered list ──</span>
+<span class="kw">message</span> <span class="cl">Order</span> {
+  <span class="kw">repeated</span> <span class="cl">LineItem</span> items = <span class="nu">1</span>;            <span class="cm">// generates []LineItem in Go</span>
+}
+
+<span class="cm">// ── map: key-value pairs ──</span>
+<span class="kw">message</span> <span class="cl">Config</span> {
+  <span class="kw">map</span>&lt;<span class="kw">string</span>, <span class="kw">string</span>&gt; settings = <span class="nu">1</span>;       <span class="cm">// key must be scalar (not float/bytes)</span>
+  <span class="kw">map</span>&lt;<span class="kw">int32</span>, <span class="cl">FeatureFlag</span>&gt; flags = <span class="nu">2</span>;
+}
+
+<span class="cm">// ── oneof: exactly one of these fields is set ──</span>
+<span class="kw">message</span> <span class="cl">Notification</span> {
+  <span class="kw">string</span> user_id = <span class="nu">1</span>;
+  <span class="kw">oneof</span> payload {
+    <span class="cl">EmailPayload</span>  email  = <span class="nu">2</span>;
+    <span class="cl">PushPayload</span>   push   = <span class="nu">3</span>;
+    <span class="cl">SMSPayload</span>    sms    = <span class="nu">4</span>;
+  }                                        <span class="cm">// setting one clears others</span>
+}
+
+<span class="cm">// ── Well-Known Types (google/protobuf/*.proto) ──</span>
+<span class="kw">import</span> <span class="st">"google/protobuf/timestamp.proto"</span>;
+<span class="kw">import</span> <span class="st">"google/protobuf/duration.proto"</span>;
+<span class="kw">import</span> <span class="st">"google/protobuf/wrappers.proto"</span>;  <span class="cm">// nullable scalars</span>
+<span class="kw">import</span> <span class="st">"google/protobuf/struct.proto"</span>;    <span class="cm">// arbitrary JSON-like structure</span>
+<span class="kw">import</span> <span class="st">"google/protobuf/any.proto"</span>;       <span class="cm">// type-erased container</span>
+<span class="kw">import</span> <span class="st">"google/protobuf/field_mask.proto"</span>;<span class="cm">// partial updates (like PATCH)</span>
+
+<span class="kw">message</span> <span class="cl">Event</span> {
+  google.protobuf.<span class="cl">Timestamp</span> created_at = <span class="nu">1</span>;  <span class="cm">// UTC timestamp with nanos</span>
+  google.protobuf.<span class="cl">Duration</span>  duration    = <span class="nu">2</span>;  <span class="cm">// time duration</span>
+  google.protobuf.<span class="cl">StringValue</span> label     = <span class="nu">3</span>;  <span class="cm">// nullable string (has presence)</span>
+  google.protobuf.<span class="cl">Struct</span>    metadata    = <span class="nu">4</span>;  <span class="cm">// arbitrary key-value</span>
+}
+
+<span class="cm">// ── reserved: prevent field number reuse ──</span>
+<span class="kw">message</span> <span class="cl">LegacyUser</span> {
+  <span class="kw">reserved</span> <span class="nu">2</span>, <span class="nu">5</span>, <span class="nu">9</span> <span class="kw">to</span> <span class="nu">11</span>;              <span class="cm">// these field numbers are retired</span>
+  <span class="kw">reserved</span> <span class="st">"old_email"</span>, <span class="st">"phone_number"</span>; <span class="cm">// retired field names</span>
+  <span class="kw">string</span> user_id = <span class="nu">1</span>;
+}</div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-ico">⚠</span>
+      <div class="callout-body"><strong>Proto3 default values:</strong> In proto3, all fields have default values (0, false, empty string). There is no way to distinguish "field not set" from "field set to zero" — unless you use <code>optional</code> keyword (proto3 optional, added in protobuf 3.15) or wrapper types. This is a common source of bugs when null-checking is semantically important.</div>
+    </div>
+  </section>
+
+  <!-- ══ 06 SERVICES ══ -->
+  <section id="services">
+    <div class="sec-hdr">
+      <div class="sec-num">06</div>
+      <div class="sec-ttl">
+        <h2>Defining Services</h2>
+        <div class="sub">// FROM .PROTO TO WORKING SERVER</div>
+      </div>
+    </div>
+
+    <p class="prose">A gRPC service definition maps directly to a generated interface. On the server side you implement the interface; on the client side the generated stub makes calls look like local function calls, even when they're crossing a network.</p>
+
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Go — Server Implementation</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+  <span class="st">"context"</span>
+  <span class="st">"net"</span>
+  <span class="st">"log"</span>
+  <span class="st">"google.golang.org/grpc"</span>
+  <span class="st">"google.golang.org/grpc/codes"</span>
+  <span class="st">"google.golang.org/grpc/status"</span>
+  pb <span class="st">"github.com/acme/payments/gen/go/payments/v1"</span>
+)
+
+<span class="cm">// server implements pb.PaymentServiceServer (generated interface)</span>
+<span class="kw">type</span> <span class="cl">server</span> <span class="kw">struct</span> {
+  pb.UnimplementedPaymentServiceServer <span class="cm">// forward-compat: embed this</span>
+  db *<span class="cl">Database</span>
+}
+
+<span class="cm">// Unary RPC — one request, one response</span>
+<span class="kw">func</span> (s *<span class="cl">server</span>) <span class="fn">Charge</span>(ctx <span class="cl">context.Context</span>, req *pb.<span class="cl">ChargeRequest</span>) (*pb.<span class="cl">ChargeResponse</span>, error) {
+  <span class="cm">// validate</span>
+  <span class="kw">if</span> req.AmountCents <= <span class="nu">0</span> {
+    <span class="kw">return</span> <span class="kw">nil</span>, status.<span class="fn">Errorf</span>(codes.InvalidArgument, <span class="st">"amount must be positive, got %d"</span>, req.AmountCents)
+  }
+  <span class="cm">// check deadline / context cancellation</span>
+  <span class="kw">if</span> ctx.<span class="fn">Err</span>() != <span class="kw">nil</span> {
+    <span class="kw">return</span> <span class="kw">nil</span>, status.<span class="fn">FromContextError</span>(ctx.<span class="fn">Err</span>()).<span class="fn">Err</span>()
+  }
+  txID, err := s.db.<span class="fn">Charge</span>(ctx, req.OrderId, req.AmountCents)
+  <span class="kw">if</span> err != <span class="kw">nil</span> {
+    <span class="kw">return</span> <span class="kw">nil</span>, status.<span class="fn">Errorf</span>(codes.Internal, <span class="st">"charge failed: %v"</span>, err)
+  }
+  <span class="kw">return</span> &amp;pb.<span class="cl">ChargeResponse</span>{TransactionId: txID, Status: pb.ChargeStatus_CHARGE_STATUS_SUCCESS}, <span class="kw">nil</span>
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+  lis, _ := net.<span class="fn">Listen</span>(<span class="st">"tcp"</span>, <span class="st">":50051"</span>)
+  s := grpc.<span class="fn">NewServer</span>(
+    grpc.<span class="fn">UnaryInterceptor</span>(loggingInterceptor),   <span class="cm">// middleware</span>
+    grpc.<span class="fn">MaxRecvMsgSize</span>(<span class="nu">16</span> * <span class="nu">1024</span> * <span class="nu">1024</span>),       <span class="cm">// 16MB max message</span>
+  )
+  pb.<span class="fn">RegisterPaymentServiceServer</span>(s, &amp;<span class="cl">server</span>{})
+  log.<span class="fn">Fatal</span>(s.<span class="fn">Serve</span>(lis))
+}</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Go — Client Usage</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="cm">// Client setup — one connection, reused across all calls</span>
+conn, err := grpc.<span class="fn">NewClient</span>(
+  <span class="st">"api.example.com:443"</span>,
+  grpc.<span class="fn">WithTransportCredentials</span>(credentials.<span class="fn">NewTLS</span>(tlsConfig)),
+  grpc.<span class="fn">WithUnaryInterceptor</span>(retryInterceptor),
+)
+<span class="kw">defer</span> conn.<span class="fn">Close</span>()
+
+client := pb.<span class="fn">NewPaymentServiceClient</span>(conn)  <span class="cm">// generated stub — thread-safe</span>
+
+<span class="cm">// Unary call with deadline</span>
+ctx, cancel := context.<span class="fn">WithTimeout</span>(context.<span class="fn">Background</span>(), <span class="nu">5</span>*time.Second)
+<span class="kw">defer</span> cancel()
+
+resp, err := client.<span class="fn">Charge</span>(ctx, &amp;pb.<span class="cl">ChargeRequest</span>{
+  OrderId:     <span class="st">"ord_abc123"</span>,
+  AmountCents: <span class="nu">9999</span>,
+  Currency:    <span class="st">"USD"</span>,
+  CustomerId:  <span class="st">"cust_xyz"</span>,
+  Method:      pb.PaymentMethod_PAYMENT_METHOD_CARD,
+})
+<span class="kw">if</span> err != <span class="kw">nil</span> {
+  st := status.<span class="fn">Convert</span>(err)
+  log.<span class="fn">Printf</span>(<span class="st">"RPC failed: code=%s msg=%s"</span>, st.<span class="fn">Code</span>(), st.<span class="fn">Message</span>())
+  <span class="kw">return</span>
+}
+fmt.<span class="fn">Println</span>(resp.TransactionId)</div>
+    </div>
+  </section>
+
+  <!-- ══ 07 BINARY ENCODING ══ -->
+  <section id="encoding">
+    <div class="sec-hdr">
+      <div class="sec-num">07</div>
+      <div class="sec-ttl">
+        <h2>Binary Encoding</h2>
+        <div class="sub">// HOW PROTOBUF ACHIEVES COMPACTNESS</div>
+      </div>
+    </div>
+
+    <p class="prose">Protobuf's compactness comes from its <strong>tag-value</strong> encoding. Field names are never sent over the wire — only field numbers (tags). An integer that fits in one byte takes one byte. This is why the choice of field number matters: fields 1–15 use one byte for the tag, while 16–2047 use two bytes. Reserve small numbers for frequently-used fields.</p>
+
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Encoding Deep Dive</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="cm">## Protobuf wire types</span>
+<span class="cm">## Tag = (field_number << 3) | wire_type</span>
+
+Wire Type 0  VARINT    int32, int64, uint32, uint64, sint32, sint64, bool, enum
+Wire Type 1  I64       fixed64, sfixed64, double
+Wire Type 2  LEN       string, bytes, embedded messages, packed repeated
+Wire Type 5  I32       fixed32, sfixed32, float
+
+<span class="cm">## Example: encoding { order_id: "X1" (field 1), amount_cents: 150 (field 2) }</span>
+<span class="cm">#</span>
+<span class="cm"># field 1, string: tag = (1 << 3) | 2 = 0x0A</span>
+<span class="cm">#   0x0A 0x02 0x58 0x31   → tag, length=2, "X" "1"</span>
+<span class="cm">#</span>
+<span class="cm"># field 2, varint: tag = (2 << 3) | 0 = 0x10</span>
+<span class="cm">#   0x10 0x96 0x01         → tag, varint(150) in 2 bytes</span>
+<span class="cm">#</span>
+<span class="cm"># Total: 7 bytes</span>
+<span class="cm"># Equivalent JSON: {"order_id":"X1","amount_cents":150} = 42 chars = 42 bytes</span>
+<span class="cm"># 6× smaller</span>
+
+<span class="cm">## Varint encoding (base-128)</span>
+<span class="cm">## 150 in binary = 10010110</span>
+<span class="cm">## Split into 7-bit groups, LSB first, MSB = "more bytes follow"</span>
+<span class="cm">## 0010110 → 1001 0110 (MSB=1, more follows) = 0x96</span>
+<span class="cm">## 0000001 → 0000 0001 (MSB=0, last byte)    = 0x01</span>
+<span class="cm">## Wire: 0x96 0x01</span>
+
+<span class="cm">## ZigZag for negative numbers (sint32/sint64)</span>
+<span class="cm">## Avoids 10-byte varint for small negatives</span>
+<span class="cm">## n=0 → 0, n=-1 → 1, n=1 → 2, n=-2 → 3</span>
+<span class="cm">## Encoding: (n << 1) ^ (n >> 31)</span></div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-ico">▸</span>
+      <div class="callout-body"><strong>Field number assignment strategy:</strong> Fields 1–15 encode in 1 byte (tag only). Fields 16–2047 use 2 bytes. Assign numbers 1–15 to the most frequently populated fields in your most common messages. For an event log message, the timestamp and event type go in 1–2; rarely-populated debug fields go in 100+. This is a micro-optimization but meaningful at scale.</div>
+    </div>
+  </section>
+
+  <!-- ══ 08 STREAMING MODES ══ -->
+  <section id="streaming">
+    <div class="sec-hdr">
+      <div class="sec-num">08</div>
+      <div class="sec-ttl">
+        <h2>The Four RPC Modes</h2>
+        <div class="sub">// UNARY, SERVER-STREAM, CLIENT-STREAM, BIDI</div>
+      </div>
+    </div>
+
+    <p class="prose">gRPC supports four communication patterns. Choosing the right mode is an architectural decision — it affects backpressure, latency, error handling, and how you structure your proto definitions. <strong>Start with unary</strong> unless you have a specific reason to stream.</p>
+
+    <div class="stream-grid">
+      <div class="card l-amber">
+        <div class="card-title">Unary RPC <span class="tag tag-amber">Most Common</span></div>
+        <p>One request, one response. Behaves like a normal function call. Use for: any CRUD operation, queries, commands where you need a definitive result. <strong>Always add a deadline.</strong></p>
+        <div class="code-wrap" style="margin-top:10px">
+          <div class="code-body" style="font-size:11.5px;padding:10px 14px"><span class="kw">rpc</span> <span class="fn">GetUser</span>(<span class="cl">GetUserRequest</span>) <span class="kw">returns</span> (<span class="cl">User</span>);</div>
+        </div>
+      </div>
+      <div class="card l-blue">
+        <div class="card-title">Server-Side Streaming <span class="tag tag-blue">Push Pattern</span></div>
+        <p>One request, many responses. Server streams a sequence of messages. Use for: large result sets, live feeds, progress updates, paginated results without client polling.</p>
+        <div class="code-wrap" style="margin-top:10px">
+          <div class="code-body" style="font-size:11.5px;padding:10px 14px"><span class="kw">rpc</span> <span class="fn">WatchEvents</span>(<span class="cl">Filter</span>) <span class="kw">returns</span> (<span class="kw">stream</span> <span class="cl">Event</span>);</div>
+        </div>
+      </div>
+      <div class="card l-teal">
+        <div class="card-title">Client-Side Streaming <span class="tag tag-teal">Ingestion</span></div>
+        <p>Many requests, one response. Client streams data; server waits for all and responds once. Use for: bulk upload, batch ingestion, file upload in chunks, accumulating metrics.</p>
+        <div class="code-wrap" style="margin-top:10px">
+          <div class="code-body" style="font-size:11.5px;padding:10px 14px"><span class="kw">rpc</span> <span class="fn">IngestEvents</span>(<span class="kw">stream</span> <span class="cl">Event</span>) <span class="kw">returns</span> (<span class="cl">IngestSummary</span>);</div>
+        </div>
+      </div>
+      <div class="card l-purple">
+        <div class="card-title">Bidirectional Streaming <span class="tag tag-purple">Advanced</span></div>
+        <p>Many requests, many responses, fully independent. Both sides send and receive independently. Use for: chat, collaborative editing, real-time games, live telemetry with acknowledgments.</p>
+        <div class="code-wrap" style="margin-top:10px">
+          <div class="code-body" style="font-size:11.5px;padding:10px 14px"><span class="kw">rpc</span> <span class="fn">Chat</span>(<span class="kw">stream</span> <span class="cl">Message</span>) <span class="kw">returns</span> (<span class="kw">stream</span> <span class="cl">Message</span>);</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Server Streaming — Implementation</h3>
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Go — Server &amp; Client Streaming</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="cm">// ── Server-side: stream responses to client ──</span>
+<span class="kw">func</span> (s *<span class="cl">server</span>) <span class="fn">WatchEvents</span>(filter *pb.<span class="cl">Filter</span>, stream pb.<span class="cl">EventService_WatchEventsServer</span>) error {
+  <span class="kw">for</span> event := <span class="kw">range</span> s.eventBus.<span class="fn">Subscribe</span>(filter) {
+    <span class="cm">// Check if client has disconnected or deadline exceeded</span>
+    <span class="kw">if</span> stream.<span class="fn">Context</span>().<span class="fn">Err</span>() != <span class="kw">nil</span> {
+      <span class="kw">return</span> status.<span class="fn">FromContextError</span>(stream.<span class="fn">Context</span>().<span class="fn">Err</span>()).<span class="fn">Err</span>()
+    }
+    <span class="kw">if</span> err := stream.<span class="fn">Send</span>(event); err != <span class="kw">nil</span> {
+      <span class="kw">return</span> err  <span class="cm">// client gone — stop sending</span>
+    }
+  }
+  <span class="kw">return</span> <span class="kw">nil</span>  <span class="cm">// stream complete</span>
+}
+
+<span class="cm">// ── Client-side: consume the stream ──</span>
+stream, err := client.<span class="fn">WatchEvents</span>(ctx, &amp;pb.<span class="cl">Filter</span>{UserId: <span class="st">"usr_123"</span>})
+<span class="kw">for</span> {
+  event, err := stream.<span class="fn">Recv</span>()
+  <span class="kw">if</span> err == io.EOF {
+    <span class="kw">break</span>  <span class="cm">// server closed stream normally</span>
+  }
+  <span class="kw">if</span> err != <span class="kw">nil</span> {
+    log.<span class="fn">Printf</span>(<span class="st">"stream error: %v"</span>, err)
+    <span class="kw">break</span>
+  }
+  <span class="fn">processEvent</span>(event)
+}
+
+<span class="cm">// ── Bidirectional: send and receive concurrently ──</span>
+stream, _ := client.<span class="fn">Chat</span>(ctx)
+
+<span class="cm">// Goroutine: receive</span>
+<span class="kw">go func</span>() {
+  <span class="kw">for</span> { msg, err := stream.<span class="fn">Recv</span>(); <span class="kw">if</span> err != <span class="kw">nil</span> { <span class="kw">return</span> }; <span class="fn">display</span>(msg) }
+}()
+
+<span class="cm">// Main: send</span>
+<span class="kw">for</span> input := <span class="kw">range</span> userInputCh {
+  stream.<span class="fn">Send</span>(&amp;pb.<span class="cl">Message</span>{Text: input})
+}
+stream.<span class="fn">CloseSend</span>()  <span class="cm">// signal done sending; still can receive</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 09 METADATA ══ -->
+  <section id="metadata">
+    <div class="sec-hdr">
+      <div class="sec-num">09</div>
+      <div class="sec-ttl">
+        <h2>Metadata &amp; Headers</h2>
+        <div class="sub">// PASSING CONTEXT ACROSS THE WIRE</div>
+      </div>
+    </div>
+
+    <p class="prose">gRPC metadata is analogous to HTTP headers. It carries cross-cutting concerns — auth tokens, trace IDs, request IDs, feature flags — without polluting your proto message definitions. Metadata is sent as HTTP/2 headers and trailers.</p>
+
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Go — Metadata Send &amp; Receive</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="kw">import</span> <span class="st">"google.golang.org/grpc/metadata"</span>
+
+<span class="cm">// ── CLIENT: attach metadata to outgoing request ──</span>
+md := metadata.<span class="fn">Pairs</span>(
+  <span class="st">"authorization"</span>,  <span class="st">"Bearer eyJhbGci..."</span>,
+  <span class="st">"x-request-id"</span>,   uuid.<span class="fn">New</span>().<span class="fn">String</span>(),
+  <span class="st">"x-trace-id"</span>,     tracing.<span class="fn">TraceIDFromContext</span>(ctx),
+  <span class="st">"x-feature-flags"</span>, <span class="st">"new-pricing:true"</span>,
+)
+ctx = metadata.<span class="fn">NewOutgoingContext</span>(ctx, md)
+resp, err := client.<span class="fn">Charge</span>(ctx, req)
+
+<span class="cm">// ── SERVER: read incoming metadata ──</span>
+<span class="kw">func</span> (s *<span class="cl">server</span>) <span class="fn">Charge</span>(ctx <span class="cl">context.Context</span>, req *pb.<span class="cl">ChargeRequest</span>) (*pb.<span class="cl">ChargeResponse</span>, error) {
+  md, ok := metadata.<span class="fn">FromIncomingContext</span>(ctx)
+  <span class="kw">if</span> !ok { <span class="kw">return</span> <span class="kw">nil</span>, status.<span class="fn">Error</span>(codes.Unauthenticated, <span class="st">"missing metadata"</span>) }
+
+  authHeader := md.<span class="fn">Get</span>(<span class="st">"authorization"</span>)
+  <span class="kw">if</span> len(authHeader) == <span class="nu">0</span> { <span class="kw">return</span> <span class="kw">nil</span>, status.<span class="fn">Error</span>(codes.Unauthenticated, <span class="st">"missing auth"</span>) }
+  token := <span class="fn">strings.TrimPrefix</span>(authHeader[<span class="nu">0</span>], <span class="st">"Bearer "</span>)
+
+  <span class="cm">// Send response metadata (trailers)</span>
+  grpc.<span class="fn">SetTrailer</span>(ctx, metadata.<span class="fn">Pairs</span>(<span class="st">"x-charge-latency-ms"</span>, <span class="st">"42"</span>))
+  <span class="kw">return</span> &amp;pb.<span class="cl">ChargeResponse</span>{...}, <span class="kw">nil</span>
+}
+
+<span class="cm">// ── Metadata key conventions ──</span>
+<span class="cm">// Keys are lowercase, use hyphens</span>
+<span class="cm">// Binary keys must end in "-bin" (base64 encoded value)</span>
+<span class="cm">// Reserved keys: "content-type", "te", "grpc-*"</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 10 ERRORS ══ -->
+  <section id="errors">
+    <div class="sec-hdr">
+      <div class="sec-num">10</div>
+      <div class="sec-ttl">
+        <h2>Error Handling</h2>
+        <div class="sub">// STATUS CODES AND RICH ERROR DETAILS</div>
+      </div>
+    </div>
+
+    <p class="prose">gRPC uses a standardized set of <strong>17 status codes</strong> rather than HTTP's 70+ status codes. Every RPC returns a status — on success it's <code>OK</code> (0), on failure it's one of the defined codes. Rich error details can be attached using the <code>google.rpc.Status</code> proto with nested detail messages.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Code</th><th>Name</th><th>Use When</th><th>HTTP Analog</th></tr>
+        <tr><td><code>0</code></td><td><span class="ok">OK</span></td><td>Success</td><td>200</td></tr>
+        <tr><td><code>1</code></td><td>CANCELLED</td><td>Client cancelled the request</td><td>499</td></tr>
+        <tr><td><code>2</code></td><td><span class="no">UNKNOWN</span></td><td>Server error not classifiable elsewhere</td><td>500</td></tr>
+        <tr><td><code>3</code></td><td><span class="maybe">INVALID_ARGUMENT</span></td><td>Bad input — validation failure (not retryable)</td><td>400</td></tr>
+        <tr><td><code>4</code></td><td>DEADLINE_EXCEEDED</td><td>Deadline expired before operation completed</td><td>504</td></tr>
+        <tr><td><code>5</code></td><td><span class="maybe">NOT_FOUND</span></td><td>Resource does not exist</td><td>404</td></tr>
+        <tr><td><code>6</code></td><td>ALREADY_EXISTS</td><td>Resource already exists (idempotency)</td><td>409</td></tr>
+        <tr><td><code>7</code></td><td><span class="no">PERMISSION_DENIED</span></td><td>Authenticated but not authorized for this action</td><td>403</td></tr>
+        <tr><td><code>8</code></td><td>RESOURCE_EXHAUSTED</td><td>Rate limit, quota exceeded</td><td>429</td></tr>
+        <tr><td><code>9</code></td><td>FAILED_PRECONDITION</td><td>System not in correct state (not retryable as-is)</td><td>400</td></tr>
+        <tr><td><code>10</code></td><td>ABORTED</td><td>Concurrency conflict (optimistic locking, retry)</td><td>409</td></tr>
+        <tr><td><code>13</code></td><td><span class="no">INTERNAL</span></td><td>Internal server error — bug in server</td><td>500</td></tr>
+        <tr><td><code>14</code></td><td>UNAVAILABLE</td><td>Server temporarily unavailable — <strong>retryable</strong></td><td>503</td></tr>
+        <tr><td><code>16</code></td><td><span class="no">UNAUTHENTICATED</span></td><td>Missing or invalid credentials</td><td>401</td></tr>
+      </table>
+    </div>
+
+    <h3>Rich Error Details</h3>
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Go — Rich Error with Details</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="kw">import</span> (
+  <span class="st">"google.golang.org/grpc/codes"</span>
+  <span class="st">"google.golang.org/grpc/status"</span>
+  errdetails <span class="st">"google.golang.org/genproto/googleapis/rpc/errdetails"</span>
+)
+
+<span class="cm">// Server: return structured validation errors</span>
+<span class="kw">func</span> <span class="fn">validateAndCharge</span>(req *pb.<span class="cl">ChargeRequest</span>) error {
+  st := status.<span class="fn">New</span>(codes.InvalidArgument, <span class="st">"request validation failed"</span>)
+
+  <span class="cm">// Attach field violation details — parsed by clients</span>
+  st, _ = st.<span class="fn">WithDetails</span>(&amp;errdetails.<span class="cl">BadRequest</span>{
+    FieldViolations: []*errdetails.<span class="cl">BadRequest_FieldViolation</span>{
+      {Field: <span class="st">"amount_cents"</span>, Description: <span class="st">"must be between 50 and 99999999"</span>},
+      {Field: <span class="st">"currency"</span>,     Description: <span class="st">"must be a valid ISO 4217 code"</span>},
+    },
+  })
+  <span class="kw">return</span> st.<span class="fn">Err</span>()
+}
+
+<span class="cm">// Client: extract details</span>
+resp, err := client.<span class="fn">Charge</span>(ctx, req)
+<span class="kw">if</span> err != <span class="kw">nil</span> {
+  st := status.<span class="fn">Convert</span>(err)
+  <span class="kw">for</span> _, detail := <span class="kw">range</span> st.<span class="fn">Details</span>() {
+    <span class="kw">switch</span> d := detail.(<span class="kw">type</span>) {
+    <span class="kw">case</span> *errdetails.<span class="cl">BadRequest</span>:
+      <span class="kw">for</span> _, v := <span class="kw">range</span> d.FieldViolations {
+        fmt.<span class="fn">Printf</span>(<span class="st">"field %s: %s\n"</span>, v.Field, v.Description)
+      }
+    <span class="kw">case</span> *errdetails.<span class="cl">RetryInfo</span>:
+      time.<span class="fn">Sleep</span>(d.RetryDelay.<span class="fn">AsDuration</span>())  <span class="cm">// server told us when to retry</span>
+    }
+  }
+}</div>
+    </div>
+  </section>
+
+  <!-- ══ 11 INTERCEPTORS ══ -->
+  <section id="interceptors">
+    <div class="sec-hdr">
+      <div class="sec-num">11</div>
+      <div class="sec-ttl">
+        <h2>Interceptors</h2>
+        <div class="sub">// gRPC MIDDLEWARE — LOGGING, AUTH, RETRY, TRACING</div>
+      </div>
+    </div>
+
+    <p class="prose">Interceptors are gRPC's middleware pattern. They wrap RPC handlers to add cross-cutting behavior — authentication, logging, metrics, tracing, retry logic, and rate limiting — without cluttering business logic. Use <code>go-grpc-middleware/v2</code> for a battle-tested interceptor chain.</p>
+
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Go — Unary Interceptors</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="cm">// ── Logging interceptor ──</span>
+<span class="kw">func</span> <span class="fn">loggingInterceptor</span>(
+  ctx <span class="cl">context.Context</span>, req <span class="kw">interface</span>{},
+  info *grpc.<span class="cl">UnaryServerInfo</span>, handler grpc.<span class="cl">UnaryHandler</span>,
+) (<span class="kw">interface</span>{}, error) {
+  start := time.<span class="fn">Now</span>()
+  resp, err := handler(ctx, req)              <span class="cm">// call actual handler</span>
+  log.<span class="fn">Printf</span>(<span class="st">"method=%s latency=%v err=%v"</span>, info.FullMethod, time.<span class="fn">Since</span>(start), err)
+  <span class="kw">return</span> resp, err
+}
+
+<span class="cm">// ── Auth interceptor ──</span>
+<span class="kw">func</span> <span class="fn">authInterceptor</span>(ctx <span class="cl">context.Context</span>, req <span class="kw">interface</span>{},
+  info *grpc.<span class="cl">UnaryServerInfo</span>, handler grpc.<span class="cl">UnaryHandler</span>,
+) (<span class="kw">interface</span>{}, error) {
+  <span class="cm">// Skip for public methods</span>
+  <span class="kw">if</span> info.FullMethod == <span class="st">"/payments.v1.PaymentService/Ping"</span> {
+    <span class="kw">return</span> handler(ctx, req)
+  }
+  md, _ := metadata.<span class="fn">FromIncomingContext</span>(ctx)
+  token := md.<span class="fn">Get</span>(<span class="st">"authorization"</span>)
+  <span class="kw">if</span> len(token) == <span class="nu">0</span> { <span class="kw">return</span> <span class="kw">nil</span>, status.<span class="fn">Error</span>(codes.Unauthenticated, <span class="st">"missing token"</span>) }
+  claims, err := jwt.<span class="fn">Validate</span>(token[<span class="nu">0</span>])
+  <span class="kw">if</span> err != <span class="kw">nil</span> { <span class="kw">return</span> <span class="kw">nil</span>, status.<span class="fn">Error</span>(codes.Unauthenticated, <span class="st">"invalid token"</span>) }
+  ctx = context.<span class="fn">WithValue</span>(ctx, claimsKey, claims)
+  <span class="kw">return</span> handler(ctx, req)
+}
+
+<span class="cm">// ── Chain interceptors with go-grpc-middleware ──</span>
+<span class="kw">import</span> (
+  <span class="st">"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"</span>
+  <span class="st">"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"</span>
+)
+s := grpc.<span class="fn">NewServer</span>(
+  grpc.<span class="fn">ChainUnaryInterceptor</span>(
+    recovery.<span class="fn">UnaryServerInterceptor</span>(),   <span class="cm">// panic → INTERNAL error</span>
+    authInterceptor,
+    loggingInterceptor,
+    otelgrpc.<span class="fn">UnaryServerInterceptor</span>(),   <span class="cm">// OpenTelemetry tracing</span>
+    ratelimit.<span class="fn">UnaryServerInterceptor</span>(limiter),
+  ),
+  grpc.<span class="fn">ChainStreamInterceptor</span>(           <span class="cm">// same pattern for streaming</span>
+    recovery.<span class="fn">StreamServerInterceptor</span>(),
+    authStreamInterceptor,
+  ),
+)</div>
+    </div>
+  </section>
+
+  <!-- ══ 12 SECURITY ══ -->
+  <section id="security">
+    <div class="sec-hdr">
+      <div class="sec-num">12</div>
+      <div class="sec-ttl">
+        <h2>TLS &amp; Authentication</h2>
+        <div class="sub">// SECURING GRPC IN PRODUCTION</div>
+      </div>
+    </div>
+
+    <p class="prose">gRPC traffic must be encrypted in production. The framework natively supports TLS and mutual TLS (mTLS). For authentication, gRPC's <code>credentials.PerRPCCredentials</code> interface allows injecting tokens per-call, while mTLS provides cryptographic service identity.</p>
+
+    <div class="g2">
+      <div class="card l-amber">
+        <div class="card-title">TLS (Server Auth) <span class="tag tag-amber">Minimum</span></div>
+        <p>Client verifies server certificate. Encrypts the channel. Suitable when services authenticate via tokens (JWT, OAuth). Standard setup for services behind a service mesh with certificate injection.</p>
+      </div>
+      <div class="card l-green">
+        <div class="card-title">mTLS (Mutual Auth) <span class="tag tag-green">Recommended</span></div>
+        <p>Both client and server present and verify certificates. Provides cryptographic service identity — no service can call your gRPC endpoint without a valid certificate from your CA. Required in Zero Trust architectures. Istio/Linkerd can inject mTLS transparently.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Go — TLS Configuration</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="cm">// ── Server: TLS ──</span>
+creds, err := credentials.<span class="fn">NewServerTLSFromFile</span>(<span class="st">"server.crt"</span>, <span class="st">"server.key"</span>)
+s := grpc.<span class="fn">NewServer</span>(grpc.<span class="fn">Creds</span>(creds))
+
+<span class="cm">// ── Server: mTLS (require client certificate) ──</span>
+cert, _ := tls.<span class="fn">LoadX509KeyPair</span>(<span class="st">"server.crt"</span>, <span class="st">"server.key"</span>)
+caCert, _ := os.<span class="fn">ReadFile</span>(<span class="st">"ca.crt"</span>)
+caCertPool := x509.<span class="fn">NewCertPool</span>()
+caCertPool.<span class="fn">AppendCertsFromPEM</span>(caCert)
+
+tlsConfig := &amp;tls.<span class="cl">Config</span>{
+  Certificates: []tls.Certificate{cert},
+  ClientCAs:    caCertPool,
+  ClientAuth:   tls.RequireAndVerifyClientCert,  <span class="cm">// mTLS enforcement</span>
+  MinVersion:   tls.VersionTLS13,
+}
+s := grpc.<span class="fn">NewServer</span>(grpc.<span class="fn">Creds</span>(credentials.<span class="fn">NewTLS</span>(tlsConfig)))
+
+<span class="cm">// ── Client: JWT per-call credentials ──</span>
+<span class="kw">type</span> <span class="cl">jwtCreds</span> <span class="kw">struct</span>{ token <span class="kw">string</span> }
+<span class="kw">func</span> (j <span class="cl">jwtCreds</span>) <span class="fn">GetRequestMetadata</span>(ctx <span class="cl">context.Context</span>, uri ...string) (<span class="kw">map</span>[<span class="kw">string</span>]<span class="kw">string</span>, error) {
+  <span class="kw">return</span> <span class="kw">map</span>[<span class="kw">string</span>]<span class="kw">string</span>{<span class="st">"authorization"</span>: <span class="st">"Bearer "</span> + j.token}, <span class="kw">nil</span>
+}
+<span class="kw">func</span> (j <span class="cl">jwtCreds</span>) <span class="fn">RequireTransportSecurity</span>() bool { <span class="kw">return</span> <span class="kw">true</span> }  <span class="cm">// enforce TLS</span>
+
+conn, _ := grpc.<span class="fn">NewClient</span>(addr,
+  grpc.<span class="fn">WithTransportCredentials</span>(credentials.<span class="fn">NewTLS</span>(tlsConfig)),
+  grpc.<span class="fn">WithPerRPCCredentials</span>(<span class="cl">jwtCreds</span>{token: tokenProvider.<span class="fn">Get</span>()}),
+)</div>
+    </div>
+  </section>
+
+  <!-- ══ 13 LOAD BALANCING ══ -->
+  <section id="loadbalancing">
+    <div class="sec-hdr">
+      <div class="sec-num">13</div>
+      <div class="sec-ttl">
+        <h2>Load Balancing</h2>
+        <div class="sub">// CLIENT-SIDE vs PROXY — gRPC IS DIFFERENT</div>
+      </div>
+    </div>
+
+    <p class="prose">gRPC load balancing works differently from HTTP/1.1 because connections are long-lived and multiplexed. A single TCP connection carries all requests — traditional L4 load balancers see one connection per client and route all its traffic to one server. gRPC requires <strong>L7 (application layer) load balancing</strong> or client-side load balancing.</p>
+
+    <div class="g2">
+      <div class="card l-amber">
+        <div class="card-title">Client-Side Load Balancing <span class="tag tag-amber">Microservices</span></div>
+        <p>The gRPC client resolves all backend addresses (via DNS SRV, xDS, Consul) and distributes RPCs across them using round-robin or least-load policies. Each backend gets its own connection. No proxy latency.</p>
+        <div class="code-wrap" style="margin-top:10px">
+          <div class="code-body" style="font-size:11.5px;padding:10px 14px"><span class="cm">// DNS round-robin (headless service in K8s)</span>
+conn, _ := grpc.<span class="fn">NewClient</span>(
+  <span class="st">"dns:///payments-svc:50051"</span>,
+  grpc.<span class="fn">WithDefaultServiceConfig</span>(`{"loadBalancingConfig":[{"round_robin":{}}]}`),
+  grpc.<span class="fn">WithTransportCredentials</span>(...),
+)</div>
+        </div>
+      </div>
+      <div class="card l-blue">
+        <div class="card-title">Proxy Load Balancing <span class="tag tag-blue">Recommended</span></div>
+        <p>Envoy or other L7 proxies understand gRPC and distribute individual RPCs (not connections) across backends. Simpler client configuration, built-in observability, health checks, circuit breaking. Standard in Kubernetes with a service mesh.</p>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-ico">ℹ</span>
+      <div class="callout-body"><strong>Kubernetes Headless Services:</strong> For client-side LB in K8s, use a headless service (<code>clusterIP: None</code>) instead of a ClusterIP service. A headless service returns all pod IPs in DNS resolution — the gRPC client gets all addresses and distributes across them. A ClusterIP service returns a single virtual IP, which breaks per-RPC balancing.</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Kubernetes — Headless Service for gRPC</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Service
+<span class="at">metadata</span>:
+  name: payments-grpc
+<span class="at">spec</span>:
+  clusterIP: None           <span class="cm"># headless — returns all pod IPs via DNS</span>
+  selector:
+    app: payments-service
+  ports:
+    - name: grpc
+      port: <span class="nu">50051</span>
+      protocol: TCP
+<span class="at">---</span>
+<span class="cm"># Connect from another service:</span>
+<span class="cm"># "dns:///payments-grpc.namespace.svc.cluster.local:50051"</span>
+<span class="cm"># gRPC client resolves all pod IPs and balances across them</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 14 OBSERVABILITY ══ -->
+  <section id="observability">
+    <div class="sec-hdr">
+      <div class="sec-num">14</div>
+      <div class="sec-ttl">
+        <h2>Observability</h2>
+        <div class="sub">// METRICS, TRACING, AND REFLECTION</div>
+      </div>
+    </div>
+
+    <p class="prose">gRPC generates rich telemetry — every RPC has a method name, status code, and latency. The gRPC ecosystem integrates natively with OpenTelemetry for tracing and Prometheus for metrics.</p>
+
+    <div class="g3">
+      <div class="card l-amber">
+        <div class="card-title">Prometheus Metrics</div>
+        <p>Use <code>go-grpc-prometheus</code> or OTel SDK to expose per-method histograms: <code>grpc_server_handled_total</code> (by method, status), <code>grpc_server_handling_seconds</code> (latency buckets), and <code>grpc_server_msg_received_total</code>.</p>
+      </div>
+      <div class="card l-blue">
+        <div class="card-title">OpenTelemetry Tracing</div>
+        <p>Trace context propagates via gRPC metadata headers (<code>traceparent</code>, <code>tracestate</code>). <code>go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc</code> instruments all calls automatically.</p>
+      </div>
+      <div class="card l-teal">
+        <div class="card-title">gRPC Reflection</div>
+        <p>Enable <code>reflection.Register(s)</code> on your server. Tools like <code>grpcurl</code> and <code>grpc-ui</code> can discover all services and methods at runtime without the proto file — essential for debugging and testing.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Bash — grpcurl (curl for gRPC)</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># List all services (requires server-side reflection)</span>
+grpcurl -plaintext localhost:50051 list
+
+<span class="cm"># Describe a service</span>
+grpcurl -plaintext localhost:50051 describe payments.v1.PaymentService
+
+<span class="cm"># Call a unary RPC with JSON body</span>
+grpcurl -plaintext -d '{"order_id":"ord_123","amount_cents":999,"currency":"USD"}' \
+  localhost:50051 payments.v1.PaymentService/Charge
+
+<span class="cm"># Call with metadata (auth header)</span>
+grpcurl -plaintext \
+  -H 'authorization: Bearer eyJhbGci...' \
+  -d '{"user_id":"u1"}' \
+  localhost:50051 users.v1.UserService/GetUser
+
+<span class="cm"># Stream responses</span>
+grpcurl -plaintext -d '{"user_id":"u1"}' \
+  localhost:50051 events.v1.EventService/WatchEvents
+
+<span class="cm"># Use proto file directly (no reflection needed)</span>
+grpcurl -import-path ./proto -proto payments.proto \
+  -plaintext -d '{}' localhost:50051 payments.v1.PaymentService/Ping</div>
+    </div>
+  </section>
+
+  <!-- ══ 15 SCHEMA EVOLUTION ══ -->
+  <section id="evolution">
+    <div class="sec-hdr">
+      <div class="sec-num">15</div>
+      <div class="sec-ttl">
+        <h2>Schema Evolution</h2>
+        <div class="sub">// BACKWARD &amp; FORWARD COMPATIBILITY RULES</div>
+      </div>
+    </div>
+
+    <p class="prose">Protobuf was designed for schema evolution in distributed systems. Old clients can talk to new servers and vice versa — as long as you follow the rules. The core rule: <strong>field numbers are permanent</strong>. Never change a field number or re-use a retired one.</p>
+
+    <div class="g2">
+      <div class="card l-green">
+        <div class="card-title">✓ Safe Changes <span class="tag tag-green">Backward Compat</span></div>
+        <ul>
+          <li>Add new fields with new field numbers</li>
+          <li>Delete a field (mark as <code>reserved</code> to prevent re-use)</li>
+          <li>Add new values to an enum (but not at 0)</li>
+          <li>Add a new RPC method to a service</li>
+          <li>Change a field between <code>int32</code> and <code>int64</code> (same wire type)</li>
+          <li>Change a field from scalar to <code>repeated</code> (compatible wire format)</li>
+        </ul>
+      </div>
+      <div class="card l-red">
+        <div class="card-title">✗ Breaking Changes <span class="tag tag-red">Never Do</span></div>
+        <ul>
+          <li><strong>Change a field number</strong> — silently corrupts data</li>
+          <li>Change a field's type to an incompatible wire type</li>
+          <li>Remove an enum value that clients still use</li>
+          <li>Change enum value 0 meaning (it's the default)</li>
+          <li>Remove a required RPC method (proto2 required fields)</li>
+          <li>Re-use a retired field number for a different field</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>API Versioning Strategy</h3>
+    <div class="code-wrap">
+      <div class="code-hdr"><span class="code-lang">Versioning Best Practices</span><button class="copy-btn" onclick="copyBlock(this)">copy</button></div>
+      <div class="code-body"><span class="cm">## Package versioning: embed version in the package name</span>
+<span class="at">package</span> payments.v1;  <span class="cm">// stable API</span>
+<span class="at">package</span> payments.v2;  <span class="cm">// breaking change requires new major version</span>
+
+<span class="cm">## Within a version, use field evolution (no v1 → v2 bump needed):</span>
+<span class="kw">message</span> <span class="cl">ChargeRequest</span> {
+  <span class="kw">string</span>  order_id     = <span class="nu">1</span>;    <span class="cm">// original</span>
+  <span class="kw">int64</span>   amount_cents  = <span class="nu">2</span>;    <span class="cm">// original</span>
+  <span class="kw">string</span>  currency      = <span class="nu">3</span>;    <span class="cm">// original</span>
+  <span class="cm">// v1.1 additions — old clients ignore these (unknown fields preserved)</span>
+  <span class="kw">string</span>  idempotency_key = <span class="nu">4</span>;  <span class="cm">// new in v1.1, optional</span>
+  <span class="kw">map</span>&lt;<span class="kw">string</span>,<span class="kw">string</span>&gt; metadata = <span class="nu">5</span>;  <span class="cm">// new in v1.2</span>
+  <span class="cm">// retired field — was "customer_name" = 6</span>
+  <span class="kw">reserved</span> <span class="nu">6</span>; <span class="kw">reserved</span> <span class="st">"customer_name"</span>;
+  <span class="cm">// v1.3 replacement</span>
+  <span class="kw">string</span> customer_id = <span class="nu">7</span>;       <span class="cm">// new field 7, not reusing 6</span>
+}
+
+<span class="cm">## Unknown fields: proto3 preserves unknown fields by default</span>
+<span class="cm">## New server receives old client message → unknown new fields = zero values (safe)</span>
+<span class="cm">## Old client receives new server message → unknown new fields preserved, then</span>
+<span class="cm">## re-sent to another server — so a proxy never strips data it doesn't understand</span>
+
+<span class="cm">## Use buf for schema registry and breaking change detection</span>
+<span class="cm">## buf breaking --against .git#branch=main  ← CI gate</span></div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-ico">▸</span>
+      <div class="callout-body"><strong>Use <code>buf</code> instead of raw <code>protoc</code>.</strong> The <code>buf</code> CLI from Buf Technologies handles dependency management, code generation across languages, linting (enforcing naming conventions), and breaking change detection as a CI gate. <code>buf breaking --against .git#branch=main</code> will fail if a commit introduces a backward-incompatible change to any proto file.</div>
+    </div>
+  </section>
+
+  <!-- ══ 16 WHEN TO USE ══ -->
+  <section id="whengrpc">
+    <div class="sec-hdr">
+      <div class="sec-num">16</div>
+      <div class="sec-ttl">
+        <h2>When to Use gRPC</h2>
+        <div class="sub">// DECISION FRAMEWORK</div>
+      </div>
+    </div>
+
+    <p class="prose">gRPC is a powerful but opinionated choice. Use this framework to make the decision. The question is never "is gRPC better than REST?" — it's whether gRPC's tradeoffs serve your specific communication pattern.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Scenario</th><th>Recommendation</th><th>Reason</th></tr>
+        <tr>
+          <td><strong>Internal microservice-to-microservice</strong></td>
+          <td><span class="ok">USE gRPC</span></td>
+          <td>Performance, type safety, streaming, language agnosticism</td>
+        </tr>
+        <tr>
+          <td><strong>Public-facing external API</strong></td>
+          <td><span class="no">Use REST</span></td>
+          <td>Universal browser/client support, developer ergonomics</td>
+        </tr>
+        <tr>
+          <td><strong>Mobile app to backend</strong></td>
+          <td><span class="maybe">Consider</span></td>
+          <td>gRPC-Swift/Kotlin exist; REST is simpler; gRPC wins on bandwidth</td>
+        </tr>
+        <tr>
+          <td><strong>Real-time streaming / push notifications</strong></td>
+          <td><span class="ok">USE gRPC</span></td>
+          <td>Server/bidi streaming are first-class; SSE/WS are bolt-ons in REST</td>
+        </tr>
+        <tr>
+          <td><strong>Large binary payload transfer</strong></td>
+          <td><span class="ok">USE gRPC</span></td>
+          <td>Streaming + binary + no JSON encoding overhead</td>
+        </tr>
+        <tr>
+          <td><strong>Simple CRUD, small team, fast iteration</strong></td>
+          <td><span class="no">Use REST</span></td>
+          <td>Lower tooling overhead, easier debugging, familiar mental model</td>
+        </tr>
+        <tr>
+          <td><strong>Polyglot service mesh</strong></td>
+          <td><span class="ok">USE gRPC</span></td>
+          <td>One proto = client/server in 10+ languages; no OpenAPI drift</td>
+        </tr>
+        <tr>
+          <td><strong>Browser frontend to service</strong></td>
+          <td><span class="no">Use REST or GraphQL</span></td>
+          <td>gRPC-Web requires proxy; REST/GraphQL are native</td>
+        </tr>
+        <tr>
+          <td><strong>AI inference / ML model serving</strong></td>
+          <td><span class="ok">USE gRPC</span></td>
+          <td>Triton, TF Serving, Ray Serve all use gRPC natively; binary for tensors</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="g2">
+      <div class="card l-red">
+        <div class="card-title">Common Mistakes <span class="tag tag-red">Avoid</span></div>
+        <ul>
+          <li>Using gRPC for a public API without a REST gateway</li>
+          <li>Not setting deadlines on every unary call</li>
+          <li>Re-using field numbers after deletion</li>
+          <li>Using gRPC through a L4-only load balancer</li>
+          <li>Not enabling server-side reflection in dev/staging</li>
+          <li>Ignoring streaming backpressure — server floods slow client</li>
+          <li>Embedding business data in metadata (use message fields)</li>
+          <li>Running without TLS in any networked environment</li>
+        </ul>
+      </div>
+      <div class="card l-green">
+        <div class="card-title">Production Checklist <span class="tag tag-green">Do These</span></div>
+        <ul>
+          <li>Set deadlines on every client call (never infinite wait)</li>
+          <li>Embed <code>UnimplementedXxxServer</code> for forward compatibility</li>
+          <li>Use <code>buf breaking</code> in CI to catch schema regressions</li>
+          <li>Enable gRPC health checking (<code>grpc_health_v1</code>)</li>
+          <li>Use mTLS or a service mesh for service-to-service auth</li>
+          <li>Instrument with OTel for distributed tracing across calls</li>
+          <li>Limit max message size explicitly (default 4MB)</li>
+          <li>Use Kubernetes headless services for client-side load balancing</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-ico">▸</span>
+      <div class="callout-body"><strong>Reference implementations &amp; tooling:</strong> <code>grpc.io</code> (official docs), <code>buf.build</code> (modern proto toolchain), <code>grpcurl</code> (CLI testing), <code>grpc-ui</code> (web UI for gRPC), <code>Evans</code> (interactive gRPC client), <code>go-grpc-middleware/v2</code> (interceptor library), <code>connectrpc.com</code> (gRPC-compatible protocol with REST support), <code>google.golang.org/grpc</code> (Go reference implementation).</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyBlock(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-body');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = 'var(--amber)';
+    btn.style.borderColor = 'var(--amber)';
+    setTimeout(() => { btn.textContent = 'copy'; btn.style.color = ''; btn.style.borderColor = ''; }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-item');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-54px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
