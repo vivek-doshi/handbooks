@@ -315,6 +315,15 @@
 
     const grouped = new Map();
 
+    const getCardTitle = function (card) {
+      const title = card.querySelector('.handbook-copy h3');
+      return title ? title.textContent.trim().toLowerCase() : '';
+    };
+
+    cards.sort(function (leftCard, rightCard) {
+      return getCardTitle(leftCard).localeCompare(getCardTitle(rightCard));
+    });
+
     cards.forEach(function (card) {
       const tagElement = card.querySelector('.card-tag');
       const tagLabel = tagElement ? tagElement.textContent.trim() : 'Other';
@@ -331,7 +340,13 @@
 
     const fragment = document.createDocumentFragment();
 
-    grouped.forEach(function (group, key) {
+    const groupedEntries = Array.from(grouped.entries()).sort(function (left, right) {
+      return left[1].label.localeCompare(right[1].label);
+    });
+
+    groupedEntries.forEach(function (entry) {
+      const key = entry[0];
+      const group = entry[1];
       const section = document.createElement('section');
       section.className = 'topic-group is-collapsed';
       section.dataset.topicGroup = key;

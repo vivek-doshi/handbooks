@@ -1,0 +1,2042 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenTelemetry Handbook â€” Traces, Metrics & Logs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:          #07090f;
+  --bg-2:        #0d1017;
+  --bg-3:        #111520;
+  --bg-4:        #161b2a;
+  --bg-card:     #0f1319;
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.13);
+  --text:        #dce4f5;
+  --text-2:      #8899bb;
+  --text-3:      #445577;
+  --trace:       #4ade80;    /* green â€” traces */
+  --metric:      #38bdf8;    /* blue â€” metrics  */
+  --log:         #fb923c;    /* orange â€” logs   */
+  --warn:        #facc15;
+  --danger:      #f87171;
+  --pink:        #e879f9;
+  --teal:        #2dd4bf;
+  --sidebar-w:   270px;
+  --top-h:       56px;
+  --mono:        'IBM Plex Mono', monospace;
+  --sans:        'IBM Plex Sans', sans-serif;
+  --display:     'Fraunces', serif;
+  --radius:      6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* â”€â”€ NOISE TEXTURE OVERLAY â”€â”€ */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  pointer-events: none;
+}
+
+/* â”€â”€ TOP BAR â”€â”€ */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(7,9,15,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+}
+.topbar-brand {
+  display: flex; align-items: center; gap: 14px;
+  text-decoration: none;
+}
+.brand-mark {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.brand-mark svg { width: 30px; height: 30px; }
+.brand-name {
+  font-family: var(--mono); font-size: 13px; font-weight: 600;
+  color: var(--text); letter-spacing: 0.05em;
+}
+.brand-name span { color: var(--text-2); font-weight: 400; }
+.topbar-pills { display: flex; gap: 8px; }
+.pill {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; padding: 3px 9px; border-radius: 3px;
+  text-transform: uppercase;
+}
+.pill-trace  { background: rgba(74,222,128,0.12);  color: var(--trace);  border: 1px solid rgba(74,222,128,0.25); }
+.pill-metric { background: rgba(56,189,248,0.12);  color: var(--metric); border: 1px solid rgba(56,189,248,0.25); }
+.pill-log    { background: rgba(251,146,60,0.12);  color: var(--log);    border: 1px solid rgba(251,146,60,0.25); }
+
+/* â”€â”€ LAYOUT â”€â”€ */
+.layout {
+  display: flex;
+  margin-top: var(--top-h);
+  min-height: calc(100vh - var(--top-h));
+  position: relative; z-index: 1;
+}
+
+/* â”€â”€ SIDEBAR â”€â”€ */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  padding: 20px 0 48px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+
+.sb-group { margin-bottom: 4px; }
+.sb-group-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-3);
+  padding: 14px 20px 5px;
+}
+.sb-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 20px; text-decoration: none;
+  color: var(--text-2); font-size: 12.5px; font-weight: 400;
+  border-left: 2px solid transparent; transition: all 0.15s; line-height: 1.3;
+}
+.sb-link:hover { color: var(--text); background: var(--bg-3); border-left-color: var(--border-hi); }
+.sb-link.active { color: var(--text); background: rgba(255,255,255,0.04); border-left-color: var(--metric); font-weight: 500; }
+.sb-icon { width: 15px; text-align: center; font-size: 13px; flex-shrink: 0; }
+.sb-signal {
+  width: 6px; height: 6px; border-radius: 50%;
+  flex-shrink: 0; margin-left: auto;
+}
+.sig-trace  { background: var(--trace); box-shadow: 0 0 6px var(--trace); }
+.sig-metric { background: var(--metric); box-shadow: 0 0 6px var(--metric); }
+.sig-log    { background: var(--log); box-shadow: 0 0 6px var(--log); }
+.sig-core   { background: var(--text-3); }
+
+/* â”€â”€ MAIN â”€â”€ */
+.main {
+  flex: 1; min-width: 0;
+  padding: 52px 60px 100px;
+  max-width: 980px;
+}
+
+/* â”€â”€ HERO â”€â”€ */
+.hero {
+  margin-bottom: 72px;
+  padding: 56px 60px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%,   rgba(56,189,248,0.08)  0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(74,222,128,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 0%,  rgba(251,146,60,0.06)  0%, transparent 45%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--metric);
+  margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, rgba(56,189,248,0.3), transparent); }
+.hero h1 {
+  font-family: var(--display); font-size: 48px; font-weight: 700;
+  line-height: 1.1; letter-spacing: -0.5px; margin-bottom: 20px;
+  color: var(--text);
+}
+.hero h1 em { font-style: italic; color: var(--metric); }
+.hero-desc {
+  color: var(--text-2); font-size: 15px; line-height: 1.75;
+  max-width: 580px; margin-bottom: 32px;
+}
+.hero-signals {
+  display: flex; gap: 12px; flex-wrap: wrap;
+}
+.signal-chip {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  padding: 8px 16px; border-radius: 4px; border: 1px solid;
+}
+.sc-trace  { color: var(--trace);  border-color: rgba(74,222,128,0.3);  background: rgba(74,222,128,0.07); }
+.sc-metric { color: var(--metric); border-color: rgba(56,189,248,0.3);  background: rgba(56,189,248,0.07); }
+.sc-log    { color: var(--log);    border-color: rgba(251,146,60,0.3);  background: rgba(251,146,60,0.07); }
+.sc-otel   { color: var(--teal);   border-color: rgba(45,212,191,0.3);  background: rgba(45,212,191,0.07); }
+.sc-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+/* â”€â”€ SECTIONS â”€â”€ */
+.section {
+  margin-bottom: 72px;
+  scroll-margin-top: calc(var(--top-h) + 20px);
+}
+.section-header {
+  display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px;
+}
+.section-icon {
+  width: 40px; height: 40px; border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0; margin-top: 2px;
+}
+.ic-blue   { background: rgba(56,189,248,0.12); }
+.ic-green  { background: rgba(74,222,128,0.12); }
+.ic-orange { background: rgba(251,146,60,0.12); }
+.ic-teal   { background: rgba(45,212,191,0.12); }
+.ic-yellow { background: rgba(250,204,21,0.12); }
+.ic-pink   { background: rgba(232,121,249,0.12); }
+.ic-red    { background: rgba(248,113,113,0.12); }
+.ic-white  { background: rgba(255,255,255,0.07); }
+
+.section-meta h2 {
+  font-family: var(--display); font-size: 24px; font-weight: 600;
+  color: var(--text); letter-spacing: -0.2px; line-height: 1.2;
+}
+.section-meta .sub {
+  font-size: 13px; color: var(--text-3); margin-top: 3px;
+  font-family: var(--mono);
+}
+.section-rule {
+  height: 1px;
+  background: linear-gradient(to right, var(--border-hi), transparent);
+  margin-bottom: 28px;
+}
+
+/* â”€â”€ SIGNAL LABEL â”€â”€ */
+.signal-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 3px;
+  vertical-align: middle; margin-left: 8px;
+}
+.sl-trace  { color: var(--trace);  background: rgba(74,222,128,0.1);  border: 1px solid rgba(74,222,128,0.2); }
+.sl-metric { color: var(--metric); background: rgba(56,189,248,0.1);  border: 1px solid rgba(56,189,248,0.2); }
+.sl-log    { color: var(--log);    background: rgba(251,146,60,0.1);  border: 1px solid rgba(251,146,60,0.2); }
+
+/* â”€â”€ CODE BLOCKS â”€â”€ */
+.code-wrap {
+  background: #060810; border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin: 14px 0;
+  font-family: var(--mono);
+}
+.code-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 16px; background: rgba(255,255,255,0.025);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+.code-file { font-size: 10px; color: var(--text-3); font-style: italic; }
+.copy-btn {
+  font-size: 10px; color: var(--text-3); background: none;
+  border: 1px solid var(--border); border-radius: 3px; padding: 2px 9px;
+  cursor: pointer; font-family: var(--mono); letter-spacing: 0.05em;
+  transition: all 0.18s;
+}
+.copy-btn:hover { color: var(--metric); border-color: var(--metric); }
+.code-body {
+  padding: 18px 18px; overflow-x: auto;
+  font-size: 12.5px; line-height: 1.75; white-space: pre; tab-size: 2;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.code-body::-webkit-scrollbar { height: 3px; }
+.code-body::-webkit-scrollbar-thumb { background: var(--border-hi); }
+
+/* syntax */
+.kw { color: #c792ea; }
+.st { color: #c3e88d; }
+.cm { color: var(--text-3); font-style: italic; }
+.fn { color: #82aaff; }
+.tp { color: #ffcb6b; }
+.nu { color: #f78c6c; }
+.at { color: var(--teal); }
+.op { color: #89ddff; }
+.ct { color: var(--trace); }      /* trace color */
+.cm2 { color: var(--metric); }    /* metric color */
+.cl { color: var(--log); }        /* log color */
+
+/* â”€â”€ CARDS â”€â”€ */
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 22px; margin-bottom: 12px;
+}
+.card-title {
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  color: var(--text); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card p, .card li { color: var(--text-2); font-size: 13.5px; line-height: 1.65; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 4px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-trace  { background: var(--trace); }
+.dot-metric { background: var(--metric); }
+.dot-log    { background: var(--log); }
+.dot-teal   { background: var(--teal); }
+.dot-yellow { background: var(--warn); }
+.dot-pink   { background: var(--pink); }
+.dot-red    { background: var(--danger); }
+.dot-white  { background: var(--text-2); }
+
+/* â”€â”€ GRID â”€â”€ */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+/* â”€â”€ INFO BOXES â”€â”€ */
+.box {
+  display: flex; gap: 12px; padding: 14px 18px;
+  border-radius: var(--radius); margin: 14px 0; border-left: 3px solid;
+  font-size: 13.5px; line-height: 1.6;
+}
+.box-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.box-body { color: var(--text-2); }
+.box-body strong { color: var(--text); }
+.box.tip   { background: rgba(74,222,128,0.06);  border-color: var(--trace); }
+.box.note  { background: rgba(56,189,248,0.06);  border-color: var(--metric); }
+.box.warn  { background: rgba(250,204,21,0.06);  border-color: var(--warn); }
+.box.danger{ background: rgba(248,113,113,0.06); border-color: var(--danger); }
+.box.otel  { background: rgba(45,212,191,0.06);  border-color: var(--teal); }
+
+/* â”€â”€ INLINE CODE â”€â”€ */
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(56,189,248,0.1); color: var(--metric);
+  padding: 1px 6px; border-radius: 3px;
+  border: 1px solid rgba(56,189,248,0.18);
+}
+
+/* â”€â”€ TABLE â”€â”€ */
+.tbl-wrap { overflow-x: auto; margin: 14px 0; border-radius: var(--radius); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 9px 14px;
+  background: rgba(255,255,255,0.03);
+  color: var(--text); font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--border-hi);
+  font-family: var(--mono);
+}
+td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text-2); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+td code { font-size: 11.5px; }
+
+/* â”€â”€ DO/DONT â”€â”€ */
+.dd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+.dd-block { border-radius: var(--radius); overflow: hidden; }
+.dd-head {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  padding: 6px 14px; display: flex; align-items: center; gap: 6px;
+}
+.dd-do .dd-head   { background: rgba(74,222,128,0.12); color: var(--trace); border: 1px solid rgba(74,222,128,0.2); border-bottom: none; }
+.dd-dont .dd-head { background: rgba(248,113,113,0.1); color: var(--danger); border: 1px solid rgba(248,113,113,0.18); border-bottom: none; }
+.dd-do .code-wrap   { margin: 0; border-top-left-radius: 0; border-top-right-radius: 0; border-color: rgba(74,222,128,0.18); }
+.dd-dont .code-wrap { margin: 0; border-top-left-radius: 0; border-top-right-radius: 0; border-color: rgba(248,113,113,0.15); }
+
+/* â”€â”€ PIPELINE DIAGRAM â”€â”€ */
+.pipeline {
+  display: flex; align-items: center; gap: 0;
+  margin: 20px 0; padding: 20px 24px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow-x: auto;
+}
+.pipe-node {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 5px; padding: 12px 16px;
+  background: var(--bg-3); border: 1px solid var(--border-hi);
+  border-radius: 5px; min-width: 100px; flex-shrink: 0;
+  text-align: center;
+}
+.pipe-node .pn-icon { font-size: 20px; }
+.pipe-node .pn-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.pipe-node .pn-name  { font-size: 12px; font-weight: 600; color: var(--text); }
+.pipe-arrow { font-size: 16px; color: var(--text-3); margin: 0 6px; flex-shrink: 0; }
+
+/* â”€â”€ SIGNAL TYPE TABLE special colors â”€â”€ */
+.trace-col { color: var(--trace); font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.metric-col { color: var(--metric); font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.log-col { color: var(--log); font-family: var(--mono); font-size: 12px; font-weight: 600; }
+
+/* â”€â”€ WHEN TABLE â”€â”€ */
+.when-badge {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 3px; letter-spacing: 0.06em;
+}
+.wb-yes  { background: rgba(74,222,128,0.15); color: var(--trace); }
+.wb-no   { background: rgba(248,113,113,0.12); color: var(--danger); }
+.wb-some { background: rgba(250,204,21,0.12);  color: var(--warn); }
+
+/* â”€â”€ PROSE â”€â”€ */
+.section > p { color: var(--text-2); font-size: 14px; margin-bottom: 12px; line-height: 1.75; }
+h3 {
+  font-family: var(--sans); font-size: 16px; font-weight: 600;
+  color: var(--text); margin: 28px 0 10px;
+}
+h4 {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3);
+  margin: 20px 0 8px;
+}
+
+/* â”€â”€ RULE CARDS â”€â”€ */
+.rule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; margin: 14px 0; }
+.rule-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px;
+}
+.rule-num {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  background: rgba(56,189,248,0.12); color: var(--metric);
+  padding: 1px 7px; border-radius: 3px; margin-bottom: 8px;
+  display: inline-block; letter-spacing: 0.06em; border: 1px solid rgba(56,189,248,0.2);
+}
+.rule-num.must   { background: rgba(248,113,113,0.12); color: var(--danger); border-color: rgba(248,113,113,0.22); }
+.rule-num.should { background: rgba(250,204,21,0.1);   color: var(--warn);   border-color: rgba(250,204,21,0.22); }
+.rule-num.avoid  { background: rgba(74,222,128,0.1);   color: var(--trace);  border-color: rgba(74,222,128,0.22); }
+.rule-title { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.rule-body  { font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
+
+/* â”€â”€ SCROLLBAR â”€â”€ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 5px; }
+
+/* â”€â”€ RESPONSIVE â”€â”€ */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { padding: 28px 20px 60px; }
+  .g2, .g3, .dd-grid { grid-template-columns: 1fr; }
+  .hero { padding: 32px 28px; }
+  .hero h1 { font-size: 32px; }
+}
+</style>
+
+<link rel='stylesheet' href='../styles/shared-ui.css'>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <a class="topbar-brand" href="#">
+    <div class="brand-mark">
+      <svg viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="15" cy="15" r="14" stroke="rgba(56,189,248,0.25)" stroke-width="1"/>
+        <circle cx="15" cy="15" r="4" fill="#38bdf8" opacity="0.9"/>
+        <path d="M15 3 L15 11" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M15 19 L15 27" stroke="#4ade80" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M3 15 L11 15" stroke="#fb923c" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M19 15 L27 15" stroke="#fb923c" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M6.2 6.2 L11.5 11.5" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-linecap="round"/>
+        <path d="M18.5 18.5 L23.8 23.8" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-linecap="round"/>
+        <path d="M23.8 6.2 L18.5 11.5" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-linecap="round"/>
+        <path d="M11.5 18.5 L6.2 23.8" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="brand-name">OpenTelemetry <span>// Handbook</span></div>
+  </a>
+  <div class="topbar-pills">
+    <span class="pill pill-trace">Traces</span>
+    <span class="pill pill-metric">Metrics</span>
+    <span class="pill pill-log">Logs</span>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-group">
+    <div class="sb-group-label">Foundations</div>
+    <a href="#intro"      class="sb-link active"><span class="sb-icon">ðŸ“¡</span> What is OTel? <span class="sb-signal sig-core"></span></a>
+    <a href="#signals"    class="sb-link"><span class="sb-icon">âš¡</span> The Three Signals <span class="sb-signal sig-core"></span></a>
+    <a href="#concepts"   class="sb-link"><span class="sb-icon">ðŸ§±</span> Core Concepts <span class="sb-signal sig-core"></span></a>
+    <a href="#arch"       class="sb-link"><span class="sb-icon">ðŸ”­</span> Architecture <span class="sb-signal sig-core"></span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Traces</div>
+    <a href="#traces"     class="sb-link"><span class="sb-icon">ðŸ”</span> Tracing Concepts <span class="sb-signal sig-trace"></span></a>
+    <a href="#spans"      class="sb-link"><span class="sb-icon">ðŸ“</span> Spans &amp; Attributes <span class="sb-signal sig-trace"></span></a>
+    <a href="#trace-api"  class="sb-link"><span class="sb-icon">ðŸ’»</span> Trace API Usage <span class="sb-signal sig-trace"></span></a>
+    <a href="#context"    class="sb-link"><span class="sb-icon">ðŸ”—</span> Context Propagation <span class="sb-signal sig-trace"></span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Metrics</div>
+    <a href="#metrics"      class="sb-link"><span class="sb-icon">ðŸ“Š</span> Metrics Concepts <span class="sb-signal sig-metric"></span></a>
+    <a href="#instruments"  class="sb-link"><span class="sb-icon">ðŸŽšï¸</span> Instrument Types <span class="sb-signal sig-metric"></span></a>
+    <a href="#metric-api"   class="sb-link"><span class="sb-icon">ðŸ’»</span> Metrics API Usage <span class="sb-signal sig-metric"></span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Logs</div>
+    <a href="#logs"       class="sb-link"><span class="sb-icon">ðŸ“‹</span> Log Signals <span class="sb-signal sig-log"></span></a>
+    <a href="#log-api"    class="sb-link"><span class="sb-icon">ðŸ’»</span> Logs API Usage <span class="sb-signal sig-log"></span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Collector &amp; Export</div>
+    <a href="#collector"  class="sb-link"><span class="sb-icon">ðŸ”„</span> OTel Collector <span class="sb-signal sig-core"></span></a>
+    <a href="#exporters"  class="sb-link"><span class="sb-icon">ðŸ“¤</span> Exporters <span class="sb-signal sig-core"></span></a>
+    <a href="#sdk-config" class="sb-link"><span class="sb-icon">âš™ï¸</span> SDK Configuration <span class="sb-signal sig-core"></span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Application</div>
+    <a href="#semantic"   class="sb-link"><span class="sb-icon">ðŸ“</span> Semantic Conventions <span class="sb-signal sig-core"></span></a>
+    <a href="#when"       class="sb-link"><span class="sb-icon">ðŸŽ¯</span> When to Use What <span class="sb-signal sig-core"></span></a>
+    <a href="#patterns"   class="sb-link"><span class="sb-icon">ðŸ—ï¸</span> Real-World Patterns <span class="sb-signal sig-core"></span></a>
+    <a href="#backends"   class="sb-link"><span class="sb-icon">ðŸ–¥ï¸</span> Backends &amp; Tools <span class="sb-signal sig-core"></span></a>
+    <a href="#ref"        class="sb-link"><span class="sb-icon">ðŸ“š</span> Reference <span class="sb-signal sig-core"></span></a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Observability Engineering</div>
+    <h1>The <em>OpenTelemetry</em><br>Handbook</h1>
+    <p class="hero-desc">
+      The vendor-neutral industry standard for instrumentation. Learn to emit, collect, and export traces, metrics, and logs from any service â€” and actually understand what your systems are doing in production.
+    </p>
+    <div class="hero-signals">
+      <span class="signal-chip sc-trace"><span class="sc-dot"></span>Distributed Traces</span>
+      <span class="signal-chip sc-metric"><span class="sc-dot"></span>Metrics &amp; Instruments</span>
+      <span class="signal-chip sc-log"><span class="sc-dot"></span>Structured Logs</span>
+      <span class="signal-chip sc-otel"><span class="sc-dot"></span>OTLP &amp; Collector</span>
+    </div>
+  </div>
+
+  <!-- â•â•â• INTRODUCTION â•â•â• -->
+  <section class="section" id="intro">
+    <div class="section-header">
+      <div class="section-icon ic-blue">ðŸ“¡</div>
+      <div class="section-meta">
+        <h2>What is OpenTelemetry?</h2>
+        <div class="sub">// otel.io â€” the observability framework, not a backend</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <p>OpenTelemetry (OTel) is a CNCF project that provides a <strong>unified API, SDK, and tooling</strong> for collecting observability data from your services. It's not a monitoring backend â€” it's the instrumentation layer that sits between your code and the backends you already use (Datadog, Grafana, Jaeger, Honeycomb, etc.).</p>
+    <p>Before OTel, every vendor had its own SDK. If you used Datadog's tracer, you were locked in. OTel breaks that coupling: instrument once with the OTel API, route telemetry anywhere.</p>
+
+    <div class="g3">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-metric"></span>Vendor-Neutral</div>
+        <p>Write instrumentation once against the OTel API. Switch backends by changing a config file â€” no code changes. Jaeger today, Honeycomb tomorrow.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-trace"></span>Three Signals</div>
+        <p>Traces, Metrics, and Logs under one unified model with correlated context. See a metric spike, jump to the trace, read the log â€” all linked by <code>trace_id</code>.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-teal"></span>Any Language</div>
+        <p>SDKs for Go, Python, Java, JavaScript/Node, .NET, Rust, Ruby, PHP, and more. Auto-instrumentation for popular frameworks requires zero code changes.</p>
+      </div>
+    </div>
+
+    <div class="box otel">
+      <div class="box-icon">ðŸŽ¯</div>
+      <div class="box-body"><strong>The golden rule:</strong> OTel is the <em>pipe</em>, not the <em>destination</em>. You still need a backend that stores and queries telemetry data. OTel just ensures the data gets there in a standard format (OTLP â€” OpenTelemetry Protocol) regardless of which backend you choose.</div>
+    </div>
+
+    <h3>OTel vs. what came before</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Aspect</th><th>Old World (vendor SDKs)</th><th>OpenTelemetry</th></tr></thead>
+        <tbody>
+          <tr><td>Instrumentation</td><td>Per-vendor SDK in every service</td><td>One OTel SDK, any backend</td></tr>
+          <tr><td>Lock-in</td><td>High â€” migration = re-instrumentation</td><td>Zero â€” swap exporters, keep code</td></tr>
+          <tr><td>Correlation</td><td>Traces and logs siloed</td><td>Unified <code>trace_id</code> / <code>span_id</code> across all signals</td></tr>
+          <tr><td>Format</td><td>Proprietary per vendor</td><td>OTLP (open standard)</td></tr>
+          <tr><td>Auto-instrumentation</td><td>Vendor-specific agents</td><td>OTel zero-code instrumentation</td></tr>
+          <tr><td>Governance</td><td>Vendor-controlled</td><td>CNCF â€” open governance</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- â•â•â• THREE SIGNALS â•â•â• -->
+  <section class="section" id="signals">
+    <div class="section-header">
+      <div class="section-icon ic-teal">âš¡</div>
+      <div class="section-meta">
+        <h2>The Three Signals</h2>
+        <div class="sub">// traces Â· metrics Â· logs â€” what they are, what they answer</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <p>Each signal answers a different observability question. They are complementary â€” not interchangeable. Using all three gives you the full picture; using only one leaves blind spots.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Signal</th><th>Answers</th><th>Shape of Data</th><th>Cardinality</th><th>Storage Cost</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="trace-col">â— Trace</span></td>
+            <td><em>"What happened and how long did each step take?"</em></td>
+            <td>Tree of spans with timings, attributes, events</td>
+            <td>High â€” one trace per request</td>
+            <td>High â€” sampled to manage</td>
+          </tr>
+          <tr>
+            <td><span class="metric-col">â— Metric</span></td>
+            <td><em>"How is my system performing over time?"</em></td>
+            <td>Numerical time-series with labels/dimensions</td>
+            <td>Low-medium â€” aggregated</td>
+            <td>Low â€” pre-aggregated</td>
+          </tr>
+          <tr>
+            <td><span class="log-col">â— Log</span></td>
+            <td><em>"What exactly happened at this moment?"</em></td>
+            <td>Timestamped text/JSON with structured fields</td>
+            <td>Very high â€” every event</td>
+            <td>Very high â€” raw events</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Signal correlation â€” the real power</h3>
+    <p>OTel injects <code>trace_id</code> and <code>span_id</code> into logs automatically when you use the OTel Logs bridge. This means every log line emitted during a request is linkable to its trace, and every metric can carry exemplars pointing to a sample trace.</p>
+
+    <div class="box note">
+      <div class="box-icon">ðŸ”—</div>
+      <div class="box-body"><strong>Exemplars:</strong> A Prometheus metric can carry an <em>exemplar</em> â€” a pointer to a specific trace ID that caused a high-latency observation. This bridges the gap between "p99 spiked at 14:32" and "here's the actual slow request in Jaeger."</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• CORE CONCEPTS â•â•â• -->
+  <section class="section" id="concepts">
+    <div class="section-header">
+      <div class="section-icon ic-white">ðŸ§±</div>
+      <div class="section-meta">
+        <h2>Core Concepts</h2>
+        <div class="sub">// API Â· SDK Â· providers Â· resources Â· context</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <div class="rule-grid">
+      <div class="rule-card">
+        <div class="rule-num">API</div>
+        <div class="rule-title">OTel API</div>
+        <div class="rule-body">Stable interfaces you write instrumentation against. <strong>Zero implementation</strong> â€” it's a no-op until an SDK is configured. Libraries should depend only on the API, never the SDK.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">SDK</div>
+        <div class="rule-title">OTel SDK</div>
+        <div class="rule-body">The implementation of the API. Handles sampling, batching, and exporting. Applications configure and install the SDK at startup. Libraries must never install an SDK.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">RESOURCE</div>
+        <div class="rule-title">Resource</div>
+        <div class="rule-body">Immutable description of the entity producing telemetry. Set once at startup: <code>service.name</code>, <code>service.version</code>, <code>deployment.environment</code>, <code>k8s.pod.name</code>, etc.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">PROVIDER</div>
+        <div class="rule-title">TracerProvider / MeterProvider / LoggerProvider</div>
+        <div class="rule-body">The entry point for creating tracers, meters, and loggers. Configure exporters and processors here. Treat as a singleton â€” one per signal per process.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">CONTEXT</div>
+        <div class="rule-title">Context &amp; Propagation</div>
+        <div class="rule-body">Carries <code>trace_id</code>, <code>span_id</code>, and baggage across process boundaries via HTTP headers (W3C <code>traceparent</code>), gRPC metadata, or message queues.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">OTLP</div>
+        <div class="rule-title">OTLP Protocol</div>
+        <div class="rule-body">OpenTelemetry Protocol â€” the standard wire format (Protobuf over gRPC or HTTP/JSON). The OTel Collector and all major backends speak OTLP natively.</div>
+      </div>
+    </div>
+
+    <div class="box warn">
+      <div class="box-icon">âš ï¸</div>
+      <div class="box-body"><strong>Library authors:</strong> Only depend on <code>opentelemetry-api</code>. <strong>Never</strong> depend on or configure the SDK. If a library configures a TracerProvider, it will break applications that have their own SDK setup. The application owns SDK configuration â€” always.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• ARCHITECTURE â•â•â• -->
+  <section class="section" id="arch">
+    <div class="section-header">
+      <div class="section-icon ic-teal">ðŸ”­</div>
+      <div class="section-meta">
+        <h2>Architecture Overview</h2>
+        <div class="sub">// how telemetry flows from code to backend</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <div class="pipeline">
+      <div class="pipe-node">
+        <div class="pn-icon">ðŸ“±</div>
+        <div class="pn-label">Your Code</div>
+        <div class="pn-name">App / Service</div>
+      </div>
+      <div class="pipe-arrow">â†’</div>
+      <div class="pipe-node">
+        <div class="pn-icon">ðŸ“¦</div>
+        <div class="pn-label">OTel SDK</div>
+        <div class="pn-name">API + SDK</div>
+      </div>
+      <div class="pipe-arrow">â†’</div>
+      <div class="pipe-node">
+        <div class="pn-icon">ðŸ”„</div>
+        <div class="pn-label">Collector</div>
+        <div class="pn-name">OTel Collector</div>
+      </div>
+      <div class="pipe-arrow">â†’</div>
+      <div class="pipe-node">
+        <div class="pn-icon">ðŸ”€</div>
+        <div class="pn-label">Processor</div>
+        <div class="pn-name">Filter / Enrich</div>
+      </div>
+      <div class="pipe-arrow">â†’</div>
+      <div class="pipe-node">
+        <div class="pn-icon">ðŸ“¤</div>
+        <div class="pn-label">Exporter</div>
+        <div class="pn-name">OTLP / Native</div>
+      </div>
+      <div class="pipe-arrow">â†’</div>
+      <div class="pipe-node">
+        <div class="pn-icon">ðŸ–¥ï¸</div>
+        <div class="pn-label">Backend</div>
+        <div class="pn-name">Jaeger / Grafanaâ€¦</div>
+      </div>
+    </div>
+
+    <p>The OTel Collector is optional but strongly recommended in production. Without it, your services export directly to backends, coupling them to backend availability and format. With it, you gain a single control plane: filter noisy spans, add attributes, fan out to multiple backends, and change destinations without touching application code.</p>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-trace"></span>Direct Export (Dev / Simple)</div>
+        <p>Service â†’ OTLP Exporter â†’ Backend directly. Fine for development or very simple setups. No Collector needed. Trade-off: every service is coupled to backend configuration.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-metric"></span>Collector Sidecar (Production)</div>
+        <p>Service â†’ local Collector â†’ central Collector gateway â†’ backends. Services only know about <code>localhost:4317</code>. The Collector fleet handles routing, retry, batching, and fanout.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- â•â•â• TRACES â•â•â• -->
+  <section class="section" id="traces">
+    <div class="section-header">
+      <div class="section-icon ic-green">ðŸ”</div>
+      <div class="section-meta">
+        <h2>Tracing Concepts <span class="signal-label sl-trace">â— Trace</span></h2>
+        <div class="sub">// distributed request tracing â€” follow a request across services</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <p>A <strong>trace</strong> is the complete record of a single request as it travels through your system. It's a directed acyclic graph (usually visualized as a waterfall) where each node is a <strong>span</strong> â€” a unit of work with a start time, duration, and metadata.</p>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-trace"></span>Trace</div>
+        <p>The entire journey of one request. Identified by a <code>trace_id</code> (128-bit UUID). All spans sharing a <code>trace_id</code> belong to the same request, regardless of which service created them.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-trace"></span>Span</div>
+        <p>A single unit of work: "DB query", "HTTP call", "message publish". Has a <code>span_id</code>, a reference to its parent span, a start time, duration, status, and key-value attributes.</p>
+      </div>
+    </div>
+
+    <h3>Span status codes</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Status</th><th>When to use</th><th>Sets Error?</th></tr></thead>
+        <tbody>
+          <tr><td><code>UNSET</code></td><td>Default â€” no explicit status set. The operation completed, but hasn't been evaluated for success or error.</td><td>No</td></tr>
+          <tr><td><code>OK</code></td><td>Explicitly mark as successful. Use sparingly â€” only when a downstream system needs to override error status from a library.</td><td>No</td></tr>
+          <tr><td><code>ERROR</code></td><td>An error occurred. Set the <code>exception</code> event and <code>error.type</code> attribute. This will show as a red span in tracing UIs.</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box tip">
+      <div class="box-icon">âœ…</div>
+      <div class="box-body"><strong>Span status rule:</strong> Only set <code>ERROR</code> when <em>your</em> layer considers the operation failed. A 404 response is not an error in the HTTP client span â€” it's a valid response. But it may be an error in the business logic span above it. Think in terms of responsibility boundaries.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• SPANS & ATTRIBUTES â•â•â• -->
+  <section class="section" id="spans">
+    <div class="section-header">
+      <div class="section-icon ic-green">ðŸ“</div>
+      <div class="section-meta">
+        <h2>Spans &amp; Attributes <span class="signal-label sl-trace">â— Trace</span></h2>
+        <div class="sub">// naming, attributes, events, links</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <h3>Span naming â€” the most important thing you'll get wrong</h3>
+    <p>Span names are used for aggregation in tracing UIs. A bad name means you can't group related spans. A span name must be <strong>low-cardinality</strong> â€” do not include dynamic data like IDs or user emails in the name.</p>
+
+    <div class="dd-grid">
+      <div class="dd-block dd-do">
+        <div class="dd-head">âœ“ DO â€” low cardinality, meaningful</div>
+        <div class="code-wrap">
+          <div class="code-body"><span class="cm">// HTTP spans: "{method} {route pattern}"</span>
+<span class="st">"GET /users/{userId}"</span>     <span class="cm">âœ“</span>
+<span class="st">"POST /orders"</span>           <span class="cm">âœ“</span>
+
+<span class="cm">// DB spans: "{operation} {table}"</span>
+<span class="st">"SELECT orders"</span>          <span class="cm">âœ“</span>
+<span class="st">"INSERT users"</span>           <span class="cm">âœ“</span>
+
+<span class="cm">// Internal: "{class}.{method}"</span>
+<span class="st">"OrderService.PlaceOrder"</span> <span class="cm">âœ“</span></div>
+        </div>
+      </div>
+      <div class="dd-block dd-dont">
+        <div class="dd-head">âœ• DON'T â€” high cardinality, useless aggregation</div>
+        <div class="code-wrap">
+          <div class="code-body"><span class="cm">// Never include dynamic values in span name</span>
+<span class="st">"GET /users/12345"</span>        <span class="cm">âœ— user ID</span>
+<span class="st">"Processing order 98765"</span>  <span class="cm">âœ— order ID</span>
+
+<span class="cm">// Too vague</span>
+<span class="st">"process"</span>                 <span class="cm">âœ— meaningless</span>
+<span class="st">"handler"</span>                 <span class="cm">âœ— meaningless</span>
+
+<span class="cm">// Includes PII</span>
+<span class="st">"user@company.com login"</span>  <span class="cm">âœ— PII in name</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Attributes</h3>
+    <p>Attributes are key-value pairs attached to a span. They provide context for analysis. Follow semantic conventions for standard attributes â€” roll your own only for domain-specific data.</p>
+
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">python</span><span class="code-file">instrumentation.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> opentelemetry <span class="kw">import</span> trace
+<span class="kw">from</span> opentelemetry.semconv.trace <span class="kw">import</span> SpanAttributes
+
+tracer = trace.get_tracer(<span class="st">"my.library"</span>, <span class="st">"1.0.0"</span>)
+
+<span class="kw">with</span> tracer.start_as_current_span(<span class="st">"OrderService.PlaceOrder"</span>) <span class="kw">as</span> span:
+    <span class="cm"># Standard semantic convention attributes</span>
+    span.set_attribute(SpanAttributes.DB_SYSTEM, <span class="st">"postgresql"</span>)
+    span.set_attribute(SpanAttributes.DB_NAME, <span class="st">"orders"</span>)
+    span.set_attribute(SpanAttributes.DB_STATEMENT, <span class="st">"INSERT INTO orders ..."</span>)
+
+    <span class="cm"># Custom domain attributes â€” use reverse-DNS namespace</span>
+    span.set_attribute(<span class="st">"order.customer_id"</span>, customer_id)  <span class="cm"># low-cardinality</span>
+    span.set_attribute(<span class="st">"order.item_count"</span>, len(items))
+    span.set_attribute(<span class="st">"order.total_usd"</span>, total)
+
+    <span class="cm"># Record an exception â€” this sets status=ERROR automatically</span>
+    <span class="kw">try</span>:
+        result = place_order(order)
+    <span class="kw">except</span> <span class="tp">Exception</span> <span class="kw">as</span> e:
+        span.record_exception(e)
+        span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+        <span class="kw">raise</span>
+
+    <span class="cm"># Events â€” timestamped annotations inside a span</span>
+    span.add_event(<span class="st">"payment.authorized"</span>, {<span class="st">"payment.provider"</span>: <span class="st">"stripe"</span>})
+    span.add_event(<span class="st">"inventory.reserved"</span>, {<span class="st">"warehouse.id"</span>: <span class="st">"WH-03"</span>})</div>
+    </div>
+
+    <div class="box warn">
+      <div class="box-icon">âš ï¸</div>
+      <div class="box-body"><strong>Attribute cardinality kills performance.</strong> Never use attributes with unbounded values (user IDs, request IDs, raw SQL queries) as metric dimensions. In traces it's fine â€” in metrics it will blow up your backend's cardinality limits and cost you thousands per month.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• TRACE API USAGE â•â•â• -->
+  <section class="section" id="trace-api">
+    <div class="section-header">
+      <div class="section-icon ic-green">ðŸ’»</div>
+      <div class="section-meta">
+        <h2>Trace API Usage <span class="signal-label sl-trace">â— Trace</span></h2>
+        <div class="sub">// creating tracers, spans, and wiring SDK</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <h3>Python</h3>
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">python</span><span class="code-file">app.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># pip install opentelemetry-sdk opentelemetry-exporter-otlp</span>
+<span class="kw">from</span> opentelemetry <span class="kw">import</span> trace
+<span class="kw">from</span> opentelemetry.sdk.trace <span class="kw">import</span> TracerProvider
+<span class="kw">from</span> opentelemetry.sdk.trace.export <span class="kw">import</span> BatchSpanProcessor
+<span class="kw">from</span> opentelemetry.exporter.otlp.proto.grpc.trace_exporter <span class="kw">import</span> OTLPSpanExporter
+<span class="kw">from</span> opentelemetry.sdk.resources <span class="kw">import</span> Resource, SERVICE_NAME
+
+<span class="cm"># 1. Configure resource (who is sending this?)</span>
+resource = Resource.create({
+    SERVICE_NAME: <span class="st">"order-service"</span>,
+    <span class="st">"service.version"</span>: <span class="st">"2.4.1"</span>,
+    <span class="st">"deployment.environment"</span>: <span class="st">"production"</span>,
+})
+
+<span class="cm"># 2. Build the TracerProvider with exporter</span>
+provider = TracerProvider(resource=resource)
+provider.add_span_processor(
+    BatchSpanProcessor(OTLPSpanExporter(endpoint=<span class="st">"http://collector:4317"</span>))
+)
+trace.set_tracer_provider(provider)
+
+<span class="cm"># 3. Get a tracer â€” do this once per module/library</span>
+tracer = trace.get_tracer(<span class="st">"order_service.checkout"</span>, <span class="st">"2.4.1"</span>)
+
+<span class="cm"># 4. Create spans</span>
+<span class="kw">def</span> checkout(cart_id: str):
+    <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"checkout"</span>) <span class="kw">as</span> span:
+        span.set_attribute(<span class="st">"cart.id"</span>, cart_id)
+        validate_cart(cart_id)    <span class="cm"># child spans created inside here</span>
+        charge_payment(cart_id)   <span class="cm"># are automatically children of "checkout"</span>
+
+<span class="cm"># 5. Manual child span with context manager</span>
+<span class="kw">def</span> validate_cart(cart_id: str):
+    <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"CartService.validate"</span>) <span class="kw">as</span> span:
+        span.set_attribute(<span class="st">"cart.id"</span>, cart_id)
+        <span class="cm"># ... business logic</span></div>
+    </div>
+
+    <h3>JavaScript / Node.js</h3>
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">javascript</span><span class="code-file">tracing.js</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm">// npm i @opentelemetry/sdk-node @opentelemetry/exporter-trace-otlp-grpc</span>
+<span class="kw">import</span> { NodeSDK } <span class="kw">from</span> <span class="st">'@opentelemetry/sdk-node'</span>;
+<span class="kw">import</span> { OTLPTraceExporter } <span class="kw">from</span> <span class="st">'@opentelemetry/exporter-trace-otlp-grpc'</span>;
+<span class="kw">import</span> { Resource } <span class="kw">from</span> <span class="st">'@opentelemetry/resources'</span>;
+<span class="kw">import</span> { SemanticResourceAttributes <span class="kw">as</span> SRA } <span class="kw">from</span> <span class="st">'@opentelemetry/semantic-conventions'</span>;
+<span class="kw">import</span> { getNodeAutoInstrumentations } <span class="kw">from</span> <span class="st">'@opentelemetry/auto-instrumentations-node'</span>;
+
+<span class="cm">// Call this BEFORE requiring your app code</span>
+<span class="kw">const</span> sdk = <span class="kw">new</span> NodeSDK({
+  resource: <span class="kw">new</span> Resource({
+    [SRA.SERVICE_NAME]: <span class="st">'payment-service'</span>,
+    [SRA.SERVICE_VERSION]: process.env.APP_VERSION,
+    [SRA.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV,
+  }),
+  traceExporter: <span class="kw">new</span> OTLPTraceExporter({ url: <span class="st">'http://collector:4317'</span> }),
+  instrumentations: [getNodeAutoInstrumentations()],  <span class="cm">// Express, http, pg, redisâ€¦</span>
+});
+sdk.start();
+
+<span class="cm">// Manual spans in application code</span>
+<span class="kw">import</span> { trace } <span class="kw">from</span> <span class="st">'@opentelemetry/api'</span>;
+<span class="kw">const</span> tracer = trace.getTracer(<span class="st">'payment-service'</span>);
+
+<span class="kw">async function</span> <span class="fn">chargeCard</span>(orderId: string, amount: number) {
+  <span class="kw">return</span> tracer.startActiveSpan(<span class="st">'PaymentService.charge'</span>, <span class="kw">async</span> (span) => {
+    span.setAttribute(<span class="st">'order.id'</span>, orderId);
+    span.setAttribute(<span class="st">'payment.amount_usd'</span>, amount);
+    <span class="kw">try</span> {
+      <span class="kw">const</span> result = <span class="kw">await</span> stripe.charge({ amount, currency: <span class="st">'usd'</span> });
+      span.setAttribute(<span class="st">'payment.charge_id'</span>, result.id);
+      span.setStatus({ code: SpanStatusCode.OK });
+      <span class="kw">return</span> result;
+    } <span class="kw">catch</span> (err) {
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      <span class="kw">throw</span> err;
+    } <span class="kw">finally</span> {
+      span.end();  <span class="cm">// always end spans</span>
+    }
+  });
+}</div>
+    </div>
+
+    <div class="box danger">
+      <div class="box-icon">â›”</div>
+      <div class="box-body"><strong>Always end spans.</strong> A span that is never ended will leak memory and may never be exported. Use try/finally, context managers (Python), or the SDK's <code>startActiveSpan</code> callback pattern (JS) which ends the span automatically.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• CONTEXT PROPAGATION â•â•â• -->
+  <section class="section" id="context">
+    <div class="section-header">
+      <div class="section-icon ic-teal">ðŸ”—</div>
+      <div class="section-meta">
+        <h2>Context Propagation <span class="signal-label sl-trace">â— Trace</span></h2>
+        <div class="sub">// W3C traceparent Â· B3 Â· baggage â€” crossing service boundaries</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <p>Context propagation is how a <code>trace_id</code> flows from Service A to Service B to Service C. Without it, you get disconnected spans that each look like independent requests. With it, you get the full distributed waterfall.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Propagator</th><th>Header</th><th>Use when</th></tr></thead>
+        <tbody>
+          <tr><td><strong>W3C TraceContext</strong></td><td><code>traceparent</code>, <code>tracestate</code></td><td>Default. Use this everywhere. IETF standard.</td></tr>
+          <tr><td><strong>B3 Single</strong></td><td><code>b3</code></td><td>Legacy â€” services using Zipkin/older Brave instrumentation</td></tr>
+          <tr><td><strong>B3 Multi</strong></td><td><code>X-B3-TraceId</code>, <code>X-B3-SpanId</code>â€¦</td><td>Legacy Zipkin multi-header environments</td></tr>
+          <tr><td><strong>Baggage</strong></td><td><code>baggage</code></td><td>User-defined key-value pairs propagated downstream (use sparingly)</td></tr>
+          <tr><td><strong>AWS X-Ray</strong></td><td><code>X-Amzn-Trace-Id</code></td><td>When target is AWS Lambda/API Gateway</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">python</span><span class="code-file">http_client.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> opentelemetry <span class="kw">import</span> propagate
+<span class="kw">import</span> requests
+
+<span class="cm"># Inject context into outgoing HTTP headers (auto done by instrumented libs)</span>
+<span class="kw">def</span> call_inventory_service(product_id: str):
+    headers = {}
+    propagate.inject(headers)   <span class="cm"># adds traceparent + baggage headers</span>
+    response = requests.get(
+        <span class="st">f"http://inventory-svc/products/{product_id}"</span>,
+        headers=headers
+    )
+    <span class="kw">return</span> response.json()
+
+<span class="cm"># Extract context from incoming request (frameworks handle this automatically)</span>
+<span class="kw">def</span> handle_request(request_headers: dict):
+    ctx = propagate.extract(request_headers)
+    <span class="cm"># ctx now contains the parent span context</span>
+    <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"handle"</span>, context=ctx) <span class="kw">as</span> span:
+        <span class="kw">pass</span>
+
+<span class="cm"># Baggage â€” propagate business context downstream (use cautiously)</span>
+<span class="kw">from</span> opentelemetry.baggage <span class="kw">import</span> set_baggage, get_baggage
+ctx = set_baggage(<span class="st">"tenant.id"</span>, <span class="st">"acme-corp"</span>)
+<span class="cm"># Downstream services can read: get_baggage("tenant.id")</span></div>
+    </div>
+
+    <div class="box warn">
+      <div class="box-icon">âš ï¸</div>
+      <div class="box-body"><strong>Baggage is propagated to all downstream services</strong> and is visible in headers. Never put sensitive data (PII, secrets, tokens) in baggage. It's for low-cardinality routing hints like tenant ID or feature flags â€” not user data.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• METRICS â•â•â• -->
+  <section class="section" id="metrics">
+    <div class="section-header">
+      <div class="section-icon ic-blue">ðŸ“Š</div>
+      <div class="section-meta">
+        <h2>Metrics Concepts <span class="signal-label sl-metric">â— Metric</span></h2>
+        <div class="sub">// time series, dimensions, aggregation</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <p>Metrics are aggregated numerical measurements over time. Unlike traces (one per request), metrics collapse many observations into a single time-series data point. They're cheap to store, fast to query, and ideal for dashboards and alerts.</p>
+
+    <p>A metric is identified by its <strong>name</strong>, <strong>unit</strong>, <strong>description</strong>, and a set of <strong>attributes</strong> (dimensions). The combination of metric name + attributes = a unique time series.</p>
+
+    <div class="box danger">
+      <div class="box-icon">â›”</div>
+      <div class="box-body"><strong>Cardinality explosion.</strong> Adding a high-cardinality attribute (like <code>user_id</code> or <code>request_id</code>) to a metric creates one time series per unique value. 1M users = 1M series. This will make your backend OOM and your bill astronomical. Attributes on metrics must be low-cardinality. Rule of thumb: &lt; 100 unique values per attribute.</div>
+    </div>
+
+    <h3>Metric data model â€” the four types of data points</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Data Type</th><th>Description</th><th>Aggregation</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Sum</strong></td><td>Cumulative or delta sum of measurements. Monotonic (always increasing) or non-monotonic.</td><td>Sum over interval</td></tr>
+          <tr><td><strong>Gauge</strong></td><td>Instantaneous value â€” no aggregation across time. Current memory, CPU, queue depth.</td><td>Last value</td></tr>
+          <tr><td><strong>Histogram</strong></td><td>Distribution of values â€” bucket counts, sum, count. Powers p50/p99/p999 latency.</td><td>Configurable buckets</td></tr>
+          <tr><td><strong>ExponentialHistogram</strong></td><td>Adaptive-bucket histogram â€” higher resolution without pre-configuring buckets.</td><td>Adaptive buckets</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- â•â•â• INSTRUMENT TYPES â•â•â• -->
+  <section class="section" id="instruments">
+    <div class="section-header">
+      <div class="section-icon ic-blue">ðŸŽšï¸</div>
+      <div class="section-meta">
+        <h2>Instrument Types <span class="signal-label sl-metric">â— Metric</span></h2>
+        <div class="sub">// counter Â· gauge Â· histogram Â· updown counter â€” which to use when</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>Instrument</th><th>Measurement</th><th>Default Aggregation</th><th>Use for</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Counter</code></td>
+            <td>Monotonically increasing value you add to</td>
+            <td>Sum</td>
+            <td>Requests processed, bytes sent, errors, jobs completed</td>
+          </tr>
+          <tr>
+            <td><code>UpDownCounter</code></td>
+            <td>Value that can increase <em>or</em> decrease</td>
+            <td>Sum</td>
+            <td>Active connections, queue depth, items in cache</td>
+          </tr>
+          <tr>
+            <td><code>Histogram</code></td>
+            <td>Individual measurements â€” builds distribution</td>
+            <td>Explicit bucket histogram</td>
+            <td>Request latency, response size, batch sizes</td>
+          </tr>
+          <tr>
+            <td><code>Gauge</code></td>
+            <td>Snapshot of current value</td>
+            <td>Last value</td>
+            <td>CPU %, memory used, fan speed, temperature</td>
+          </tr>
+          <tr>
+            <td><code>ObservableCounter</code></td>
+            <td>Counter value read via callback</td>
+            <td>Sum</td>
+            <td>System counters you read (not control): CPU time, GC collections</td>
+          </tr>
+          <tr>
+            <td><code>ObservableGauge</code></td>
+            <td>Gauge value read via callback</td>
+            <td>Last value</td>
+            <td>System metrics: heap used, thread count, connection pool size</td>
+          </tr>
+          <tr>
+            <td><code>ObservableUpDownCounter</code></td>
+            <td>UpDownCounter read via callback</td>
+            <td>Sum</td>
+            <td>Number of goroutines, active DB connections (pull-style)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box tip">
+      <div class="box-icon">ðŸ’¡</div>
+      <div class="box-body"><strong>Synchronous vs Observable:</strong> Synchronous instruments (<code>Counter</code>, <code>Histogram</code>) are recorded at the time of the event â€” "I just processed a request." Observable instruments are polled on each collection interval via a callback â€” "how many goroutines exist right now?" Use Observable when you're reading system state, not when you're counting events.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• METRICS API USAGE â•â•â• -->
+  <section class="section" id="metric-api">
+    <div class="section-header">
+      <div class="section-icon ic-blue">ðŸ’»</div>
+      <div class="section-meta">
+        <h2>Metrics API Usage <span class="signal-label sl-metric">â— Metric</span></h2>
+        <div class="sub">// creating meters and instruments in Python and JS</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">python</span><span class="code-file">metrics.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> opentelemetry <span class="kw">import</span> metrics
+<span class="kw">from</span> opentelemetry.sdk.metrics <span class="kw">import</span> MeterProvider
+<span class="kw">from</span> opentelemetry.sdk.metrics.export <span class="kw">import</span> PeriodicExportingMetricReader
+<span class="kw">from</span> opentelemetry.exporter.otlp.proto.grpc.metric_exporter <span class="kw">import</span> OTLPMetricExporter
+
+<span class="cm"># 1. Configure MeterProvider</span>
+reader = PeriodicExportingMetricReader(
+    OTLPMetricExporter(endpoint=<span class="st">"http://collector:4317"</span>),
+    export_interval_millis=<span class="nu">60_000</span>  <span class="cm"># export every 60s</span>
+)
+provider = MeterProvider(resource=resource, metric_readers=[reader])
+metrics.set_meter_provider(provider)
+
+<span class="cm"># 2. Get a meter â€” once per library/component</span>
+meter = metrics.get_meter(<span class="st">"order_service"</span>, <span class="st">"2.4.1"</span>)
+
+<span class="cm"># 3. Create instruments â€” at module load time, not per request</span>
+order_counter = meter.create_counter(
+    <span class="st">"orders.placed"</span>,
+    unit=<span class="st">"{orders}"</span>,
+    description=<span class="st">"Total number of orders placed"</span>,
+)
+latency_histogram = meter.create_histogram(
+    <span class="st">"orders.processing.duration"</span>,
+    unit=<span class="st">"s"</span>,
+    description=<span class="st">"Time to process an order end-to-end"</span>,
+)
+active_orders = meter.create_up_down_counter(
+    <span class="st">"orders.in_flight"</span>,
+    unit=<span class="st">"{orders}"</span>,
+    description=<span class="st">"Orders currently being processed"</span>,
+)
+
+<span class="cm"># 4. Record measurements â€” with low-cardinality attributes only</span>
+<span class="kw">def</span> process_order(order):
+    attrs = {<span class="st">"order.type"</span>: order.type, <span class="st">"region"</span>: order.region}
+    active_orders.add(<span class="nu">1</span>, attrs)
+    start = time.monotonic()
+    <span class="kw">try</span>:
+        result = do_process(order)
+        attrs[<span class="st">"outcome"</span>] = <span class="st">"success"</span>
+        <span class="kw">return</span> result
+    <span class="kw">except</span> <span class="tp">Exception</span>:
+        attrs[<span class="st">"outcome"</span>] = <span class="st">"error"</span>
+        <span class="kw">raise</span>
+    <span class="kw">finally</span>:
+        latency_histogram.record(time.monotonic() - start, attrs)
+        order_counter.add(<span class="nu">1</span>, attrs)
+        active_orders.add(-<span class="nu">1</span>, attrs)
+
+<span class="cm"># 5. Observable gauge â€” reads system state via callback</span>
+<span class="kw">def</span> observe_queue_depth(options):
+    <span class="kw">yield</span> metrics.Observation(get_queue_depth(), {<span class="st">"queue"</span>: <span class="st">"orders"</span>})
+
+meter.create_observable_gauge(
+    <span class="st">"orders.queue.depth"</span>,
+    callbacks=[observe_queue_depth],
+    unit=<span class="st">"{items}"</span>,
+)</div>
+    </div>
+
+    <div class="box note">
+      <div class="box-icon">ðŸ“</div>
+      <div class="box-body"><strong>Naming convention:</strong> Use dot-separated hierarchical names: <code>http.server.request.duration</code>, <code>db.client.connections.count</code>. Follow the OTel semantic conventions naming schema. Unit goes in the <code>unit</code> field, not the name (<code>"ms"</code>, <code>"s"</code>, <code>"By"</code>, <code>"{requests}"</code>).</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• LOGS â•â•â• -->
+  <section class="section" id="logs">
+    <div class="section-header">
+      <div class="section-icon ic-orange">ðŸ“‹</div>
+      <div class="section-meta">
+        <h2>Log Signals <span class="signal-label sl-log">â— Log</span></h2>
+        <div class="sub">// structured logs with trace correlation</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <p>OTel Logs are the newest of the three signals (GA'd after traces and metrics). The OTel Logs API does <strong>not replace your logging library</strong> â€” it bridges your existing logger (loguru, structlog, winston, serilog) into the OTel pipeline, injecting <code>trace_id</code> and <code>span_id</code> automatically.</p>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-log"></span>OTel Log Record</div>
+        <p>A structured event with a timestamp, severity, body (message), and a map of attributes. Plus <code>trace_id</code> and <code>span_id</code> when emitted in a trace context.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-log"></span>Log Bridge API</div>
+        <p>Connects your existing logging library to the OTel LoggerProvider. The bridge reads log records from the library and translates them into OTel log records â€” no rewrite required.</p>
+      </div>
+    </div>
+
+    <h3>Severity levels mapping</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>OTel Severity</th><th>Number</th><th>Syslog</th><th>Log4j</th><th>Python logging</th></tr></thead>
+        <tbody>
+          <tr><td><code>TRACE</code></td><td>1â€“4</td><td>â€”</td><td>TRACE</td><td>â€”</td></tr>
+          <tr><td><code>DEBUG</code></td><td>5â€“8</td><td>debug</td><td>DEBUG</td><td>DEBUG (10)</td></tr>
+          <tr><td><code>INFO</code></td><td>9â€“12</td><td>info</td><td>INFO</td><td>INFO (20)</td></tr>
+          <tr><td><code>WARN</code></td><td>13â€“16</td><td>warning</td><td>WARN</td><td>WARNING (30)</td></tr>
+          <tr><td><code>ERROR</code></td><td>17â€“20</td><td>error</td><td>ERROR</td><td>ERROR (40)</td></tr>
+          <tr><td><code>FATAL</code></td><td>21â€“24</td><td>crit/alert/emerg</td><td>FATAL</td><td>CRITICAL (50)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- â•â•â• LOGS API â•â•â• -->
+  <section class="section" id="log-api">
+    <div class="section-header">
+      <div class="section-icon ic-orange">ðŸ’»</div>
+      <div class="section-meta">
+        <h2>Logs API Usage <span class="signal-label sl-log">â— Log</span></h2>
+        <div class="sub">// bridging existing loggers Â· trace correlation</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">python</span><span class="code-file">logging_setup.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># pip install opentelemetry-sdk opentelemetry-exporter-otlp opentelemetry-instrumentation-logging</span>
+<span class="kw">import</span> logging
+<span class="kw">from</span> opentelemetry._logs <span class="kw">import</span> set_logger_provider
+<span class="kw">from</span> opentelemetry.sdk._logs <span class="kw">import</span> LoggerProvider, LoggingHandler
+<span class="kw">from</span> opentelemetry.sdk._logs.export <span class="kw">import</span> BatchLogRecordProcessor
+<span class="kw">from</span> opentelemetry.exporter.otlp.proto.grpc._log_exporter <span class="kw">import</span> OTLPLogExporter
+
+<span class="cm"># 1. Configure the OTel LoggerProvider</span>
+log_provider = LoggerProvider(resource=resource)
+log_provider.add_log_record_processor(
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint=<span class="st">"http://collector:4317"</span>))
+)
+set_logger_provider(log_provider)
+
+<span class="cm"># 2. Bridge Python's stdlib logging â†’ OTel</span>
+handler = LoggingHandler(level=logging.NOTSET, logger_provider=log_provider)
+logging.getLogger().addHandler(handler)
+
+<span class="cm"># 3. Use your logger normally â€” trace_id injected automatically</span>
+logger = logging.getLogger(<span class="st">"order_service.checkout"</span>)
+
+<span class="kw">def</span> checkout(cart_id: str):
+    <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"checkout"</span>):
+        <span class="cm"># This log will automatically have trace_id + span_id attached</span>
+        logger.info(<span class="st">"Starting checkout"</span>, extra={<span class="st">"cart.id"</span>: cart_id})
+        <span class="kw">try</span>:
+            result = process(cart_id)
+            logger.info(<span class="st">"Checkout complete"</span>, extra={<span class="st">"order.id"</span>: result.id})
+        <span class="kw">except</span> <span class="tp">Exception</span> <span class="kw">as</span> e:
+            logger.error(<span class="st">"Checkout failed"</span>, exc_info=e,
+                         extra={<span class="st">"cart.id"</span>: cart_id})</div>
+    </div>
+
+    <div class="dd-grid">
+      <div class="dd-block dd-do">
+        <div class="dd-head">âœ“ DO â€” structured, low-cardinality</div>
+        <div class="code-wrap">
+          <div class="code-body"><span class="cm"># Structured fields â€” searchable</span>
+logger.info(<span class="st">"Order placed"</span>, extra={
+    <span class="st">"order.id"</span>: order.id,
+    <span class="st">"order.type"</span>: order.type,
+    <span class="st">"order.region"</span>: order.region,
+})
+<span class="cm"># Exception with full stack trace</span>
+logger.error(<span class="st">"Payment failed"</span>,
+    exc_info=True,
+    extra={<span class="st">"payment.provider"</span>: <span class="st">"stripe"</span>}
+)</div>
+        </div>
+      </div>
+      <div class="dd-block dd-dont">
+        <div class="dd-head">âœ• DON'T â€” unstructured, unsearchable</div>
+        <div class="code-wrap">
+          <div class="code-body"><span class="cm"># String interpolation â€” can't query by field</span>
+logger.info(
+    <span class="st">f"Order {order.id} placed by {user.email}"</span>
+)
+<span class="cm"># PII in logs (GDPR violation!)</span>
+logger.debug(<span class="st">f"User card: {card_number}"</span>)
+
+<span class="cm"># Swallowing the exception object</span>
+<span class="kw">except</span> <span class="tp">Exception</span> <span class="kw">as</span> e:
+    logger.error(str(e))  <span class="cm"># loses stack trace</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- â•â•â• COLLECTOR â•â•â• -->
+  <section class="section" id="collector">
+    <div class="section-header">
+      <div class="section-icon ic-teal">ðŸ”„</div>
+      <div class="section-meta">
+        <h2>OTel Collector</h2>
+        <div class="sub">// receive Â· process Â· export â€” the telemetry control plane</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <p>The OTel Collector is a standalone binary (or Docker image) that receives telemetry from your services, processes it, and exports it to backends. It's the recommended deployment pattern for production â€” your services only talk to a local Collector, never directly to a backend.</p>
+
+    <div class="pipeline">
+      <div class="pipe-node">
+        <div class="pn-icon">ðŸ“¥</div>
+        <div class="pn-label">Receivers</div>
+        <div class="pn-name">OTLP Â· Jaeger<br>Prometheus Â· Zipkin</div>
+      </div>
+      <div class="pipe-arrow">â†’</div>
+      <div class="pipe-node">
+        <div class="pn-icon">âš™ï¸</div>
+        <div class="pn-label">Processors</div>
+        <div class="pn-name">Batch Â· Filter<br>Enrich Â· Sample</div>
+      </div>
+      <div class="pipe-arrow">â†’</div>
+      <div class="pipe-node">
+        <div class="pn-icon">ðŸ“¤</div>
+        <div class="pn-label">Exporters</div>
+        <div class="pn-name">OTLP Â· Jaeger<br>Prometheus Â· Custom</div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">yaml</span><span class="code-file">collector-config.yaml</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># OTel Collector configuration</span>
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317   <span class="cm"># gRPC</span>
+      http:
+        endpoint: 0.0.0.0:4318   <span class="cm"># HTTP/JSON</span>
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: <span class="st">'my-app'</span>
+          static_configs:
+            - targets: [<span class="st">'app:8080'</span>]
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1000
+  memory_limiter:
+    limit_mib: 512
+    check_interval: 1s
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: <span class="st">"production"</span>
+        action: upsert              <span class="cm"># add/overwrite resource attributes</span>
+  filter/drop_health_spans:       <span class="cm"># drop noisy health-check traces</span>
+    error_mode: ignore
+    traces:
+      span:
+        - <span class="st">'attributes["http.target"] == "/health"'</span>
+  tail_sampling:                  <span class="cm"># keep all errors + 10% of success</span>
+    decision_wait: 10s
+    policies:
+      - name: errors-policy
+        type: status_code
+        status_code: { status_codes: [ERROR] }
+      - name: probabilistic-policy
+        type: probabilistic
+        probabilistic: { sampling_percentage: 10 }
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  otlp/honeycomb:
+    endpoint: api.honeycomb.io:443
+    headers:
+      x-honeycomb-team: ${env:HONEYCOMB_API_KEY}
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers:  [otlp]
+      processors: [memory_limiter, batch, filter/drop_health_spans, tail_sampling]
+      exporters:  [otlp/jaeger, otlp/honeycomb]
+    metrics:
+      receivers:  [otlp, prometheus]
+      processors: [memory_limiter, batch, resource]
+      exporters:  [prometheusremotewrite]
+    logs:
+      receivers:  [otlp]
+      processors: [memory_limiter, batch]
+      exporters:  [otlp/honeycomb]</div>
+    </div>
+
+    <h3>Collector distributions</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Distribution</th><th>Use when</th></tr></thead>
+        <tbody>
+          <tr><td><code>otelcol</code> (core)</td><td>Minimal build â€” only OTel-maintained components. Recommended for most.</td></tr>
+          <tr><td><code>otelcol-contrib</code></td><td>Full distribution â€” all community components. Good for evaluating; large binary.</td></tr>
+          <tr><td>OCB (OTel Collector Builder)</td><td>Production â€” build a custom binary with only the components you need. Minimizes attack surface and binary size.</td></tr>
+          <tr><td>Vendor distributions</td><td>Grafana Agent, Elastic Agent, Datadog Agent â€” vendor-managed Collectors with extra integrations.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- â•â•â• EXPORTERS â•â•â• -->
+  <section class="section" id="exporters">
+    <div class="section-header">
+      <div class="section-icon ic-pink">ðŸ“¤</div>
+      <div class="section-meta">
+        <h2>Exporters</h2>
+        <div class="sub">// how telemetry leaves the SDK and reaches backends</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Exporter</th><th>Protocol</th><th>Use for</th></tr></thead>
+        <tbody>
+          <tr><td><code>OTLP/gRPC</code></td><td>Protobuf over gRPC</td><td>Default. Best performance. Use in production.</td></tr>
+          <tr><td><code>OTLP/HTTP</code></td><td>Protobuf or JSON over HTTP</td><td>Environments where gRPC is blocked (some firewalls, browsers).</td></tr>
+          <tr><td><code>Jaeger</code></td><td>Jaeger Thrift / gRPC</td><td>Direct to Jaeger without Collector (legacy pattern).</td></tr>
+          <tr><td><code>Zipkin</code></td><td>Zipkin JSON</td><td>Legacy Zipkin backends.</td></tr>
+          <tr><td><code>Prometheus</code></td><td>Prometheus text/pull</td><td>Expose metrics on <code>/metrics</code> for Prometheus scraping.</td></tr>
+          <tr><td><code>Console</code></td><td>Stdout JSON</td><td>Development / debugging only. Never in production.</td></tr>
+          <tr><td><code>In-memory</code></td><td>In-process</td><td>Testing â€” assertions on exported spans/metrics in unit tests.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box tip">
+      <div class="box-icon">âœ…</div>
+      <div class="box-body"><strong>Always use OTLP + Collector in production.</strong> Export to <code>localhost:4317</code> (your Collector sidecar). Never hardcode backend-specific exporters in application code â€” that recreates vendor lock-in at the SDK level. The Collector handles routing.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• SDK CONFIG â•â•â• -->
+  <section class="section" id="sdk-config">
+    <div class="section-header">
+      <div class="section-icon ic-yellow">âš™ï¸</div>
+      <div class="section-meta">
+        <h2>SDK Configuration</h2>
+        <div class="sub">// environment variables Â· sampling Â· zero-code instrumentation</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <h3>Environment variables â€” configure without code changes</h3>
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">bash</span><span class="code-file">.env / Kubernetes env</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># Service identity (REQUIRED)</span>
+OTEL_SERVICE_NAME=<span class="st">"order-service"</span>
+OTEL_SERVICE_VERSION=<span class="st">"2.4.1"</span>
+
+<span class="cm"># Collector endpoint</span>
+OTEL_EXPORTER_OTLP_ENDPOINT=<span class="st">"http://collector:4317"</span>     <span class="cm"># all signals</span>
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=<span class="st">"http://collector:4317"</span>  <span class="cm"># traces only</span>
+OTEL_EXPORTER_OTLP_PROTOCOL=<span class="st">"grpc"</span>                         <span class="cm"># or http/protobuf</span>
+
+<span class="cm"># Resource attributes</span>
+OTEL_RESOURCE_ATTRIBUTES=<span class="st">"deployment.environment=production,k8s.cluster.name=prod-us-east"</span>
+
+<span class="cm"># Sampling</span>
+OTEL_TRACES_SAMPLER=<span class="st">"parentbased_traceidratio"</span>
+OTEL_TRACES_SAMPLER_ARG=<span class="st">"0.1"</span>          <span class="cm"># sample 10% of root spans</span>
+
+<span class="cm"># Propagation</span>
+OTEL_PROPAGATORS=<span class="st">"tracecontext,baggage"</span>  <span class="cm"># W3C TraceContext + Baggage</span>
+
+<span class="cm"># Disable specific signals</span>
+OTEL_TRACES_EXPORTER=<span class="st">"none"</span>             <span class="cm"># disable traces</span>
+OTEL_METRICS_EXPORTER=<span class="st">"none"</span>            <span class="cm"># disable metrics</span></div>
+    </div>
+
+    <h3>Sampling strategies</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Sampler</th><th>Behavior</th><th>Use for</th></tr></thead>
+        <tbody>
+          <tr><td><code>always_on</code></td><td>Sample 100% of traces</td><td>Development, low-traffic services</td></tr>
+          <tr><td><code>always_off</code></td><td>Drop all traces</td><td>Disabling tracing temporarily</td></tr>
+          <tr><td><code>traceidratio</code></td><td>Sample N% of all traces regardless of parent</td><td>Rarely useful â€” ignores parent sampling decision</td></tr>
+          <tr><td><code>parentbased_always_on</code></td><td>Respect parent sampling; always_on for roots</td><td>Dev/test environments</td></tr>
+          <tr><td><code>parentbased_traceidratio</code></td><td>Respect parent sampling; ratio for roots</td><td>Production â€” standard choice</td></tr>
+          <tr><td>Tail sampling (Collector)</td><td>Sample after seeing the full trace</td><td>Keep all errors + fast traces, sample slow traces</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box otel">
+      <div class="box-icon">ðŸŽ¯</div>
+      <div class="box-body"><strong>Tail sampling</strong> is the most powerful strategy: the Collector waits for the entire trace to arrive (configurable buffer window, e.g. 10s), then decides whether to keep or drop it based on the full picture â€” was there an error? Was it slow? Did it touch a specific service? This is impossible with head sampling (which decides at the start of a trace).</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• SEMANTIC CONVENTIONS â•â•â• -->
+  <section class="section" id="semantic">
+    <div class="section-header">
+      <div class="section-icon ic-white">ðŸ“</div>
+      <div class="section-meta">
+        <h2>Semantic Conventions</h2>
+        <div class="sub">// standard attribute names â€” the OTel vocabulary</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <p>Semantic conventions define standardized attribute names for common operations. Using them means your telemetry works out-of-the-box with dashboards, queries, and alerting rules built for OTel. Deviating from them means building everything from scratch.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Domain</th><th>Key Attributes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>HTTP Server</strong></td>
+            <td><code>http.request.method</code>, <code>http.response.status_code</code>, <code>url.path</code>, <code>server.address</code>, <code>http.route</code></td>
+          </tr>
+          <tr>
+            <td><strong>HTTP Client</strong></td>
+            <td><code>http.request.method</code>, <code>http.response.status_code</code>, <code>url.full</code>, <code>server.address</code>, <code>server.port</code></td>
+          </tr>
+          <tr>
+            <td><strong>Database</strong></td>
+            <td><code>db.system</code>, <code>db.name</code>, <code>db.operation</code>, <code>db.statement</code>, <code>server.address</code>, <code>db.sql.table</code></td>
+          </tr>
+          <tr>
+            <td><strong>Messaging</strong></td>
+            <td><code>messaging.system</code>, <code>messaging.destination.name</code>, <code>messaging.operation</code>, <code>messaging.message.id</code></td>
+          </tr>
+          <tr>
+            <td><strong>RPC</strong></td>
+            <td><code>rpc.system</code>, <code>rpc.service</code>, <code>rpc.method</code>, <code>rpc.grpc.status_code</code></td>
+          </tr>
+          <tr>
+            <td><strong>Exceptions</strong></td>
+            <td><code>exception.type</code>, <code>exception.message</code>, <code>exception.stacktrace</code></td>
+          </tr>
+          <tr>
+            <td><strong>Service</strong></td>
+            <td><code>service.name</code>, <code>service.version</code>, <code>service.instance.id</code></td>
+          </tr>
+          <tr>
+            <td><strong>Kubernetes</strong></td>
+            <td><code>k8s.pod.name</code>, <code>k8s.namespace.name</code>, <code>k8s.deployment.name</code>, <code>k8s.cluster.name</code></td>
+          </tr>
+          <tr>
+            <td><strong>Cloud</strong></td>
+            <td><code>cloud.provider</code>, <code>cloud.region</code>, <code>cloud.account.id</code>, <code>cloud.availability_zone</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box note">
+      <div class="box-icon">ðŸ“–</div>
+      <div class="box-body"><strong>Stability:</strong> Semantic conventions have stability markers: <code>stable</code>, <code>experimental</code>, and <code>deprecated</code>. The HTTP and database conventions stabilized in 2024. Check <code>opentelemetry.io/docs/specs/semconv</code> before naming custom attributes â€” the convention you want may already exist.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• WHEN TO USE WHAT â•â•â• -->
+  <section class="section" id="when">
+    <div class="section-header">
+      <div class="section-icon ic-yellow">ðŸŽ¯</div>
+      <div class="section-meta">
+        <h2>When to Use What</h2>
+        <div class="sub">// choosing the right signal for the right question</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Question / Use Case</th>
+            <th><span class="trace-col">Trace</span></th>
+            <th><span class="metric-col">Metric</span></th>
+            <th><span class="log-col">Log</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Why did this specific request fail?</td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+            <td><span class="when-badge wb-some">hints</span></td>
+            <td><span class="when-badge wb-yes">details</span></td>
+          </tr>
+          <tr>
+            <td>What is my p99 latency over the last 24h?</td>
+            <td><span class="when-badge wb-no">too costly</span></td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+            <td><span class="when-badge wb-no">no</span></td>
+          </tr>
+          <tr>
+            <td>How many orders per second are we processing?</td>
+            <td><span class="when-badge wb-no">no</span></td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+            <td><span class="when-badge wb-no">no</span></td>
+          </tr>
+          <tr>
+            <td>Which microservice is the bottleneck in my request path?</td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+            <td><span class="when-badge wb-some">confirm</span></td>
+            <td><span class="when-badge wb-no">no</span></td>
+          </tr>
+          <tr>
+            <td>Did the background job succeed for tenant X?</td>
+            <td><span class="when-badge wb-some">if traced</span></td>
+            <td><span class="when-badge wb-no">no</span></td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+          </tr>
+          <tr>
+            <td>Alert when error rate exceeds 1%</td>
+            <td><span class="when-badge wb-no">no</span></td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+            <td><span class="when-badge wb-some">some tools</span></td>
+          </tr>
+          <tr>
+            <td>What SQL queries ran during a slow request?</td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+            <td><span class="when-badge wb-no">no</span></td>
+            <td><span class="when-badge wb-some">verbose mode</span></td>
+          </tr>
+          <tr>
+            <td>How many users triggered feature flag X today?</td>
+            <td><span class="when-badge wb-no">no</span></td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+            <td><span class="when-badge wb-some">if logged</span></td>
+          </tr>
+          <tr>
+            <td>Audit trail â€” who deleted record 12345?</td>
+            <td><span class="when-badge wb-no">no</span></td>
+            <td><span class="when-badge wb-no">no</span></td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+          </tr>
+          <tr>
+            <td>Is this a new deployment causing elevated errors?</td>
+            <td><span class="when-badge wb-some">sample traces</span></td>
+            <td><span class="when-badge wb-yes">PRIMARY</span></td>
+            <td><span class="when-badge wb-some">confirm</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box tip">
+      <div class="box-icon">ðŸ”</div>
+      <div class="box-body"><strong>The observability loop:</strong> Alerts fire on <strong>metrics</strong>. You jump to <strong>traces</strong> to find the specific bad request. You read <strong>logs</strong> to understand exactly what happened inside it. Each signal leads you to the next. This is why correlation (shared <code>trace_id</code>) between all three is the real value of OTel.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• REAL-WORLD PATTERNS â•â•â• -->
+  <section class="section" id="patterns">
+    <div class="section-header">
+      <div class="section-icon ic-pink">ðŸ—ï¸</div>
+      <div class="section-meta">
+        <h2>Real-World Patterns</h2>
+        <div class="sub">// production-grade instrumentation patterns</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <h3>Pattern 1 â€” Auto-instrumentation first</h3>
+    <p>Before writing a single line of manual instrumentation, install the auto-instrumentation package for your framework. It instruments all HTTP calls, database queries, messaging, and more with zero code. Add manual spans only for business logic that auto-instrumentation can't see.</p>
+
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">bash</span><span class="code-file">zero-code instrumentation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="cm"># Python â€” auto-instrument Flask + SQLAlchemy + Redis with zero code changes</span>
+pip install opentelemetry-instrumentation-flask \
+            opentelemetry-instrumentation-sqlalchemy \
+            opentelemetry-instrumentation-redis
+
+opentelemetry-instrument \
+  --traces_exporter console \
+  --service_name my-flask-app \
+  python app.py
+
+<span class="cm"># Node.js â€” auto-instrument Express + Postgres + Redis</span>
+npm install @opentelemetry/auto-instrumentations-node
+node --require @opentelemetry/auto-instrumentations-node/register app.js
+
+<span class="cm"># Java â€” zero-code Java agent (attach to JVM)</span>
+java -javaagent:opentelemetry-javaagent.jar \
+     -Dotel.service.name=my-java-svc \
+     -Dotel.exporter.otlp.endpoint=http://collector:4317 \
+     -jar myapp.jar</div>
+    </div>
+
+    <h3>Pattern 2 â€” Kubernetes sidecar deployment</h3>
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">yaml</span><span class="code-file">deployment.yaml</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body">spec:
+  containers:
+    - name: app
+      image: myapp:2.4.1
+      env:
+        - name: OTEL_SERVICE_NAME
+          value: <span class="st">"order-service"</span>
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: <span class="st">"http://localhost:4317"</span>  <span class="cm"># sidecar on localhost</span>
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: <span class="st">"k8s.pod.name=$(MY_POD_NAME),k8s.namespace.name=$(MY_POD_NAMESPACE)"</span>
+
+    - name: otel-collector
+      image: otel/opentelemetry-collector-contrib:latest
+      args: [<span class="st">"--config=/etc/otel/config.yaml"</span>]
+      ports:
+        - containerPort: 4317  <span class="cm"># gRPC</span>
+        - containerPort: 4318  <span class="cm"># HTTP</span>
+      volumeMounts:
+        - name: otel-config
+          mountPath: /etc/otel
+  volumes:
+    - name: otel-config
+      configMap:
+        name: otel-collector-config</div>
+    </div>
+
+    <h3>Pattern 3 â€” Correlation: linking metrics to traces</h3>
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">python</span><span class="code-file">exemplar_demo.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> opentelemetry <span class="kw">import</span> trace, metrics, context
+
+<span class="cm"># Exemplars are attached automatically when the SDK detects</span>
+<span class="cm"># an active span at recording time â€” no extra code needed.</span>
+<span class="cm"># The histogram observation will carry the current trace_id.</span>
+
+request_duration = meter.create_histogram(
+    <span class="st">"http.server.request.duration"</span>,
+    unit=<span class="st">"s"</span>,
+)
+
+<span class="kw">def</span> handle_request(path: str):
+    <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"handle_request"</span>):
+        start = time.monotonic()
+        response = route(path)
+        <span class="cm"># This histogram record automatically gets an exemplar</span>
+        <span class="cm"># pointing to the current span â€” no manual work needed</span>
+        request_duration.record(
+            time.monotonic() - start,
+            {<span class="st">"http.route"</span>: path, <span class="st">"http.response.status_code"</span>: response.status}
+        )
+        <span class="kw">return</span> response
+
+<span class="cm"># In Grafana: when you see a p99 spike, click the exemplar</span>
+<span class="cm"># to jump directly to the corresponding trace in Tempo/Jaeger.</span></div>
+    </div>
+
+    <h3>Pattern 4 â€” Testing your instrumentation</h3>
+    <div class="code-wrap">
+      <div class="code-head"><span class="code-lang">python</span><span class="code-file">test_instrumentation.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-body"><span class="kw">from</span> opentelemetry.sdk.trace <span class="kw">import</span> TracerProvider
+<span class="kw">from</span> opentelemetry.sdk.trace.export.in_memory_span_exporter <span class="kw">import</span> InMemorySpanExporter
+<span class="kw">from</span> opentelemetry.sdk.trace.export <span class="kw">import</span> SimpleSpanProcessor
+
+<span class="kw">def</span> test_checkout_creates_span_with_cart_id():
+    <span class="cm"># Use in-memory exporter â€” no real backend needed</span>
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+
+    <span class="kw">with</span> trace_as(provider):
+        checkout(cart_id=<span class="st">"cart-123"</span>)
+
+    spans = exporter.get_finished_spans()
+    assert len(spans) == <span class="nu">1</span>
+    span = spans[<span class="nu">0</span>]
+    assert span.name == <span class="st">"OrderService.checkout"</span>
+    assert span.attributes[<span class="st">"cart.id"</span>] == <span class="st">"cart-123"</span>
+    assert span.status.status_code == StatusCode.OK</div>
+    </div>
+  </section>
+
+  <!-- â•â•â• BACKENDS â•â•â• -->
+  <section class="section" id="backends">
+    <div class="section-header">
+      <div class="section-icon ic-red">ðŸ–¥ï¸</div>
+      <div class="section-meta">
+        <h2>Backends &amp; Tools</h2>
+        <div class="sub">// where your telemetry lands â€” OSS and commercial</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Tool</th><th>Signals</th><th>OSS?</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Jaeger</strong></td>
+            <td><span class="trace-col">Traces</span></td>
+            <td>âœ… CNCF</td>
+            <td>The OSS trace standard. Native OTLP support. Excellent for distributed tracing UI.</td>
+          </tr>
+          <tr>
+            <td><strong>Grafana Tempo</strong></td>
+            <td><span class="trace-col">Traces</span></td>
+            <td>âœ… OSS</td>
+            <td>Scalable trace storage, integrates with Grafana. Tag-based search, exemplar linking with Prometheus.</td>
+          </tr>
+          <tr>
+            <td><strong>Prometheus</strong></td>
+            <td><span class="metric-col">Metrics</span></td>
+            <td>âœ… CNCF</td>
+            <td>The OSS metrics standard. Pull-based. Use with OTEL Prometheus exporter or remote write from Collector.</td>
+          </tr>
+          <tr>
+            <td><strong>Grafana Mimir</strong></td>
+            <td><span class="metric-col">Metrics</span></td>
+            <td>âœ… OSS</td>
+            <td>Scalable Prometheus-compatible metrics backend. HA, long-term storage, multi-tenant.</td>
+          </tr>
+          <tr>
+            <td><strong>Grafana Loki</strong></td>
+            <td><span class="log-col">Logs</span></td>
+            <td>âœ… OSS</td>
+            <td>Log aggregation designed for Grafana. Label-based indexing, LogQL query language.</td>
+          </tr>
+          <tr>
+            <td><strong>Elastic (APM)</strong></td>
+            <td>Traces + Metrics + Logs</td>
+            <td>âš ï¸ Source-avail</td>
+            <td>Full OTel support via OTLP. Powerful search. Free self-hosted tier.</td>
+          </tr>
+          <tr>
+            <td><strong>Honeycomb</strong></td>
+            <td>Traces + Logs</td>
+            <td>âŒ Commercial</td>
+            <td>Best-in-class distributed tracing UX. Wide-event model. Native OTLP. Generous free tier.</td>
+          </tr>
+          <tr>
+            <td><strong>Datadog</strong></td>
+            <td>Traces + Metrics + Logs</td>
+            <td>âŒ Commercial</td>
+            <td>Full platform. Native OTel support. Premium cost; industry standard in enterprise.</td>
+          </tr>
+          <tr>
+            <td><strong>Grafana Cloud</strong></td>
+            <td>Traces + Metrics + Logs</td>
+            <td>âŒ Managed OSS</td>
+            <td>Managed Tempo + Mimir + Loki + Grafana. Generous free tier. Native OTLP ingest.</td>
+          </tr>
+          <tr>
+            <td><strong>AWS X-Ray / CloudWatch</strong></td>
+            <td>Traces + Metrics + Logs</td>
+            <td>âŒ Commercial</td>
+            <td>Tightly integrated with AWS. OTel support via ADOT (AWS Distro for OTel).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- â•â•â• REFERENCE â•â•â• -->
+  <section class="section" id="ref">
+    <div class="section-header">
+      <div class="section-icon ic-white">ðŸ“š</div>
+      <div class="section-meta">
+        <h2>Reference</h2>
+        <div class="sub">// quick rules, links, and the most common mistakes</div>
+      </div>
+    </div>
+    <div class="section-rule"></div>
+
+    <h3>The ten most common OTel mistakes</h3>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">High-cardinality metric attributes</div>
+        <div class="rule-body">Adding <code>user_id</code> or <code>request_id</code> as metric attributes. This creates millions of time series and crashes backends. Metrics attributes must be low-cardinality (&lt;100 values).</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">Forgetting to end spans</div>
+        <div class="rule-body">Spans that are never ended leak memory and are never exported. Always use try/finally, context managers, or the SDK's callback-style API.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">High-cardinality span names</div>
+        <div class="rule-body"><code>"GET /users/12345"</code> instead of <code>"GET /users/{id}"</code>. Span names are used for aggregation â€” variable data goes in attributes, not names.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">Library code installing the SDK</div>
+        <div class="rule-body">Libraries that call <code>TracerProvider.install()</code> will break every application using them. Libraries use the API only. Applications own SDK configuration.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">Exporting directly to backend from app</div>
+        <div class="rule-body">Hard-coding backend-specific exporters in application code recreates vendor lock-in. Export to the OTel Collector via OTLP. Let the Collector route to backends.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">Missing resource attributes</div>
+        <div class="rule-body">Not setting <code>service.name</code>, <code>service.version</code>, <code>deployment.environment</code>. Without these, you can't filter telemetry by service in any backend UI.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">100% sampling in production</div>
+        <div class="rule-body">Sampling every trace from a high-traffic service is prohibitively expensive. Use <code>parentbased_traceidratio</code> at 10% or tail sampling in the Collector to keep errors.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">PII in telemetry</div>
+        <div class="rule-body">Logging user emails, card numbers, or passwords in span attributes or log records. Telemetry backends are not GDPR-compliant stores for personal data. Scrub PII at the Collector or before recording.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">Using Console exporter in production</div>
+        <div class="rule-body">The <code>ConsoleExporter</code> / <code>StdoutExporter</code> is for development only. In production it floods stdout with JSON and loses all telemetry. Use OTLP.</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num must">MISTAKE</div>
+        <div class="rule-title">Ignoring propagation</div>
+        <div class="rule-body">Not injecting <code>traceparent</code> headers into outgoing HTTP calls or message queue payloads. Without this, traces are broken â€” every service looks like a standalone request.</div>
+      </div>
+    </div>
+
+    <h3>Official resources</h3>
+    <div class="g2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-metric"></span>Core Documentation</div>
+        <ul>
+          <li><a href="https://opentelemetry.io/docs/" style="color:var(--metric)">opentelemetry.io/docs</a> â€” Official docs and getting started</li>
+          <li><a href="https://opentelemetry.io/docs/specs/otel/" style="color:var(--metric)">OTel Specification</a> â€” The language-agnostic spec</li>
+          <li><a href="https://opentelemetry.io/docs/specs/semconv/" style="color:var(--metric)">Semantic Conventions</a> â€” Standard attribute names</li>
+          <li><a href="https://github.com/open-telemetry/opentelemetry-collector" style="color:var(--metric)">Collector repo</a> â€” Core Collector</li>
+          <li><a href="https://github.com/open-telemetry/opentelemetry-collector-contrib" style="color:var(--metric)">Collector contrib</a> â€” Community components</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-trace"></span>Language SDKs</div>
+        <ul>
+          <li><a href="https://opentelemetry.io/docs/languages/python/" style="color:var(--trace)">Python SDK</a></li>
+          <li><a href="https://opentelemetry.io/docs/languages/js/" style="color:var(--trace)">JavaScript / Node SDK</a></li>
+          <li><a href="https://opentelemetry.io/docs/languages/go/" style="color:var(--trace)">Go SDK</a></li>
+          <li><a href="https://opentelemetry.io/docs/languages/java/" style="color:var(--trace)">Java SDK + Agent</a></li>
+          <li><a href="https://opentelemetry.io/docs/languages/dotnet/" style="color:var(--trace)">.NET SDK</a></li>
+          <li><a href="https://opentelemetry.io/docs/languages/rust/" style="color:var(--trace)">Rust SDK</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="box otel">
+      <div class="box-icon">ðŸ“¡</div>
+      <div class="box-body"><strong>OTel is infrastructure, not a feature.</strong> The best-instrumented services are the ones where you can jump from an alert to the root cause in under 60 seconds. OTel gives you the plumbing; good signal naming, sampling, and correlation give you the power. The investment pays for itself the first time you diagnose an incident in production with a full trace instead of grep.</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-body');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'copied!';
+    btn.style.color = 'var(--trace)';
+    btn.style.borderColor = 'var(--trace)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('.section');
+const links = document.querySelectorAll('.sb-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+  });
+}, { rootMargin: '-56px 0px -72% 0px' });
+sections.forEach(s => s.id && observer.observe(s));
+</script>
+
+<script src='../scripts/handbook-ui.js'></script>
+</body>
+</html>
+

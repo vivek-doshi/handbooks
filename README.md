@@ -187,23 +187,23 @@ This repository is a collection of quick handbooks and reference documents that 
 ## Upcoming Handbooks
 
 ### Security
-- devsecops-handbook.html — Shifting security left (SAST, DAST, SCA in CI/CD).
-- software-supply-chain-security-handbook.html — SBOMs (Software Bill of Materials), Sigstore, and securing dependencies (crucial in the AI era where we pull unknown packages).
-- zero-trust-architecture-handbook.html — Beyond VPNs. Identity-based access, micro-segmentation, and Zero Trust network paradigms.
-- ai-security-and-adversarial-handbook.html — Prompt injection defense, data leakage prevention in LLMs, and AI red-teaming.
+- devsecops-handbook.html — Shifting security left (SAST, DAST, SCA in CI/CD). - done
+- software-supply-chain-security-handbook.html — SBOMs (Software Bill of Materials), Sigstore, and securing dependencies (crucial in the AI era where we pull unknown packages) - done
+- zero-trust-architecture-handbook.html — Beyond VPNs. Identity-based access, micro-segmentation, and Zero Trust network paradigms. - done 
+- ai-security-and-adversarial-handbook.html — Prompt injection defense, data leakage prevention in LLMs, and AI red-teaming. - done 
 
 ### AI Production & Governance
-- llm-evaluation-and-testing-handbook.html — Frameworks like RAGAS, TruLens, DeepEval. How do we mathematically prove our RAG system is getting better?
-- ai-guardrails-handbook.html — NeMo Guardrails, Llama Guard. Keeping agents within operational boundaries.
-- vector-databases-enterprise-handbook.html — You have Advanced RAG, but we need a dedicated refresher on Pinecone, Milvus, Qdrant, and pgvector internals. Vector DBs are the new Relational DBs.
+- llm-evaluation-and-testing-handbook.html — Frameworks like RAGAS, TruLens, DeepEval. How do we mathematically prove our RAG system is getting better? - done 
+- ai-guardrails-handbook.html — NeMo Guardrails, Llama Guard. Keeping agents within operational boundaries. - done 
+- vector-databases-enterprise-handbook.html — You have Advanced RAG, but we need a dedicated refresher on Pinecone, Milvus, Qdrant, and pgvector internals. Vector DBs are the new Relational DBs. done 
 
 ### Observability & Reliability
-- opentelemetry-handbook.html — The industry standard for traces, metrics, and logs. If an engineer doesn't know OTel, they can't debug modern systems.
-- distributed-tracing-handbook.html — Jaeger, Zipkin. Following a request across 8 microservices and 3 LLM calls.
+- opentelemetry-handbook.html — The industry standard for traces, metrics, and logs. If an engineer doesn't know OTel, they can't debug modern systems. - done 
+- distributed-tracing-handbook.html — Jaeger, Zipkin. Following a request across 8 microservices and 3 LLM calls.  done
 - chaos-engineering-handbook.html — Gremlin, Litmus. How we intentionally break things to prove resilience.
 
 ### Architecture
-- event-driven-architecture-handbook.html — Kafka, Pulsar, RabbitMQ. Event sourcing vs. Pub/Sub. This is the backbone of modern enterprise scaling.
-- grpc-and-protocol-buffers-handbook.html — High-performance RPC. Crucial for inter-microservice communication.
-- graphql-enterprise-handbook.html — When to use it, when not to use it (a common ARB pushback point).
-- api-gateway-patterns-handbook.html — Kong, Apigee. Rate limiting, throttling, and exposing AI tools safely to the outside world.
+- event-driven-architecture-handbook.html — Kafka, Pulsar, RabbitMQ. Event sourcing vs. Pub/Sub. This is the backbone of modern enterprise scaling. - done
+- grpc-and-protocol-buffers-handbook.html — High-performance RPC. Crucial for inter-microservice communication. - done 
+- graphql-enterprise-handbook.html — When to use it, when not to use it (a common ARB pushback point). - done 
+- api-gateway-patterns-handbook.html — Kong, Apigee. Rate limiting, throttling, and exposing AI tools safely to the outside world. - done

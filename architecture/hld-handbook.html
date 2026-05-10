@@ -1,0 +1,1655 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>High-Level Design Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:        #0c0e14;
+    --bg-surface:     #12151f;
+    --bg-card:        #181c28;
+    --bg-code:        #0e1117;
+    --bg-sidebar:     #10131b;
+    --border:         #1f2535;
+    --border-accent:  #2e3a58;
+    --text-primary:   #e8ecf5;
+    --text-secondary: #8b95b0;
+    --text-muted:     #4a5570;
+    --accent-blue:    #4f8ef7;
+    --accent-cyan:    #22d3ee;
+    --accent-green:   #34d399;
+    --accent-orange:  #fb923c;
+    --accent-purple:  #a78bfa;
+    --accent-yellow:  #fbbf24;
+    --accent-red:     #f87171;
+    --accent-pink:    #f472b6;
+    --sidebar-w:      280px;
+    --top-h:          60px;
+    --radius:         8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* â”€â”€â”€ TOP BAR â”€â”€â”€ */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: var(--top-h);
+    background: rgba(12,14,20,0.96);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+  }
+  .topbar-logo {
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700;
+    color: var(--text-primary); text-decoration: none; letter-spacing: -0.3px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px; border-radius: 7px;
+    background: linear-gradient(135deg, #1d4ed8 0%, #4f8ef7 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .logo-sub { color: var(--text-secondary); font-weight: 400; font-size: 13px; margin-left: 4px; }
+  .topbar-meta { display: flex; align-items: center; gap: 14px; }
+  .badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 3px 10px; border-radius: 20px; letter-spacing: 0.5px; font-weight: 500;
+  }
+  .badge-arch   { background: rgba(79,142,247,0.15);  color: var(--accent-blue);   border: 1px solid rgba(79,142,247,0.35); }
+  .badge-design { background: rgba(167,139,250,0.12); color: var(--accent-purple); border: 1px solid rgba(167,139,250,0.3); }
+  .badge-sys    { background: rgba(34,211,238,0.12);  color: var(--accent-cyan);   border: 1px solid rgba(34,211,238,0.3); }
+
+  /* â”€â”€â”€ LAYOUT â”€â”€â”€ */
+  .layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); }
+
+  /* â”€â”€â”€ SIDEBAR â”€â”€â”€ */
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    position: sticky; top: var(--top-h);
+    height: calc(100vh - var(--top-h));
+    overflow-y: auto; overflow-x: hidden;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    padding: 24px 0 40px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 4px; }
+  .sidebar-section { margin-bottom: 8px; }
+  .sidebar-section-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-muted); padding: 12px 20px 6px;
+  }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 20px; text-decoration: none;
+    color: var(--text-secondary); font-size: 13.5px; font-weight: 400;
+    border-left: 3px solid transparent; transition: all 0.18s; line-height: 1.3;
+  }
+  .sidebar-link:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); border-left-color: var(--border-accent); }
+  .sidebar-link.active { color: var(--accent-blue); background: rgba(79,142,247,0.08); border-left-color: var(--accent-blue); font-weight: 500; }
+  .sidebar-link .icon { font-size: 14px; opacity: 0.85; width: 16px; text-align: center; }
+
+  /* â”€â”€â”€ MAIN â”€â”€â”€ */
+  .main { flex: 1; min-width: 0; padding: 48px 56px 80px; max-width: 980px; }
+
+  /* â”€â”€â”€ HERO â”€â”€â”€ */
+  .hero {
+    margin-bottom: 60px; padding: 48px 52px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 85% 0%,   rgba(79,142,247,0.13) 0%, transparent 55%),
+      radial-gradient(ellipse at 10% 100%,  rgba(167,139,250,0.07) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent-blue); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hero-tag::before { content: '//'; opacity: 0.45; }
+  .hero h1 {
+    font-family: 'Sora', sans-serif; font-size: 38px; font-weight: 700;
+    line-height: 1.15; letter-spacing: -1px; margin-bottom: 16px;
+    background: linear-gradient(135deg, #e8ecf5 30%, #4f8ef7 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero p { color: var(--text-secondary); font-size: 16px; max-width: 600px; line-height: 1.7; }
+  .hero-chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+  .chip {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    padding: 5px 14px; border-radius: 6px; border: 1px solid;
+  }
+  .chip-blue   { color: var(--accent-blue);   border-color: rgba(79,142,247,0.35);  background: rgba(79,142,247,0.08); }
+  .chip-green  { color: var(--accent-green);  border-color: rgba(52,211,153,0.35);  background: rgba(52,211,153,0.08); }
+  .chip-purple { color: var(--accent-purple); border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.08); }
+  .chip-cyan   { color: var(--accent-cyan);   border-color: rgba(34,211,238,0.35);  background: rgba(34,211,238,0.08); }
+  .chip-orange { color: var(--accent-orange); border-color: rgba(251,146,60,0.35);  background: rgba(251,146,60,0.08); }
+  .chip-pink   { color: var(--accent-pink);   border-color: rgba(244,114,182,0.35); background: rgba(244,114,182,0.08); }
+
+  /* â”€â”€â”€ SECTIONS â”€â”€â”€ */
+  .section { margin-bottom: 64px; scroll-margin-top: calc(var(--top-h) + 24px); }
+  .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+  .section-icon {
+    width: 38px; height: 38px; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .icon-blue   { background: rgba(79,142,247,0.15); }
+  .icon-cyan   { background: rgba(34,211,238,0.15); }
+  .icon-green  { background: rgba(52,211,153,0.15); }
+  .icon-orange { background: rgba(251,146,60,0.15); }
+  .icon-purple { background: rgba(167,139,250,0.15); }
+  .icon-pink   { background: rgba(244,114,182,0.15); }
+  .icon-yellow { background: rgba(251,191,36,0.15); }
+  .icon-red    { background: rgba(248,113,113,0.15); }
+
+  .section-title-wrap h2 {
+    font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 700;
+    letter-spacing: -0.3px; color: var(--text-primary);
+  }
+  .section-title-wrap .section-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .section-divider { height: 1px; background: linear-gradient(to right, var(--border), transparent); margin-bottom: 28px; }
+
+  /* â”€â”€â”€ CARDS â”€â”€â”€ */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px 26px; margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 600;
+    color: var(--text-primary); margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot-blue   { background: var(--accent-blue); }
+  .dot-green  { background: var(--accent-green); }
+  .dot-orange { background: var(--accent-orange); }
+  .dot-purple { background: var(--accent-purple); }
+  .dot-cyan   { background: var(--accent-cyan); }
+  .dot-pink   { background: var(--accent-pink); }
+  .dot-yellow { background: var(--accent-yellow); }
+  .dot-red    { background: var(--accent-red); }
+
+  .card p, .card li { color: var(--text-secondary); font-size: 14px; }
+  .card ul { padding-left: 18px; }
+  .card ul li { margin-bottom: 5px; }
+
+  /* â”€â”€â”€ INFO BOXES â”€â”€â”€ */
+  .info-box {
+    display: flex; gap: 14px; padding: 16px 20px;
+    border-radius: var(--radius); margin: 16px 0; border-left: 4px solid;
+  }
+  .info-box.tip  { background: rgba(52,211,153,0.08);  border-color: var(--accent-green); }
+  .info-box.note { background: rgba(79,142,247,0.08);  border-color: var(--accent-blue); }
+  .info-box.warn { background: rgba(251,146,60,0.08);  border-color: var(--accent-orange); }
+  .info-box.perf { background: rgba(167,139,250,0.08); border-color: var(--accent-purple); }
+  .info-box.danger { background: rgba(248,113,113,0.08); border-color: var(--accent-red); }
+  .info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .info-content { font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; }
+  .info-content strong { color: var(--text-primary); }
+
+  /* â”€â”€â”€ INLINE CODE â”€â”€â”€ */
+  code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+    background: rgba(79,142,247,0.1); color: var(--accent-blue);
+    padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(79,142,247,0.22);
+  }
+
+  /* â”€â”€â”€ GRID â”€â”€â”€ */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+  /* â”€â”€â”€ TABLE â”€â”€â”€ */
+  .ref-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .ref-table th {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-muted); padding: 10px 16px;
+    text-align: left; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border);
+  }
+  .ref-table td {
+    padding: 11px 16px; font-size: 13.5px; color: var(--text-secondary);
+    border-bottom: 1px solid rgba(31,37,53,0.6); vertical-align: top;
+  }
+  .ref-table tr:last-child td { border-bottom: none; }
+  .ref-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .ref-table td code { font-size: 11.5px; }
+
+  /* â”€â”€â”€ CODE BLOCKS â”€â”€â”€ */
+  .code-wrap {
+    background: var(--bg-code); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin: 16px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .code-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 18px; background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-lang { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+  .code-block { padding: 18px 20px; overflow-x: auto; font-size: 13px; line-height: 1.7; white-space: pre; tab-size: 4; color: var(--text-secondary); }
+  .cm { color: var(--text-muted); font-style: italic; }
+  .kw { color: var(--accent-purple); }
+  .st { color: var(--accent-green); }
+
+  /* â”€â”€â”€ PROSE â”€â”€â”€ */
+  .section p { color: var(--text-secondary); margin-bottom: 14px; font-size: 14.5px; }
+  h3 { font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 28px 0 12px; }
+
+  /* â”€â”€â”€ STEP LIST â”€â”€â”€ */
+  .step-list { counter-reset: steps; list-style: none; padding: 0; margin: 0; }
+  .step-list li {
+    counter-increment: steps;
+    display: flex; gap: 16px; padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .step-list li:last-child { border-bottom: none; }
+  .step-num {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(79,142,247,0.15); border: 1px solid rgba(79,142,247,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+    color: var(--accent-blue); margin-top: 2px;
+  }
+  .step-content-title { font-size: 14.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 5px; }
+  .step-content-body  { font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; }
+
+  /* â”€â”€â”€ PITFALL CARDS â”€â”€â”€ */
+  .pitfall-card {
+    background: var(--bg-card); border: 1px solid rgba(248,113,113,0.2);
+    border-left: 4px solid var(--accent-red);
+    border-radius: var(--radius); padding: 18px 22px; margin-bottom: 14px;
+  }
+  .pitfall-title {
+    font-family: 'Sora', sans-serif; font-size: 14.5px; font-weight: 600;
+    color: var(--accent-red); margin-bottom: 7px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .pitfall-body { font-size: 13.5px; color: var(--text-secondary); line-height: 1.65; }
+  .pitfall-fix  { font-size: 13px; color: var(--accent-green); margin-top: 8px; }
+  .pitfall-fix::before { content: 'âœ“ Fix: '; font-weight: 600; }
+
+  /* â”€â”€â”€ HLD vs LLD COMPARE TABLE â”€â”€â”€ */
+  .compare-row-header { background: rgba(255,255,255,0.03); }
+  .col-hld  { color: var(--accent-blue); font-weight: 600; }
+  .col-lld  { color: var(--accent-purple); font-weight: 600; }
+  .col-both { color: var(--accent-cyan); font-weight: 600; }
+
+  /* â”€â”€â”€ DIAGRAM AREA â”€â”€â”€ */
+  .diagram-wrap {
+    background: var(--bg-code); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px; margin: 20px 0;
+    overflow-x: auto;
+  }
+  .diagram-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 28px; text-align: center;
+  }
+
+  /* â”€â”€â”€ SVG DIAGRAM SHARED â”€â”€â”€ */
+  .diag-box {
+    fill: #181c28; stroke: #2e3a58; stroke-width: 1.5;
+    rx: 6;
+  }
+  .diag-box-blue   { fill: rgba(79,142,247,0.12);  stroke: rgba(79,142,247,0.5); }
+  .diag-box-green  { fill: rgba(52,211,153,0.1);   stroke: rgba(52,211,153,0.45); }
+  .diag-box-orange { fill: rgba(251,146,60,0.1);   stroke: rgba(251,146,60,0.45); }
+  .diag-box-purple { fill: rgba(167,139,250,0.1);  stroke: rgba(167,139,250,0.45); }
+  .diag-box-cyan   { fill: rgba(34,211,238,0.1);   stroke: rgba(34,211,238,0.45); }
+  .diag-box-red    { fill: rgba(248,113,113,0.1);  stroke: rgba(248,113,113,0.45); }
+  .diag-box-yellow { fill: rgba(251,191,36,0.1);   stroke: rgba(251,191,36,0.45); }
+
+  .diag-text       { fill: #e8ecf5; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 500; }
+  .diag-text-sm    { fill: #8b95b0; font-family: 'Space Grotesk', sans-serif; font-size: 11px; }
+  .diag-text-label { fill: #4a5570; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+  .diag-arrow { stroke: #2e3a58; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+  .diag-arrow-blue   { stroke: rgba(79,142,247,0.6); }
+  .diag-arrow-green  { stroke: rgba(52,211,153,0.5); }
+  .diag-arrow-orange { stroke: rgba(251,146,60,0.5); }
+
+  /* â”€â”€â”€ CHECKLIST â”€â”€â”€ */
+  .checklist { list-style: none; padding: 0; margin: 0; }
+  .checklist li {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 0; border-bottom: 1px solid rgba(31,37,53,0.5);
+    font-size: 13.5px; color: var(--text-secondary);
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .check-icon { font-size: 13px; margin-top: 2px; flex-shrink: 0; }
+  .check-must   { color: var(--accent-blue); }
+  .check-should { color: var(--accent-green); }
+  .check-nice   { color: var(--text-muted); }
+
+  /* â”€â”€â”€ TEMPLATE BLOCK â”€â”€â”€ */
+  .tpl-section {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; margin-bottom: 10px;
+  }
+  .tpl-header {
+    background: rgba(255,255,255,0.03); padding: 10px 18px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+    color: var(--accent-blue); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tpl-body {
+    padding: 14px 18px; font-size: 13.5px; color: var(--text-secondary);
+    line-height: 1.65;
+  }
+  .tpl-body ul { padding-left: 18px; }
+  .tpl-body li { margin-bottom: 4px; }
+  .tpl-required { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: rgba(79,142,247,0.15); color: var(--accent-blue); border: 1px solid rgba(79,142,247,0.3); margin-left: auto; }
+  .tpl-optional { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: rgba(74,85,112,0.3); color: var(--text-muted); border: 1px solid var(--border); margin-left: auto; }
+
+  /* â”€â”€â”€ SCROLLBAR â”€â”€â”€ */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 6px; }
+
+  /* â”€â”€â”€ RESPONSIVE â”€â”€â”€ */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { padding: 32px 24px 60px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .hero { padding: 32px 28px; }
+    .hero h1 { font-size: 28px; }
+  }
+</style>
+
+<link rel='stylesheet' href='../styles/shared-ui.css'>
+</head>
+<body>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â• TOP BAR â•â•â•â•â•â•â•â•â•â•â• -->
+<header class="topbar">
+  <a class="topbar-logo" href="#">
+    <div class="logo-icon">HLD</div>
+    <span>High-Level Design</span>
+    <span class="logo-sub">Handbook</span>
+  </a>
+  <div class="topbar-meta">
+    <span class="badge badge-arch">Architecture</span>
+    <span class="badge badge-design">System Design</span>
+    <span class="badge badge-sys">Distributed Systems</span>
+  </div>
+</header>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â• LAYOUT â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="layout">
+
+<!-- â•â•â• SIDEBAR â•â•â• -->
+<aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Foundations</div>
+    <a href="#what-is-hld"      class="sidebar-link active"><span class="icon">ðŸ“–</span> What is HLD?</a>
+    <a href="#hld-vs-lld"       class="sidebar-link"><span class="icon">âš–ï¸</span> HLD vs LLD</a>
+    <a href="#when-to-write"    class="sidebar-link"><span class="icon">ðŸ—“ï¸</span> When to Write</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Contents</div>
+    <a href="#what-to-include"  class="sidebar-link"><span class="icon">ðŸ“¦</span> What to Include</a>
+    <a href="#template"         class="sidebar-link"><span class="icon">ðŸ“‹</span> Document Template</a>
+    <a href="#diagram-types"    class="sidebar-link"><span class="icon">ðŸ—‚ï¸</span> Diagram Types</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">How to Create</div>
+    <a href="#process"          class="sidebar-link"><span class="icon">ðŸ”„</span> Step-by-Step Process</a>
+    <a href="#diagrams"         class="sidebar-link"><span class="icon">ðŸ–¼ï¸</span> Diagram Examples</a>
+    <a href="#example-hld"      class="sidebar-link"><span class="icon">ðŸ›’</span> Full Example: E-commerce</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Quality</div>
+    <a href="#pitfalls"         class="sidebar-link"><span class="icon">âš ï¸</span> Common Pitfalls</a>
+    <a href="#checklist"        class="sidebar-link"><span class="icon">âœ…</span> Review Checklist</a>
+    <a href="#tools"            class="sidebar-link"><span class="icon">ðŸ”§</span> Tools & Resources</a>
+  </div>
+</aside>
+
+<!-- â•â•â• MAIN â•â•â• -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag">Software Architecture</div>
+    <h1>High-Level Design<br>Handbook</h1>
+    <p>A comprehensive reference for engineers and architects â€” covering what HLD is, what it must contain, how to create one, common pitfalls, and real worked examples with diagrams.</p>
+    <div class="hero-chips">
+      <span class="chip chip-blue">System Architecture</span>
+      <span class="chip chip-purple">Component Design</span>
+      <span class="chip chip-green">Data Flow</span>
+      <span class="chip chip-cyan">Scalability</span>
+      <span class="chip chip-orange">API Design</span>
+      <span class="chip chip-pink">Non-Functional Reqs</span>
+    </div>
+  </div>
+
+  <!-- â•â•â•â•â•â• WHAT IS HLD â•â•â•â•â•â• -->
+  <section class="section" id="what-is-hld">
+    <div class="section-header">
+      <div class="section-icon icon-blue">ðŸ“–</div>
+      <div class="section-title-wrap">
+        <h2>What is High-Level Design?</h2>
+        <div class="section-sub">Definition, purpose, and where it fits in the SDLC</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>High-Level Design (HLD) is a macro-level architectural blueprint of a software system. It defines <strong>what</strong> major components exist, <strong>how</strong> they interact, and <strong>why</strong> those design choices were made â€” without diving into implementation specifics like class hierarchies or database schemas.</p>
+
+    <p>An HLD answers the question: <em>"If this system were a city, what are the districts, highways, and utilities â€” and how do they connect?"</em> It is the first design artifact produced after requirements are gathered, and it is the primary communication tool between architects, engineers, product managers, and stakeholders.</p>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>Scope</div>
+        <p>System-wide view. Focuses on major components, services, databases, and external integrations â€” not individual classes or functions.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-purple"></span>Audience</div>
+        <p>Technical leads, architects, senior engineers, product managers, and DevOps. Must be readable by both technical and semi-technical stakeholders.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>Timing</div>
+        <p>Created after requirements are defined and before Low-Level Design (LLD) or implementation begins. Feeds into sprint planning and effort estimation.</p>
+      </div>
+    </div>
+
+    <h3>Core goals of an HLD</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-cyan"></span>Alignment</div>
+        <p>Creates shared understanding of system structure across all teams. Reduces ambiguity, prevents "we assumed you'd handle that" conversations.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-orange"></span>Decision Record</div>
+        <p>Documents architectural decisions and their rationale (the "why"). Crucial for onboarding future engineers and for audit/compliance purposes.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-pink"></span>Risk Identification</div>
+        <p>Forces early thinking about scalability, single points of failure, security boundaries, and integration complexity â€” when changes are cheap.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-yellow"></span>Estimation Foundation</div>
+        <p>Provides the structure for breaking work into epics and stories. Teams cannot accurately estimate without understanding the system shape.</p>
+      </div>
+    </div>
+
+    <div class="info-box note">
+      <div class="info-icon">ðŸ’¡</div>
+      <div class="info-content"><strong>HLD is a living document.</strong> It is not a one-time artifact. As the system evolves, the HLD must be updated to reflect architectural changes. Treat it like code â€” version-controlled, reviewed, and kept current.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â•â•â•â• HLD vs LLD â•â•â•â•â•â• -->
+  <section class="section" id="hld-vs-lld">
+    <div class="section-header">
+      <div class="section-icon icon-purple">âš–ï¸</div>
+      <div class="section-title-wrap">
+        <h2>HLD vs Low-Level Design</h2>
+        <div class="section-sub">Understanding the boundary between the two levels</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <table class="ref-table">
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th class="col-hld">High-Level Design (HLD)</th>
+          <th class="col-lld">Low-Level Design (LLD)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Granularity</strong></td>
+          <td>Services, modules, databases, external APIs</td>
+          <td>Classes, methods, algorithms, DB schemas</td>
+        </tr>
+        <tr>
+          <td><strong>Who reads it</strong></td>
+          <td>Architects, TLs, PMs, DevOps, all engineers</td>
+          <td>Implementing engineers on the specific module</td>
+        </tr>
+        <tr>
+          <td><strong>Key questions</strong></td>
+          <td>"What are the building blocks?" "How do they talk?"</td>
+          <td>"How is this class structured?" "What is the algorithm?"</td>
+        </tr>
+        <tr>
+          <td><strong>Diagrams</strong></td>
+          <td>Architecture diagrams, data-flow diagrams, deployment diagrams</td>
+          <td>Class diagrams, sequence diagrams, ER diagrams</td>
+        </tr>
+        <tr>
+          <td><strong>Technology mentions</strong></td>
+          <td>Technology choices with rationale (e.g., Kafka, PostgreSQL)</td>
+          <td>Specific library versions, exact table/column names</td>
+        </tr>
+        <tr>
+          <td><strong>Produced by</strong></td>
+          <td>System architect / tech lead</td>
+          <td>Senior / lead engineers per module</td>
+        </tr>
+        <tr>
+          <td><strong>Created when</strong></td>
+          <td>Before LLD; right after requirements finalised</td>
+          <td>After HLD is approved; before implementation</td>
+        </tr>
+        <tr>
+          <td><strong>Typical length</strong></td>
+          <td>5â€“20 pages with diagrams</td>
+          <td>Varies; module-specific, often 10â€“50 pages</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box tip">
+      <div class="info-icon">âœ…</div>
+      <div class="info-content"><strong>A useful rule of thumb:</strong> If you're writing something that a non-implementing engineer would need to read to understand the system topology â€” it belongs in the HLD. If it only matters when you sit down to write the code â€” it belongs in the LLD.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â•â•â•â• WHEN TO WRITE â•â•â•â•â•â• -->
+  <section class="section" id="when-to-write">
+    <div class="section-header">
+      <div class="section-icon icon-cyan">ðŸ—“ï¸</div>
+      <div class="section-title-wrap">
+        <h2>When to Write an HLD</h2>
+        <div class="section-sub">Triggers, scope thresholds, and SDLC positioning</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>Not every feature needs an HLD â€” but skipping one when you should write it is a common cause of expensive mid-project rework. Use this threshold guide:</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>âœ… Write an HLD whenâ€¦</div>
+        <ul>
+          <li>Building a new service or application from scratch</li>
+          <li>Introducing a new major subsystem (e.g., a notification pipeline, payment gateway)</li>
+          <li>Adding a new external integration or third-party dependency</li>
+          <li>Changing a core architectural layer (e.g., migrating to event-driven)</li>
+          <li>The change involves 3+ engineers or 2+ teams</li>
+          <li>The effort is estimated at more than 2 weeks</li>
+          <li>Regulatory / compliance review is required</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-red"></span>âš¡ An HLD may be overkill forâ€¦</div>
+        <ul>
+          <li>A bug fix or small feature within a single service</li>
+          <li>A UI-only change with no backend implications</li>
+          <li>Minor configuration changes (feature flags, threshold adjustments)</li>
+          <li>A single-engineer spike or proof of concept</li>
+          <li>Work within a well-understood, well-documented bounded context</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>HLD in the SDLC</h3>
+    <div class="diagram-wrap">
+      <div class="diagram-title">Software Development Lifecycle â€” Where HLD Fits</div>
+      <svg viewBox="0 0 820 120" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:600px;">
+        <defs>
+          <marker id="arr1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#2e3a58"/>
+          </marker>
+        </defs>
+        <!-- Requirements -->
+        <rect x="10" y="30" width="110" height="60" rx="6" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+        <text x="65" y="55" text-anchor="middle" fill="#34d399" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Requirements</text>
+        <text x="65" y="72" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Gathering</text>
+        <!-- Arrow -->
+        <line x1="122" y1="60" x2="148" y2="60" stroke="#2e3a58" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <!-- HLD â€” highlighted -->
+        <rect x="150" y="22" width="120" height="76" rx="6" fill="rgba(79,142,247,0.18)" stroke="rgba(79,142,247,0.7)" stroke-width="2"/>
+        <text x="210" y="50" text-anchor="middle" fill="#4f8ef7" font-family="Space Grotesk,sans-serif" font-size="13" font-weight="700">HLD</text>
+        <text x="210" y="67" text-anchor="middle" fill="#e8ecf5" font-family="Space Grotesk,sans-serif" font-size="10">High-Level</text>
+        <text x="210" y="81" text-anchor="middle" fill="#e8ecf5" font-family="Space Grotesk,sans-serif" font-size="10">Design</text>
+        <text x="210" y="97" text-anchor="middle" fill="#4f8ef7" font-family="JetBrains Mono,monospace" font-size="9">â† you are here</text>
+        <!-- Arrow -->
+        <line x1="272" y1="60" x2="298" y2="60" stroke="#2e3a58" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <!-- LLD -->
+        <rect x="300" y="30" width="110" height="60" rx="6" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.4)" stroke-width="1.5"/>
+        <text x="355" y="55" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">LLD</text>
+        <text x="355" y="72" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Low-Level Design</text>
+        <!-- Arrow -->
+        <line x1="412" y1="60" x2="438" y2="60" stroke="#2e3a58" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <!-- Implementation -->
+        <rect x="440" y="30" width="110" height="60" rx="6" fill="rgba(251,146,60,0.1)" stroke="rgba(251,146,60,0.4)" stroke-width="1.5"/>
+        <text x="495" y="55" text-anchor="middle" fill="#fb923c" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Implementation</text>
+        <text x="495" y="72" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">& Testing</text>
+        <!-- Arrow -->
+        <line x1="552" y1="60" x2="578" y2="60" stroke="#2e3a58" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <!-- Deployment -->
+        <rect x="580" y="30" width="110" height="60" rx="6" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.4)" stroke-width="1.5"/>
+        <text x="635" y="55" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Deployment</text>
+        <text x="635" y="72" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">& Monitoring</text>
+        <!-- Arrow -->
+        <line x1="692" y1="60" x2="718" y2="60" stroke="#2e3a58" stroke-width="1.5" marker-end="url(#arr1)"/>
+        <!-- Maintenance -->
+        <rect x="720" y="30" width="92" height="60" rx="6" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.4)" stroke-width="1.5"/>
+        <text x="766" y="55" text-anchor="middle" fill="#fbbf24" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Maintain</text>
+        <text x="766" y="72" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">& Iterate</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- â•â•â•â•â•â• WHAT TO INCLUDE â•â•â•â•â•â• -->
+  <section class="section" id="what-to-include">
+    <div class="section-header">
+      <div class="section-icon icon-orange">ðŸ“¦</div>
+      <div class="section-title-wrap">
+        <h2>What to Include in an HLD</h2>
+        <div class="section-sub">The mandatory and recommended sections of every HLD</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>1. Executive Summary</div>
+        <p>1â€“2 paragraphs. Why does this system exist? What problem does it solve? Who are the key stakeholders? What is out of scope?</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-purple"></span>2. Requirements Summary</div>
+        <p>Functional requirements (what the system does) and non-functional requirements â€” NFRs â€” (performance, availability, security, scalability targets). These drive every architectural decision.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>3. System Architecture Diagram</div>
+        <p>The core visual. Shows all major components, services, databases, queues, and their connections. Must include external systems and clients. Label every arrow with the protocol.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-orange"></span>4. Component Descriptions</div>
+        <p>One brief section per major component. What is its single responsibility? What does it own? What does it not own? What are its interfaces?</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-cyan"></span>5. Data Flow Diagrams</div>
+        <p>How data moves through the system for the 2â€“3 most important use cases. Makes implicit sequencing explicit and reveals integration points early.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-pink"></span>6. Data Storage Strategy</div>
+        <p>Which databases, caches, or object stores are used and why. Data models at the entity level (not schema level). Ownership â€” which service owns which data.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-yellow"></span>7. API & Integration Design</div>
+        <p>Key APIs between services â€” method names, payloads at a high level. External integrations and third-party dependencies. Communication patterns: REST, gRPC, event-driven, etc.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-red"></span>8. Non-Functional Considerations</div>
+        <p>Scalability strategy (horizontal vs vertical), caching layers, CDN usage, rate limiting, failover, circuit breakers, observability (metrics, logging, tracing).</p>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:16px;">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>9. Security Architecture</div>
+        <p>Authentication/authorization strategy (OAuth2, JWT, RBAC), network boundaries, secrets management, data encryption at rest and in transit, and known threat vectors.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>10. Deployment Architecture</div>
+        <p>How the system is deployed â€” cloud provider, regions, containerisation, orchestration. CI/CD approach at a high level. IaC strategy.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-purple"></span>11. Architectural Decision Records (ADRs)</div>
+        <p>A table or list of key decisions made, alternatives considered, and the rationale for the chosen approach. This is the most valuable long-term artefact.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-orange"></span>12. Open Issues & Risks</div>
+        <p>Unresolved questions, known risks, assumptions made, and dependencies on external teams or decisions. Keeps stakeholders honest about unknowns.</p>
+      </div>
+    </div>
+
+    <div class="info-box warn">
+      <div class="info-icon">âš ï¸</div>
+      <div class="info-content"><strong>Avoid scope creep into LLD.</strong> The moment you start writing class names, method signatures, SQL table definitions, or specific library versions â€” stop. Those belong in the LLD. HLD must stay at the component/service level.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â•â•â•â• TEMPLATE â•â•â•â•â•â• -->
+  <section class="section" id="template">
+    <div class="section-header">
+      <div class="section-icon icon-cyan">ðŸ“‹</div>
+      <div class="section-title-wrap">
+        <h2>Document Template</h2>
+        <div class="section-sub">A ready-to-use HLD document structure</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">ðŸ“„ Title & Metadata <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        <ul>
+          <li>Document title: <em>[System/Feature Name] â€” High-Level Design</em></li>
+          <li>Authors, reviewers, approvers</li>
+          <li>Version, status (Draft / In Review / Approved), date</li>
+          <li>Related documents (PRD, RFC, JIRA epic link)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">1. Executive Summary <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        What problem are we solving? Why now? Who are the users? What is explicitly out of scope?
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">2. Requirements <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        <ul>
+          <li><strong>Functional:</strong> List the top 5â€“10 capabilities the system must have.</li>
+          <li><strong>Non-Functional:</strong> Availability (e.g., 99.9% SLA), latency budgets (p99 &lt; 200ms), throughput (10k RPS peak), storage volumes, data retention, compliance requirements.</li>
+          <li><strong>Constraints:</strong> Existing tech stack, budget limits, timeline, team size.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">3. System Architecture <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        Architecture diagram + brief prose explaining the design pattern chosen (monolith, microservices, event-driven, CQRS, etc.) and why.
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">4. Component Descriptions <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        For each major component: responsibility, inputs/outputs, tech stack choice, scaling characteristics.
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">5. Data Flow Diagrams <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        Cover the 2â€“3 most critical flows (e.g., user login, order placement, data ingestion). Show actors, components crossed, and data transformations.
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">6. Data Storage & Ownership <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        Database choices with rationale, data ownership by service, caching strategy, replication/backup approach.
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">7. API & Integration Design <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        Key service-to-service APIs, external dependencies, event contracts, and SLAs for third-party integrations.
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">8. Security Architecture <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        Auth/authz model, network segmentation, PII handling, secrets management, encryption strategy.
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">9. Non-Functional Architecture <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        Scalability approach, fault tolerance, observability (metrics/logs/traces), disaster recovery, and capacity planning.
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">10. Deployment Architecture <span class="tpl-optional">RECOMMENDED</span></div>
+      <div class="tpl-body">
+        Infrastructure diagram, environments (dev/staging/prod), CI/CD pipeline overview, infrastructure-as-code approach.
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">11. Architectural Decision Records <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        Table: Decision | Alternatives Considered | Rationale | Date | Owner
+      </div>
+    </div>
+
+    <div class="tpl-section">
+      <div class="tpl-header">12. Open Issues, Risks & Assumptions <span class="tpl-required">REQUIRED</span></div>
+      <div class="tpl-body">
+        Track unresolved questions, external dependencies, and risks with owners and resolution dates.
+      </div>
+    </div>
+  </section>
+
+  <!-- â•â•â•â•â•â• DIAGRAM TYPES â•â•â•â•â•â• -->
+  <section class="section" id="diagram-types">
+    <div class="section-header">
+      <div class="section-icon icon-purple">ðŸ—‚ï¸</div>
+      <div class="section-title-wrap">
+        <h2>Diagram Types in HLD</h2>
+        <div class="section-sub">Which diagrams to include and when to use each</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <table class="ref-table">
+      <thead>
+        <tr><th>Diagram Type</th><th>Purpose</th><th>When to Include</th><th>Tools</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Architecture Diagram</strong><br><code style="font-size:11px;">C4 Context / Container</code></td>
+          <td>Shows major components, services, and their connections. The single most important diagram.</td>
+          <td>Always â€” every HLD must have one</td>
+          <td>draw.io, Lucidchart, Excalidraw, C4 model</td>
+        </tr>
+        <tr>
+          <td><strong>Data Flow Diagram (DFD)</strong></td>
+          <td>Shows how data moves through the system â€” inputs, processes, storage, outputs</td>
+          <td>Any system with complex data transformations or pipelines</td>
+          <td>draw.io, Miro, Lucidchart</td>
+        </tr>
+        <tr>
+          <td><strong>Sequence Diagram</strong></td>
+          <td>Shows interactions over time between components for a specific use case</td>
+          <td>Complex multi-service flows â€” auth, checkout, notifications</td>
+          <td>PlantUML, Mermaid, Sequence Diagram.org</td>
+        </tr>
+        <tr>
+          <td><strong>Deployment Diagram</strong></td>
+          <td>Shows physical/cloud infrastructure â€” VPCs, regions, pods, load balancers</td>
+          <td>Cloud or distributed deployments</td>
+          <td>draw.io, AWS Architecture Diagrams</td>
+        </tr>
+        <tr>
+          <td><strong>Entity-Relationship (high level)</strong></td>
+          <td>Shows major data entities and their relationships â€” not table schemas</td>
+          <td>Data-heavy systems, multi-service data ownership questions</td>
+          <td>draw.io, dbdiagram.io (conceptual level)</td>
+        </tr>
+        <tr>
+          <td><strong>State Diagram</strong></td>
+          <td>Shows lifecycle states of a key domain object (e.g., an Order)</td>
+          <td>When a domain object has complex state transitions</td>
+          <td>PlantUML, draw.io, Mermaid</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box perf">
+      <div class="info-icon">ðŸŽ¯</div>
+      <div class="info-content"><strong>Diagramming principle:</strong> Each diagram should have a single purpose and be readable in under 2 minutes. If a single diagram needs a legend with more than 8 items, split it into two diagrams. Always label arrows with the protocol (HTTP, gRPC, AMQP, etc.).</div>
+    </div>
+  </section>
+
+  <!-- â•â•â•â•â•â• PROCESS â•â•â•â•â•â• -->
+  <section class="section" id="process">
+    <div class="section-header">
+      <div class="section-icon icon-green">ðŸ”„</div>
+      <div class="section-title-wrap">
+        <h2>Step-by-Step: How to Create an HLD</h2>
+        <div class="section-sub">A repeatable process from requirements to approved document</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <ol class="step-list">
+      <li>
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-content-title">Understand and document requirements</div>
+          <div class="step-content-body">Before drawing anything, extract both functional and non-functional requirements. Interview stakeholders, review the PRD, and identify the three most critical user journeys. Write down explicit capacity targets: peak RPS, storage volumes, latency SLAs, availability targets (e.g., 99.9% = 8.7 hours downtime/year). <strong>NFRs drive architecture more than functional requirements do.</strong></div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-content-title">Identify and bound major components</div>
+          <div class="step-content-body">List every major capability the system needs (auth, product catalog, orders, payments, notifications, etc.). Group related capabilities into bounded contexts or services. Apply the Single Responsibility Principle: each component should have one clear job. Name things by what they do, not how they do it.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-content-title">Choose the right architectural pattern</div>
+          <div class="step-content-body">Match the pattern to the scale and team. A startup with 5 engineers doesn't need microservices. Options include: Monolith (fastest to build), Modular Monolith (structured, but single deploy), Microservices (independent scaling, team autonomy), Event-Driven (async decoupling), CQRS (read/write separation). Document the pattern chosen and the alternatives rejected.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-content-title">Draw the architecture diagram first</div>
+          <div class="step-content-body">Start with a whiteboard or Excalidraw. Put clients at the top, databases at the bottom, services in the middle. Draw arrows representing data flow and label each with the protocol. Use the C4 model: start at Context level (system + external users), then drill into Container level (services, databases, queues). Get this diagram reviewed before writing any prose.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">5</div>
+        <div>
+          <div class="step-content-title">Document data flows for critical paths</div>
+          <div class="step-content-body">Pick the 2â€“3 most important use cases (usually: user registration, the primary write path, and the primary read path). Trace data from entry point through every component to final storage/response. Use sequence diagrams or numbered flow diagrams. These reveal hidden complexity and missing components early.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">6</div>
+        <div>
+          <div class="step-content-title">Define data ownership and storage choices</div>
+          <div class="step-content-body">For each service, define what data it owns and what database type is appropriate. SQL for relational/transactional data, NoSQL for document/flexible-schema data, cache for ephemeral/hot data, object storage for blobs. Never share a database between services â€” use APIs or events instead. Document replication, backup, and recovery strategy.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">7</div>
+        <div>
+          <div class="step-content-title">Address non-functional requirements explicitly</div>
+          <div class="step-content-body">For each NFR, describe the mechanism: How will you achieve 99.9% uptime? (Multi-region, health checks, auto-restart.) How will you handle 10x traffic spike? (Horizontal scaling, queue-based load leveling.) How will you detect failures? (Distributed tracing, alerting on SLOs.) NFRs without mechanisms are just wishful thinking.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">8</div>
+        <div>
+          <div class="step-content-title">Document architectural decisions (ADRs)</div>
+          <div class="step-content-body">For every major decision (database choice, communication protocol, caching strategy, auth mechanism), create an ADR entry: what was decided, what alternatives were considered, and why this choice was made. ADRs are the most valuable long-term output of the HLD process because they prevent the same debates recurring six months later.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">9</div>
+        <div>
+          <div class="step-content-title">Conduct a structured review</div>
+          <div class="step-content-body">Share the draft with at least: one other senior engineer, a security reviewer, a representative from operations/DevOps, and a product manager. Run a dedicated 60-minute review session. Specifically stress-test failure scenarios: "What happens if Service X is down?" "What happens if the database has a 5-second spike?" Capture all feedback and resolve before marking Approved.</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-num">10</div>
+        <div>
+          <div class="step-content-title">Version-control and maintain the document</div>
+          <div class="step-content-body">Store the HLD in a version-controlled wiki (Confluence, Notion, GitHub). Add a clear version history table. Update the document when significant architectural changes are made. Consider the HLD "stale" if it hasn't been reviewed in 6 months and the system is actively evolving.</div>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- â•â•â•â•â•â• DIAGRAM EXAMPLES â•â•â•â•â•â• -->
+  <section class="section" id="diagrams">
+    <div class="section-header">
+      <div class="section-icon icon-blue">ðŸ–¼ï¸</div>
+      <div class="section-title-wrap">
+        <h2>Diagram Examples</h2>
+        <div class="section-sub">Architecture, data flow, and sequence diagram patterns</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>Pattern 1 â€” 3-Tier Web Architecture</h3>
+    <div class="diagram-wrap">
+      <div class="diagram-title">Classic 3-Tier: Client â†’ API Layer â†’ Data Layer</div>
+      <svg viewBox="0 0 780 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:500px;">
+        <defs>
+          <marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#4f8ef7"/>
+          </marker>
+          <marker id="ah2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#34d399"/>
+          </marker>
+          <marker id="ah3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#a78bfa"/>
+          </marker>
+        </defs>
+
+        <!-- Layer labels -->
+        <text x="14" y="70" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="1" transform="rotate(-90,14,70)">CLIENT</text>
+        <text x="14" y="185" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="1" transform="rotate(-90,14,185)">API LAYER</text>
+        <text x="14" y="295" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="1" transform="rotate(-90,14,295)">DATA LAYER</text>
+
+        <!-- Horizontal dividers -->
+        <line x1="30" y1="115" x2="770" y2="115" stroke="#1f2535" stroke-width="1" stroke-dasharray="4,4"/>
+        <line x1="30" y1="230" x2="770" y2="230" stroke="#1f2535" stroke-width="1" stroke-dasharray="4,4"/>
+
+        <!-- CLIENTS -->
+        <rect x="60" y="30" width="120" height="60" rx="6" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.45)" stroke-width="1.5"/>
+        <text x="120" y="55" text-anchor="middle" fill="#34d399" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Web App</text>
+        <text x="120" y="72" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">React / Vue</text>
+
+        <rect x="220" y="30" width="120" height="60" rx="6" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.45)" stroke-width="1.5"/>
+        <text x="280" y="55" text-anchor="middle" fill="#34d399" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Mobile App</text>
+        <text x="280" y="72" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">iOS / Android</text>
+
+        <rect x="380" y="30" width="120" height="60" rx="6" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.45)" stroke-width="1.5"/>
+        <text x="440" y="55" text-anchor="middle" fill="#34d399" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">3rd Party</text>
+        <text x="440" y="72" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Webhooks / API</text>
+
+        <!-- Arrows to CDN/LB -->
+        <line x1="120" y1="90" x2="200" y2="135" stroke="rgba(79,142,247,0.5)" stroke-width="1.5" marker-end="url(#ah)" stroke-dasharray="none"/>
+        <line x1="280" y1="90" x2="240" y2="135" stroke="rgba(79,142,247,0.5)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <line x1="440" y1="90" x2="350" y2="135" stroke="rgba(79,142,247,0.5)" stroke-width="1.5" marker-end="url(#ah)"/>
+
+        <!-- CDN -->
+        <rect x="570" y="30" width="120" height="60" rx="6" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.45)" stroke-width="1.5"/>
+        <text x="630" y="55" text-anchor="middle" fill="#fbbf24" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">CDN</text>
+        <text x="630" y="72" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">CloudFront / Fastly</text>
+
+        <!-- API LAYER -->
+        <rect x="100" y="135" width="130" height="60" rx="6" fill="rgba(79,142,247,0.12)" stroke="rgba(79,142,247,0.55)" stroke-width="1.5"/>
+        <text x="165" y="161" text-anchor="middle" fill="#4f8ef7" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">API Gateway</text>
+        <text x="165" y="178" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Auth Â· Rate Limit Â· Route</text>
+
+        <rect x="280" y="135" width="130" height="60" rx="6" fill="rgba(79,142,247,0.12)" stroke="rgba(79,142,247,0.55)" stroke-width="1.5"/>
+        <text x="345" y="161" text-anchor="middle" fill="#4f8ef7" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">App Server</text>
+        <text x="345" y="178" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Business Logic</text>
+
+        <rect x="460" y="135" width="130" height="60" rx="6" fill="rgba(79,142,247,0.12)" stroke="rgba(79,142,247,0.55)" stroke-width="1.5"/>
+        <text x="525" y="161" text-anchor="middle" fill="#4f8ef7" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Message Queue</text>
+        <text x="525" y="178" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Kafka / RabbitMQ</text>
+
+        <!-- API Layer arrows -->
+        <line x1="230" y1="165" x2="278" y2="165" stroke="rgba(79,142,247,0.5)" stroke-width="1.5" marker-end="url(#ah)"/>
+        <line x1="410" y1="165" x2="458" y2="165" stroke="rgba(79,142,247,0.5)" stroke-width="1.5" marker-end="url(#ah)"/>
+
+        <!-- Arrows to data layer -->
+        <line x1="345" y1="195" x2="200" y2="250" stroke="rgba(52,211,153,0.5)" stroke-width="1.5" marker-end="url(#ah2)"/>
+        <line x1="345" y1="195" x2="390" y2="250" stroke="rgba(52,211,153,0.5)" stroke-width="1.5" marker-end="url(#ah2)"/>
+        <line x1="525" y1="195" x2="570" y2="250" stroke="rgba(167,139,250,0.5)" stroke-width="1.5" marker-end="url(#ah3)"/>
+
+        <!-- DATA LAYER -->
+        <rect x="100" y="250" width="130" height="60" rx="6" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.45)" stroke-width="1.5"/>
+        <text x="165" y="276" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Primary DB</text>
+        <text x="165" y="293" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">PostgreSQL / MySQL</text>
+
+        <rect x="280" y="250" width="130" height="60" rx="6" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.45)" stroke-width="1.5"/>
+        <text x="345" y="276" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Cache</text>
+        <text x="345" y="293" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Redis / Memcached</text>
+
+        <rect x="460" y="250" width="130" height="60" rx="6" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="525" y="276" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Object Storage</text>
+        <text x="525" y="293" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">S3 / GCS / Blob</text>
+
+        <!-- Protocol labels -->
+        <text x="255" y="128" text-anchor="middle" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="9">HTTPS</text>
+        <text x="376" y="158" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="9">REST</text>
+        <text x="444" y="158" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="9">AMQP</text>
+      </svg>
+    </div>
+
+    <h3>Pattern 2 â€” Microservices with Event Bus</h3>
+    <div class="diagram-wrap">
+      <div class="diagram-title">Event-Driven Microservices Architecture</div>
+      <svg viewBox="0 0 780 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:500px;">
+        <defs>
+          <marker id="ahm" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#4f8ef7"/>
+          </marker>
+          <marker id="ahe" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#fb923c"/>
+          </marker>
+        </defs>
+
+        <!-- Client -->
+        <rect x="30" y="115" width="100" height="55" rx="6" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+        <text x="80" y="139" text-anchor="middle" fill="#34d399" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Client</text>
+        <text x="80" y="157" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Web / Mobile</text>
+
+        <!-- API Gateway -->
+        <rect x="170" y="115" width="110" height="55" rx="6" fill="rgba(79,142,247,0.12)" stroke="rgba(79,142,247,0.55)" stroke-width="1.5"/>
+        <text x="225" y="139" text-anchor="middle" fill="#4f8ef7" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">API Gateway</text>
+        <text x="225" y="157" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Auth / Route</text>
+
+        <line x1="130" y1="142" x2="168" y2="142" stroke="rgba(79,142,247,0.5)" stroke-width="1.5" marker-end="url(#ahm)"/>
+        <text x="149" y="136" text-anchor="middle" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="9">HTTPS</text>
+
+        <!-- Services column -->
+        <rect x="330" y="30" width="110" height="50" rx="6" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="385" y="51" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">User Service</text>
+        <text x="385" y="68" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Auth Â· Profile</text>
+
+        <rect x="330" y="115" width="110" height="50" rx="6" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="385" y="136" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Order Service</text>
+        <text x="385" y="153" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Cart Â· Checkout</text>
+
+        <rect x="330" y="200" width="110" height="50" rx="6" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="385" y="221" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Product Service</text>
+        <text x="385" y="238" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Catalog Â· Inventory</text>
+
+        <!-- Arrows gateway to services -->
+        <line x1="280" y1="130" x2="328" y2="60" stroke="rgba(79,142,247,0.45)" stroke-width="1.5" marker-end="url(#ahm)"/>
+        <line x1="280" y1="142" x2="328" y2="142" stroke="rgba(79,142,247,0.45)" stroke-width="1.5" marker-end="url(#ahm)"/>
+        <line x1="280" y1="155" x2="328" y2="220" stroke="rgba(79,142,247,0.45)" stroke-width="1.5" marker-end="url(#ahm)"/>
+
+        <!-- Event Bus -->
+        <rect x="490" y="115" width="130" height="55" rx="6" fill="rgba(251,146,60,0.12)" stroke="rgba(251,146,60,0.55)" stroke-width="2"/>
+        <text x="555" y="138" text-anchor="middle" fill="#fb923c" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700">Event Bus</text>
+        <text x="555" y="156" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Kafka / EventBridge</text>
+
+        <!-- Services to event bus -->
+        <line x1="440" y1="55" x2="490" y2="130" stroke="rgba(251,146,60,0.45)" stroke-width="1.5" marker-end="url(#ahe)"/>
+        <line x1="440" y1="142" x2="488" y2="142" stroke="rgba(251,146,60,0.45)" stroke-width="1.5" marker-end="url(#ahe)"/>
+        <line x1="440" y1="225" x2="490" y2="158" stroke="rgba(251,146,60,0.45)" stroke-width="1.5" marker-end="url(#ahe)"/>
+
+        <!-- Consumers -->
+        <rect x="660" y="30" width="108" height="50" rx="6" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.45)" stroke-width="1.5"/>
+        <text x="714" y="51" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Notification</text>
+        <text x="714" y="68" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Email / SMS / Push</text>
+
+        <rect x="660" y="115" width="108" height="50" rx="6" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.45)" stroke-width="1.5"/>
+        <text x="714" y="136" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Analytics</text>
+        <text x="714" y="153" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">ClickStream Â· BI</text>
+
+        <rect x="660" y="200" width="108" height="50" rx="6" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.45)" stroke-width="1.5"/>
+        <text x="714" y="221" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Payment</text>
+        <text x="714" y="238" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">Billing Â· Invoicing</text>
+
+        <!-- Bus to consumers -->
+        <line x1="620" y1="130" x2="658" y2="60" stroke="rgba(34,211,238,0.45)" stroke-width="1.5" marker-end="url(#ahm)"/>
+        <line x1="620" y1="142" x2="658" y2="142" stroke="rgba(34,211,238,0.45)" stroke-width="1.5" marker-end="url(#ahm)"/>
+        <line x1="620" y1="155" x2="658" y2="220" stroke="rgba(34,211,238,0.45)" stroke-width="1.5" marker-end="url(#ahm)"/>
+
+        <!-- Event labels -->
+        <text x="465" y="108" fill="#fb923c" font-family="JetBrains Mono,monospace" font-size="9">publish</text>
+        <text x="626" y="108" fill="#22d3ee" font-family="JetBrains Mono,monospace" font-size="9">subscribe</text>
+      </svg>
+    </div>
+
+    <h3>Pattern 3 â€” Data Flow Diagram (User Login)</h3>
+    <div class="diagram-wrap">
+      <div class="diagram-title">Sequence: User Authentication Flow</div>
+      <svg viewBox="0 0 740 280" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:500px;">
+        <defs>
+          <marker id="ahseq" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#8b95b0"/>
+          </marker>
+          <marker id="ahseqb" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#4f8ef7"/>
+          </marker>
+        </defs>
+
+        <!-- Lifeline headers -->
+        <rect x="20" y="10" width="100" height="38" rx="5" fill="rgba(52,211,153,0.12)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+        <text x="70" y="34" text-anchor="middle" fill="#34d399" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Client</text>
+
+        <rect x="165" y="10" width="110" height="38" rx="5" fill="rgba(79,142,247,0.12)" stroke="rgba(79,142,247,0.4)" stroke-width="1.5"/>
+        <text x="220" y="34" text-anchor="middle" fill="#4f8ef7" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">API Gateway</text>
+
+        <rect x="325" y="10" width="110" height="38" rx="5" fill="rgba(167,139,250,0.12)" stroke="rgba(167,139,250,0.4)" stroke-width="1.5"/>
+        <text x="380" y="34" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Auth Service</text>
+
+        <rect x="488" y="10" width="110" height="38" rx="5" fill="rgba(34,211,238,0.12)" stroke="rgba(34,211,238,0.4)" stroke-width="1.5"/>
+        <text x="543" y="34" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">User DB</text>
+
+        <rect x="645" y="10" width="80" height="38" rx="5" fill="rgba(251,146,60,0.12)" stroke="rgba(251,146,60,0.4)" stroke-width="1.5"/>
+        <text x="685" y="34" text-anchor="middle" fill="#fb923c" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="600">Cache</text>
+
+        <!-- Lifelines -->
+        <line x1="70"  y1="48" x2="70"  y2="270" stroke="#1f2535" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="220" y1="48" x2="220" y2="270" stroke="#1f2535" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="380" y1="48" x2="380" y2="270" stroke="#1f2535" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="543" y1="48" x2="543" y2="270" stroke="#1f2535" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="685" y1="48" x2="685" y2="270" stroke="#1f2535" stroke-width="1" stroke-dasharray="3,4"/>
+
+        <!-- Step 1: POST /login -->
+        <line x1="75" y1="80" x2="215" y2="80" stroke="#8b95b0" stroke-width="1.5" marker-end="url(#ahseq)"/>
+        <text x="143" y="74" text-anchor="middle" fill="#8b95b0" font-family="JetBrains Mono,monospace" font-size="9">1. POST /login {email, password}</text>
+
+        <!-- Step 2: Validate token / route -->
+        <line x1="225" y1="105" x2="375" y2="105" stroke="#8b95b0" stroke-width="1.5" marker-end="url(#ahseq)"/>
+        <text x="300" y="99" text-anchor="middle" fill="#8b95b0" font-family="JetBrains Mono,monospace" font-size="9">2. Forward credentials</text>
+
+        <!-- Step 3: Check cache -->
+        <line x1="385" y1="130" x2="680" y2="130" stroke="#8b95b0" stroke-width="1.5" marker-end="url(#ahseq)"/>
+        <text x="535" y="124" text-anchor="middle" fill="#8b95b0" font-family="JetBrains Mono,monospace" font-size="9">3. GET session:{email}</text>
+
+        <!-- Step 4: Cache miss â†’ return -->
+        <line x1="680" y1="150" x2="385" y2="150" stroke="#4a5570" stroke-width="1.5" marker-end="url(#ahseqb)" stroke-dasharray="4,3"/>
+        <text x="535" y="145" text-anchor="middle" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="9">4. MISS</text>
+
+        <!-- Step 5: Query DB -->
+        <line x1="385" y1="175" x2="538" y2="175" stroke="#8b95b0" stroke-width="1.5" marker-end="url(#ahseq)"/>
+        <text x="462" y="169" text-anchor="middle" fill="#8b95b0" font-family="JetBrains Mono,monospace" font-size="9">5. SELECT user WHERE email=?</text>
+
+        <!-- Step 6: User record returned -->
+        <line x1="538" y1="195" x2="385" y2="195" stroke="#4a5570" stroke-width="1.5" marker-end="url(#ahseqb)" stroke-dasharray="4,3"/>
+        <text x="462" y="190" text-anchor="middle" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="9">6. user record + hash</text>
+
+        <!-- Step 7: Verify hash, issue JWT, set cache -->
+        <line x1="385" y1="218" x2="680" y2="218" stroke="#8b95b0" stroke-width="1.5" marker-end="url(#ahseq)"/>
+        <text x="535" y="212" text-anchor="middle" fill="#8b95b0" font-family="JetBrains Mono,monospace" font-size="9">7. SET session:{email} TTL=3600</text>
+
+        <!-- Step 8: Return JWT -->
+        <line x1="375" y1="242" x2="75" y2="242" stroke="#4f8ef7" stroke-width="2" marker-end="url(#ahseqb)" stroke-dasharray="none"/>
+        <text x="225" y="237" text-anchor="middle" fill="#4f8ef7" font-family="JetBrains Mono,monospace" font-size="9">8. 200 OK { access_token, refresh_token }</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- â•â•â•â•â•â• FULL EXAMPLE â•â•â•â•â•â• -->
+  <section class="section" id="example-hld">
+    <div class="section-header">
+      <div class="section-icon icon-orange">ðŸ›’</div>
+      <div class="section-title-wrap">
+        <h2>Full Example: E-Commerce Platform HLD</h2>
+        <div class="section-sub">Worked example walking through each HLD section</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>1. Executive Summary</h3>
+    <div class="card">
+      <p>Build a scalable e-commerce platform supporting product browsing, cart management, checkout, and order tracking. Target audience: 500k registered users, 50k daily active users. The system must support Black Friday traffic peaks of 5,000 RPS. Out of scope: warehouse management, physical shipping logistics, returns processing.</p>
+    </div>
+
+    <h3>2. Non-Functional Requirements</h3>
+    <table class="ref-table">
+      <thead><tr><th>Requirement</th><th>Target</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Availability</td><td>99.9% (max 8.7h downtime/year)</td><td>Exclude planned maintenance windows</td></tr>
+        <tr><td>Read latency (catalog)</td><td>p99 &lt; 100ms</td><td>Served via CDN + cache</td></tr>
+        <tr><td>Write latency (checkout)</td><td>p99 &lt; 500ms</td><td>End-to-end including payment auth</td></tr>
+        <tr><td>Peak throughput</td><td>5,000 RPS</td><td>Checkout: 500 RPS, Browse: 4,500 RPS</td></tr>
+        <tr><td>Data durability</td><td>99.999999%</td><td>Order/payment data â€” multi-AZ DB</td></tr>
+        <tr><td>RPO / RTO</td><td>RPO: 5min / RTO: 30min</td><td>For primary DB failure</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3. Architecture Diagram</h3>
+    <div class="diagram-wrap">
+      <div class="diagram-title">E-Commerce Platform â€” High-Level Architecture</div>
+      <svg viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:540px;">
+        <defs>
+          <marker id="ahe2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#4f8ef7"/>
+          </marker>
+          <marker id="ahe3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#fb923c"/>
+          </marker>
+        </defs>
+
+        <!-- External clients -->
+        <rect x="30" y="20" width="90" height="45" rx="5" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+        <text x="75" y="40" text-anchor="middle" fill="#34d399" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Web Browser</text>
+        <text x="75" y="56" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">React SPA</text>
+
+        <rect x="140" y="20" width="90" height="45" rx="5" fill="rgba(52,211,153,0.1)" stroke="rgba(52,211,153,0.4)" stroke-width="1.5"/>
+        <text x="185" y="40" text-anchor="middle" fill="#34d399" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Mobile App</text>
+        <text x="185" y="56" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">React Native</text>
+
+        <!-- CDN -->
+        <rect x="590" y="20" width="140" height="45" rx="5" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.4)" stroke-width="1.5"/>
+        <text x="660" y="40" text-anchor="middle" fill="#fbbf24" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">CDN / WAF</text>
+        <text x="660" y="56" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">CloudFront + Shield</text>
+
+        <!-- API Gateway -->
+        <rect x="280" y="20" width="130" height="45" rx="5" fill="rgba(79,142,247,0.15)" stroke="rgba(79,142,247,0.6)" stroke-width="2"/>
+        <text x="345" y="40" text-anchor="middle" fill="#4f8ef7" font-family="Space Grotesk,sans-serif" font-size="12" font-weight="700">API Gateway</text>
+        <text x="345" y="56" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">Auth Â· Rate Limit Â· Route</text>
+
+        <!-- Arrows to gateway -->
+        <line x1="120" y1="42" x2="278" y2="42" stroke="rgba(79,142,247,0.5)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+        <line x1="230" y1="42" x2="278" y2="42" stroke="rgba(79,142,247,0.5)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+        <line x1="590" y1="42" x2="412" y2="42" stroke="rgba(251,191,36,0.4)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+
+        <!-- Microservices row -->
+        <rect x="30" y="115" width="105" height="52" rx="5" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="82" y="136" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">User Service</text>
+        <text x="82" y="153" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">Auth Â· Profile</text>
+
+        <rect x="155" y="115" width="105" height="52" rx="5" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="207" y="136" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Product Service</text>
+        <text x="207" y="153" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">Catalog Â· Search</text>
+
+        <rect x="280" y="115" width="105" height="52" rx="5" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="332" y="136" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Order Service</text>
+        <text x="332" y="153" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">Cart Â· Checkout</text>
+
+        <rect x="405" y="115" width="105" height="52" rx="5" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="457" y="136" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Payment Service</text>
+        <text x="457" y="153" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">Stripe / Braintree</text>
+
+        <rect x="530" y="115" width="105" height="52" rx="5" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.45)" stroke-width="1.5"/>
+        <text x="582" y="136" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Notification Svc</text>
+        <text x="582" y="153" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">Email Â· SMS Â· Push</text>
+
+        <!-- Gateway to services -->
+        <line x1="310" y1="65" x2="82" y2="113" stroke="rgba(79,142,247,0.35)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+        <line x1="325" y1="65" x2="207" y2="113" stroke="rgba(79,142,247,0.35)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+        <line x1="345" y1="65" x2="332" y2="113" stroke="rgba(79,142,247,0.35)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+        <line x1="365" y1="65" x2="457" y2="113" stroke="rgba(79,142,247,0.35)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+        <line x1="380" y1="65" x2="582" y2="113" stroke="rgba(79,142,247,0.35)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+
+        <!-- Event Bus -->
+        <rect x="220" y="215" width="320" height="48" rx="6" fill="rgba(251,146,60,0.12)" stroke="rgba(251,146,60,0.6)" stroke-width="2"/>
+        <text x="380" y="235" text-anchor="middle" fill="#fb923c" font-family="Space Grotesk,sans-serif" font-size="13" font-weight="700">Event Bus (Kafka)</text>
+        <text x="380" y="252" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="10">order.placed Â· payment.completed Â· user.registered</text>
+
+        <!-- Services to event bus -->
+        <line x1="332" y1="167" x2="340" y2="213" stroke="rgba(251,146,60,0.45)" stroke-width="1.5" marker-end="url(#ahe3)"/>
+        <line x1="457" y1="167" x2="420" y2="213" stroke="rgba(251,146,60,0.45)" stroke-width="1.5" marker-end="url(#ahe3)"/>
+        <line x1="582" y1="167" x2="520" y2="213" stroke="rgba(251,146,60,0.45)" stroke-width="1.5" marker-end="url(#ahe3)" stroke-dasharray="3,3"/>
+
+        <!-- Data stores row -->
+        <rect x="30" y="305" width="100" height="48" rx="5" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.4)" stroke-width="1.5"/>
+        <text x="80" y="325" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Users DB</text>
+        <text x="80" y="342" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">PostgreSQL</text>
+
+        <rect x="155" y="305" width="100" height="48" rx="5" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.4)" stroke-width="1.5"/>
+        <text x="205" y="325" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Products DB</text>
+        <text x="205" y="342" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">PostgreSQL</text>
+
+        <rect x="280" y="305" width="100" height="48" rx="5" fill="rgba(34,211,238,0.1)" stroke="rgba(34,211,238,0.4)" stroke-width="1.5"/>
+        <text x="330" y="325" text-anchor="middle" fill="#22d3ee" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Orders DB</text>
+        <text x="330" y="342" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">PostgreSQL</text>
+
+        <rect x="405" y="305" width="100" height="48" rx="5" fill="rgba(251,191,36,0.1)" stroke="rgba(251,191,36,0.4)" stroke-width="1.5"/>
+        <text x="455" y="325" text-anchor="middle" fill="#fbbf24" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Cache</text>
+        <text x="455" y="342" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">Redis Cluster</text>
+
+        <rect x="530" y="305" width="100" height="48" rx="5" fill="rgba(167,139,250,0.1)" stroke="rgba(167,139,250,0.4)" stroke-width="1.5"/>
+        <text x="580" y="325" text-anchor="middle" fill="#a78bfa" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="600">Search Index</text>
+        <text x="580" y="342" text-anchor="middle" fill="#8b95b0" font-family="Space Grotesk,sans-serif" font-size="9">Elasticsearch</text>
+
+        <!-- Services to stores -->
+        <line x1="82" y1="167" x2="80" y2="303" stroke="rgba(34,211,238,0.4)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+        <line x1="207" y1="167" x2="205" y2="303" stroke="rgba(34,211,238,0.4)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+        <line x1="332" y1="167" x2="330" y2="303" stroke="rgba(34,211,238,0.4)" stroke-width="1.5" marker-end="url(#ahe2)"/>
+        <line x1="207" y1="167" x2="455" y2="303" stroke="rgba(251,191,36,0.3)" stroke-width="1.5" marker-end="url(#ahe2)" stroke-dasharray="3,3"/>
+        <line x1="207" y1="167" x2="580" y2="303" stroke="rgba(167,139,250,0.35)" stroke-width="1.5" marker-end="url(#ahe2)" stroke-dasharray="3,3"/>
+
+        <!-- Label: dashed = write-through -->
+        <text x="670" y="295" fill="#4a5570" font-family="JetBrains Mono,monospace" font-size="8">--- write-through</text>
+      </svg>
+    </div>
+
+    <h3>11. Architectural Decision Records</h3>
+    <table class="ref-table">
+      <thead>
+        <tr><th>Decision</th><th>Alternatives Considered</th><th>Rationale</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Microservices architecture</strong></td>
+          <td>Monolith, Modular Monolith</td>
+          <td>Team independence, independent scaling of hot services (Product, Order). Accepted: higher operational complexity.</td>
+        </tr>
+        <tr>
+          <td><strong>PostgreSQL for transactional data</strong></td>
+          <td>MySQL, DynamoDB, MongoDB</td>
+          <td>ACID guarantees essential for orders/payments. Team has strong Postgres expertise. RDS Multi-AZ for HA.</td>
+        </tr>
+        <tr>
+          <td><strong>Kafka as event bus</strong></td>
+          <td>RabbitMQ, AWS SQS/SNS, Redis Streams</td>
+          <td>Replay capability, guaranteed ordering, high throughput required. Needed for audit trail of order events.</td>
+        </tr>
+        <tr>
+          <td><strong>Redis for caching</strong></td>
+          <td>Memcached, DynamoDB DAX</td>
+          <td>Rich data structures, TTL support, cluster mode for horizontal scaling. Session storage + product cache.</td>
+        </tr>
+        <tr>
+          <td><strong>Elasticsearch for product search</strong></td>
+          <td>PostgreSQL full-text, Algolia, Typesense</td>
+          <td>Fuzzy search, faceted filtering, and relevance scoring at scale. Algolia ruled out due to cost at our volume.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- â•â•â•â•â•â• PITFALLS â•â•â•â•â•â• -->
+  <section class="section" id="pitfalls">
+    <div class="section-header">
+      <div class="section-icon icon-red">âš ï¸</div>
+      <div class="section-title-wrap">
+        <h2>Common Pitfalls</h2>
+        <div class="section-sub">The mistakes that make HLDs useless â€” and how to avoid them</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="pitfall-card">
+      <div class="pitfall-title">âš  No non-functional requirements</div>
+      <div class="pitfall-body">The HLD describes what the system does but not the numbers it must hit â€” no latency targets, no scale figures, no availability SLAs. Without NFRs, there's no basis for any architectural decision. You can't know whether to add a cache, a queue, or a read replica if you don't know the load.</div>
+      <div class="pitfall-fix">Write NFRs first, before touching the architecture. Every section of the HLD should trace back to an NFR.</div>
+    </div>
+
+    <div class="pitfall-card">
+      <div class="pitfall-title">âš  Solutioning before problem definition</div>
+      <div class="pitfall-body">The HLD opens with "We will use Kubernetes, Kafka, and a GraphQL API" before establishing the requirements. Technology choices appear before any reasoning. This signals that the architecture was chosen from familiarity rather than fitness for the problem.</div>
+      <div class="pitfall-fix">State requirements and constraints first. Introduce technology choices in the ADR section with explicit rationale and alternatives considered.</div>
+    </div>
+
+    <div class="pitfall-card">
+      <div class="pitfall-title">âš  The "happy path only" HLD</div>
+      <div class="pitfall-body">The document describes how the system works when everything succeeds, but never addresses failure modes: What happens if the payment service is down? What if the message queue backs up? What if the primary database fails? Systems fail â€” the HLD must show how the architecture handles it.</div>
+      <div class="pitfall-fix">Add a dedicated "Failure Modes & Resilience" section. For each external dependency, describe the failover strategy, circuit breaker behavior, and user-facing impact.</div>
+    </div>
+
+    <div class="pitfall-card">
+      <div class="pitfall-title">âš  Too much detail / LLD creep</div>
+      <div class="pitfall-body">The HLD includes database table schemas, class diagrams, specific API endpoint definitions, and library version numbers. This makes the document enormous, hard to review, outdated within weeks, and overwhelming for non-implementing stakeholders.</div>
+      <div class="pitfall-fix">Stop at the component/service boundary. If you're describing methods, tables, or library configs â€” move it to the LLD or a separate ADR.</div>
+    </div>
+
+    <div class="pitfall-card">
+      <div class="pitfall-title">âš  No security architecture</div>
+      <div class="pitfall-body">Security is not mentioned or is vaguely deferred: "Authentication will be handled." Where does token validation happen? What is the AuthN/AuthZ model? Are there network boundaries? How is PII encrypted? Security omitted from HLD means it gets bolted on during implementation â€” the most expensive time to add it.</div>
+      <div class="pitfall-fix">Dedicate a section to: auth model, network segmentation, data classification, encryption at rest/transit, and secrets management. Get a security review before HLD approval.</div>
+    </div>
+
+    <div class="pitfall-card">
+      <div class="pitfall-title">âš  Diagram without labels on arrows</div>
+      <div class="pitfall-body">The architecture diagram shows boxes connected by unlabeled arrows. It's impossible to tell whether services communicate synchronously or asynchronously, what protocol is used (HTTP? gRPC? event?), or what data flows in each direction.</div>
+      <div class="pitfall-fix">Every arrow must have: (1) a protocol label, (2) a direction, (3) optionally the payload type. Use different line styles for sync vs async communications.</div>
+    </div>
+
+    <div class="pitfall-card">
+      <div class="pitfall-title">âš  Never updated after initial approval</div>
+      <div class="pitfall-body">The HLD is approved, then the system is built â€” but when decisions change during implementation (a different database, a queue added, a service split), the HLD is never updated. New engineers read the HLD and get a misleading picture of the system. Drift between documentation and reality is a major onboarding and maintenance hazard.</div>
+      <div class="pitfall-fix">Treat the HLD like code. Changes to architecture require an HLD update PR/review. Add the HLD update as a Definition of Done for architectural changes.</div>
+    </div>
+
+    <div class="pitfall-card">
+      <div class="pitfall-title">âš  "Architecture by committee" â€” no clear ownership</div>
+      <div class="pitfall-body">The HLD is written by a committee and no single person is accountable for it. Every section is contradicted by another section. There is no clear decision-maker, so controversial choices (monolith vs microservices, SQL vs NoSQL) are left unresolved with "further discussion needed."</div>
+      <div class="pitfall-fix">Assign a single DRI (Directly Responsible Individual) â€” usually the tech lead or architect. Others review and advise; the DRI decides and owns the document.</div>
+    </div>
+  </section>
+
+  <!-- â•â•â•â•â•â• CHECKLIST â•â•â•â•â•â• -->
+  <section class="section" id="checklist">
+    <div class="section-header">
+      <div class="section-icon icon-green">âœ…</div>
+      <div class="section-title-wrap">
+        <h2>HLD Review Checklist</h2>
+        <div class="section-sub">Use before submitting for review and before approving</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>Content completeness</h3>
+    <ul class="checklist">
+      <li><span class="check-icon check-must">â—</span> Functional requirements are stated clearly</li>
+      <li><span class="check-icon check-must">â—</span> Non-functional requirements include specific numbers (latency, throughput, availability)</li>
+      <li><span class="check-icon check-must">â—</span> At least one architecture diagram with labeled arrows and protocols</li>
+      <li><span class="check-icon check-must">â—</span> Every major component has a description of its responsibility</li>
+      <li><span class="check-icon check-must">â—</span> Data flows documented for the 2â€“3 most critical use cases</li>
+      <li><span class="check-icon check-must">â—</span> Data ownership is explicit â€” each service owns its own data</li>
+      <li><span class="check-icon check-must">â—</span> Security architecture addresses auth, encryption, and network boundaries</li>
+      <li><span class="check-icon check-must">â—</span> Architectural Decision Records include alternatives and rationale</li>
+      <li><span class="check-icon check-must">â—</span> Open issues and assumptions are listed with owners</li>
+      <li><span class="check-icon check-should">â—</span> Failure modes documented â€” what happens when each dependency fails</li>
+      <li><span class="check-icon check-should">â—</span> Deployment architecture described â€” cloud provider, regions, environments</li>
+      <li><span class="check-icon check-should">â—</span> Observability approach specified â€” metrics, logs, traces, alerting</li>
+      <li><span class="check-icon check-nice">â—</span> Cost estimation or cost considerations noted</li>
+    </ul>
+
+    <h3>Diagram quality</h3>
+    <ul class="checklist">
+      <li><span class="check-icon check-must">â—</span> All arrows are labeled with protocol (HTTP, gRPC, AMQP, etc.)</li>
+      <li><span class="check-icon check-must">â—</span> External systems and third-party integrations are shown</li>
+      <li><span class="check-icon check-must">â—</span> Data stores are included and connected to the correct services</li>
+      <li><span class="check-icon check-should">â—</span> Sync and async communications use distinct visual styles</li>
+      <li><span class="check-icon check-should">â—</span> A legend is provided if the diagram uses more than 4 distinct visual types</li>
+      <li><span class="check-icon check-should">â—</span> Diagram is readable without zooming on a standard screen</li>
+    </ul>
+
+    <h3>Review process</h3>
+    <ul class="checklist">
+      <li><span class="check-icon check-must">â—</span> Reviewed by at least one other senior engineer outside the immediate team</li>
+      <li><span class="check-icon check-must">â—</span> Security review completed or explicitly scheduled</li>
+      <li><span class="check-icon check-should">â—</span> DevOps / platform team has reviewed deployment and operational concerns</li>
+      <li><span class="check-icon check-should">â—</span> Product manager has confirmed the scope aligns with product requirements</li>
+      <li><span class="check-icon check-nice">â—</span> DBA or data engineer has reviewed data model and storage choices</li>
+    </ul>
+
+    <div class="info-box note">
+      <div class="info-icon">ðŸ”µ</div>
+      <div class="info-content">
+        <strong>Legend:</strong>
+        <span style="color:var(--accent-blue)">â— Required</span> â€” must be completed before approval.
+        <span style="color:var(--accent-green); margin-left:12px">â— Recommended</span> â€” strongly advised for production systems.
+        <span style="color:var(--text-muted); margin-left:12px">â— Nice to have</span> â€” valuable when time permits.
+      </div>
+    </div>
+  </section>
+
+  <!-- â•â•â•â•â•â• TOOLS â•â•â•â•â•â• -->
+  <section class="section" id="tools">
+    <div class="section-header">
+      <div class="section-icon icon-yellow">ðŸ”§</div>
+      <div class="section-title-wrap">
+        <h2>Tools & Resources</h2>
+        <div class="section-sub">Diagramming tools, documentation platforms, and reference frameworks</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>Diagramming Tools</h3>
+    <table class="ref-table">
+      <thead><tr><th>Tool</th><th>Best For</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>draw.io / diagrams.net</strong></td>
+          <td>Architecture, deployment, flow diagrams</td>
+          <td>Free, works offline, integrates with Confluence/GitHub. Recommended default.</td>
+        </tr>
+        <tr>
+          <td><strong>Excalidraw</strong></td>
+          <td>Whiteboard-style quick diagrams, collaborative sketching</td>
+          <td>Hand-drawn aesthetic, excellent for early-stage design sessions. Free, open source.</td>
+        </tr>
+        <tr>
+          <td><strong>Lucidchart</strong></td>
+          <td>Polished enterprise diagrams, cross-team collaboration</td>
+          <td>Paid. Best import/export options, strong Jira/Confluence integration.</td>
+        </tr>
+        <tr>
+          <td><strong>Mermaid</strong></td>
+          <td>Sequence diagrams, flowcharts, state diagrams as code</td>
+          <td>Text-based â€” version controllable. Natively supported in GitHub Markdown, Notion, Gitlab.</td>
+        </tr>
+        <tr>
+          <td><strong>PlantUML</strong></td>
+          <td>Sequence, component, and deployment diagrams as code</td>
+          <td>More powerful than Mermaid; steeper syntax. Works well in CI pipelines.</td>
+        </tr>
+        <tr>
+          <td><strong>C4 Model + Structurizr</strong></td>
+          <td>Layered architectural views (Context â†’ Container â†’ Component)</td>
+          <td>The C4 methodology is the most rigorous framework for HLD diagrams. Structurizr is the official tooling.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Documentation Platforms</h3>
+    <table class="ref-table">
+      <thead><tr><th>Platform</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Confluence</strong></td><td>Enterprise wiki, deep Jira integration, template library</td></tr>
+        <tr><td><strong>Notion</strong></td><td>Flexible docs, good for smaller teams, supports diagrams via embeds</td></tr>
+        <tr><td><strong>GitHub / GitLab Wikis</strong></td><td>Version-controlled, markdown-native, Mermaid built in</td></tr>
+        <tr><td><strong>Backstage</strong></td><td>Developer portal with TechDocs for versioned architecture docs</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Reference Frameworks</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>C4 Model</div>
+        <p>Simon Brown's 4-level framework: <strong>Context</strong> (system in the world), <strong>Container</strong> (major components), <strong>Component</strong> (inside a container), <strong>Code</strong> (class-level). HLD maps to Context + Container levels.</p>
+        <p style="margin-top:8px;"><code>c4model.com</code></p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-purple"></span>Architecture Decision Records</div>
+        <p>Michael Nygard's lightweight format for documenting decisions. Each ADR has: Title, Status, Context, Decision, Consequences. Store in <code>/docs/adr/</code> in the repo.</p>
+        <p style="margin-top:8px;"><code>adr.github.io</code></p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>AWS Well-Architected Framework</div>
+        <p>Six pillars: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability. Excellent NFR checklist for cloud-hosted systems.</p>
+        <p style="margin-top:8px;"><code>aws.amazon.com/architecture/well-architected</code></p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-orange"></span>12-Factor App Methodology</div>
+        <p>Principles for building maintainable, scalable services: codebase, dependencies, config, backing services, build/release/run, processes, port binding, concurrency, disposability, dev/prod parity, logs, admin processes.</p>
+        <p style="margin-top:8px;"><code>12factor.net</code></p>
+      </div>
+    </div>
+
+    <div class="info-box tip">
+      <div class="info-icon">ðŸ“</div>
+      <div class="info-content"><strong>Mermaid quick example</strong> â€” paste this into any Mermaid-compatible editor for an instant sequence diagram:</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">mermaid</span></div>
+      <div class="code-block"><span class="cm">sequenceDiagram</span>
+    actor User
+    participant GW as API Gateway
+    participant Auth as Auth Service
+    participant DB as User DB
+    participant Cache as Redis
+
+    User->>GW: POST /login {email, password}
+    GW->>Auth: Forward credentials
+    Auth->>Cache: GET session:email
+    Cache-->>Auth: MISS
+    Auth->>DB: SELECT user WHERE email=?
+    DB-->>Auth: {userId, passwordHash}
+    Auth->>Auth: bcrypt.verify(password, hash)
+    Auth->>Cache: SET session:email TTL=3600
+    Auth-->>GW: {accessToken, refreshToken}
+    GW-->>User: 200 OK {tokens}</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+  const sections = document.querySelectorAll('.section');
+  const links = document.querySelectorAll('.sidebar-link');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+      }
+    });
+  }, { rootMargin: '-60px 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+
+<script src='../scripts/handbook-ui.js'></script>
+</body>
+</html>
+

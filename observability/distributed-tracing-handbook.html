@@ -1,0 +1,1862 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distributed Tracing â€” Field Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@300;400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --void:        #04050a;
+  --void2:       #080b12;
+  --void3:       #0d1120;
+  --void4:       #131828;
+  --void5:       #1a2235;
+  --border:      rgba(255,255,255,0.055);
+  --border2:     rgba(255,255,255,0.1);
+  --text:        #dce6f8;
+  --text2:       #7a90b8;
+  --muted:       #3d5070;
+  --orange:      #ff6b2b;
+  --orange-dim:  rgba(255,107,43,0.1);
+  --orange-glow: rgba(255,107,43,0.08);
+  --cyan:        #00d4ff;
+  --cyan-dim:    rgba(0,212,255,0.08);
+  --yellow:      #ffc947;
+  --yellow-dim:  rgba(255,201,71,0.09);
+  --purple:      #b06bff;
+  --purple-dim:  rgba(176,107,255,0.09);
+  --green:       #2dff9a;
+  --green-dim:   rgba(45,255,154,0.08);
+  --red:         #ff4060;
+  --red-dim:     rgba(255,64,96,0.09);
+  --mono:        'Azeret Mono', monospace;
+  --body:        'DM Sans', sans-serif;
+  --code:        'Space Mono', monospace;
+  --sidebar-w:   270px;
+  --top-h:       56px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* NOISE TEXTURE */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+/* TOPBAR */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  height: var(--top-h);
+  background: rgba(4,5,10,0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+}
+.topbar-left { display: flex; align-items: center; gap: 18px; }
+.topbar-logo {
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-mark {
+  width: 30px; height: 30px;
+  border: 1.5px solid var(--orange);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.logo-mark::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 8px var(--orange);
+}
+.logo-mark::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 1px;
+  background: linear-gradient(90deg, var(--orange), transparent);
+  left: 6px;
+}
+.topbar-title {
+  font-family: var(--mono); font-size: 14px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text);
+}
+.topbar-title span { color: var(--orange); }
+.topbar-right {
+  display: flex; align-items: center; gap: 18px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+.topbar-badge {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--orange); letter-spacing: 1px;
+}
+.pulse {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--orange); box-shadow: 0 0 8px var(--orange);
+  animation: blink 2.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* LAYOUT */
+.layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); position: relative; z-index: 1; }
+
+/* SIDEBAR */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--void2);
+  border-right: 1px solid var(--border);
+  padding-bottom: 60px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); }
+
+.sb-header {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,107,43,0.05) 0%, transparent 100%);
+}
+.sb-doc { font-family: var(--mono); font-size: 9px; color: var(--orange); letter-spacing: 3px; margin-bottom: 4px; }
+.sb-desc { font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 1.5; }
+
+.nav-group { margin-top: 4px; }
+.nav-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+  padding: 14px 22px 6px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 7px 22px 7px 18px;
+  text-decoration: none; color: var(--text2);
+  font-size: 12.5px; font-family: var(--body);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-link .n {
+  font-family: var(--mono); font-size: 8.5px;
+  color: var(--muted); width: 20px; flex-shrink: 0; text-align: right;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.025); border-left-color: var(--border2); }
+.nav-link.active { color: var(--orange); border-left-color: var(--orange); background: var(--orange-glow); }
+.nav-link.active .n { color: var(--orange); opacity: 0.6; }
+
+/* MAIN */
+.main { flex: 1; min-width: 0; padding: 52px 64px 110px; max-width: 1000px; }
+
+/* HERO */
+.hero {
+  position: relative; overflow: hidden;
+  background: var(--void3);
+  border: 1px solid var(--border2);
+  padding: 56px 60px 48px;
+  margin-bottom: 72px;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(255,107,43,0.1) 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(0,212,255,0.06) 0%, transparent 50%);
+}
+.hero-corner {
+  position: absolute; top: 0; right: 0;
+  width: 0; height: 0; border-style: solid;
+  border-width: 0 56px 56px 0;
+  border-color: transparent var(--orange) transparent transparent;
+}
+.hero-corner-inner {
+  position: absolute; top: 5px; right: 5px;
+  font-family: var(--mono); font-size: 7px; color: var(--void);
+  transform: rotate(45deg); letter-spacing: 0.5px; font-weight: 700;
+}
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+  color: var(--orange); text-transform: uppercase; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::before { content: '[ '; opacity: 0.5; }
+.hero-eyebrow::after  { content: ' ]'; opacity: 0.5; }
+
+.hero h1 {
+  font-family: var(--mono); font-size: 58px; font-weight: 800;
+  line-height: 0.95; text-transform: uppercase;
+  letter-spacing: -2px; color: var(--text);
+  margin-bottom: 26px;
+}
+.hero h1 em { color: var(--orange); font-style: normal; }
+.hero-lead {
+  color: var(--text2); font-size: 15px; max-width: 580px;
+  line-height: 1.8; margin-bottom: 10px;
+}
+.hero-axiom {
+  font-family: var(--mono); font-size: 12px; color: var(--cyan);
+  border-left: 2px solid var(--cyan); padding: 9px 14px;
+  background: var(--cyan-dim); display: inline-block; margin: 20px 0;
+}
+.hero-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 24px; }
+.chip {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 4px 12px; border: 1px solid; border-radius: 2px;
+}
+.chip-orange { color: var(--orange); border-color: rgba(255,107,43,0.4); background: var(--orange-glow); }
+.chip-cyan   { color: var(--cyan);   border-color: rgba(0,212,255,0.35);  background: var(--cyan-dim); }
+.chip-yellow { color: var(--yellow); border-color: rgba(255,201,71,0.35); background: var(--yellow-dim); }
+.chip-purple { color: var(--purple); border-color: rgba(176,107,255,0.35);background: var(--purple-dim); }
+.chip-green  { color: var(--green);  border-color: rgba(45,255,154,0.3);  background: var(--green-dim); }
+.chip-red    { color: var(--red);    border-color: rgba(255,64,96,0.35);  background: var(--red-dim); }
+
+/* SECTIONS */
+section { margin-bottom: 80px; scroll-margin-top: calc(var(--top-h) + 24px); }
+.section-header {
+  display: flex; align-items: flex-start; gap: 18px;
+  margin-bottom: 28px; padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 72px; height: 1px; background: var(--orange);
+}
+.sec-num { font-family: var(--mono); font-size: 11px; color: var(--orange); width: 38px; flex-shrink: 0; padding-top: 4px; }
+.sec-title h2 {
+  font-family: var(--mono); font-size: 22px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text); line-height: 1;
+}
+.sec-title .sub { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 6px; }
+
+/* PROSE */
+.prose { color: var(--text2); font-size: 14px; line-height: 1.82; margin-bottom: 18px; }
+.prose strong { color: var(--text); font-weight: 600; }
+
+/* CARDS */
+.card {
+  background: var(--void3); border: 1px solid var(--border);
+  padding: 22px 24px; margin-bottom: 12px; transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
+.card-lo { border-left: 3px solid var(--orange); }
+.card-lc { border-left: 3px solid var(--cyan); }
+.card-ly { border-left: 3px solid var(--yellow); }
+.card-lp { border-left: 3px solid var(--purple); }
+.card-lg { border-left: 3px solid var(--green); }
+.card-lr { border-left: 3px solid var(--red); }
+.card-title {
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 10px;
+}
+.ctag {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 1.5px; padding: 2px 8px; border-radius: 2px;
+}
+.ctag-o { color: var(--orange); background: var(--orange-glow); border: 1px solid rgba(255,107,43,0.3); }
+.ctag-c { color: var(--cyan);   background: var(--cyan-dim);    border: 1px solid rgba(0,212,255,0.25); }
+.ctag-y { color: var(--yellow); background: var(--yellow-dim);  border: 1px solid rgba(255,201,71,0.25); }
+.ctag-p { color: var(--purple); background: var(--purple-dim);  border: 1px solid rgba(176,107,255,0.25); }
+.ctag-g { color: var(--green);  background: var(--green-dim);   border: 1px solid rgba(45,255,154,0.25); }
+.ctag-r { color: var(--red);    background: var(--red-dim);     border: 1px solid rgba(255,64,96,0.25); }
+.card p, .card li { color: var(--text2); font-size: 13.5px; line-height: 1.7; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; }
+
+/* GRID */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+/* CODE */
+.code-wrap {
+  background: #030408; border: 1px solid var(--border2);
+  margin: 18px 0; font-family: var(--code); position: relative;
+}
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 18px; background: rgba(255,107,43,0.04);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--orange); }
+.copy-btn {
+  font-size: 9px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--orange); border-color: var(--orange); }
+.code-block {
+  padding: 20px 22px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.78; white-space: pre; tab-size: 2; color: var(--text2);
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); }
+.kw  { color: #b06bff; }
+.st  { color: #2dff9a; }
+.cm  { color: #2f4060; font-style: italic; }
+.fn  { color: #00d4ff; }
+.nu  { color: #ffc947; }
+.at  { color: var(--orange); }
+.hl  { background: rgba(255,107,43,0.05); display: block; margin: 0 -22px; padding: 0 22px; border-left: 2px solid var(--orange); }
+code {
+  font-family: var(--code); font-size: 12px;
+  background: rgba(255,107,43,0.09); color: var(--orange);
+  padding: 1px 7px; border: 1px solid rgba(255,107,43,0.22); border-radius: 2px;
+}
+
+/* CALLOUTS */
+.callout {
+  display: flex; gap: 14px;
+  padding: 14px 20px; margin: 18px 0; border-left: 3px solid; font-size: 13.5px;
+  border-radius: 0 2px 2px 0;
+}
+.callout-icon { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
+.callout-body { color: var(--text2); line-height: 1.7; }
+.callout-body strong { color: var(--text); }
+.co { background: rgba(255,107,43,0.05); border-color: var(--orange); }
+.cc { background: rgba(0,212,255,0.05);  border-color: var(--cyan); }
+.cy { background: rgba(255,201,71,0.05); border-color: var(--yellow); }
+.cg { background: rgba(45,255,154,0.05); border-color: var(--green); }
+.cr { background: rgba(255,64,96,0.05);  border-color: var(--red); }
+.cp { background: rgba(176,107,255,0.05);border-color: var(--purple); }
+
+/* TABLES */
+.table-wrap { border: 1px solid var(--border); margin: 18px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: rgba(255,107,43,0.05); color: var(--orange);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700;
+  border-bottom: 1px solid var(--border2);
+}
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text2); vertical-align: top; line-height: 1.65; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+td code { font-size: 11px; }
+.ok  { color: var(--green);  font-family: var(--mono); font-size: 11px; font-weight: 700; }
+.no  { color: var(--red);    font-family: var(--mono); font-size: 11px; font-weight: 700; }
+.so  { color: var(--yellow); font-family: var(--mono); font-size: 11px; font-weight: 700; }
+
+/* SECTION HEADINGS */
+h3 {
+  font-family: var(--mono); font-size: 15px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  margin: 32px 0 14px; display: flex; align-items: center; gap: 10px;
+}
+h3::before { content: '//'; font-size: 11px; color: var(--orange); }
+h4 {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--muted);
+  margin: 20px 0 10px;
+}
+
+/* â•â•â• TRACE DIAGRAM â•â•â• */
+.trace-diagram {
+  background: var(--void3); border: 1px solid var(--border);
+  padding: 28px 24px; margin: 20px 0; overflow-x: auto;
+}
+.trace-title {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 22px;
+  display: flex; align-items: center; gap: 8px;
+}
+.trace-title::before { content: ''; flex: 1; height: 1px; background: var(--border); }
+.trace-title::after  { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.span-row {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 6px; position: relative;
+}
+.span-label {
+  font-family: var(--mono); font-size: 10px; color: var(--text2);
+  width: 180px; flex-shrink: 0; text-align: right; padding-right: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.span-label em { color: var(--muted); font-style: normal; font-size: 9px; }
+.span-track { flex: 1; position: relative; height: 22px; }
+.span-bar {
+  position: absolute; height: 14px; top: 4px;
+  display: flex; align-items: center; padding-left: 8px;
+  font-family: var(--mono); font-size: 9px; white-space: nowrap;
+  overflow: hidden; min-width: 2px;
+}
+.span-bar.root    { background: rgba(255,107,43,0.7); color: #000; font-weight: 700; }
+.span-bar.svc     { background: rgba(0,212,255,0.5);  color: #000; }
+.span-bar.llm     { background: rgba(176,107,255,0.65);color: #000; font-weight: 700; }
+.span-bar.db      { background: rgba(255,201,71,0.55); color: #000; }
+.span-bar.cache   { background: rgba(45,255,154,0.5);  color: #000; }
+.span-bar.err     { background: rgba(255,64,96,0.7);   color: #000; font-weight: 700; }
+.span-bar.ext     { background: rgba(100,150,200,0.45);color: #000; }
+
+.trace-axis {
+  display: flex; align-items: center; gap: 0;
+  margin-top: 12px; padding-left: 180px; padding-right: 0;
+}
+.trace-axis-line { flex: 1; height: 1px; background: var(--border2); }
+.trace-tick {
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  padding: 0 0 0 4px; white-space: nowrap;
+}
+.trace-legend {
+  display: flex; gap: 16px; flex-wrap: wrap; margin-top: 18px;
+  padding-top: 14px; border-top: 1px solid var(--border);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.legend-dot { width: 10px; height: 10px; flex-shrink: 0; }
+
+/* â•â•â• COMPARE â•â•â• */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.compare-block { border: 1px solid var(--border); }
+.compare-head {
+  padding: 10px 18px;
+  font-family: var(--mono); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  display: flex; align-items: center; gap: 8px;
+}
+.compare-jaeger .compare-head { background: rgba(255,107,43,0.08); color: var(--orange); border-bottom: 1px solid rgba(255,107,43,0.2); }
+.compare-zipkin .compare-head { background: rgba(0,212,255,0.07); color: var(--cyan); border-bottom: 1px solid rgba(0,212,255,0.2); }
+.compare-body { padding: 14px 18px; }
+.compare-body li { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+.compare-body ul { padding-left: 14px; }
+
+/* â•â•â• LATENCY WATERFALL â•â•â• */
+.waterfall { background: var(--void3); border: 1px solid var(--border); padding: 24px; margin: 18px 0; }
+.wf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-family: var(--mono); font-size: 11px; }
+.wf-name { width: 200px; color: var(--text2); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wf-bar-wrap { flex: 1; height: 16px; background: rgba(255,255,255,0.03); position: relative; border: 1px solid var(--border); }
+.wf-bar { position: absolute; top: 0; height: 100%; }
+.wf-ms { color: var(--muted); font-size: 10px; width: 50px; text-align: right; flex-shrink: 0; }
+.wf-status { font-size: 10px; width: 44px; flex-shrink: 0; }
+
+/* MATURITY */
+.maturity { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+.ms {
+  background: var(--void3); border: 1px solid var(--border);
+  padding: 18px 16px; position: relative; overflow: hidden;
+}
+.ms::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.ms1::before { background: var(--muted); }
+.ms2::before { background: var(--yellow); }
+.ms3::before { background: var(--cyan); }
+.ms4::before { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+.ms-lv { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 5px; }
+.ms-name { font-family: var(--mono); font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; }
+.ms1 .ms-name { color: var(--muted); }
+.ms2 .ms-name { color: var(--yellow); }
+.ms3 .ms-name { color: var(--cyan); }
+.ms4 .ms-name { color: var(--orange); }
+.ms li { font-size: 11.5px; color: var(--muted); margin-bottom: 3px; line-height: 1.5; }
+.ms ul { padding-left: 12px; }
+
+/* RESPONSIVE */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .grid-2, .grid-3, .maturity, .compare { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 36px; }
+}
+</style>
+
+<link rel='stylesheet' href='../styles/shared-ui.css'>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">
+      <div class="logo-mark"></div>
+      <div class="topbar-title">Distributed <span>Tracing</span></div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span>TRACE-HDK-2024</span>
+    <div class="topbar-badge"><span class="pulse"></span>FIELD HANDBOOK</div>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-header">
+    <div class="sb-doc">// TRACE-001</div>
+    <div class="sb-desc">Jaeger Â· Zipkin<br>OpenTelemetry Â· W3C TraceContext</div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Foundations</div>
+    <a class="nav-link active" href="#why" data-num="01"><span class="n">01</span>Why Tracing</a>
+    <a class="nav-link" href="#concepts" data-num="02"><span class="n">02</span>Core Concepts</a>
+    <a class="nav-link" href="#otel" data-num="03"><span class="n">03</span>OpenTelemetry</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Tools</div>
+    <a class="nav-link" href="#jaeger" data-num="04"><span class="n">04</span>Jaeger</a>
+    <a class="nav-link" href="#zipkin" data-num="05"><span class="n">05</span>Zipkin</a>
+    <a class="nav-link" href="#compare" data-num="06"><span class="n">06</span>Jaeger vs Zipkin</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Request Flows</div>
+    <a class="nav-link" href="#anatomy" data-num="07"><span class="n">07</span>8-Service Trace Walkthrough</a>
+    <a class="nav-link" href="#llm" data-num="08"><span class="n">08</span>Tracing LLM Calls</a>
+    <a class="nav-link" href="#propagation" data-num="09"><span class="n">09</span>Context Propagation</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Instrumentation</div>
+    <a class="nav-link" href="#instrument" data-num="10"><span class="n">10</span>Auto vs Manual</a>
+    <a class="nav-link" href="#sampling" data-num="11"><span class="n">11</span>Sampling Strategies</a>
+    <a class="nav-link" href="#attributes" data-num="12"><span class="n">12</span>Span Attributes</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Operations</div>
+    <a class="nav-link" href="#debugging" data-num="13"><span class="n">13</span>Debugging with Traces</a>
+    <a class="nav-link" href="#perf" data-num="14"><span class="n">14</span>Performance Analysis</a>
+    <a class="nav-link" href="#deploy" data-num="15"><span class="n">15</span>Deployment &amp; Storage</a>
+    <a class="nav-link" href="#maturity" data-num="16"><span class="n">16</span>Maturity Model</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-corner"></div>
+  <div class="hero-corner-inner">DTH</div>
+  <div class="hero-eyebrow">Field Handbook</div>
+  <h1>Distributed<br><em>Tracing</em></h1>
+  <div class="hero-axiom">// "If you can't see the path, you can't fix the bottleneck."</div>
+  <p class="hero-lead">The operational guide to observing requests as they traverse microservices, databases, queues, and LLM APIs. Covers OpenTelemetry instrumentation, Jaeger and Zipkin deployment, context propagation, sampling strategy, and end-to-end debugging patterns.</p>
+  <div class="hero-chips">
+    <span class="chip chip-orange">Jaeger</span>
+    <span class="chip chip-cyan">Zipkin</span>
+    <span class="chip chip-yellow">OpenTelemetry</span>
+    <span class="chip chip-purple">LLM Tracing</span>
+    <span class="chip chip-green">W3C TraceContext</span>
+    <span class="chip chip-red">Debugging</span>
+  </div>
+</div>
+
+<!-- â•â• 01 WHY â•â• -->
+<section id="why">
+  <div class="section-header">
+    <div class="sec-num">01</div>
+    <div class="sec-title"><h2>Why Distributed Tracing</h2><div class="sub">// THE OBSERVABILITY GAP</div></div>
+  </div>
+  <p class="prose">In a monolith, a slow request is obvious â€” profile it, find the slow function, fix it. In a distributed system spanning dozens of microservices, the request is a ghost: it enters your API gateway and touches 8 services, 3 databases, 2 queues, and 3 LLM API calls before a response returns. Which hop added the 4 seconds? Logs can't tell you. Metrics can't tell you. <strong>Traces can.</strong></p>
+
+  <p class="prose">Distributed tracing reconstructs the complete journey of a request as a causally-linked tree of <strong>spans</strong> â€” one per operation, each with a start time, duration, service name, and any relevant metadata. It answers the questions that logs and metrics fundamentally cannot.</p>
+
+  <div class="grid-3">
+    <div class="card card-lo">
+      <div class="card-title">Logs â€” What Happened</div>
+      <p>Discrete events per service. No cross-service correlation. You need a request ID to join logs across services â€” and you still can't see the timing relationships.</p>
+    </div>
+    <div class="card card-ly">
+      <div class="card-title">Metrics â€” How Much</div>
+      <p>Aggregated rates and latencies per service. No per-request view. You know the p99 of the order service is 2s but not <em>which</em> downstream call caused it for which request.</p>
+    </div>
+    <div class="card card-lc">
+      <div class="card-title">Traces â€” Why &amp; Where</div>
+      <p>Per-request causal graph of every operation. Exactly which service, which database query, which LLM call caused the slowdown â€” for a specific user's specific request.</p>
+    </div>
+  </div>
+
+  <div class="callout cc">
+    <span class="callout-icon">â—‰</span>
+    <div class="callout-body"><strong>The three pillars of observability:</strong> Logs, metrics, and traces are complementary â€” not alternatives. Traces tell you <em>where</em> the problem is. Metrics tell you it's <em>happening</em> in aggregate. Logs tell you <em>what data</em> was involved. All three should be correlated: traces enriched with log links, metrics tagged with exemplar trace IDs.</div>
+  </div>
+
+  <h3>What Tracing Solves That Nothing Else Does</h3>
+  <div class="grid-2">
+    <div class="card card-lo">
+      <div class="card-title">Latency Attribution <span class="ctag ctag-o">Critical</span></div>
+      <p>Which downstream dependency added 3.8 seconds to this specific request? Was it the database query in service-6, or the LLM call in service-4? Traces give you the exact span with its duration, parent, and all child spans â€” in one view.</p>
+    </div>
+    <div class="card card-lc">
+      <div class="card-title">Error Root Cause <span class="ctag ctag-c">Debug</span></div>
+      <p>A 500 from the API gateway tells you nothing. A trace shows the error originated as a timeout in the recommendations service calling a third-party embedding API â€” 7 hops deep. Navigate directly to the failing span.</p>
+    </div>
+    <div class="card card-ly">
+      <div class="card-title">Dependency Mapping <span class="ctag ctag-y">Topology</span></div>
+      <p>Tracing backends automatically derive your actual service dependency graph from real traffic. No manual documentation required. Discover undocumented dependencies and fanout patterns your architecture diagrams don't show.</p>
+    </div>
+    <div class="card card-lp">
+      <div class="card-title">LLM Cost &amp; Latency Visibility <span class="ctag ctag-p">AI/ML</span></div>
+      <p>LLM API calls (OpenAI, Anthropic, local models) are the dominant latency and cost contributor in AI-augmented services. Trace each LLM call as a span: model, token count, latency, cost, prompt hash. Correlate LLM latency spikes with user-facing degradation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- â•â• 02 CONCEPTS â•â• -->
+<section id="concepts">
+  <div class="section-header">
+    <div class="sec-num">02</div>
+    <div class="sec-title"><h2>Core Concepts</h2><div class="sub">// TRACES, SPANS, CONTEXT</div></div>
+  </div>
+
+  <p class="prose">Distributed tracing has a small, precise vocabulary. Understanding these five concepts is sufficient to work with any tracing system â€” OpenTelemetry, Jaeger, Zipkin, or a commercial APM.</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Concept</th><th>Definition</th><th>Analogy</th></tr>
+      <tr>
+        <td><strong style="color:var(--orange)">Trace</strong></td>
+        <td>The complete end-to-end record of a single request as it flows through a distributed system. A tree of spans sharing the same <code>trace_id</code>.</td>
+        <td>The full itinerary of a package shipment</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--cyan)">Span</strong></td>
+        <td>A single unit of work within a trace. Has a name, <code>span_id</code>, parent <code>span_id</code>, start timestamp, duration, status, and optional attributes/events.</td>
+        <td>One leg of the shipment journey (city â†’ city)</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--yellow)">Trace Context</strong></td>
+        <td>The propagated headers (<code>traceparent</code>, <code>tracestate</code>) that link spans across service boundaries. Injected by the caller, extracted by the callee.</td>
+        <td>The tracking number printed on the label</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--purple)">SpanContext</strong></td>
+        <td>The immutable, serializable identity of a span: <code>trace_id</code> (128-bit), <code>span_id</code> (64-bit), trace flags, trace state. Propagated in-process and cross-process.</td>
+        <td>The barcode on the package</td>
+      </tr>
+      <tr>
+        <td><strong style="color:var(--green)">Baggage</strong></td>
+        <td>Key-value pairs propagated with the trace context across service boundaries. Useful for passing user ID, tenant, feature flag, or correlation metadata without modifying every service's API.</td>
+        <td>Notes written on the shipping label</td>
+      </tr>
+    </table>
+  </div>
+
+  <h3>Span Anatomy</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">JSON â€” Span Structure (OTLP)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block">{
+  <span class="at">"traceId"</span>:       <span class="st">"3fa85f64-5717-4562-b3fc-2c963f66afa6"</span>,
+  <span class="at">"spanId"</span>:        <span class="st">"a1b2c3d4e5f60001"</span>,
+  <span class="at">"parentSpanId"</span>:  <span class="st">"0000000000000001"</span>,       <span class="cm">// absent on root span</span>
+  <span class="at">"name"</span>:          <span class="st">"POST /v1/recommendations"</span>,
+
+  <span class="at">"kind"</span>:  <span class="st">"SERVER"</span>,  <span class="cm">// SERVER | CLIENT | PRODUCER | CONSUMER | INTERNAL</span>
+  <span class="at">"startTimeUnixNano"</span>: <span class="nu">1715000000000000000</span>,
+  <span class="at">"endTimeUnixNano"</span>:   <span class="nu">1715000000843000000</span>,     <span class="cm">// 843ms</span>
+
+  <span class="at">"status"</span>: { <span class="at">"code"</span>: <span class="st">"OK"</span> },   <span class="cm">// OK | ERROR | UNSET</span>
+
+  <span class="at">"attributes"</span>: {
+    <span class="cm">// HTTP semantic conventions (OpenTelemetry semconv)</span>
+    <span class="at">"http.method"</span>:          <span class="st">"POST"</span>,
+    <span class="at">"http.route"</span>:           <span class="st">"/v1/recommendations"</span>,
+    <span class="at">"http.response.status_code"</span>: <span class="nu">200</span>,
+    <span class="at">"server.address"</span>:       <span class="st">"recommendations.svc.cluster.local"</span>,
+    <span class="at">"http.request.body.size"</span>: <span class="nu">1024</span>,
+
+    <span class="cm">// Custom business attributes</span>
+    <span class="at">"user.id"</span>:              <span class="st">"usr_9kx2z"</span>,
+    <span class="at">"recommendation.count"</span>: <span class="nu">12</span>,
+    <span class="at">"model.used"</span>:           <span class="st">"colbert-v2"</span>
+  },
+
+  <span class="at">"events"</span>: [
+    {
+      <span class="at">"name"</span>: <span class="st">"cache.miss"</span>,
+      <span class="at">"timeUnixNano"</span>: <span class="nu">1715000000012000000</span>,
+      <span class="at">"attributes"</span>: { <span class="at">"cache.key"</span>: <span class="st">"recs:usr_9kx2z:v2"</span> }
+    },
+    {
+      <span class="at">"name"</span>: <span class="st">"embedding.computed"</span>,
+      <span class="at">"timeUnixNano"</span>: <span class="nu">1715000000524000000</span>,
+      <span class="at">"attributes"</span>: { <span class="at">"embedding.dims"</span>: <span class="nu">768</span>, <span class="at">"embedding.model"</span>: <span class="st">"text-embedding-ada-002"</span> }
+    }
+  ],
+
+  <span class="at">"links"</span>: [
+    {
+      <span class="cm">// Link to async span in a queue processor â€” cross-trace relationship</span>
+      <span class="at">"traceId"</span>: <span class="st">"9c4fd3a1..."</span>,
+      <span class="at">"spanId"</span>:  <span class="st">"b7c2e4f8..."</span>,
+      <span class="at">"attributes"</span>: { <span class="at">"link.type"</span>: <span class="st">"enqueued_by"</span> }
+    }
+  ]
+}</div>
+  </div>
+
+  <h3>W3C TraceContext Headers</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">HTTP Headers â€” W3C TraceContext (RFC)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># The standard propagation format â€” use this over Zipkin B3 for new systems</span>
+
+traceparent: 00-3fa85f645717456293fc2c963f66afa6-a1b2c3d4e5f60001-01
+<span class="cm">#            ^^ version (always 00)
+#               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trace-id (128-bit hex)
+#                                                ^^^^^^^^^^^^^^^^ parent-span-id (64-bit hex)
+#                                                                 ^^ flags: 01=sampled, 00=not sampled</span>
+
+tracestate: jaeger=a1b2c3d4e5f60001,vendor2=xyz
+<span class="cm"># tracestate: vendor-specific key-value pairs, passed through unchanged</span>
+
+<span class="cm"># B3 format (Zipkin-originated, still common in older stacks)</span>
+X-B3-TraceId:      3fa85f645717456293fc2c963f66afa6
+X-B3-SpanId:       a1b2c3d4e5f60001
+X-B3-ParentSpanId: 0000000000000001
+X-B3-Sampled:      1
+
+<span class="cm"># B3 single-header format</span>
+b3: 3fa85f645717456293fc2c963f66afa6-a1b2c3d4e5f60001-1-0000000000000001</div>
+  </div>
+</section>
+
+<!-- â•â• 03 OTEL â•â• -->
+<section id="otel">
+  <div class="section-header">
+    <div class="sec-num">03</div>
+    <div class="sec-title"><h2>OpenTelemetry</h2><div class="sub">// THE VENDOR-NEUTRAL INSTRUMENTATION STANDARD</div></div>
+  </div>
+
+  <p class="prose">OpenTelemetry (OTel) is the CNCF standard for emitting traces, metrics, and logs from applications. It replaces the fragmented ecosystem of Jaeger clients, Zipkin clients, and vendor SDKs with a single, vendor-neutral API and SDK. Instrument once, export to any backend.</p>
+
+  <div class="callout co">
+    <span class="callout-icon">â–¸</span>
+    <div class="callout-body"><strong>The architecture:</strong> Your application uses the <strong>OTel API</strong> (no-op without SDK). The <strong>OTel SDK</strong> processes and batches telemetry. The <strong>OTel Collector</strong> (optional but recommended) receives OTLP from services, transforms it, and fans out to multiple backends â€” Jaeger, Zipkin, Prometheus, Grafana Tempo, Datadog â€” simultaneously.</div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Python â€” OTel SDK Setup + Jaeger Exporter</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="kw">from</span> <span class="fn">opentelemetry</span> <span class="kw">import</span> trace
+<span class="kw">from</span> <span class="fn">opentelemetry.sdk.trace</span> <span class="kw">import</span> TracerProvider
+<span class="kw">from</span> <span class="fn">opentelemetry.sdk.trace.export</span> <span class="kw">import</span> BatchSpanProcessor
+<span class="kw">from</span> <span class="fn">opentelemetry.exporter.otlp.proto.grpc.trace_exporter</span> <span class="kw">import</span> OTLPSpanExporter
+<span class="kw">from</span> <span class="fn">opentelemetry.sdk.resources</span> <span class="kw">import</span> Resource
+
+<span class="cm"># 1. Define service resource</span>
+resource = <span class="fn">Resource</span>.create({
+    <span class="st">"service.name"</span>:      <span class="st">"recommendations-service"</span>,
+    <span class="st">"service.version"</span>:   <span class="st">"2.4.1"</span>,
+    <span class="st">"deployment.environment"</span>: <span class="st">"production"</span>,
+    <span class="st">"k8s.namespace.name"</span>: <span class="st">"prod-api"</span>,
+})
+
+<span class="cm"># 2. Configure exporter â†’ OTel Collector (which fans out to Jaeger/Zipkin)</span>
+exporter = <span class="fn">OTLPSpanExporter</span>(
+    endpoint=<span class="st">"http://otel-collector.observability.svc:4317"</span>,
+    <span class="cm"># Or directly to Jaeger: endpoint="http://jaeger-collector:4317"</span>
+)
+
+<span class="cm"># 3. Build provider with batch processor</span>
+provider = <span class="fn">TracerProvider</span>(resource=resource)
+provider.<span class="fn">add_span_processor</span>(<span class="fn">BatchSpanProcessor</span>(
+    exporter,
+    max_queue_size=<span class="nu">2048</span>,
+    max_export_batch_size=<span class="nu">512</span>,
+    export_timeout_millis=<span class="nu">30000</span>,
+))
+trace.<span class="fn">set_tracer_provider</span>(provider)
+
+<span class="cm"># 4. Get a tracer â€” use this throughout your service</span>
+tracer = trace.<span class="fn">get_tracer</span>(<span class="st">"recommendations.core"</span>, <span class="st">"2.4.1"</span>)
+
+<span class="cm"># 5. Create and annotate spans manually</span>
+<span class="kw">def</span> <span class="fn">get_recommendations</span>(user_id: str, context_items: list):
+    <span class="kw">with</span> tracer.<span class="fn">start_as_current_span</span>(<span class="st">"get_recommendations"</span>) <span class="kw">as</span> span:
+        span.<span class="fn">set_attributes</span>({
+            <span class="st">"user.id"</span>:     user_id,
+            <span class="st">"context.size"</span>: <span class="fn">len</span>(context_items),
+        })
+        <span class="kw">try</span>:
+            result = _fetch_recs(user_id, context_items)
+            span.<span class="fn">set_attribute</span>(<span class="st">"recommendations.returned"</span>, <span class="fn">len</span>(result))
+            <span class="kw">return</span> result
+        <span class="kw">except</span> Exception <span class="kw">as</span> e:
+            span.<span class="fn">record_exception</span>(e)
+            span.<span class="fn">set_status</span>(trace.StatusCode.ERROR, <span class="fn">str</span>(e))
+            <span class="kw">raise</span></div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">TypeScript / Node.js â€” OTel Auto-Instrumentation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm">// instrumentation.ts â€” load BEFORE all other imports (--require flag)</span>
+<span class="kw">import</span> { NodeSDK } <span class="kw">from</span> <span class="st">'@opentelemetry/sdk-node'</span>;
+<span class="kw">import</span> { OTLPTraceExporter } <span class="kw">from</span> <span class="st">'@opentelemetry/exporter-trace-otlp-grpc'</span>;
+<span class="kw">import</span> { getNodeAutoInstrumentations } <span class="kw">from</span> <span class="st">'@opentelemetry/auto-instrumentations-node'</span>;
+<span class="kw">import</span> { Resource } <span class="kw">from</span> <span class="st">'@opentelemetry/resources'</span>;
+<span class="kw">import</span> { ATTR_SERVICE_NAME } <span class="kw">from</span> <span class="st">'@opentelemetry/semantic-conventions'</span>;
+
+<span class="kw">const</span> sdk = <span class="kw">new</span> <span class="fn">NodeSDK</span>({
+  resource: <span class="kw">new</span> <span class="fn">Resource</span>({ [ATTR_SERVICE_NAME]: <span class="st">'api-gateway'</span> }),
+  traceExporter: <span class="kw">new</span> <span class="fn">OTLPTraceExporter</span>({
+    url: <span class="st">'http://otel-collector:4317'</span>
+  }),
+  instrumentations: [
+    <span class="fn">getNodeAutoInstrumentations</span>({
+      <span class="cm">// Auto-instruments: http, express, grpc, pg, redis, mongodb, aws-sdk ...</span>
+      <span class="st">'@opentelemetry/instrumentation-http'</span>: { enabled: <span class="kw">true</span> },
+      <span class="st">'@opentelemetry/instrumentation-express'</span>: { enabled: <span class="kw">true</span> },
+      <span class="st">'@opentelemetry/instrumentation-pg'</span>: { enabled: <span class="kw">true</span> },
+      <span class="st">'@opentelemetry/instrumentation-redis'</span>: { enabled: <span class="kw">true</span> },
+    })
+  ]
+});
+sdk.<span class="fn">start</span>();
+<span class="cm">// â†’ Every HTTP request, DB query, Redis call now generates spans automatically</span></div>
+  </div>
+</section>
+
+<!-- â•â• 04 JAEGER â•â• -->
+<section id="jaeger">
+  <div class="section-header">
+    <div class="sec-num">04</div>
+    <div class="sec-title"><h2>Jaeger</h2><div class="sub">// CNCF GRADUATED â€” PRODUCTION-GRADE DISTRIBUTED TRACING</div></div>
+  </div>
+
+  <p class="prose">Jaeger (pronounced "YAY-ger") is a CNCF graduated project, originally developed by Uber. It is the production standard for large-scale distributed tracing â€” with support for Cassandra, Elasticsearch, and OpenSearch backends, adaptive sampling, service dependency graphs, and a mature query UI. The v2 architecture unifies ingestion via the <strong>OTel Collector</strong>.</p>
+
+  <div class="grid-2">
+    <div class="card card-lo">
+      <div class="card-title">Jaeger v2 Architecture <span class="ctag ctag-o">Current</span></div>
+      <ul>
+        <li><strong>Jaeger Collector</strong> â€” ingests OTLP over gRPC/HTTP, writes to storage</li>
+        <li><strong>Jaeger Query</strong> â€” serves the UI and the Jaeger Query API</li>
+        <li><strong>Storage backends</strong> â€” Elasticsearch, OpenSearch, Cassandra, Badger (dev), ClickHouse (plugin)</li>
+        <li><strong>Sampling service</strong> â€” serves adaptive sampling strategies to agents</li>
+      </ul>
+    </div>
+    <div class="card card-lc">
+      <div class="card-title">Key Features <span class="ctag ctag-c">Capabilities</span></div>
+      <ul>
+        <li>Native OTLP ingestion (Jaeger v2+)</li>
+        <li>Adaptive sampling â€” adjusts per-service rates dynamically</li>
+        <li>Service dependency graph from traces</li>
+        <li>Deep span search with tag filters, duration ranges, error filters</li>
+        <li>Trace comparison (side-by-side waterfall)</li>
+        <li>Grafana data source plugin</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Docker Compose â€” Jaeger All-in-One (Dev)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># dev-tracing.yml â€” Jaeger all-in-one with in-memory storage (dev/test only)</span>
+<span class="at">services</span>:
+  <span class="at">jaeger</span>:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - <span class="st">"16686:16686"</span>   <span class="cm"># Jaeger UI</span>
+      - <span class="st">"4317:4317"</span>     <span class="cm"># OTLP gRPC â€” send traces here</span>
+      - <span class="st">"4318:4318"</span>     <span class="cm"># OTLP HTTP</span>
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=memory
+      - MEMORY_MAX_TRACES=50000</div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Kubernetes â€” Jaeger Production via Jaeger Operator</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># 1. Install Jaeger Operator</span>
+kubectl apply -f https://github.com/jaegertracing/jaeger-operator/releases/latest/download/jaeger-operator.yaml -n observability
+
+<span class="cm"># 2. Deploy Jaeger with Elasticsearch backend</span>
+<span class="at">apiVersion</span>: jaegertracing.io/v1
+<span class="at">kind</span>: Jaeger
+<span class="at">metadata</span>:
+  name: production-jaeger
+  namespace: observability
+<span class="at">spec</span>:
+  strategy: production   <span class="cm"># Deploys separate collector + query + ES</span>
+
+  <span class="at">collector</span>:
+    replicas: 3
+    resources:
+      limits: { cpu: "1", memory: "2Gi" }
+    options:
+      collector:
+        queue-size: <span class="nu">2000</span>
+        num-workers: <span class="nu">50</span>
+
+  <span class="at">query</span>:
+    replicas: 2
+    metricsPort: <span class="nu">8686</span>
+
+  <span class="at">storage</span>:
+    type: elasticsearch
+    options:
+      es:
+        server-urls: https://elasticsearch.observability.svc:9200
+        index-prefix: jaeger
+        tls.enabled: <span class="kw">true</span>
+        num-shards: <span class="nu">5</span>
+        num-replicas: <span class="nu">1</span>
+
+  <span class="at">sampling</span>:
+    options:
+      default_strategy:
+        type: probabilistic
+        param: <span class="nu">0.1</span>   <span class="cm"># 10% default; overridden per-service below</span>
+      service_strategies:
+        - service: payment-service
+          type: probabilistic
+          param: <span class="nu">1.0</span>   <span class="cm"># 100% â€” always trace payments</span>
+        - service: analytics-service
+          type: ratelimiting
+          param: <span class="nu">5</span>     <span class="cm"># max 5 traces/sec regardless of traffic</span></div>
+  </div>
+</section>
+
+<!-- â•â• 05 ZIPKIN â•â• -->
+<section id="zipkin">
+  <div class="section-header">
+    <div class="sec-num">05</div>
+    <div class="sec-title"><h2>Zipkin</h2><div class="sub">// THE ORIGINAL â€” SIMPLE, FAST, BATTLE-TESTED</div></div>
+  </div>
+
+  <p class="prose">Zipkin was the first widely-adopted open-source distributed tracing system, created by Twitter in 2012 (based on Google Dapper). It pioneered the B3 propagation format and remains the simplest path to get traces working â€” especially in Spring Boot ecosystems (Spring Cloud Sleuth has first-class Zipkin support out of the box).</p>
+
+  <div class="grid-2">
+    <div class="card card-lc">
+      <div class="card-title">Zipkin Architecture</div>
+      <ul>
+        <li><strong>Zipkin Server</strong> â€” single process: collector + storage + UI + API</li>
+        <li><strong>Storage</strong> â€” In-memory (dev), MySQL, Cassandra, Elasticsearch</li>
+        <li><strong>Transport</strong> â€” HTTP (POST /api/v2/spans), Kafka, Scribe</li>
+        <li><strong>Reporter</strong> â€” library-side component that buffers and flushes spans to server</li>
+      </ul>
+    </div>
+    <div class="card card-ly">
+      <div class="card-title">Best Fit For <span class="ctag ctag-y">Use Cases</span></div>
+      <ul>
+        <li>Spring Boot services â€” native integration, zero extra config</li>
+        <li>Smaller deployments preferring simplicity over scalability</li>
+        <li>Existing B3-instrumented stacks being migrated incrementally</li>
+        <li>Teams wanting a minimal single-binary deployment</li>
+        <li>Development/staging environments</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Docker â€” Zipkin Quickstart</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># Simplest possible start â€” in-memory storage</span>
+docker run -d -p 9411:9411 --name zipkin openzipkin/zipkin
+<span class="cm"># UI: http://localhost:9411</span>
+
+<span class="cm"># With Elasticsearch backend</span>
+<span class="at">services</span>:
+  zipkin:
+    image: openzipkin/zipkin:latest
+    ports:
+      - <span class="st">"9411:9411"</span>
+    environment:
+      - STORAGE_TYPE=elasticsearch
+      - ES_HOSTS=http://elasticsearch:9200
+      - ES_INDEX=zipkin
+      - ES_INDEX_REPLICAS=1
+      - ES_INDEX_SHARDS=5
+
+<span class="cm"># Spring Boot â€” application.yaml (zero code changes)</span>
+<span class="at">management</span>:
+  <span class="at">tracing</span>:
+    <span class="at">sampling</span>:
+      <span class="at">probability</span>: <span class="nu">1.0</span>   <span class="cm"># 100% in dev</span>
+
+<span class="at">spring</span>:
+  <span class="at">zipkin</span>:
+    <span class="at">base-url</span>: http://zipkin:9411
+    <span class="at">sender</span>:
+      <span class="at">type</span>: web  <span class="cm"># or kafka</span></div>
+  </div>
+
+  <div class="callout cy">
+    <span class="callout-icon">â—Ž</span>
+    <div class="callout-body"><strong>OTel â†’ Zipkin:</strong> The OpenTelemetry Collector can fan out to Zipkin using the <code>zipkinexporter</code> â€” so you don't need Zipkin-specific SDKs. Instrument with OTel once and export to Zipkin (dev), Jaeger (staging), and Grafana Tempo (production) simultaneously via the Collector pipeline.</div>
+  </div>
+</section>
+
+<!-- â•â• 06 COMPARE â•â• -->
+<section id="compare">
+  <div class="section-header">
+    <div class="sec-num">06</div>
+    <div class="sec-title"><h2>Jaeger vs Zipkin</h2><div class="sub">// CHOOSING THE RIGHT TOOL</div></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Dimension</th><th>Jaeger</th><th>Zipkin</th></tr>
+      <tr>
+        <td><strong>Maturity</strong></td>
+        <td><span class="ok">CNCF Graduated</span> â€” production battle-tested at Uber scale</td>
+        <td><span class="ok">Mature</span> â€” Twitter-born, 12 years production use</td>
+      </tr>
+      <tr>
+        <td><strong>Ingest Protocol</strong></td>
+        <td><span class="ok">OTLP-native (v2)</span>, Jaeger Thrift, Zipkin B3</td>
+        <td><span class="so">Zipkin JSON/Proto</span>, B3; OTel via Collector</td>
+      </tr>
+      <tr>
+        <td><strong>Scale</strong></td>
+        <td><span class="ok">High</span> â€” designed for millions of spans/sec with ES/Cassandra</td>
+        <td><span class="so">Medium</span> â€” sufficient for most orgs; ES backend required at scale</td>
+      </tr>
+      <tr>
+        <td><strong>UI quality</strong></td>
+        <td>Full-featured: trace comparison, service graph, search</td>
+        <td>Clean, minimal â€” good for trace lookup, less analytical</td>
+      </tr>
+      <tr>
+        <td><strong>Adaptive Sampling</strong></td>
+        <td><span class="ok">YES</span> â€” per-service, dynamic, server-driven</td>
+        <td><span class="no">NO</span> â€” client-side only, manual configuration</td>
+      </tr>
+      <tr>
+        <td><strong>Deployment complexity</strong></td>
+        <td><span class="so">Medium</span> â€” Operator recommended; more components</td>
+        <td><span class="ok">Low</span> â€” single binary, trivial to start</td>
+      </tr>
+      <tr>
+        <td><strong>Spring Boot integration</strong></td>
+        <td>Via OTel SDK</td>
+        <td><span class="ok">Native</span> â€” Spring Cloud Sleuth, zero config</td>
+      </tr>
+      <tr>
+        <td><strong>Grafana integration</strong></td>
+        <td><span class="ok">First-class</span> data source</td>
+        <td>Via OTel Collector â†’ Grafana Tempo</td>
+      </tr>
+      <tr>
+        <td><strong>Choose when</strong></td>
+        <td>Kubernetes, high volume, need adaptive sampling, Grafana stack</td>
+        <td>Spring Boot shop, simplicity priority, getting started fast</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="compare">
+    <div class="compare-block compare-jaeger">
+      <div class="compare-head">â¬¡ Jaeger Strengths</div>
+      <div class="compare-body"><ul>
+        <li>Native OTLP ingestion in v2 â€” no adapter needed</li>
+        <li>Adaptive sampling adjusts per service automatically</li>
+        <li>Better UI: trace comparison, dependency graph, deep search</li>
+        <li>Kubernetes-native: Jaeger Operator manages the full stack</li>
+        <li>Multi-tenant support via tenant headers</li>
+      </ul></div>
+    </div>
+    <div class="compare-block compare-zipkin">
+      <div class="compare-head">â—Ž Zipkin Strengths</div>
+      <div class="compare-body"><ul>
+        <li>Simpler architecture â€” one binary to start</li>
+        <li>Spring Boot zero-config integration (Sleuth)</li>
+        <li>Lower operational overhead for smaller teams</li>
+        <li>B3 format ubiquitous in older instrumented stacks</li>
+        <li>Faster to get running from zero</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- â•â• 07 ANATOMY â•â• -->
+<section id="anatomy">
+  <div class="section-header">
+    <div class="sec-num">07</div>
+    <div class="sec-title"><h2>8-Service Trace Walkthrough</h2><div class="sub">// FOLLOWING A REQUEST END-TO-END</div></div>
+  </div>
+
+  <p class="prose">A user submits a chat message to an AI assistant app. The request traverses 8 microservices, hits 3 LLM API calls, 4 database queries, 2 cache operations, and 1 background queue. Total latency: <strong>3,841ms</strong>. Without tracing, you'd never know the LLM orchestrator alone consumed 2,900ms.</p>
+
+  <!-- TRACE VISUALIZATION -->
+  <div class="trace-diagram">
+    <div class="trace-title">TRACE: chat-completion â€” 3841ms total</div>
+
+    <!-- Root span -->
+    <div class="span-row">
+      <div class="span-label">api-gateway <em>/ POST /chat</em></div>
+      <div class="span-track">
+        <div class="span-bar root" style="left:0%;width:100%">api-gateway 3841ms</div>
+      </div>
+    </div>
+    <!-- Auth -->
+    <div class="span-row">
+      <div class="span-label">auth-service <em>/ validateJWT</em></div>
+      <div class="span-track">
+        <div class="span-bar svc" style="left:0.1%;width:3.5%">38ms</div>
+      </div>
+    </div>
+    <!-- Cache check -->
+    <div class="span-row">
+      <div class="span-label">session-service <em>/ getSession</em></div>
+      <div class="span-track">
+        <div class="span-bar cache" style="left:3.8%;width:1.5%">12ms</div>
+      </div>
+    </div>
+    <!-- Context loader -->
+    <div class="span-row">
+      <div class="span-label">context-service <em>/ loadHistory</em></div>
+      <div class="span-track">
+        <div class="span-bar svc" style="left:5.5%;width:10%">db:384ms</div>
+      </div>
+    </div>
+    <!-- RAG retrieval -->
+    <div class="span-row">
+      <div class="span-label">rag-service <em>/ vectorSearch</em></div>
+      <div class="span-track">
+        <div class="span-bar db" style="left:5.5%;width:6%">embed+search 231ms</div>
+      </div>
+    </div>
+    <!-- LLM 1: embedding -->
+    <div class="span-row">
+      <div class="span-label">  â†³ llm-router <em>/ embedding</em></div>
+      <div class="span-track">
+        <div class="span-bar llm" style="left:7%;width:3%">ada-002 118ms</div>
+      </div>
+    </div>
+    <!-- Orchestrator -->
+    <div class="span-row">
+      <div class="span-label">llm-orchestrator <em>/ complete</em></div>
+      <div class="span-track">
+        <div class="span-bar svc" style="left:16%;width:75.5%">3 LLM hops 2900ms</div>
+      </div>
+    </div>
+    <!-- LLM 2: classify -->
+    <div class="span-row">
+      <div class="span-label">  â†³ llm-router <em>/ classify</em></div>
+      <div class="span-track">
+        <div class="span-bar llm" style="left:16%;width:7%">gpt-4o-mini 268ms</div>
+      </div>
+    </div>
+    <!-- LLM 3: main generation -->
+    <div class="span-row">
+      <div class="span-label">  â†³ llm-router <em>/ generate</em></div>
+      <div class="span-track">
+        <div class="span-bar llm" style="left:24%;width:57.5%">claude-3-5-sonnet 2208ms â† BOTTLENECK</div>
+      </div>
+    </div>
+    <!-- LLM 4: postprocess -->
+    <div class="span-row">
+      <div class="span-label">  â†³ llm-router <em>/ postprocess</em></div>
+      <div class="span-track">
+        <div class="span-bar llm" style="left:82%;width:5%">gpt-4o-mini 192ms</div>
+      </div>
+    </div>
+    <!-- Persist -->
+    <div class="span-row">
+      <div class="span-label">storage-service <em>/ saveMessage</em></div>
+      <div class="span-track">
+        <div class="span-bar db" style="left:92%;width:4%">postgres 154ms</div>
+      </div>
+    </div>
+    <!-- Audit -->
+    <div class="span-row">
+      <div class="span-label">audit-service <em>/ enqueue</em></div>
+      <div class="span-track">
+        <div class="span-bar ext" style="left:96%;width:2.5%">kafka 96ms</div>
+      </div>
+    </div>
+
+    <!-- Axis -->
+    <div class="trace-axis">
+      <div class="trace-axis-line"></div>
+      <div class="trace-tick">3841ms</div>
+    </div>
+
+    <div class="trace-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,43,0.7)"></div>Root / Gateway</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(0,212,255,0.5)"></div>Service Call</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(176,107,255,0.65)"></div>LLM API Call</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(255,201,71,0.55)"></div>Database Query</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(45,255,154,0.5)"></div>Cache Hit/Miss</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(100,150,200,0.45)"></div>External (Kafka)</div>
+    </div>
+  </div>
+
+  <div class="callout co">
+    <span class="callout-icon">â–¸</span>
+    <div class="callout-body"><strong>What the trace reveals immediately:</strong> The <code>llm-router/generate</code> span with claude-3-5-sonnet accounts for 2,208ms â€” 57% of total latency. Without tracing, you'd see the API is slow but have no idea where to optimize. With the trace, you immediately know: investigate caching LLM responses, streaming, or prompt compression for the generate step.</div>
+  </div>
+
+  <h3>The Span Tree for This Request</h3>
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Text â€” Span Hierarchy (Jaeger UI view)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block">TRACE: 3fa85f64...  Total: 3841ms   Service count: 8   Span count: 19
+
+<span class="at">api-gateway</span> [0ms â†’ 3841ms] POST /api/v1/chat   <span class="at">3841ms</span>
+â”œâ”€â”€ <span class="fn">auth-service</span> [0ms â†’ 38ms] validateJWT       <span class="fn">38ms</span>
+â”‚   â””â”€â”€ <span class="fn">redis</span> [2ms â†’ 8ms] GET session:token   <span class="fn">6ms</span>   (cache HIT)
+â”œâ”€â”€ <span class="fn">session-service</span> [40ms â†’ 52ms] getSession     <span class="fn">12ms</span>
+â”‚   â””â”€â”€ <span class="fn">postgres</span> [41ms â†’ 50ms] SELECT sessions  <span class="fn">9ms</span>
+â”œâ”€â”€ <span class="fn">context-service</span> [54ms â†’ 438ms] loadHistory   <span class="fn">384ms</span>
+â”‚   â”œâ”€â”€ <span class="fn">postgres</span> [55ms â†’ 210ms] SELECT messages  <span class="fn">155ms</span>  â† slow query
+â”‚   â””â”€â”€ <span class="fn">postgres</span> [211ms â†’ 436ms] SELECT context  <span class="fn">225ms</span>  â† slow query
+â”œâ”€â”€ <span class="fn">rag-service</span> [56ms â†’ 287ms] vectorSearch      <span class="fn">231ms</span>
+â”‚   â”œâ”€â”€ <span class="kw">llm-router</span> [58ms â†’ 176ms] embedding       <span class="kw">118ms</span>   (ada-002, 312 tokens)
+â”‚   â””â”€â”€ <span class="fn">qdrant</span> [177ms â†’ 283ms] query            <span class="fn">106ms</span>
+â”œâ”€â”€ <span class="at">llm-orchestrator</span> [615ms â†’ 3515ms] complete   <span class="at">2900ms</span>
+â”‚   â”œâ”€â”€ <span class="kw">llm-router</span> [616ms â†’ 884ms] classify        <span class="kw">268ms</span>   (gpt-4o-mini, 156â†’43 tokens)
+â”‚   â”œâ”€â”€ <span class="kw">llm-router</span> [885ms â†’ 3093ms] generate       <span class="kw">2208ms</span>  â† BOTTLENECK (claude-3-5-sonnet, 2847â†’612 tokens)
+â”‚   â””â”€â”€ <span class="kw">llm-router</span> [3094ms â†’ 3286ms] postprocess    <span class="kw">192ms</span>   (gpt-4o-mini, 674â†’124 tokens)
+â”œâ”€â”€ <span class="fn">storage-service</span> [3520ms â†’ 3674ms] saveMessage  <span class="fn">154ms</span>
+â”‚   â””â”€â”€ <span class="fn">postgres</span> [3521ms â†’ 3670ms] INSERT messages <span class="fn">149ms</span>
+â””â”€â”€ <span class="fn">audit-service</span> [3680ms â†’ 3776ms] enqueueEvent   <span class="fn">96ms</span>
+    â””â”€â”€ kafka [3682ms â†’ 3774ms] PRODUCE chat.events  <span class="fn">92ms</span></div>
+  </div>
+</section>
+
+<!-- â•â• 08 LLM TRACING â•â• -->
+<section id="llm">
+  <div class="section-header">
+    <div class="sec-num">08</div>
+    <div class="sec-title"><h2>Tracing LLM Calls</h2><div class="sub">// OBSERVING AI INFERENCE AS FIRST-CLASS SPANS</div></div>
+  </div>
+
+  <p class="prose">LLM API calls are unlike normal HTTP calls. They have unique observability requirements: token counts (prompt vs. completion), model name and version, cost attribution, finish reason (stop/length/content_filter), streaming vs. non-streaming latency, and prompt content (with PII redaction). Each LLM call deserves a rich, dedicated span.</p>
+
+  <div class="callout cp">
+    <span class="callout-icon">â—‰</span>
+    <div class="callout-body"><strong>OpenTelemetry GenAI Semantic Conventions:</strong> The OTel community has published standardized attribute names for LLM spans under <code>gen_ai.*</code>. Use these to ensure compatibility with observability platforms that understand GenAI semantics: <code>gen_ai.system</code>, <code>gen_ai.request.model</code>, <code>gen_ai.usage.input_tokens</code>, <code>gen_ai.usage.output_tokens</code>, <code>gen_ai.response.finish_reasons</code>.</div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Python â€” Instrumenting LLM Calls (OpenAI / Anthropic)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="kw">import</span> time
+<span class="kw">from</span> opentelemetry <span class="kw">import</span> trace
+<span class="kw">from</span> opentelemetry.trace <span class="kw">import</span> SpanKind
+<span class="kw">import</span> anthropic
+
+tracer = trace.get_tracer(<span class="st">"llm-router"</span>)
+
+<span class="kw">async def</span> <span class="fn">call_llm_with_tracing</span>(
+    prompt: str, model: str = <span class="st">"claude-3-5-sonnet-20241022"</span>,
+    max_tokens: int = <span class="nu">1024</span>, purpose: str = <span class="st">"generate"</span>
+) -> str:
+    client = anthropic.Anthropic()
+
+    <span class="kw">with</span> tracer.start_as_current_span(
+        <span class="fn">f"llm.{purpose}"</span>,
+        kind=SpanKind.CLIENT
+    ) <span class="kw">as</span> span:
+        <span class="cm"># OTel GenAI semantic conventions</span>
+        span.set_attributes({
+            <span class="at">"gen_ai.system"</span>:              <span class="st">"anthropic"</span>,
+            <span class="at">"gen_ai.request.model"</span>:       model,
+            <span class="at">"gen_ai.request.max_tokens"</span>:  max_tokens,
+            <span class="at">"gen_ai.request.temperature"</span>: <span class="nu">0.7</span>,
+
+            <span class="cm"># Custom: purpose and prompt fingerprint (NOT the full prompt in prod)</span>
+            <span class="at">"llm.purpose"</span>:                purpose,
+            <span class="at">"llm.prompt.length"</span>:           <span class="fn">len</span>(prompt),
+            <span class="at">"llm.prompt.hash"</span>:             <span class="fn">hash_prompt</span>(prompt),  <span class="cm"># for dedup</span>
+        })
+
+        start = time.monotonic()
+        <span class="kw">try</span>:
+            response = client.messages.create(
+                model=model, max_tokens=max_tokens,
+                messages=[{<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: prompt}]
+            )
+
+            latency_ms = (time.monotonic() - start) * <span class="nu">1000</span>
+
+            <span class="cm"># Record response telemetry</span>
+            span.set_attributes({
+                <span class="at">"gen_ai.usage.input_tokens"</span>:     response.usage.input_tokens,
+                <span class="at">"gen_ai.usage.output_tokens"</span>:    response.usage.output_tokens,
+                <span class="at">"gen_ai.response.finish_reasons"</span>: [response.stop_reason],
+                <span class="at">"gen_ai.response.id"</span>:            response.id,
+
+                <span class="cm"># Cost attribution (calculate from token counts Ã— model pricing)</span>
+                <span class="at">"llm.cost.input_usd"</span>:   response.usage.input_tokens * <span class="nu">3e-6</span>,
+                <span class="at">"llm.cost.output_usd"</span>:  response.usage.output_tokens * <span class="nu">15e-6</span>,
+                <span class="at">"llm.latency_ms"</span>:       <span class="fn">round</span>(latency_ms, <span class="nu">2</span>),
+                <span class="at">"llm.tokens_per_second"</span>: response.usage.output_tokens / (latency_ms / <span class="nu">1000</span>),
+            })
+            <span class="kw">return</span> response.content[<span class="nu">0</span>].text
+
+        <span class="kw">except</span> anthropic.APITimeoutError <span class="kw">as</span> e:
+            span.set_status(trace.StatusCode.ERROR, <span class="st">"LLM timeout"</span>)
+            span.record_exception(e)
+            span.set_attribute(<span class="st">"llm.error.type"</span>, <span class="st">"timeout"</span>)
+            <span class="kw">raise</span>
+        <span class="kw">except</span> anthropic.RateLimitError <span class="kw">as</span> e:
+            span.set_status(trace.StatusCode.ERROR, <span class="st">"rate_limit"</span>)
+            span.set_attribute(<span class="st">"llm.error.type"</span>, <span class="st">"rate_limit"</span>)
+            span.record_exception(e)
+            <span class="kw">raise</span></div>
+  </div>
+
+  <h3>What LLM Span Attributes Enable</h3>
+  <div class="grid-2">
+    <div class="card card-lp">
+      <div class="card-title">Cost Attribution by Request <span class="ctag ctag-p">FinOps</span></div>
+      <p>Sum <code>llm.cost.input_usd</code> + <code>llm.cost.output_usd</code> across all LLM spans in a trace. Aggregate by <code>user.id</code>, <code>tenant.id</code>, or feature to understand who's driving LLM costs. Build dashboards that break down inference spend by product surface.</p>
+    </div>
+    <div class="card card-lo">
+      <div class="card-title">Latency Breakdown <span class="ctag ctag-o">Performance</span></div>
+      <p>Separate TTFT (time-to-first-token) from full generation time with span events. Identify whether latency is dominated by prompt processing or generation. Detect when a model has higher-than-usual latency indicating capacity issues on the provider side.</p>
+    </div>
+    <div class="card card-lg">
+      <div class="card-title">Prompt Cache Efficiency <span class="ctag ctag-g">Optimization</span></div>
+      <p>Track <code>gen_ai.usage.cache_read_tokens</code> vs <code>gen_ai.usage.input_tokens</code>. Measure cache hit rate per prompt template. Guide prompt engineering decisions: long system prompts benefit from prefix caching â€” but only if you can measure the impact.</p>
+    </div>
+    <div class="card card-lr">
+      <div class="card-title">Failure Mode Analysis <span class="ctag ctag-r">Reliability</span></div>
+      <p>Track <code>gen_ai.response.finish_reasons</code> across requests. High rate of <code>length</code> (truncation) means your max_tokens is too low. <code>content_filter</code> spikes indicate prompt injection attempts or edge-case inputs needing guardrails.</p>
+    </div>
+  </div>
+</section>
+
+<!-- â•â• 09 PROPAGATION â•â• -->
+<section id="propagation">
+  <div class="section-header">
+    <div class="sec-num">09</div>
+    <div class="sec-title"><h2>Context Propagation</h2><div class="sub">// PASSING THE BATON ACROSS SERVICES</div></div>
+  </div>
+
+  <p class="prose">Context propagation is the mechanism that links spans across service boundaries into a single trace. The calling service <strong>injects</strong> the current span context into outgoing request headers. The receiving service <strong>extracts</strong> it and creates its child span with that parent. Without correct propagation, you get disconnected single-service traces.</p>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">Python â€” Manual Propagation (HTTP &amp; Kafka)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="kw">from</span> opentelemetry <span class="kw">import</span> trace, propagate
+<span class="kw">from</span> opentelemetry.trace.propagation.tracecontext <span class="kw">import</span> TraceContextTextMapPropagator
+<span class="kw">import</span> httpx
+<span class="kw">from</span> confluent_kafka <span class="kw">import</span> Producer
+
+propagator = TraceContextTextMapPropagator()
+tracer = trace.get_tracer(<span class="st">"api-gateway"</span>)
+
+<span class="cm"># â”€â”€ HTTP outbound call â”€â”€</span>
+<span class="kw">async def</span> <span class="fn">call_downstream</span>(url: str, payload: dict) -> dict:
+    <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"http.client.call"</span>, kind=trace.SpanKind.CLIENT) <span class="kw">as</span> span:
+        headers = {}
+        <span class="cm"># Inject current span context into HTTP headers</span>
+        propagate.inject(headers)
+        <span class="cm"># â†’ headers now contains: {"traceparent": "00-3fa8...-01"}</span>
+
+        <span class="kw">async with</span> httpx.AsyncClient() <span class="kw">as</span> client:
+            resp = <span class="kw">await</span> client.post(url, json=payload, headers=headers)
+            span.set_attribute(<span class="st">"http.response.status_code"</span>, resp.status_code)
+            <span class="kw">return</span> resp.json()
+
+<span class="cm"># â”€â”€ Kafka producer (inject into message headers) â”€â”€</span>
+<span class="kw">def</span> <span class="fn">publish_event</span>(topic: str, event: dict):
+    kafka_headers = {}
+    propagate.inject(kafka_headers)   <span class="cm"># Same inject API</span>
+    kafka_header_list = [(k, v.encode()) <span class="kw">for</span> k, v <span class="kw">in</span> kafka_headers.items()]
+
+    producer.produce(topic, key=event[<span class="st">"id"</span>],
+                     value=json.dumps(event).encode(),
+                     headers=kafka_header_list)
+
+<span class="cm"># â”€â”€ Receiving service â€” extract context â”€â”€</span>
+<span class="kw">from</span> opentelemetry.propagate <span class="kw">import</span> extract
+<span class="kw">from</span> fastapi <span class="kw">import</span> Request
+
+<span class="kw">async def</span> <span class="fn">my_endpoint</span>(request: Request):
+    <span class="cm"># Auto-instrumented with FastAPI middleware â€” but here's the manual version:</span>
+    ctx = extract(dict(request.headers))  <span class="cm"># Extract propagated context</span>
+    <span class="kw">with</span> tracer.start_as_current_span(
+        <span class="st">"process_request"</span>,
+        context=ctx,           <span class="cm"># parent = the extracted span context</span>
+        kind=trace.SpanKind.SERVER
+    ) <span class="kw">as</span> span:
+        span.set_attribute(<span class="st">"user.id"</span>, request.headers.get(<span class="st">"x-user-id"</span>))
+        ...</div>
+  </div>
+
+  <div class="callout cy">
+    <span class="callout-icon">â—Ž</span>
+    <div class="callout-body"><strong>Async and queues:</strong> Message queues (Kafka, SQS, RabbitMQ) break the synchronous parent-child span relationship. Use <strong>span links</strong> to connect a producer span to a consumer span when there's no direct causal chain â€” the consumer span has a <code>link</code> to the producer span, indicating relationship without implying causality. This is the correct model for fanout patterns.</div>
+  </div>
+</section>
+
+<!-- â•â• 10 INSTRUMENTATION â•â• -->
+<section id="instrument">
+  <div class="section-header">
+    <div class="sec-num">10</div>
+    <div class="sec-title"><h2>Auto vs Manual Instrumentation</h2><div class="sub">// WHAT YOU GET FOR FREE AND WHEN TO GO DEEPER</div></div>
+  </div>
+
+  <p class="prose">OTel auto-instrumentation uses bytecode manipulation (Java), monkey-patching (Python), or module wrapping (Node.js) to instrument popular libraries without code changes. It's the right starting point â€” but insufficient alone for business-meaningful observability.</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Layer</th><th>Auto-Instrumented</th><th>Manual Required</th></tr>
+      <tr>
+        <td><strong>HTTP</strong></td>
+        <td><span class="ok">YES</span> â€” all inbound/outbound HTTP spans, status codes, routes</td>
+        <td>Business context: <code>user.id</code>, <code>tenant.id</code>, <code>feature.flag</code></td>
+      </tr>
+      <tr>
+        <td><strong>Databases</strong></td>
+        <td><span class="ok">YES</span> â€” query spans with statement text, table name, duration</td>
+        <td>Slow query context: row count, index used, affected records</td>
+      </tr>
+      <tr>
+        <td><strong>Redis / Memcached</strong></td>
+        <td><span class="ok">YES</span> â€” command + key pattern, latency</td>
+        <td>Hit/miss rate as span events, cache key namespace</td>
+      </tr>
+      <tr>
+        <td><strong>gRPC</strong></td>
+        <td><span class="ok">YES</span> â€” method, status code, propagation</td>
+        <td>Payload size, retry count, deadline remaining</td>
+      </tr>
+      <tr>
+        <td><strong>LLM APIs</strong></td>
+        <td><span class="so">PARTIAL</span> â€” openai-python has OTel contrib; Anthropic manual only</td>
+        <td>Token counts, cost, finish reason, model, prompt hash â€” all manual</td>
+      </tr>
+      <tr>
+        <td><strong>Message queues</strong></td>
+        <td><span class="so">PARTIAL</span> â€” Kafka, RabbitMQ instrumentations available</td>
+        <td>Consumer lag, queue depth at time of processing, span links</td>
+      </tr>
+      <tr>
+        <td><strong>Business logic</strong></td>
+        <td><span class="no">NO</span></td>
+        <td>Everything: business operations, user intent, A/B variant, recommendation algorithm used</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="callout cg">
+    <span class="callout-icon">â–¸</span>
+    <div class="callout-body"><strong>The 80/20 rule:</strong> Auto-instrumentation gives you 80% of trace coverage with 0% code changes. Add manual spans at decision points that matter for debugging: each distinct algorithmic step, each third-party API call not covered by auto-instrumentation, each conditional branch that changes the request path significantly.</div>
+  </div>
+</section>
+
+<!-- â•â• 11 SAMPLING â•â• -->
+<section id="sampling">
+  <div class="section-header">
+    <div class="sec-num">11</div>
+    <div class="sec-title"><h2>Sampling Strategies</h2><div class="sub">// NOT EVERY TRACE NEEDS TO LIVE FOREVER</div></div>
+  </div>
+
+  <p class="prose">At scale â€” hundreds of services, thousands of requests per second â€” tracing 100% of requests is prohibitively expensive. Sampling controls which traces are recorded and stored. The key insight: you need representative coverage of normal traffic, but <strong>always</strong> need to capture errors, high latency, and critical business flows.</p>
+
+  <div class="grid-2">
+    <div class="card card-lo">
+      <div class="card-title">Head-Based Sampling <span class="ctag ctag-o">Simple</span></div>
+      <p>The sampling decision is made at the <strong>start</strong> of a request, at the root span. All downstream services inherit the decision via the <code>sampled</code> flag in the traceparent header. Simple to implement, but you decide to sample before you know if the trace will be interesting.</p>
+      <ul style="margin-top:8px">
+        <li><strong>Probabilistic</strong> â€” sample X% of all traces</li>
+        <li><strong>Rate-limiting</strong> â€” max N traces/second regardless of volume</li>
+        <li><strong>Always-on for errors</strong> â€” sample 100% when status=5xx</li>
+      </ul>
+    </div>
+    <div class="card card-ly">
+      <div class="card-title">Tail-Based Sampling <span class="ctag ctag-y">Advanced</span></div>
+      <p>The sampling decision is made <strong>after</strong> the trace is complete â€” all spans are buffered, then a policy evaluates the entire trace. Captures slow, erroneous, or unusual traces that head-sampling would discard. Requires a stateful collector (OTel Collector tail-sampling processor, Grafana Tempo).</p>
+      <ul style="margin-top:8px">
+        <li><strong>Latency-based</strong> â€” keep all traces where total &gt; 2000ms</li>
+        <li><strong>Error-based</strong> â€” keep all traces containing error spans</li>
+        <li><strong>Attribute-based</strong> â€” always keep VIP user traces</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML â€” OTel Collector Tail Sampling Config</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># collector-config.yaml</span>
+<span class="at">processors</span>:
+  <span class="at">tail_sampling</span>:
+    decision_wait: 10s       <span class="cm"># Wait up to 10s for all spans before deciding</span>
+    num_traces: 50000        <span class="cm"># Max traces in memory buffer</span>
+    expected_new_traces_per_sec: 2000
+
+    <span class="at">policies</span>:
+      <span class="cm"># Policy 1: Always keep errors</span>
+      - name: keep-errors
+        type: status_code
+        status_code: { status_codes: [ERROR] }
+
+      <span class="cm"># Policy 2: Keep slow traces (> 2s)</span>
+      - name: keep-slow-traces
+        type: latency
+        latency: { threshold_ms: 2000 }
+
+      <span class="cm"># Policy 3: Always keep payment traces</span>
+      - name: keep-payments
+        type: string_attribute
+        string_attribute:
+          key: service.name
+          values: [payment-service]
+          enabled_regex_matching: false
+
+      <span class="cm"># Policy 4: Always keep VIP user traces</span>
+      - name: keep-vip-users
+        type: string_attribute
+        string_attribute:
+          key: user.tier
+          values: [enterprise, vip]
+
+      <span class="cm"># Policy 5: Probabilistic 10% of everything else</span>
+      - name: probabilistic-base
+        type: probabilistic
+        probabilistic: { sampling_percentage: 10 }
+
+      <span class="cm"># Composite: keep if ANY of the above match</span>
+      - name: composite-policy
+        type: and
+        and:
+          sub_policy_decision_rule: any</div>
+  </div>
+</section>
+
+<!-- â•â• 12 ATTRIBUTES â•â• -->
+<section id="attributes">
+  <div class="section-header">
+    <div class="sec-num">12</div>
+    <div class="sec-title"><h2>Span Attributes</h2><div class="sub">// WHAT TO RECORD AND HOW</div></div>
+  </div>
+
+  <p class="prose">Span attributes are the metadata that make a trace actually searchable and debuggable. OTel publishes <strong>semantic conventions</strong> â€” standardized attribute names for common operations. Use them to ensure your traces are compatible with tracing backends and APM platforms without custom parsing.</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Category</th><th>Required Attributes</th><th>Optional</th></tr>
+      <tr>
+        <td><strong>All Services</strong></td>
+        <td><code>service.name</code>, <code>service.version</code>, <code>deployment.environment</code></td>
+        <td><code>k8s.pod.name</code>, <code>k8s.namespace.name</code>, <code>host.id</code></td>
+      </tr>
+      <tr>
+        <td><strong>HTTP Server</strong></td>
+        <td><code>http.method</code>, <code>http.route</code>, <code>http.response.status_code</code></td>
+        <td><code>http.request.body.size</code>, <code>net.peer.ip</code>, <code>http.user_agent</code></td>
+      </tr>
+      <tr>
+        <td><strong>HTTP Client</strong></td>
+        <td><code>http.method</code>, <code>server.address</code>, <code>http.response.status_code</code></td>
+        <td><code>http.request.body.size</code>, <code>net.peer.port</code></td>
+      </tr>
+      <tr>
+        <td><strong>Database</strong></td>
+        <td><code>db.system</code>, <code>db.name</code>, <code>db.statement</code> (sanitized), <code>db.operation</code></td>
+        <td><code>db.sql.table</code>, <code>db.rows_affected</code>, <code>server.address</code></td>
+      </tr>
+      <tr>
+        <td><strong>LLM / GenAI</strong></td>
+        <td><code>gen_ai.system</code>, <code>gen_ai.request.model</code>, <code>gen_ai.usage.input_tokens</code>, <code>gen_ai.usage.output_tokens</code></td>
+        <td><code>gen_ai.response.finish_reasons</code>, <code>gen_ai.response.id</code>, <code>llm.cost.usd</code></td>
+      </tr>
+      <tr>
+        <td><strong>Messaging</strong></td>
+        <td><code>messaging.system</code>, <code>messaging.destination.name</code>, <code>messaging.operation</code></td>
+        <td><code>messaging.message.body.size</code>, <code>messaging.kafka.offset</code></td>
+      </tr>
+      <tr>
+        <td><strong>Business</strong></td>
+        <td><code>user.id</code>, <code>tenant.id</code></td>
+        <td><code>feature.flag</code>, <code>ab.experiment</code>, <code>user.tier</code>, domain-specific fields</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="callout cr">
+    <span class="callout-icon">âš </span>
+    <div class="callout-body"><strong>NEVER put PII in span attributes.</strong> Spans are stored long-term, indexed, and readable by anyone with access to the tracing backend. Sanitize DB statements (remove parameter values), hash user identifiers, truncate request bodies, and strip authentication headers before adding to spans. Use <code>user.id</code> (opaque), never <code>user.email</code> or <code>user.name</code>.</div>
+  </div>
+</section>
+
+<!-- â•â• 13 DEBUGGING â•â• -->
+<section id="debugging">
+  <div class="section-header">
+    <div class="sec-num">13</div>
+    <div class="sec-title"><h2>Debugging with Traces</h2><div class="sub">// FROM ALERT TO ROOT CAUSE IN MINUTES</div></div>
+  </div>
+
+  <p class="prose">A trace is the shortest path from a user complaint to a root cause. This section describes the five most common debugging workflows and how to execute them in Jaeger or Zipkin.</p>
+
+  <div class="card card-lo">
+    <div class="card-title">Workflow 1 â€” "Request X was slow for user Y" <span class="ctag ctag-o">Latency</span></div>
+    <p style="margin-bottom:8px">Search Jaeger: <code>service=api-gateway, tag=user.id:usr_9kx2z, min-duration=2s, last 1h</code>. Click the highest-latency trace. Expand the waterfall. Sort spans by duration. The longest non-root span is your starting point for investigation.</p>
+  </div>
+  <div class="card card-lr">
+    <div class="card-title">Workflow 2 â€” "We're getting 5xx errors since deploy" <span class="ctag ctag-r">Error</span></div>
+    <p style="margin-bottom:8px">Search: <code>service=order-service, tag=error:true, last 30m</code>. Find a representative error trace. The red (error) span tells you the exact service, span name, and exception. The span events contain the full stack trace.</p>
+  </div>
+  <div class="card card-ly">
+    <div class="card-title">Workflow 3 â€” "Which service is causing N+1 queries" <span class="ctag ctag-y">Database</span></div>
+    <p style="margin-bottom:8px">Find a trace with high database span count. Filter spans by <code>db.system=postgresql</code>. 30 identical SELECT spans in a loop reveals the N+1 instantly â€” you can see the parent span that spawned them and the caller code via <code>code.filepath</code> attributes.</p>
+  </div>
+  <div class="card card-lp">
+    <div class="card-title">Workflow 4 â€” "Why did this LLM call cost 10Ã— the normal amount" <span class="ctag ctag-p">LLM Cost</span></div>
+    <p style="margin-bottom:8px">Find the trace by <code>trace_id</code> from your LLM cost anomaly alert. Inspect the <code>llm.router/generate</code> span. Check <code>gen_ai.usage.input_tokens</code> â€” was there context accumulation? Check the upstream context-service span for how much history was loaded. The causal chain is visible.</p>
+  </div>
+  <div class="card card-lg">
+    <div class="card-title">Workflow 5 â€” "Service mesh is timing out intermittently" <span class="ctag ctag-g">Reliability</span></div>
+    <p style="margin-bottom:8px">Search by duration range overlapping the timeout SLA. Compare 5 slow traces against 5 fast traces using Jaeger's compare view. Look for which span is consistently longer in slow traces â€” retry storms, connection pool exhaustion, and GC pauses all show distinct patterns.</p>
+  </div>
+</section>
+
+<!-- â•â• 14 PERF â•â• -->
+<section id="perf">
+  <div class="section-header">
+    <div class="sec-num">14</div>
+    <div class="sec-title"><h2>Performance Analysis</h2><div class="sub">// READING THE WATERFALL</div></div>
+  </div>
+
+  <p class="prose">The trace waterfall is your primary tool for understanding where time goes. Learn to read it fluently: gaps between spans reveal network overhead; spans that start late reveal queuing; parallel spans that collapse into a long sequential chain reveal concurrency bugs.</p>
+
+  <div class="waterfall">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:16px;text-transform:uppercase;">Common Latency Patterns</div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--orange);margin:12px 0 6px;letter-spacing:1px;">A. SEQUENTIAL BLOCKING â€” should be parallel</div>
+    <div class="wf-row">
+      <div class="wf-name">fetch_user_profile</div>
+      <div class="wf-bar-wrap"><div class="wf-bar" style="left:0%;width:20%;background:rgba(0,212,255,0.5)"></div></div>
+      <div class="wf-ms">200ms</div>
+    </div>
+    <div class="wf-row">
+      <div class="wf-name">fetch_user_orders</div>
+      <div class="wf-bar-wrap"><div class="wf-bar" style="left:20%;width:18%;background:rgba(0,212,255,0.5)"></div></div>
+      <div class="wf-ms">180ms</div>
+    </div>
+    <div class="wf-row">
+      <div class="wf-name">fetch_recommendations</div>
+      <div class="wf-bar-wrap"><div class="wf-bar" style="left:38%;width:22%;background:rgba(0,212,255,0.5)"></div></div>
+      <div class="wf-ms">220ms</div>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:4px 0 14px 200px;">â†’ Total: 600ms | Fix: asyncio.gather() â†’ reduces to ~220ms (longest operation)</div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--orange);margin:12px 0 6px;letter-spacing:1px;">B. PARALLEL (CORRECT) â€” same calls, concurrent</div>
+    <div class="wf-row">
+      <div class="wf-name">fetch_user_profile</div>
+      <div class="wf-bar-wrap"><div class="wf-bar" style="left:0%;width:20%;background:rgba(45,255,154,0.5)"></div></div>
+      <div class="wf-ms">200ms</div>
+    </div>
+    <div class="wf-row">
+      <div class="wf-name">fetch_user_orders</div>
+      <div class="wf-bar-wrap"><div class="wf-bar" style="left:0%;width:18%;background:rgba(45,255,154,0.5)"></div></div>
+      <div class="wf-ms">180ms</div>
+    </div>
+    <div class="wf-row">
+      <div class="wf-name">fetch_recommendations</div>
+      <div class="wf-bar-wrap"><div class="wf-bar" style="left:0%;width:22%;background:rgba(45,255,154,0.5)"></div></div>
+      <div class="wf-ms">220ms</div>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:4px 0 14px 200px;">â†’ Total: 220ms | 73% faster</div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--orange);margin:12px 0 6px;letter-spacing:1px;">C. GAPS â€” network/scheduling overhead</div>
+    <div class="wf-row">
+      <div class="wf-name">parent_service call</div>
+      <div class="wf-bar-wrap"><div class="wf-bar" style="left:0%;width:80%;background:rgba(255,107,43,0.4)"></div></div>
+      <div class="wf-ms">800ms</div>
+    </div>
+    <div class="wf-row">
+      <div class="wf-name">  child span (actual)</div>
+      <div class="wf-bar-wrap">
+        <div class="wf-bar" style="left:18%;width:44%;background:rgba(0,212,255,0.5)"></div>
+      </div>
+      <div class="wf-ms">440ms</div>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:4px 0 6px 200px;">â†’ Gap before child (18%) = DNS + TCP + TLS handshake = 144ms overhead</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin:0 0 0 200px;">â†’ Gap after child (38%) = response processing time not instrumented</div>
+  </div>
+
+  <div class="callout cc">
+    <span class="callout-icon">â—‰</span>
+    <div class="callout-body"><strong>Connection pool exhaustion:</strong> If you see a pattern where a child span starts late â€” large gap between parent start and child start â€” and multiple requests share the same pattern at the same time, suspect connection pool exhaustion. The request is waiting for a database connection, not for the database to respond. Add <code>db.wait_ms</code> as a span event to confirm.</div>
+  </div>
+</section>
+
+<!-- â•â• 15 DEPLOY â•â• -->
+<section id="deploy">
+  <div class="section-header">
+    <div class="sec-num">15</div>
+    <div class="sec-title"><h2>Deployment &amp; Storage</h2><div class="sub">// RUNNING TRACING INFRASTRUCTURE AT SCALE</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card card-lo">
+      <div class="card-title">Storage Backend Selection</div>
+      <div class="table-wrap" style="margin:8px 0 0">
+        <table>
+          <tr><th>Backend</th><th>Scale</th><th>Cost</th></tr>
+          <tr><td>In-memory</td><td><span class="no">Dev only</span></td><td>Free</td></tr>
+          <tr><td>Badger</td><td><span class="so">Single node</span></td><td>Free</td></tr>
+          <tr><td>Elasticsearch</td><td><span class="ok">High</span></td><td>Medium</td></tr>
+          <tr><td>OpenSearch</td><td><span class="ok">High</span></td><td>Medium</td></tr>
+          <tr><td>Cassandra</td><td><span class="ok">Very High</span></td><td>High ops</td></tr>
+          <tr><td>ClickHouse</td><td><span class="ok">High</span></td><td>Low</td></tr>
+          <tr><td>Grafana Tempo</td><td><span class="ok">Cloud-scale</span></td><td>Object store</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card card-lc">
+      <div class="card-title">OTel Collector â€” Production Config</div>
+      <ul>
+        <li>Run Collector as a <strong>DaemonSet</strong> (one per node) for local span collection â€” low latency, no network hops from pods</li>
+        <li>Or as a <strong>Deployment</strong> (central gateway) for batching, fan-out, and tail sampling</li>
+        <li>Use both: DaemonSet forwards to a central gateway Deployment that does tail sampling</li>
+        <li>Size memory: 2â€“4GB per collector at 10k spans/sec with tail sampling enabled</li>
+        <li>Always set <code>memory_limiter</code> processor to prevent OOM under spike</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-header"><span class="code-lang">YAML â€” OTel Collector Production Pipeline</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+    <div class="code-block"><span class="cm"># collector-production.yaml</span>
+<span class="at">receivers</span>:
+  <span class="at">otlp</span>:
+    <span class="at">protocols</span>:
+      grpc: { endpoint: "0.0.0.0:4317" }
+      http: { endpoint: "0.0.0.0:4318" }
+
+<span class="at">processors</span>:
+  <span class="at">memory_limiter</span>:
+    limit_mib: 3000
+    spike_limit_mib: 500
+    check_interval: 5s
+
+  <span class="at">batch</span>:
+    timeout: 5s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  <span class="at">attributes/sanitize</span>:   <span class="cm"># Remove PII before storage</span>
+    actions:
+      - key: db.statement    <span class="at">action</span>: update  value: "[sanitized]"
+        regexp: <span class="st">'(?i)(password|secret|token)\s*=\s*\S+'</span>
+      - key: http.request.header.authorization  <span class="at">action</span>: delete
+
+  <span class="at">tail_sampling</span>:         <span class="cm"># Keep errors + slow traces</span>
+    decision_wait: 10s
+    policies:
+      - name: errors    type: status_code  status_code: { status_codes: [ERROR] }
+      - name: slow      type: latency      latency: { threshold_ms: 2000 }
+      - name: base      type: probabilistic  probabilistic: { sampling_percentage: 5 }
+
+<span class="at">exporters</span>:
+  <span class="at">otlp/jaeger</span>:
+    endpoint: jaeger-collector.observability.svc:4317
+    tls: { insecure: false, ca_file: /certs/ca.pem }
+
+  <span class="at">zipkin</span>:                  <span class="cm"># Fan out to Zipkin for legacy consumers</span>
+    endpoint: http://zipkin.observability.svc:9411/api/v2/spans
+
+  <span class="at">otlp/tempo</span>:             <span class="cm"># And Grafana Tempo for long-term storage</span>
+    endpoint: tempo.observability.svc:4317
+
+<span class="at">service</span>:
+  <span class="at">pipelines</span>:
+    <span class="at">traces</span>:
+      receivers:  [otlp]
+      processors: [memory_limiter, attributes/sanitize, batch, tail_sampling]
+      exporters:  [otlp/jaeger, zipkin, otlp/tempo]</div>
+  </div>
+</section>
+
+<!-- â•â• 16 MATURITY â•â• -->
+<section id="maturity">
+  <div class="section-header">
+    <div class="sec-num">16</div>
+    <div class="sec-title"><h2>Tracing Maturity Model</h2><div class="sub">// WHERE ARE YOU TODAY</div></div>
+  </div>
+
+  <p class="prose">Most organizations start with ad-hoc traces on a few services and build toward full-system observability. This model shows the progression. Focus on getting all services to Level 2 before perfecting any one service at Level 4.</p>
+
+  <div class="maturity">
+    <div class="ms ms1">
+      <div class="ms-lv">Level 01</div>
+      <div class="ms-name">Blind</div>
+      <ul>
+        <li>No distributed tracing</li>
+        <li>Log correlation by request ID only</li>
+        <li>Manual service topology diagrams</li>
+        <li>Latency debugging = log trawling</li>
+        <li>No cross-service visibility</li>
+      </ul>
+    </div>
+    <div class="ms ms2">
+      <div class="ms-lv">Level 02</div>
+      <div class="ms-name">Aware</div>
+      <ul>
+        <li>OTel auto-instrumentation on HTTP</li>
+        <li>Traces visible in Jaeger/Zipkin</li>
+        <li>Basic sampling (probabilistic)</li>
+        <li>Some services missing context propagation</li>
+        <li>No LLM / queue tracing</li>
+      </ul>
+    </div>
+    <div class="ms ms3">
+      <div class="ms-lv">Level 03</div>
+      <div class="ms-name">Operational</div>
+      <ul>
+        <li>All services traced, propagation correct</li>
+        <li>DB, cache, queue spans included</li>
+        <li>Tail-based sampling for errors/slowness</li>
+        <li>Business attributes on key spans</li>
+        <li>OTel Collector pipeline in production</li>
+      </ul>
+    </div>
+    <div class="ms ms4">
+      <div class="ms-lv">Level 04</div>
+      <div class="ms-name">Optimal</div>
+      <ul>
+        <li>LLM calls as rich spans with tokens/cost</li>
+        <li>Span links for async/queue flows</li>
+        <li>Traces correlated with logs &amp; metrics</li>
+        <li>Adaptive sampling per-service</li>
+        <li>Automated anomaly detection on traces</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout co">
+    <span class="callout-icon">â–¸</span>
+    <div class="callout-body"><strong>Reference reading:</strong> Google Dapper paper (2010) â€” the theoretical foundation. OpenTelemetry docs at <code>opentelemetry.io</code>. Jaeger documentation at <code>jaegertracing.io</code>. W3C TraceContext spec at <code>w3.org/TR/trace-context</code>. OTel GenAI semantic conventions at <code>opentelemetry.io/docs/specs/semconv/gen-ai</code>. Grafana Tempo for cost-efficient trace storage at object-store scale.</div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = 'var(--orange)';
+    btn.style.borderColor = 'var(--orange)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-56px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+
+<script src='../scripts/handbook-ui.js'></script>
+</body>
+</html>
+
