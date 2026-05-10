@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transformers Handbook</title>
+<link rel="stylesheet" href="../styles/pytorch-handbook.css">
+<link rel="stylesheet" href="../styles/shared-ui.css">
+<link rel="stylesheet" href="../styles/content-utilities.css">
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-title">Transformers</div>
+    <div class="logo-sub">Architecture Handbook</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Overview</div>
+    <a class="nav-link" href="#overview">What are Transformers?</a>
+    <a class="nav-link" href="#paper">Attention Is All You Need</a>
+    <a class="nav-link" href="#architecture">Encoder / Decoder</a>
+    <a class="nav-link" href="#bert">BERT and Encoder-Only Models</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Modern Models</div>
+    <a class="nav-link" href="#modern">Modern Architectures</a>
+    <a class="nav-link" href="#derived">Derived Architectures</a>
+    <a class="nav-link" href="#moe">Dense vs MoE</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Practical Guidance</div>
+    <a class="nav-link" href="#when-to-use">When to Use Which</a>
+    <a class="nav-link" href="#refs">Reference Links</a>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="hero" id="overview">
+    <h1>Transformers Handbook</h1>
+    <p class="u-hero-subtle">A practical guide to transformer architecture: self-attention, encoder and decoder stacks, BERT-style encoders, modern descendants, and the trade-offs between dense and Mixture-of-Experts models.</p>
+    <div class="hero-meta">
+      <span class="badge badge-blue">Attention-based models</span>
+      <span class="badge badge-green">Encoder / decoder stacks</span>
+      <span class="badge badge-orange">Dense vs MoE</span>
+      <span class="badge badge-purple">May 2026</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">i</span>
+    <div class="callout-body"><strong>Core idea:</strong> transformers remove recurrence and convolution from the sequence path and replace them with attention plus feed-forward layers. That one change made parallel training practical for large language models and modern multimodal systems.</div>
+  </div>
+
+  <section id="paper">
+    <h2>Attention Is All You Need</h2>
+    <p>The original transformer paper introduced the architecture that made modern LLMs possible. The key move was self-attention: instead of reading tokens one by one, the model lets each token directly attend to every other token in the context window. That gives the model global context, efficient parallelism during training, and a flexible foundation for scaling.</p>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title">Self-Attention</div>
+        <div class="card-body">Every token computes a weighted view of the full sequence, which makes long-range dependency modeling much easier than with pure RNNs.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Parallelism</div>
+        <div class="card-body">Tokens can be processed in parallel, so training scales far better than sequential architectures.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Scalability</div>
+        <div class="card-body">The same block design can be stacked deeply and adapted into encoder-only, decoder-only, or encoder-decoder systems.</div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✓</span>
+      <div class="callout-body"><strong>Reference:</strong> Vaswani et al., <em>Attention Is All You Need</em> (2017). The paper is still the canonical starting point for understanding modern transformer design.</div>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <h2>Encoder, Decoder, and Encoder-Decoder</h2>
+    <p>Transformer models are built from repeated blocks. The standard building blocks are multi-head attention, feed-forward layers, residual connections, and layer normalization.</p>
+
+    <h3>Encoder</h3>
+    <p>The encoder reads the entire input sequence and produces contextual embeddings. Each token representation is enriched by attention over all other input tokens. This is ideal for understanding and representation tasks.</p>
+
+    <h3>Decoder</h3>
+    <p>The decoder generates tokens autoregressively. It uses masked self-attention so future tokens are hidden during training and inference. This is the basis for text generation models like GPT-style systems.</p>
+
+    <h3>Encoder + Decoder</h3>
+    <p>The encoder-decoder pattern is best when the input and output sequences are both important, such as translation, summarization, and structured generation. The decoder attends to encoder outputs through cross-attention.</p>
+
+    <pre><span class="kw"># Conceptual structure, not a full framework example</span>
+input_tokens   -&gt; [Encoder stack] -&gt; contextual representations
+context states -&gt; [Decoder stack with masked self-attention + cross-attention] -&gt; output tokens</pre>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Component</th><th>What it does</th><th>Typical use</th></tr>
+        <tr><td>Encoder</td><td>Builds contextual input representations</td><td>Classification, retrieval, embeddings</td></tr>
+        <tr><td>Decoder</td><td>Generates tokens one step at a time</td><td>Chat, code generation, completion</td></tr>
+        <tr><td>Encoder-decoder</td><td>Maps one sequence to another sequence</td><td>Translation, summarization, structured tasks</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="bert">
+    <h2>BERT and Encoder-Only Models</h2>
+    <p>BERT is one of the most important transformer descendants. It uses the encoder stack only, with bidirectional attention, so every token can see the full input. That makes it strong for understanding tasks rather than generation.</p>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>BERT-style models:</strong> excellent for embeddings, search, classification, extraction, reranking, and retrieval pipelines. They are not naturally suited to open-ended text generation because they do not use the decoder-only generation pattern.</div>
+    </div>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <div class="card-title">Good Fit</div>
+        <div class="card-body">Sentence embeddings, semantic search, document classification, named entity extraction, and reranking.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Not a Great Fit</div>
+        <div class="card-body">Open-ended generation where the model needs to write long answers token by token from scratch.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modern">
+    <h2>How Modern Models Use This Architecture</h2>
+    <p>Most modern foundation models are transformer variants. The core design is still attention + feed-forward blocks, but the surrounding training recipe, parameter scaling, attention tricks, and routing mechanisms have evolved.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Model family</th><th>Transformer type</th><th>Typical use</th></tr>
+        <tr><td>GPT-style models</td><td>Decoder-only</td><td>Chat, generation, agents, code</td></tr>
+        <tr><td>BERT-style models</td><td>Encoder-only</td><td>Embedding, retrieval, classification</td></tr>
+        <tr><td>T5 / FLAN-T5</td><td>Encoder-decoder</td><td>Translation, summarization, instruction tasks</td></tr>
+        <tr><td>Vision Transformers</td><td>Encoder-based tokenization of image patches</td><td>Vision classification and multimodal backbones</td></tr>
+      </table>
+    </div>
+
+    <h3>Derived Architectures</h3>
+    <p>Transformer research produced many specialized descendants. Some examples include:</p>
+    <ul>
+      <li><strong>Decoder-only LLMs:</strong> GPT, Llama, Mistral, Qwen, DeepSeek-style families.</li>
+      <li><strong>Encoder-only stacks:</strong> BERT, RoBERTa, DeBERTa, modern embedding models.</li>
+      <li><strong>Encoder-decoder systems:</strong> T5, BART, mT5, FLAN-T5, many translation and summarization models.</li>
+      <li><strong>Vision and multimodal transformers:</strong> ViT, CLIP-style dual encoders, and vision-language backbones.</li>
+    </ul>
+  </section>
+
+  <section id="moe">
+    <h2>Dense vs MoE</h2>
+    <p>Dense transformers activate all parameters for every token. Mixture-of-Experts (MoE) models route tokens to only a subset of experts. That means MoE can scale parameter count much faster without paying the full compute cost on every token.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Type</th><th>Strength</th><th>Trade-off</th></tr>
+        <tr><td>Dense</td><td>Simple, predictable, easier to deploy and optimize</td><td>Compute cost rises directly with model size</td></tr>
+        <tr><td>MoE</td><td>Very large parameter capacity with lower active compute</td><td>Routing complexity, operational complexity, and harder serving</td></tr>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Practical trade-off:</strong> MoE is attractive when you want very large capacity and can tolerate more complex infra. Dense models are usually easier to deploy, easier to reason about, and often the better default for smaller teams or strict latency targets.</div>
+    </div>
+  </section>
+
+  <section id="when-to-use">
+    <h2>Which Transformer Should You Use?</h2>
+    <p>Choose the architecture based on the task instead of starting from model size alone.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Task</th><th>Best transformer family</th><th>Why</th></tr>
+        <tr><td>Chat / generation</td><td>Decoder-only</td><td>Autoregressive generation is the natural fit</td></tr>
+        <tr><td>Search / embeddings / classification</td><td>Encoder-only</td><td>Bidirectional context is great for understanding</td></tr>
+        <tr><td>Summarization / translation</td><td>Encoder-decoder</td><td>Best when input and output both matter</td></tr>
+        <tr><td>Very large capacity at lower active compute</td><td>MoE transformer</td><td>Useful when scale matters more than simplicity</td></tr>
+        <tr><td>Small team, stable deployment, low complexity</td><td>Dense transformer</td><td>Operationally simpler and easier to serve</td></tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">✓</span>
+      <div class="callout-body"><strong>Rule of thumb:</strong> if you are building an assistant or generator, start with a decoder-only model. If you are building retrieval, classification, or embeddings, start with an encoder-only model. If you are translating or compressing one sequence into another, use encoder-decoder.</div>
+    </div>
+  </section>
+
+  <section id="refs">
+    <h2>Reference Links</h2>
+    <ul>
+      <li><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noreferrer">Attention Is All You Need</a></li>
+      <li><a href="https://huggingface.co/docs/transformers" target="_blank" rel="noreferrer">Hugging Face Transformers docs</a></li>
+      <li><a href="https://paperswithcode.com/" target="_blank" rel="noreferrer">Papers With Code</a></li>
+    </ul>
+  </section>
+</main>
+
+<script src="../scripts/handbook-ui.js"></script>
+</body>
+</html>
