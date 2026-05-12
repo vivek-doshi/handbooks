@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modular Monolith — Engineering Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;0,900;1,300;1,400&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink:         #0d0f14;
+  --ink2:        #161a24;
+  --ink3:        #1d2231;
+  --ink4:        #252c3d;
+  --surface:     #1a1f2e;
+  --border:      rgba(255,255,255,0.07);
+  --border2:     rgba(255,255,255,0.13);
+  --text:        #e8ecf4;
+  --text2:       #8e9ab8;
+  --muted:       #4a5470;
+  --gold:        #f0c060;
+  --gold2:       #c89a3a;
+  --gold-glow:   rgba(240,192,96,0.1);
+  --gold-dim:    rgba(240,192,96,0.06);
+  --teal:        #3de0c8;
+  --teal-dim:    rgba(61,224,200,0.08);
+  --coral:       #ff6b6b;
+  --coral-dim:   rgba(255,107,107,0.09);
+  --violet:      #9d7fff;
+  --violet-dim:  rgba(157,127,255,0.09);
+  --sky:         #5ba3f5;
+  --sky-dim:     rgba(91,163,245,0.09);
+  --lime:        #7ed957;
+  --lime-dim:    rgba(126,217,87,0.09);
+  --amber:       #ffb347;
+  --amber-dim:   rgba(255,179,71,0.09);
+  --mono:        'DM Mono', monospace;
+  --display:     'Fraunces', serif;
+  --body:        'Outfit', sans-serif;
+  --sidebar-w:   270px;
+  --top-h:       56px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14.5px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* grain overlay */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(13,15,20,0.96);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+}
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-badge {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 2px;
+  background: var(--gold); color: var(--ink);
+}
+.topbar-title {
+  font-family: var(--display); font-size: 17px; font-weight: 600;
+  color: var(--text); letter-spacing: -0.3px;
+}
+.topbar-right {
+  display: flex; align-items: center; gap: 18px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px;
+}
+.topbar-pill {
+  padding: 3px 10px; border: 1px solid var(--border2); border-radius: 20px;
+  font-size: 10px; font-family: var(--mono); color: var(--text2);
+}
+.live-dot {
+  display: flex; align-items: center; gap: 5px; color: var(--teal);
+}
+.dot-anim {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--teal); box-shadow: 0 0 6px var(--teal);
+  animation: blink 2.2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ─── LAYOUT ─── */
+.layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); position: relative; z-index: 1; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--ink2);
+  border-right: 1px solid var(--border);
+  padding-bottom: 60px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sb-intro {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(160deg, rgba(240,192,96,0.07) 0%, transparent 60%);
+}
+.sb-doc { font-family: var(--mono); font-size: 10px; color: var(--gold); letter-spacing: 2px; margin-bottom: 3px; }
+.sb-ver { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+.nav-group {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+  padding: 16px 20px 5px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 20px 8px 20px;
+  text-decoration: none; font-size: 13px;
+  color: var(--text2); font-family: var(--body);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); border-left-color: var(--border2); }
+.nav-link.active { color: var(--gold); border-left-color: var(--gold); background: var(--gold-dim); }
+.nav-num { font-family: var(--mono); font-size: 9px; color: var(--muted); width: 22px; text-align: right; flex-shrink: 0; }
+.nav-link.active .nav-num { color: var(--gold2); }
+
+/* ─── MAIN ─── */
+.main { flex: 1; min-width: 0; padding: 52px 64px 120px; max-width: 1000px; }
+
+/* ─── HERO ─── */
+.hero {
+  margin-bottom: 72px; padding: 56px 60px;
+  border: 1px solid rgba(240,192,96,0.2);
+  background: var(--ink2);
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 5% 0%, rgba(240,192,96,0.1) 0%, transparent 45%),
+    radial-gradient(ellipse at 95% 100%, rgba(61,224,200,0.06) 0%, transparent 45%);
+  pointer-events: none;
+}
+.hero-corner {
+  position: absolute; top: 0; right: 0;
+  width: 80px; height: 80px;
+  background: linear-gradient(225deg, rgba(240,192,96,0.15) 0%, transparent 70%);
+  border-left: 1px solid rgba(240,192,96,0.15);
+  border-bottom: 1px solid rgba(240,192,96,0.15);
+}
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 3px;
+  color: var(--gold); text-transform: uppercase;
+  margin-bottom: 20px; display: flex; align-items: center; gap: 12px;
+}
+.hero-eyebrow::before { content: '//'; opacity: 0.4; }
+.hero h1 {
+  font-family: var(--display); font-size: 70px; font-weight: 900;
+  line-height: 0.88; letter-spacing: -2px;
+  color: var(--text); margin-bottom: 28px;
+}
+.hero h1 em { color: var(--gold); font-style: italic; }
+.hero-lead {
+  color: var(--text2); font-size: 15.5px; max-width: 580px;
+  line-height: 1.75; margin-bottom: 28px;
+}
+.hero-quote {
+  font-family: var(--display); font-style: italic; font-size: 14px;
+  color: var(--gold); border-left: 3px solid var(--gold);
+  padding: 10px 18px; background: var(--gold-dim);
+  display: inline-block; margin-bottom: 28px;
+}
+.hero-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.htag {
+  font-family: var(--mono); font-size: 11px;
+  padding: 4px 14px; border-radius: 2px; border: 1px solid;
+}
+.htag-gold   { color: var(--gold);   border-color: rgba(240,192,96,0.35);  background: var(--gold-dim); }
+.htag-teal   { color: var(--teal);   border-color: rgba(61,224,200,0.3);   background: var(--teal-dim); }
+.htag-coral  { color: var(--coral);  border-color: rgba(255,107,107,0.3);  background: var(--coral-dim); }
+.htag-violet { color: var(--violet); border-color: rgba(157,127,255,0.3);  background: var(--violet-dim); }
+.htag-sky    { color: var(--sky);    border-color: rgba(91,163,245,0.3);   background: var(--sky-dim); }
+.htag-lime   { color: var(--lime);   border-color: rgba(126,217,87,0.3);   background: var(--lime-dim); }
+
+/* ─── SECTIONS ─── */
+section { margin-bottom: 80px; scroll-margin-top: calc(var(--top-h) + 20px); }
+
+.section-header {
+  display: flex; align-items: flex-start; gap: 18px;
+  margin-bottom: 28px; padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 60px; height: 1px; background: var(--gold);
+}
+.sec-num {
+  font-family: var(--mono); font-size: 11px; color: var(--gold);
+  margin-top: 4px; width: 32px; flex-shrink: 0;
+}
+.sec-text h2 {
+  font-family: var(--display); font-size: 32px; font-weight: 700;
+  letter-spacing: -0.5px; color: var(--text); line-height: 1.05;
+}
+.sec-text .sub {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  letter-spacing: 1px; margin-top: 5px;
+}
+
+/* ─── PROSE ─── */
+.prose { color: var(--text2); font-size: 14.5px; line-height: 1.8; margin-bottom: 18px; }
+.prose strong { color: var(--text); font-weight: 600; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--ink3);
+  border: 1px solid var(--border);
+  padding: 22px 26px; margin-bottom: 14px;
+  transition: border-color 0.2s;
+  position: relative;
+}
+.card:hover { border-color: var(--border2); }
+.card-gold   { border-left: 3px solid var(--gold); }
+.card-teal   { border-left: 3px solid var(--teal); }
+.card-coral  { border-left: 3px solid var(--coral); }
+.card-violet { border-left: 3px solid var(--violet); }
+.card-sky    { border-left: 3px solid var(--sky); }
+.card-lime   { border-left: 3px solid var(--lime); }
+.card-amber  { border-left: 3px solid var(--amber); }
+
+.card-title {
+  font-family: var(--display); font-size: 17px; font-weight: 700;
+  color: var(--text); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.ctag {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  padding: 2px 8px; border-radius: 2px; letter-spacing: 1px; text-transform: uppercase;
+}
+.ctag-gold   { color: var(--gold);   background: var(--gold-dim);   border: 1px solid rgba(240,192,96,0.25); }
+.ctag-coral  { color: var(--coral);  background: var(--coral-dim);  border: 1px solid rgba(255,107,107,0.25); }
+.ctag-teal   { color: var(--teal);   background: var(--teal-dim);   border: 1px solid rgba(61,224,200,0.25); }
+.ctag-violet { color: var(--violet); background: var(--violet-dim); border: 1px solid rgba(157,127,255,0.25); }
+.ctag-sky    { color: var(--sky);    background: var(--sky-dim);    border: 1px solid rgba(91,163,245,0.25); }
+.ctag-lime   { color: var(--lime);   background: var(--lime-dim);   border: 1px solid rgba(126,217,87,0.25); }
+
+.card p, .card li { color: var(--text2); font-size: 13.5px; line-height: 1.7; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; }
+
+/* ─── GRIDS ─── */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.g3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+.g4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 14px; padding: 14px 18px;
+  margin: 18px 0; border-left: 3px solid; font-size: 13.5px;
+}
+.callout-ico { flex-shrink: 0; margin-top: 2px; }
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.callout.tip  { background: rgba(240,192,96,0.06); border-color: var(--gold); }
+.callout.info { background: rgba(91,163,245,0.06); border-color: var(--sky); }
+.callout.warn { background: rgba(255,107,107,0.06); border-color: var(--coral); }
+.callout.note { background: rgba(61,224,200,0.06); border-color: var(--teal); }
+
+/* ─── CODE ─── */
+.code-wrap {
+  background: #080a10;
+  border: 1px solid var(--border2);
+  margin: 18px 0; font-family: var(--mono);
+}
+.code-top {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 16px;
+  background: rgba(240,192,96,0.04);
+  border-bottom: 1px solid var(--border);
+}
+.code-label {
+  font-size: 10px; font-weight: 500; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--gold);
+}
+.copy-btn {
+  font-size: 10px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--gold); border-color: var(--gold); }
+.code-block {
+  padding: 20px 22px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.8; white-space: pre; tab-size: 2; color: #7a8aaa;
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.kw  { color: #9d7fff; }
+.st  { color: #7ed957; }
+.cm  { color: #3a4560; font-style: italic; }
+.fn  { color: #5ba3f5; }
+.cl  { color: #f0c060; }
+.nu  { color: #ff6b6b; }
+.at  { color: #3de0c8; }
+.de  { color: #ffb347; }
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(240,192,96,0.08); color: var(--gold);
+  padding: 1px 7px; border: 1px solid rgba(240,192,96,0.2);
+}
+
+/* ─── TABLE ─── */
+.tbl-wrap { border: 1px solid var(--border); margin: 18px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: rgba(240,192,96,0.05);
+  color: var(--gold); font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+.ok  { color: var(--lime); font-weight: 700; font-family: var(--mono); }
+.bad { color: var(--coral); font-weight: 700; font-family: var(--mono); }
+.ok2 { color: var(--teal); font-weight: 700; font-family: var(--mono); }
+
+/* ─── HEADINGS IN SECTION ─── */
+h3 {
+  font-family: var(--display); font-size: 20px; font-weight: 700;
+  color: var(--text); margin: 32px 0 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+h3::before { content: '§'; font-family: var(--mono); font-size: 13px; color: var(--gold); }
+h4 {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--muted);
+  margin: 22px 0 10px;
+}
+
+/* ─── DIRECTORY TREE ─── */
+.tree {
+  background: #070910;
+  border: 1px solid var(--border2);
+  padding: 22px 24px;
+  font-family: var(--mono); font-size: 12.5px;
+  line-height: 2; margin: 18px 0;
+  overflow-x: auto;
+}
+.tree-root { color: var(--gold); font-weight: 500; }
+.tree-folder { color: var(--teal); }
+.tree-file { color: var(--text2); }
+.tree-comment { color: var(--muted); font-style: italic; }
+.tree-indent { padding-left: 20px; border-left: 1px dashed rgba(255,255,255,0.06); margin-left: 6px; }
+
+/* ─── BOUNDARY DIAGRAM ─── */
+.boundary-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 2px; background: var(--border); border: 1px solid var(--border);
+  margin: 18px 0;
+}
+.bmodule {
+  background: var(--ink3); padding: 20px 14px; text-align: center;
+  position: relative; transition: background 0.2s;
+}
+.bmodule:hover { background: var(--ink4); }
+.bm-icon { font-size: 24px; margin-bottom: 8px; }
+.bm-label {
+  font-family: var(--display); font-size: 14px; font-weight: 700;
+  color: var(--text); margin-bottom: 4px;
+}
+.bm-sub { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.bm-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
+
+/* ─── FLOW ─── */
+.flow {
+  display: flex; align-items: center;
+  overflow-x: auto; margin: 20px 0;
+  padding: 24px; background: var(--ink3); border: 1px solid var(--border);
+  gap: 0;
+}
+.flow-node {
+  flex-shrink: 0; text-align: center;
+  padding: 12px 16px;
+  background: var(--ink4); border: 1px solid var(--border2);
+  min-width: 105px;
+}
+.flow-node-label {
+  font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 4px;
+}
+.flow-node-name {
+  font-family: var(--display); font-size: 13px; font-weight: 700;
+  color: var(--text); line-height: 1.2;
+}
+.flow-arr { color: var(--gold); font-size: 18px; margin: 0 8px; flex-shrink: 0; }
+
+/* ─── COMPARE ─── */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
+.cmp { border: 1px solid var(--border); }
+.cmp-hdr {
+  padding: 10px 18px;
+  font-family: var(--display); font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
+.cmp-old .cmp-hdr { background: rgba(255,107,107,0.07); color: var(--coral); border-bottom: 1px solid rgba(255,107,107,0.15); }
+.cmp-new .cmp-hdr { background: rgba(240,192,96,0.06); color: var(--gold); border-bottom: 1px solid rgba(240,192,96,0.15); }
+.cmp-body { padding: 14px 18px; }
+.cmp-body li { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+.cmp-body ul { padding-left: 14px; }
+
+/* ─── COST COMPARE ─── */
+.cost-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0; }
+.cost-block { border: 1px solid var(--border); background: var(--ink3); padding: 22px; }
+.cost-hdr {
+  font-family: var(--display); font-size: 17px; font-weight: 700;
+  margin-bottom: 14px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.cost-hdr.mono-hdr { color: var(--gold); }
+.cost-hdr.micro-hdr { color: var(--teal); }
+.cost-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+.cost-row-label { font-size: 13px; color: var(--text2); }
+.cost-val { font-family: var(--mono); font-size: 11px; font-weight: 500; }
+.v-low  { color: var(--lime); }
+.v-med  { color: var(--amber); }
+.v-high { color: var(--coral); }
+
+/* ─── SCALE DIAGRAM ─── */
+.scale-bar {
+  display: flex; gap: 4px; margin: 14px 0;
+}
+.sb-seg {
+  height: 24px; flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+
+/* ─── MATURITY ─── */
+.maturity { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin: 18px 0; }
+.m-stage {
+  background: var(--ink3); border: 1px solid var(--border);
+  padding: 18px; position: relative; overflow: hidden;
+}
+.m-stage::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.ms-1::before { background: var(--muted); }
+.ms-2::before { background: var(--amber); }
+.ms-3::before { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+.m-lvl { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+.m-name { font-family: var(--display); font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+.ms-1 .m-name { color: var(--muted); }
+.ms-2 .m-name { color: var(--amber); }
+.ms-3 .m-name { color: var(--gold); }
+.m-stage ul { padding-left: 14px; }
+.m-stage li { font-size: 12px; color: var(--muted); margin-bottom: 4px; line-height: 1.5; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 28px 20px 60px; }
+  .g2, .g3, .g4, .compare, .cost-grid, .maturity { grid-template-columns: 1fr; }
+  .boundary-row { grid-template-columns: 1fr 1fr; }
+  .hero h1 { font-size: 44px; }
+  .flow { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-badge">Engineering</div>
+    <div class="topbar-title">Modular Monolith Handbook</div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-pill">Angular + .NET Core</span>
+    <span class="topbar-pill">Team: 40 Engineers</span>
+    <div class="live-dot"><span class="dot-anim"></span>v2025</div>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-intro">
+    <div class="sb-doc">// MOD-MONO-001</div>
+    <div class="sb-ver">Angular · .NET Core · 40 ppl</div>
+  </div>
+
+  <div class="nav-group">Concept</div>
+  <a class="nav-link active" href="#what"      ><span class="nav-num">01</span>What Is It?</a>
+  <a class="nav-link"        href="#why"        ><span class="nav-num">02</span>Why Modular Monolith?</a>
+  <a class="nav-link"        href="#example"    ><span class="nav-num">03</span>Running Example</a>
+
+  <div class="nav-group">Architecture</div>
+  <a class="nav-link"  href="#split"     ><span class="nav-num">04</span>Domain vs Module Split</a>
+  <a class="nav-link"  href="#backend"   ><span class="nav-num">05</span>.NET Structure</a>
+  <a class="nav-link"  href="#frontend"  ><span class="nav-num">06</span>Angular Structure</a>
+
+  <div class="nav-group">Boundaries</div>
+  <a class="nav-link"  href="#boundary"  ><span class="nav-num">07</span>Enforcing Boundaries</a>
+  <a class="nav-link"  href="#comms"     ><span class="nav-num">08</span>Module Communication</a>
+  <a class="nav-link"  href="#shared"    ><span class="nav-num">09</span>Shared Kernel</a>
+
+  <div class="nav-group">Ops & Scaling</div>
+  <a class="nav-link"  href="#scaling"   ><span class="nav-num">10</span>Scaling Strategy</a>
+  <a class="nav-link"  href="#cost"      ><span class="nav-num">11</span>Cost vs Microservices</a>
+  <a class="nav-link"  href="#migration" ><span class="nav-num">12</span>Migration Path</a>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-corner"></div>
+    <div class="hero-eyebrow">Architecture Field Handbook</div>
+    <h1>Modular<br><em>Monolith</em></h1>
+    <div class="hero-quote">"The best of both worlds — the simplicity of a monolith with the discipline of microservices."</div>
+    <p class="hero-lead">A practical guide to building a well-structured modular monolith for a 40-person engineering team using Angular and .NET Core. Covers logical domain splitting, boundary enforcement, inter-module communication, and a clear-eyed comparison with microservices on cost and scaling.</p>
+    <div class="hero-meta">
+      <span class="htag htag-gold">Domain-Driven</span>
+      <span class="htag htag-teal">.NET Core</span>
+      <span class="htag htag-violet">Angular 17+</span>
+      <span class="htag htag-sky">40 Engineers</span>
+      <span class="htag htag-coral">Bounded Contexts</span>
+      <span class="htag htag-lime">Scalable</span>
+    </div>
+  </div>
+
+  <!-- ══ 01 WHAT IS IT ══ -->
+  <section id="what">
+    <div class="section-header">
+      <div class="sec-num">01</div>
+      <div class="sec-text">
+        <h2>What Is a Modular Monolith?</h2>
+        <div class="sub">// DEFINITION & MENTAL MODEL</div>
+      </div>
+    </div>
+
+    <p class="prose">A modular monolith is a <strong>single deployable unit</strong> that is internally divided into strongly isolated, independently-reasoned modules. It runs as one process but enforces domain boundaries at the code level — preventing the "big ball of mud" that typical monoliths degenerate into.</p>
+    <p class="prose">Think of it as an apartment building: one structure, shared utilities (electricity, water), but each apartment is completely self-contained with its own entrance, rooms, and rules. Tenants don't walk through each other's kitchens.</p>
+
+    <div class="g3">
+      <div class="card card-coral">
+        <div class="card-title">Classic Monolith</div>
+        <p>One codebase, no internal boundaries. Everything talks to everything. Works at small scale, turns into spaghetti as teams grow. A change in billing accidentally breaks shipping logic.</p>
+      </div>
+      <div class="card card-gold">
+        <div class="card-title">Modular Monolith ★</div>
+        <p>One deployable, strict internal module contracts. Teams own their domain. Cross-domain calls go through defined interfaces only. Refactoring is safe; blast radius is bounded.</p>
+      </div>
+      <div class="card card-teal">
+        <div class="card-title">Microservices</div>
+        <p>Separate processes, separate deployments, separate databases. Maximum isolation but enormous operational overhead — Kubernetes, distributed tracing, service mesh, inter-service auth, network latency.</p>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-ico">▸</span>
+      <div class="callout-body"><strong>For a 40-person team:</strong> Microservices' overhead (DevOps complexity, distributed debugging, network failure modes) typically requires a dedicated platform engineering team of 8–12 just to keep the infrastructure healthy. A modular monolith lets your 40 engineers focus on product, not plumbing.</div>
+    </div>
+  </section>
+
+  <!-- ══ 02 WHY ══ -->
+  <section id="why">
+    <div class="section-header">
+      <div class="sec-num">02</div>
+      <div class="sec-text">
+        <h2>Why Choose This Architecture?</h2>
+        <div class="sub">// TRADEOFFS FOR YOUR TEAM SIZE</div>
+      </div>
+    </div>
+
+    <p class="prose">The right architecture depends on <strong>team topology, product maturity, and operational capacity</strong>. A 40-person engineering team building a growing SaaS product sits in the sweet spot where a modular monolith delivers maximum productivity with acceptable tradeoffs.</p>
+
+    <div class="compare">
+      <div class="cmp cmp-old">
+        <div class="cmp-hdr">✕ Classic Monolith Fails Because</div>
+        <div class="cmp-body"><ul>
+          <li>No ownership — anyone changes anything</li>
+          <li>Long-lived feature branches, constant merge conflicts</li>
+          <li>Full regression tests needed for any change</li>
+          <li>Coupled database schema, tightly tangled</li>
+          <li>New team members take months to understand the whole thing</li>
+          <li>Cannot scale individual hot paths independently</li>
+        </ul></div>
+      </div>
+      <div class="cmp cmp-new">
+        <div class="cmp-hdr">✓ Modular Monolith Gives You</div>
+        <div class="cmp-body"><ul>
+          <li>Clear domain ownership per sub-team</li>
+          <li>Teams work in their module without collisions</li>
+          <li>Module-scoped tests; full suite only on deployment</li>
+          <li>Isolated schemas per module (logical separation)</li>
+          <li>Onboarding to one module, not the whole system</li>
+          <li>Single-process efficiency + future extraction path</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <h3>Team Structure Alignment (Team Topologies)</h3>
+    <div class="g4">
+      <div class="card card-gold">
+        <div class="card-title" style="font-size:14px">Catalog Team</div>
+        <p style="font-size:12.5px;">8 engineers own the Product & Catalog module end-to-end: Angular feature, .NET module, DB schema.</p>
+      </div>
+      <div class="card card-teal">
+        <div class="card-title" style="font-size:14px">Commerce Team</div>
+        <p style="font-size:12.5px;">8 engineers own Ordering, Cart, Payments. Clear input/output contracts with other modules.</p>
+      </div>
+      <div class="card card-violet">
+        <div class="card-title" style="font-size:14px">Identity Team</div>
+        <p style="font-size:12.5px;">6 engineers own Auth, Users, Permissions. Exposes a contract — other modules never touch user tables directly.</p>
+      </div>
+      <div class="card card-sky">
+        <div class="card-title" style="font-size:14px">Platform Team</div>
+        <p style="font-size:12.5px;">8 engineers own shared kernel, CI/CD, observability, Shared DB migrations framework.</p>
+      </div>
+    </div>
+    <p class="prose" style="margin-top:6px;">Remaining ~10 engineers split across Notifications, Reporting, and Admin modules.</p>
+  </section>
+
+  <!-- ══ 03 EXAMPLE ══ -->
+  <section id="example">
+    <div class="section-header">
+      <div class="sec-num">03</div>
+      <div class="sec-text">
+        <h2>Running Example: E-Commerce Platform</h2>
+        <div class="sub">// CONCRETE DOMAIN MODEL</div>
+      </div>
+    </div>
+
+    <p class="prose">We'll use an <strong>e-commerce platform</strong> throughout this handbook. The system has six domains — each maps to a module with its own codebase boundary, database schema, and Angular feature module.</p>
+
+    <div class="boundary-row">
+      <div class="bmodule">
+        <div class="bm-icon">📦</div>
+        <div class="bm-label">Catalog</div>
+        <div class="bm-sub">Products, categories, search, inventory levels</div>
+        <div class="bm-bar" style="background:var(--gold);"></div>
+      </div>
+      <div class="bmodule">
+        <div class="bm-icon">🛒</div>
+        <div class="bm-label">Ordering</div>
+        <div class="bm-sub">Cart, checkout, order lifecycle, returns</div>
+        <div class="bm-bar" style="background:var(--teal);"></div>
+      </div>
+      <div class="bmodule">
+        <div class="bm-icon">💳</div>
+        <div class="bm-label">Payments</div>
+        <div class="bm-sub">Transactions, refunds, payment methods, fraud</div>
+        <div class="bm-bar" style="background:var(--coral);"></div>
+      </div>
+      <div class="bmodule">
+        <div class="bm-icon">🔐</div>
+        <div class="bm-label">Identity</div>
+        <div class="bm-sub">Users, auth, roles, sessions, social login</div>
+        <div class="bm-bar" style="background:var(--violet);"></div>
+      </div>
+      <div class="bmodule">
+        <div class="bm-icon">🔔</div>
+        <div class="bm-label">Notifications</div>
+        <div class="bm-sub">Email, SMS, push, templates, preferences</div>
+        <div class="bm-bar" style="background:var(--sky);"></div>
+      </div>
+      <div class="bmodule">
+        <div class="bm-icon">📊</div>
+        <div class="bm-label">Reporting</div>
+        <div class="bm-sub">Revenue, analytics, exports, dashboards</div>
+        <div class="bm-bar" style="background:var(--lime);"></div>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-ico">ℹ</span>
+      <div class="callout-body"><strong>Key rule:</strong> When an order is placed, the Ordering module does <em>not</em> call <code>NotificationService.SendEmail()</code> directly. It raises a domain event: <code>OrderPlaced</code>. The Notifications module listens and reacts. This is the boundary in action — zero direct dependency between Ordering and Notifications.</div>
+    </div>
+  </section>
+
+  <!-- ══ 04 SPLIT ══ -->
+  <section id="split">
+    <div class="section-header">
+      <div class="sec-num">04</div>
+      <div class="sec-text">
+        <h2>Domain-Based vs Module-Based Split</h2>
+        <div class="sub">// CHOOSING YOUR BOUNDARY STRATEGY</div>
+      </div>
+    </div>
+
+    <p class="prose">There are two main philosophies for splitting a modular monolith. Choose based on how your business logic is organized, not your technical layers.</p>
+
+    <div class="compare">
+      <div class="cmp cmp-old">
+        <div class="cmp-hdr">📁 Module-Based Split (Technical)</div>
+        <div class="cmp-body"><ul>
+          <li>Split by technical concern: Controllers, Services, Repos, Models</li>
+          <li>E.g.: <code>/Controllers/OrderController</code>, <code>/Services/OrderService</code></li>
+          <li>Easy to start — maps to how most devs think initially</li>
+          <li>Cross-cutting features touch many folders simultaneously</li>
+          <li>Teams still step on each other — no business ownership</li>
+          <li>Does NOT produce a modular monolith — just a layered one</li>
+        </ul></div>
+      </div>
+      <div class="cmp cmp-new">
+        <div class="cmp-hdr">★ Domain-Based Split (Recommended)</div>
+        <div class="cmp-body"><ul>
+          <li>Split by business domain: Catalog, Ordering, Payments, Identity</li>
+          <li>E.g.: <code>/Modules/Ordering/</code> contains its own controllers, services, repos</li>
+          <li>Each module is a vertical slice — owns all its layers</li>
+          <li>A team works in one folder for any feature end-to-end</li>
+          <li>Natural mapping to microservice extraction later</li>
+          <li>Aligns with DDD Bounded Contexts</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-ico">⚠</span>
+      <div class="callout-body"><strong>Common mistake:</strong> Splitting by technical layer (<code>Controllers/</code>, <code>Services/</code>, <code>Repositories/</code>) is <em>not</em> a modular monolith. It's a layered monolith — all the pain, none of the gain. Every feature still touches every layer and every team's code. Always split by domain first, then apply layers <em>within</em> each domain.</div>
+    </div>
+
+    <h3>How to Identify Domain Boundaries</h3>
+    <div class="g3">
+      <div class="card card-gold">
+        <div class="card-title">Ubiquitous Language</div>
+        <p>When the word "product" means something different to Catalog (SKU, description, price) vs. Ordering (ordered item, quantity) vs. Reporting (revenue line) — you have separate bounded contexts. Each context owns its own definition.</p>
+      </div>
+      <div class="card card-teal">
+        <div class="card-title">Conway's Law</div>
+        <p>Structure your modules around how your teams are organized. If 8 people work on commerce features together, that's one module. Don't fight Conway's Law — design with it. Team boundaries and module boundaries should match.</p>
+      </div>
+      <div class="card card-violet">
+        <div class="card-title">Change Frequency</div>
+        <p>Things that change together belong together. Catalog and Inventory change together (product updates). Payments and Fraud change together. If two components always change in sync, they're in the same module.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 05 BACKEND ══ -->
+  <section id="backend">
+    <div class="section-header">
+      <div class="sec-num">05</div>
+      <div class="sec-text">
+        <h2>.NET Core Directory Structure</h2>
+        <div class="sub">// SOLUTION LAYOUT & PROJECT REFERENCES</div>
+      </div>
+    </div>
+
+    <p class="prose">The .NET solution uses <strong>one project per module</strong> with strict reference rules — modules can only reference the Shared Kernel and their own internals. No module references another module's implementation.</p>
+
+    <div class="tree">
+<span class="tree-root">ECommerceApp.sln</span>
+├── <span class="tree-folder">src/</span>
+│   ├── <span class="tree-folder">API/</span>                           <span class="tree-comment"># Thin host — wires everything, no business logic</span>
+│   │   ├── <span class="tree-file">Program.cs</span>
+│   │   ├── <span class="tree-file">appsettings.json</span>
+│   │   └── <span class="tree-file">ECommerceApp.API.csproj</span>       <span class="tree-comment"># References all module projects</span>
+│   │
+│   ├── <span class="tree-folder">SharedKernel/</span>                  <span class="tree-comment"># Shared contracts — no implementations</span>
+│   │   ├── <span class="tree-folder">Abstractions/</span>
+│   │   │   ├── <span class="tree-file">IDomainEvent.cs</span>
+│   │   │   ├── <span class="tree-file">IEventBus.cs</span>              <span class="tree-comment"># In-process event bus interface</span>
+│   │   │   └── <span class="tree-file">IModuleStartup.cs</span>
+│   │   ├── <span class="tree-folder">Events/</span>                    <span class="tree-comment"># Domain event contracts (shared DTOs)</span>
+│   │   │   ├── <span class="tree-file">OrderPlacedEvent.cs</span>
+│   │   │   └── <span class="tree-file">UserRegisteredEvent.cs</span>
+│   │   └── <span class="tree-file">SharedKernel.csproj</span>
+│   │
+│   ├── <span class="tree-folder">Modules/</span>
+│   │   ├── <span class="tree-folder">Catalog/</span>
+│   │   │   ├── <span class="tree-folder">ECommerce.Modules.Catalog/</span>  <span class="tree-comment"># ONE project per module</span>
+│   │   │   │   ├── <span class="tree-folder">Api/</span>               <span class="tree-comment"># Controllers — thin, just routing</span>
+│   │   │   │   │   └── <span class="tree-file">ProductsController.cs</span>
+│   │   │   │   ├── <span class="tree-folder">Application/</span>       <span class="tree-comment"># Use cases, commands, queries (CQRS)</span>
+│   │   │   │   │   ├── <span class="tree-folder">Commands/</span>
+│   │   │   │   │   │   └── <span class="tree-file">CreateProductCommand.cs</span>
+│   │   │   │   │   └── <span class="tree-folder">Queries/</span>
+│   │   │   │   │       └── <span class="tree-file">GetProductQuery.cs</span>
+│   │   │   │   ├── <span class="tree-folder">Domain/</span>            <span class="tree-comment"># Entities, value objects, domain events</span>
+│   │   │   │   │   ├── <span class="tree-file">Product.cs</span>
+│   │   │   │   │   ├── <span class="tree-file">Category.cs</span>
+│   │   │   │   │   └── <span class="tree-file">ProductCreatedEvent.cs</span>
+│   │   │   │   ├── <span class="tree-folder">Infrastructure/</span>    <span class="tree-comment"># EF DbContext, repositories, external calls</span>
+│   │   │   │   │   ├── <span class="tree-file">CatalogDbContext.cs</span>
+│   │   │   │   │   ├── <span class="tree-folder">Migrations/</span>        <span class="tree-comment"># Module-scoped migrations</span>
+│   │   │   │   │   └── <span class="tree-file">ProductRepository.cs</span>
+│   │   │   │   ├── <span class="tree-folder">Contracts/</span>         <span class="tree-comment"># Public API for other modules (interfaces + DTOs)</span>
+│   │   │   │   │   └── <span class="tree-file">ICatalogApi.cs</span>     <span class="tree-comment"># ONLY this file is visible to other modules</span>
+│   │   │   │   └── <span class="tree-file">CatalogModule.cs</span>   <span class="tree-comment"># IModuleStartup registration</span>
+│   │   │
+│   │   ├── <span class="tree-folder">Ordering/</span>
+│   │   │   └── <span class="tree-folder">ECommerce.Modules.Ordering/</span>  <span class="tree-comment"># Same vertical structure</span>
+│   │   │
+│   │   ├── <span class="tree-folder">Payments/</span>
+│   │   ├── <span class="tree-folder">Identity/</span>
+│   │   ├── <span class="tree-folder">Notifications/</span>
+│   │   └── <span class="tree-folder">Reporting/</span>
+│   │
+│   └── <span class="tree-folder">Migrations.Runner/</span>              <span class="tree-comment"># Runs all module migrations in order</span>
+│
+└── <span class="tree-folder">tests/</span>
+    ├── <span class="tree-folder">ECommerce.Modules.Catalog.Tests/</span>
+    ├── <span class="tree-folder">ECommerce.Modules.Ordering.Tests/</span>
+    └── <span class="tree-folder">ECommerce.IntegrationTests/</span>        <span class="tree-comment"># Cross-module integration tests</span>
+    </div>
+
+    <h3>Module Registration Pattern</h3>
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-label">C# — Module Bootstrap & DI Registration</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// CatalogModule.cs — each module self-registers</span>
+<span class="kw">public class</span> <span class="cl">CatalogModule</span> : <span class="cl">IModuleStartup</span>
+{
+    <span class="kw">public void</span> <span class="fn">ConfigureServices</span>(<span class="cl">IServiceCollection</span> services, <span class="cl">IConfiguration</span> config)
+    {
+        services.<span class="fn">AddDbContext</span>&lt;<span class="cl">CatalogDbContext</span>&gt;(opts =>
+            opts.<span class="fn">UseSqlServer</span>(config.<span class="fn">GetConnectionString</span>(<span class="st">"Default"</span>),
+                sql => sql.<span class="fn">MigrationsHistoryTable</span>(<span class="st">"__EFMigrationsHistory_Catalog"</span>)));
+                <span class="cm">// ↑ module-scoped migration table — doesn't clash with other modules</span>
+
+        services.<span class="fn">AddScoped</span>&lt;<span class="cl">IProductRepository</span>, <span class="cl">ProductRepository</span>&gt;();
+        services.<span class="fn">AddScoped</span>&lt;<span class="cl">ICatalogApi</span>, <span class="cl">CatalogService</span>&gt;();
+        <span class="cm">// ↑ ICatalogApi is the public face — only this interface crosses module borders</span>
+    }
+}
+
+<span class="cm">// Program.cs — host just wires modules</span>
+<span class="kw">var</span> builder = <span class="cl">WebApplication</span>.<span class="fn">CreateBuilder</span>(args);
+
+builder.Services.<span class="fn">AddModule</span>&lt;<span class="cl">CatalogModule</span>&gt;(builder.Configuration);
+builder.Services.<span class="fn">AddModule</span>&lt;<span class="cl">OrderingModule</span>&gt;(builder.Configuration);
+builder.Services.<span class="fn">AddModule</span>&lt;<span class="cl">IdentityModule</span>&gt;(builder.Configuration);
+builder.Services.<span class="fn">AddModule</span>&lt;<span class="cl">PaymentsModule</span>&gt;(builder.Configuration);
+builder.Services.<span class="fn">AddModule</span>&lt;<span class="cl">NotificationsModule</span>&gt;(builder.Configuration);
+
+<span class="kw">var</span> app = builder.<span class="fn">Build</span>();
+app.<span class="fn">MapModuleEndpoints</span>();  <span class="cm">// discovers all module controllers automatically</span>
+app.<span class="fn">Run</span>();</div>
+    </div>
+
+    <h3>Database Schema Isolation</h3>
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-label">C# — Per-Module DbContext with Schema</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// CatalogDbContext.cs — module owns its own schema</span>
+<span class="kw">public class</span> <span class="cl">CatalogDbContext</span> : <span class="cl">DbContext</span>
+{
+    <span class="kw">public</span> <span class="cl">DbSet</span>&lt;<span class="cl">Product</span>&gt; Products => <span class="fn">Set</span>&lt;<span class="cl">Product</span>&gt;();
+    <span class="kw">public</span> <span class="cl">DbSet</span>&lt;<span class="cl">Category</span>&gt; Categories => <span class="fn">Set</span>&lt;<span class="cl">Category</span>&gt;();
+
+    <span class="kw">protected override void</span> <span class="fn">OnModelCreating</span>(<span class="cl">ModelBuilder</span> modelBuilder)
+    {
+        <span class="cm">// All catalog tables live under the "catalog" SQL schema</span>
+        modelBuilder.<span class="fn">HasDefaultSchema</span>(<span class="st">"catalog"</span>);
+
+        modelBuilder.<span class="fn">Entity</span>&lt;<span class="cl">Product</span>&gt;()
+            .<span class="fn">ToTable</span>(<span class="st">"products"</span>)    <span class="cm">// → catalog.products</span>
+            .<span class="fn">HasKey</span>(p => p.Id);
+    }
+}
+
+<span class="cm">// Result: SQL Server has schemas per module</span>
+<span class="cm">//   catalog.products         ← owned by Catalog module ONLY</span>
+<span class="cm">//   catalog.categories       ← owned by Catalog module ONLY</span>
+<span class="cm">//   ordering.orders          ← owned by Ordering module ONLY</span>
+<span class="cm">//   ordering.order_lines     ← owned by Ordering module ONLY</span>
+<span class="cm">//   payments.transactions    ← owned by Payments module ONLY</span>
+<span class="cm">//   identity.users           ← owned by Identity module ONLY</span>
+<span class="cm">//</span>
+<span class="cm">// RULE: No module may issue SQL (or EF queries) against another module's schema.</span>
+<span class="cm">// Ordering needs user data? It calls ICatalogApi, not catalog.products directly.</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 06 FRONTEND ══ -->
+  <section id="frontend">
+    <div class="section-header">
+      <div class="sec-num">06</div>
+      <div class="sec-text">
+        <h2>Angular Directory Structure</h2>
+        <div class="sub">// FEATURE MODULES & LAZY LOADING</div>
+      </div>
+    </div>
+
+    <p class="prose">The Angular frontend mirrors the backend domain split. Each backend module has a corresponding <strong>Angular feature module</strong> with its own routing, components, services, and state. Lazy loading keeps the initial bundle small and makes domain isolation visible at the framework level.</p>
+
+    <div class="tree">
+<span class="tree-root">ecommerce-app/</span>  <span class="tree-comment"># Angular workspace root</span>
+├── <span class="tree-folder">src/</span>
+│   ├── <span class="tree-folder">app/</span>
+│   │   ├── <span class="tree-file">app.component.ts</span>          <span class="tree-comment"># Shell — header, nav, router outlet only</span>
+│   │   ├── <span class="tree-file">app.routes.ts</span>             <span class="tree-comment"># Top-level lazy route definitions</span>
+│   │   │
+│   │   ├── <span class="tree-folder">modules/</span>                   <span class="tree-comment"># One folder per domain module</span>
+│   │   │   ├── <span class="tree-folder">catalog/</span>
+│   │   │   │   ├── <span class="tree-folder">components/</span>
+│   │   │   │   │   ├── <span class="tree-folder">product-list/</span>
+│   │   │   │   │   └── <span class="tree-folder">product-detail/</span>
+│   │   │   │   ├── <span class="tree-folder">pages/</span>               <span class="tree-comment"># Routable top-level pages</span>
+│   │   │   │   │   └── <span class="tree-file">catalog-page.component.ts</span>
+│   │   │   │   ├── <span class="tree-folder">services/</span>
+│   │   │   │   │   └── <span class="tree-file">catalog.service.ts</span>   <span class="tree-comment"># HTTP calls to /api/catalog only</span>
+│   │   │   │   ├── <span class="tree-folder">store/</span>               <span class="tree-comment"># NgRx state — module scoped</span>
+│   │   │   │   │   ├── <span class="tree-file">catalog.actions.ts</span>
+│   │   │   │   │   ├── <span class="tree-file">catalog.reducer.ts</span>
+│   │   │   │   │   └── <span class="tree-file">catalog.selectors.ts</span>
+│   │   │   │   ├── <span class="tree-folder">models/</span>              <span class="tree-comment"># TypeScript interfaces for this domain</span>
+│   │   │   │   │   └── <span class="tree-file">product.model.ts</span>
+│   │   │   │   └── <span class="tree-file">catalog.routes.ts</span>    <span class="tree-comment"># child routes — /catalog/..., /products/...</span>
+│   │   │   │
+│   │   │   ├── <span class="tree-folder">ordering/</span>              <span class="tree-comment"># Same vertical structure</span>
+│   │   │   │   ├── <span class="tree-folder">components/</span>
+│   │   │   │   ├── <span class="tree-folder">pages/</span>
+│   │   │   │   ├── <span class="tree-folder">services/</span>
+│   │   │   │   ├── <span class="tree-folder">store/</span>
+│   │   │   │   └── <span class="tree-file">ordering.routes.ts</span>
+│   │   │   │
+│   │   │   ├── <span class="tree-folder">payments/</span>
+│   │   │   ├── <span class="tree-folder">identity/</span>             <span class="tree-comment"># Login, register, profile</span>
+│   │   │   ├── <span class="tree-folder">notifications/</span>        <span class="tree-comment"># Notification preferences UI</span>
+│   │   │   └── <span class="tree-folder">reporting/</span>            <span class="tree-comment"># Dashboards, charts</span>
+│   │   │
+│   │   └── <span class="tree-folder">shared/</span>                    <span class="tree-comment"># Truly shared UI — no business logic</span>
+│   │       ├── <span class="tree-folder">components/</span>            <span class="tree-comment"># Button, modal, spinner, form controls</span>
+│   │       ├── <span class="tree-folder">pipes/</span>
+│   │       ├── <span class="tree-folder">directives/</span>
+│   │       └── <span class="tree-folder">guards/</span>                <span class="tree-comment"># AuthGuard, RoleGuard</span>
+│   │
+│   └── <span class="tree-folder">environments/</span>
+└── <span class="tree-file">angular.json</span>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-label">TypeScript — Lazy Routing</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// app.routes.ts — top-level routes with lazy loading</span>
+<span class="kw">export const</span> <span class="at">routes</span>: <span class="cl">Routes</span> = [
+  {
+    path: <span class="st">'catalog'</span>,
+    <span class="cm">// Catalog module is a separate JS chunk — not loaded until user navigates here</span>
+    loadChildren: () => <span class="fn">import</span>(<span class="st">'./modules/catalog/catalog.routes'</span>)
+      .<span class="fn">then</span>(m => m.<span class="at">CATALOG_ROUTES</span>),
+    canActivate: [<span class="cl">AuthGuard</span>]
+  },
+  {
+    path: <span class="st">'orders'</span>,
+    loadChildren: () => <span class="fn">import</span>(<span class="st">'./modules/ordering/ordering.routes'</span>)
+      .<span class="fn">then</span>(m => m.<span class="at">ORDERING_ROUTES</span>),
+    canActivate: [<span class="cl">AuthGuard</span>]
+  },
+  {
+    path: <span class="st">'reports'</span>,
+    loadChildren: () => <span class="fn">import</span>(<span class="st">'./modules/reporting/reporting.routes'</span>)
+      .<span class="fn">then</span>(m => m.<span class="at">REPORTING_ROUTES</span>),
+    canActivate: [<span class="cl">AuthGuard</span>, <span class="cl">RoleGuard</span>],
+    data: { roles: [<span class="st">'admin'</span>, <span class="st">'analyst'</span>] }
+  },
+];
+
+<span class="cm">// catalog.routes.ts — Catalog's own child routes</span>
+<span class="kw">export const</span> <span class="at">CATALOG_ROUTES</span>: <span class="cl">Routes</span> = [
+  { path: <span class="st">''</span>,         component: <span class="cl">CatalogPageComponent</span> },
+  { path: <span class="st">':id'</span>,       component: <span class="cl">ProductDetailComponent</span> },
+  { path: <span class="st">'new'</span>,       component: <span class="cl">CreateProductComponent</span>, canActivate: [<span class="cl">RoleGuard</span>] },
+];
+
+<span class="cm">// RULE: CatalogService ONLY calls /api/catalog/* endpoints</span>
+<span class="cm">// It never calls /api/ordering or /api/identity directly</span>
+<span class="cm">// Cross-module data needs come through the shared store or backend events</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 07 BOUNDARY ══ -->
+  <section id="boundary">
+    <div class="section-header">
+      <div class="sec-num">07</div>
+      <div class="sec-text">
+        <h2>Enforcing Module Boundaries</h2>
+        <div class="sub">// HARD RULES, TOOLING, CODE REVIEW</div>
+      </div>
+    </div>
+
+    <p class="prose">Boundaries only work if they're enforced mechanically — not just by convention or honor system. With a 40-person team you will have turnover, junior developers, and deadline pressure. The tooling must make violations impossible or immediately visible.</p>
+
+    <h3>Backend Enforcement (.NET)</h3>
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-label">C# — ArchUnitNET Architecture Tests</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// ArchitectureTests.cs — runs in CI, fails the build on violations</span>
+<span class="kw">using</span> ArchUnitNET.Domain;
+<span class="kw">using</span> ArchUnitNET.Loader;
+<span class="kw">using</span> ArchUnitNET.Fluent;
+
+[<span class="de">TestClass</span>]
+<span class="kw">public class</span> <span class="cl">ModuleBoundaryTests</span>
+{
+    <span class="kw">private static readonly</span> <span class="cl">Architecture</span> Architecture =
+        <span class="kw">new</span> <span class="cl">ArchLoader</span>().<span class="fn">LoadAssemblies</span>(
+            <span class="kw">typeof</span>(<span class="cl">CatalogModule</span>).Assembly,
+            <span class="kw">typeof</span>(<span class="cl">OrderingModule</span>).Assembly,
+            <span class="kw">typeof</span>(<span class="cl">PaymentsModule</span>).Assembly
+        ).<span class="fn">Build</span>();
+
+    [<span class="de">TestMethod</span>]
+    <span class="kw">public void</span> <span class="fn">Ordering_Must_Not_Depend_On_Catalog_Implementation</span>()
+    {
+        <span class="cm">// Ordering CAN reference ICatalogApi (the contract)</span>
+        <span class="cm">// Ordering CANNOT reference anything inside Catalog's Application/Domain/Infrastructure</span>
+        <span class="cl">Classes</span>().<span class="fn">That</span>().<span class="fn">ResideInNamespace</span>(<span class="st">"ECommerce.Modules.Ordering"</span>)
+            .<span class="fn">Should</span>().<span class="fn">NotDependOnAny</span>(
+                <span class="cl">Classes</span>().<span class="fn">That</span>().<span class="fn">ResideInNamespace</span>(<span class="st">"ECommerce.Modules.Catalog.Application"</span>)
+                    .<span class="fn">Or</span>().<span class="fn">ResideInNamespace</span>(<span class="st">"ECommerce.Modules.Catalog.Domain"</span>)
+                    .<span class="fn">Or</span>().<span class="fn">ResideInNamespace</span>(<span class="st">"ECommerce.Modules.Catalog.Infrastructure"</span>)
+            ).<span class="fn">Check</span>(Architecture);
+    }
+
+    [<span class="de">TestMethod</span>]
+    <span class="kw">public void</span> <span class="fn">No_Module_May_Access_Another_Modules_DbContext</span>()
+    {
+        <span class="cm">// Ordering must never inject CatalogDbContext — architectural violation</span>
+        <span class="cl">Classes</span>().<span class="fn">That</span>().<span class="fn">ResideInNamespace</span>(<span class="st">"ECommerce.Modules.Ordering"</span>)
+            .<span class="fn">Should</span>().<span class="fn">NotDependOnAny</span>(
+                <span class="cl">Classes</span>().<span class="fn">That</span>().<span class="fn">HaveNameEndingWith</span>(<span class="st">"DbContext"</span>)
+                    .<span class="fn">And</span>().<span class="fn">DoNotResideInNamespace</span>(<span class="st">"ECommerce.Modules.Ordering"</span>)
+            ).<span class="fn">Check</span>(Architecture);
+    }
+}</div>
+    </div>
+
+    <h3>Frontend Enforcement (Angular)</h3>
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-label">JSON — nx.json / ESLint Module Boundaries</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// .eslintrc.json — enforce import boundaries with @nx/enforce-module-boundaries</span>
+{
+  <span class="at">"rules"</span>: {
+    <span class="at">"@nx/enforce-module-boundaries"</span>: [<span class="st">"error"</span>, {
+      <span class="at">"depConstraints"</span>: [
+        {
+          <span class="at">"sourceTag"</span>: <span class="st">"module:catalog"</span>,
+          <span class="at">"onlyDependOnLibsWithTags"</span>: [<span class="st">"scope:shared"</span>]
+          <span class="cm">// Catalog components CANNOT import from ordering/, payments/ etc.</span>
+        },
+        {
+          <span class="at">"sourceTag"</span>: <span class="st">"module:ordering"</span>,
+          <span class="at">"onlyDependOnLibsWithTags"</span>: [<span class="st">"scope:shared"</span>]
+          <span class="cm">// Ordering components CANNOT import from catalog/, payments/ etc.</span>
+        },
+        {
+          <span class="at">"sourceTag"</span>: <span class="st">"scope:shared"</span>,
+          <span class="at">"onlyDependOnLibsWithTags"</span>: [<span class="st">"scope:shared"</span>]
+          <span class="cm">// Shared lib must not depend on any module</span>
+        }
+      ]
+    }]
+  }
+}
+
+<span class="cm">// Trying to do this in ordering.component.ts will FAIL the lint step in CI:</span>
+<span class="cm">// import { ProductService } from '../catalog/services/catalog.service'; // ❌ BLOCKED</span>
+<span class="cm">// import { Button } from '../../shared/components/button';               // ✅ OK</span></div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-ico">▸</span>
+      <div class="callout-body"><strong>PR checklist enforcement:</strong> Add a GitHub Actions step that runs <code>dotnet test --filter Category=Architecture</code> (ArchUnitNET) and <code>nx run-many --target=lint</code>. A PR with a boundary violation never merges. This removes the cognitive burden from reviewers and makes the architecture self-enforcing.</div>
+    </div>
+  </section>
+
+  <!-- ══ 08 COMMS ══ -->
+  <section id="comms">
+    <div class="section-header">
+      <div class="sec-num">08</div>
+      <div class="sec-text">
+        <h2>Module Communication Patterns</h2>
+        <div class="sub">// IN-PROCESS EVENTS, CONTRACTS, SYNC CALLS</div>
+      </div>
+    </div>
+
+    <p class="prose">Modules must communicate without tightly coupling. There are two mechanisms: <strong>synchronous contract calls</strong> (one module calls another's public interface) and <strong>in-process domain events</strong> (fire-and-forget, publisher doesn't know the subscriber).</p>
+
+    <h3>Pattern 1 — Synchronous Contract Call</h3>
+    <p class="prose">Use when: Ordering needs a product's current price at checkout time. It needs the answer immediately and synchronously.</p>
+
+    <div class="flow">
+      <div class="flow-node"><div class="flow-node-label">Caller</div><div class="flow-node-name">Ordering Module</div></div>
+      <div class="flow-arr">→</div>
+      <div class="flow-node"><div class="flow-node-label">Interface</div><div class="flow-node-name">ICatalogApi</div></div>
+      <div class="flow-arr">→</div>
+      <div class="flow-node"><div class="flow-node-label">Impl</div><div class="flow-node-name">CatalogService</div></div>
+      <div class="flow-arr">→</div>
+      <div class="flow-node"><div class="flow-node-label">Data</div><div class="flow-node-name">catalog.products</div></div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-label">C# — Public Contract Interface</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// Contracts/ICatalogApi.cs — this is the ONLY public surface of the Catalog module</span>
+<span class="kw">namespace</span> ECommerce.Modules.Catalog.Contracts;
+
+<span class="kw">public interface</span> <span class="cl">ICatalogApi</span>
+{
+    <span class="cm">// Ordering calls this to validate items before placing an order</span>
+    Task&lt;<span class="cl">ProductDetailsDto</span>&gt; <span class="fn">GetProductAsync</span>(Guid productId);
+    Task&lt;<span class="kw">bool</span>&gt; <span class="fn">IsInStockAsync</span>(Guid productId, <span class="kw">int</span> quantity);
+    Task <span class="fn">DecrementStockAsync</span>(Guid productId, <span class="kw">int</span> quantity);
+}
+
+<span class="kw">public record</span> <span class="cl">ProductDetailsDto</span>(Guid Id, <span class="kw">string</span> Name, <span class="kw">decimal</span> Price, <span class="kw">string</span> ImageUrl);
+<span class="cm">// ↑ DTO, not the domain entity. Never expose your entity across boundaries.</span>
+
+<span class="cm">// Ordering/Application/Commands/PlaceOrderCommand.cs</span>
+<span class="kw">public class</span> <span class="cl">PlaceOrderCommandHandler</span>
+{
+    <span class="kw">private readonly</span> <span class="cl">ICatalogApi</span> _catalog;  <span class="cm">// injected — interface, not concrete class</span>
+
+    <span class="kw">public async</span> Task <span class="fn">Handle</span>(<span class="cl">PlaceOrderCommand</span> cmd)
+    {
+        <span class="kw">var</span> product = <span class="kw">await</span> _catalog.<span class="fn">GetProductAsync</span>(cmd.ProductId);
+        <span class="kw">if</span> (product == <span class="kw">null</span>) <span class="kw">throw new</span> <span class="cl">ProductNotFoundException</span>(cmd.ProductId);
+
+        <span class="kw">var</span> inStock = <span class="kw">await</span> _catalog.<span class="fn">IsInStockAsync</span>(cmd.ProductId, cmd.Quantity);
+        <span class="kw">if</span> (!inStock) <span class="kw">throw new</span> <span class="cl">InsufficientStockException</span>();
+
+        <span class="cm">// Create order, persist it...</span>
+        <span class="kw">await</span> _catalog.<span class="fn">DecrementStockAsync</span>(cmd.ProductId, cmd.Quantity);
+    }
+}</div>
+    </div>
+
+    <h3>Pattern 2 — Domain Events (In-Process)</h3>
+    <p class="prose">Use when: After an order is placed, send a confirmation email and update reporting. The Ordering module should not know or care who reacts.</p>
+
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-label">C# — In-Process Event Bus</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// SharedKernel/Events/OrderPlacedEvent.cs — shared contract, not implementation</span>
+<span class="kw">public record</span> <span class="cl">OrderPlacedEvent</span>(Guid OrderId, Guid UserId, <span class="kw">decimal</span> Total, DateTime PlacedAt)
+    : <span class="cl">IDomainEvent</span>;
+
+<span class="cm">// Ordering module PUBLISHES the event — knows nothing about subscribers</span>
+<span class="kw">public class</span> <span class="cl">PlaceOrderCommandHandler</span>
+{
+    <span class="kw">private readonly</span> <span class="cl">IEventBus</span> _bus;
+
+    <span class="kw">public async</span> Task <span class="fn">Handle</span>(<span class="cl">PlaceOrderCommand</span> cmd)
+    {
+        <span class="cm">// ... business logic, persist order ...</span>
+        <span class="kw">await</span> _bus.<span class="fn">PublishAsync</span>(<span class="kw">new</span> <span class="cl">OrderPlacedEvent</span>(orderId, cmd.UserId, total, <span class="cl">DateTime</span>.UtcNow));
+        <span class="cm">// Ordering is done — no coupling to Notifications or Reporting</span>
+    }
+}
+
+<span class="cm">// Notifications module SUBSCRIBES — knows nothing about Ordering internals</span>
+<span class="kw">public class</span> <span class="cl">SendOrderConfirmationEmailHandler</span> : <span class="cl">IEventHandler</span>&lt;<span class="cl">OrderPlacedEvent</span>&gt;
+{
+    <span class="kw">public async</span> Task <span class="fn">HandleAsync</span>(<span class="cl">OrderPlacedEvent</span> evt)
+    {
+        <span class="cm">// Send confirmation email for evt.OrderId to evt.UserId</span>
+        <span class="kw">await</span> _emailService.<span class="fn">SendOrderConfirmationAsync</span>(evt.UserId, evt.OrderId);
+    }
+}
+
+<span class="cm">// Reporting module ALSO subscribes to the same event</span>
+<span class="kw">public class</span> <span class="cl">UpdateRevenueReportHandler</span> : <span class="cl">IEventHandler</span>&lt;<span class="cl">OrderPlacedEvent</span>&gt;
+{
+    <span class="kw">public async</span> Task <span class="fn">HandleAsync</span>(<span class="cl">OrderPlacedEvent</span> evt)
+    {
+        <span class="kw">await</span> _reportRepo.<span class="fn">RecordSaleAsync</span>(evt.Total, evt.PlacedAt);
+    }
+}</div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-ico">ℹ</span>
+      <div class="callout-body"><strong>In-process vs. message queue:</strong> Start with an in-process event bus (MediatR, a custom <code>IEventBus</code>, or Wolverine). This is synchronous, transactional (same DB transaction), and requires zero infrastructure. Later, if you extract a module to a microservice, you swap the in-process bus for RabbitMQ or Azure Service Bus — the code barely changes because the event contracts are already defined.</div>
+    </div>
+  </section>
+
+  <!-- ══ 09 SHARED ══ -->
+  <section id="shared">
+    <div class="section-header">
+      <div class="sec-num">09</div>
+      <div class="sec-text">
+        <h2>Shared Kernel — What Belongs There?</h2>
+        <div class="sub">// THE DANGEROUS MIDDLE GROUND</div>
+      </div>
+    </div>
+
+    <p class="prose">The Shared Kernel is a <strong>strictly curated</strong> set of abstractions and utilities used by all modules. It must not contain business logic. It must not grow into a "utils dumping ground." Every addition should be challenged with: "does this truly belong to no domain?"</p>
+
+    <div class="g2">
+      <div class="card card-lime">
+        <div class="card-title">✓ Put in Shared Kernel <span class="ctag ctag-lime">OK</span></div>
+        <ul>
+          <li>Interfaces: <code>IDomainEvent</code>, <code>IEventBus</code>, <code>IModuleStartup</code></li>
+          <li>Base classes: <code>Entity</code>, <code>AggregateRoot</code>, <code>ValueObject</code></li>
+          <li>Domain event contracts (records only, no logic)</li>
+          <li>Cross-cutting middleware: logging, correlation IDs, error handling</li>
+          <li>Common exceptions: <code>NotFoundException</code>, <code>ValidationException</code></li>
+          <li>Extension methods: pagination helpers, string utilities</li>
+          <li>Angular: UI design system components (Button, Modal, Table)</li>
+          <li>Angular: AuthGuard, HttpInterceptors, base error handler</li>
+        </ul>
+      </div>
+      <div class="card card-coral">
+        <div class="card-title">✕ Never Put in Shared Kernel <span class="ctag ctag-coral">Forbidden</span></div>
+        <ul>
+          <li>Business logic of any kind</li>
+          <li>Database entities that belong to a specific domain</li>
+          <li>Service implementations (only interfaces here)</li>
+          <li>Domain-specific constants or enums (e.g., <code>OrderStatus</code>)</li>
+          <li>Cross-module aggregations or queries (these belong in Reporting)</li>
+          <li>Angular: Module-specific components, routes, or state</li>
+          <li>Anything that requires importing from a specific module</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-ico">⚠</span>
+      <div class="callout-body"><strong>The Shared Kernel death spiral:</strong> Every time something is added to the Shared Kernel "for convenience," it becomes a hidden coupling between modules. After 2 years without discipline, the Shared Kernel becomes a second big ball of mud and all your boundary work is undone. Review additions to the Shared Kernel in architecture review — not just standard PR review.</div>
+    </div>
+  </section>
+
+  <!-- ══ 10 SCALING ══ -->
+  <section id="scaling">
+    <div class="section-header">
+      <div class="sec-num">10</div>
+      <div class="sec-text">
+        <h2>Scaling Strategy</h2>
+        <div class="sub">// HOW A MODULAR MONOLITH SCALES</div>
+      </div>
+    </div>
+
+    <p class="prose">The most common objection to a modular monolith is "it can't scale." This is incorrect. It scales horizontally just like microservices — you run multiple instances behind a load balancer. The difference is you scale the <em>entire application</em>, not individual services.</p>
+
+    <h3>Horizontal Scaling — Run Multiple Instances</h3>
+    <div class="flow">
+      <div class="flow-node"><div class="flow-node-label">Users</div><div class="flow-node-name">Traffic</div></div>
+      <div class="flow-arr">→</div>
+      <div class="flow-node"><div class="flow-node-label">Infra</div><div class="flow-node-name">Load Balancer</div></div>
+      <div class="flow-arr">→</div>
+      <div class="flow-node"><div class="flow-node-label">Instance 1</div><div class="flow-node-name">Full App</div></div>
+      <div class="flow-arr">+</div>
+      <div class="flow-node"><div class="flow-node-label">Instance 2</div><div class="flow-node-name">Full App</div></div>
+      <div class="flow-arr">+</div>
+      <div class="flow-node"><div class="flow-node-label">Instance N</div><div class="flow-node-name">Full App</div></div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-ico">◈</span>
+      <div class="callout-body"><strong>The real bottleneck is almost always the database, not the app tier.</strong> A well-indexed SQL Server or Postgres can handle tens of thousands of transactions per second. For most companies at 40-engineer scale, horizontal app scaling + read replicas + Redis caching is more than sufficient. You reach the database ceiling long before you need per-module compute isolation.</div>
+    </div>
+
+    <h3>Scaling Tactics Available to a Modular Monolith</h3>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Problem</th><th>Solution</th><th>Requires Microservices?</th></tr>
+        <tr>
+          <td>High request volume</td>
+          <td>Horizontal scaling — run 3–10 app instances, sticky sessions not needed if stateless</td>
+          <td><span class="ok">NO</span></td>
+        </tr>
+        <tr>
+          <td>Read-heavy catalog queries</td>
+          <td>Read replicas for CatalogDbContext, Redis cache for product data</td>
+          <td><span class="ok">NO</span></td>
+        </tr>
+        <tr>
+          <td>Reporting slows down OLTP</td>
+          <td>Separate read model for Reporting module (CQRS), own connection string pointing to replica</td>
+          <td><span class="ok">NO</span></td>
+        </tr>
+        <tr>
+          <td>Background job load</td>
+          <td>Move heavy jobs (reports, exports, email batches) to a separate Worker Service project that shares the same codebase</td>
+          <td><span class="ok">NO</span></td>
+        </tr>
+        <tr>
+          <td>One module truly needs isolated scale</td>
+          <td>Extract that specific module to a microservice — possible because boundaries are already clean</td>
+          <td><span class="ok2">THEN, YES</span></td>
+        </tr>
+        <tr>
+          <td>Global multi-region</td>
+          <td>Deploy full app to multiple regions with geo-routing and replicated database</td>
+          <td><span class="ok">NO</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Vertical Slice Extraction — When You're Ready</h3>
+    <p class="prose">Because your modular monolith has clean domain boundaries, extracting a module as a microservice is a structured task, not an emergency surgery. The Payments module, for example, can be extracted in a 2-week sprint because its contracts are already defined, its database schema is isolated, and its events are already published via an event bus interface.</p>
+  </section>
+
+  <!-- ══ 11 COST ══ -->
+  <section id="cost">
+    <div class="section-header">
+      <div class="sec-num">11</div>
+      <div class="sec-text">
+        <h2>Cost vs Microservices</h2>
+        <div class="sub">// REAL NUMBERS, HONEST TRADEOFFS</div>
+      </div>
+    </div>
+
+    <p class="prose">Microservices are <em>not</em> free. The operational complexity they require has a direct cost in infrastructure spend, engineering hours, and cognitive load. Below is an honest comparison for a 40-person team running a production SaaS product at medium scale.</p>
+
+    <div class="cost-grid">
+      <div class="cost-block">
+        <div class="cost-hdr mono-hdr">Modular Monolith</div>
+        <div class="cost-row"><span class="cost-row-label">App hosting (3 instances, AKS/ACS)</span><span class="cost-val v-low">~$300/mo</span></div>
+        <div class="cost-row"><span class="cost-row-label">Database (SQL Server, 1 primary + 1 replica)</span><span class="cost-val v-med">~$800/mo</span></div>
+        <div class="cost-row"><span class="cost-row-label">Redis cache</span><span class="cost-val v-low">~$100/mo</span></div>
+        <div class="cost-row"><span class="cost-row-label">Load balancer + CDN</span><span class="cost-val v-low">~$80/mo</span></div>
+        <div class="cost-row"><span class="cost-row-label">Observability (1 app)</span><span class="cost-val v-low">~$150/mo</span></div>
+        <div class="cost-row" style="border-top:1px solid var(--border2);padding-top:10px;margin-top:6px">
+          <span class="cost-row-label" style="color:var(--text);font-weight:600">Estimated Total</span>
+          <span class="cost-val v-low" style="font-size:14px">~$1,430/mo</span>
+        </div>
+        <div class="cost-row"><span class="cost-row-label">Platform eng headcount needed</span><span class="cost-val v-low">1–2 engineers</span></div>
+        <div class="cost-row"><span class="cost-row-label">Deployment complexity</span><span class="cost-val v-low">Low</span></div>
+        <div class="cost-row"><span class="cost-row-label">Debugging distributed issues</span><span class="cost-val v-low">Simple — one process</span></div>
+      </div>
+      <div class="cost-block">
+        <div class="cost-hdr micro-hdr">Microservices (6 services)</div>
+        <div class="cost-row"><span class="cost-row-label">Per-service hosting (6 × 2 instances)</span><span class="cost-val v-high">~$900/mo</span></div>
+        <div class="cost-row"><span class="cost-row-label">Per-service databases (6 × isolated)</span><span class="cost-val v-high">~$2,400/mo</span></div>
+        <div class="cost-row"><span class="cost-row-label">Message broker (RabbitMQ/Service Bus)</span><span class="cost-val v-med">~$300/mo</span></div>
+        <div class="cost-row"><span class="cost-row-label">Service mesh + mTLS (Istio/Linkerd)</span><span class="cost-val v-med">~$200/mo</span></div>
+        <div class="cost-row"><span class="cost-row-label">Distributed tracing + observability</span><span class="cost-val v-med">~$500/mo</span></div>
+        <div class="cost-row" style="border-top:1px solid var(--border2);padding-top:10px;margin-top:6px">
+          <span class="cost-row-label" style="color:var(--text);font-weight:600">Estimated Total</span>
+          <span class="cost-val v-high" style="font-size:14px">~$4,300/mo</span>
+        </div>
+        <div class="cost-row"><span class="cost-row-label">Platform eng headcount needed</span><span class="cost-val v-high">6–10 engineers</span></div>
+        <div class="cost-row"><span class="cost-row-label">Deployment complexity</span><span class="cost-val v-high">High (per-service CI/CD)</span></div>
+        <div class="cost-row"><span class="cost-row-label">Debugging distributed issues</span><span class="cost-val v-high">Hard — requires tracing</span></div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap" style="margin-top:20px;">
+      <table>
+        <tr><th>Dimension</th><th>Modular Monolith</th><th>Microservices</th></tr>
+        <tr>
+          <td><strong>Initial infra cost</strong></td>
+          <td><span class="ok">Low</span> — 1 deployable, 1 DB primary</td>
+          <td><span class="bad">3–5× higher</span> — per-service infra multiplies cost</td>
+        </tr>
+        <tr>
+          <td><strong>Dev velocity</strong></td>
+          <td><span class="ok">Fast</span> — single repo, single debugger, no network calls</td>
+          <td><span class="bad">Slower</span> — local orchestration needed (Docker Compose / Tilt)</td>
+        </tr>
+        <tr>
+          <td><strong>Deployment</strong></td>
+          <td><span class="ok">Simple</span> — one pipeline, one image, one rollback</td>
+          <td><span class="bad">Complex</span> — coordinate deploys, version compatibility, canary per service</td>
+        </tr>
+        <tr>
+          <td><strong>Testing</strong></td>
+          <td><span class="ok">In-process</span> — integration tests run fast, no mocking services</td>
+          <td><span class="bad">Contract testing</span> needed (Pact), end-to-end suites fragile</td>
+        </tr>
+        <tr>
+          <td><strong>Independent scaling</strong></td>
+          <td><span class="ok2">Partial</span> — scale whole app + read replicas for hot modules</td>
+          <td><span class="ok">Full</span> — scale each service independently; worth it at high load</td>
+        </tr>
+        <tr>
+          <td><strong>Tech diversity</strong></td>
+          <td><span class="ok2">Limited</span> — same runtime; different libraries per module</td>
+          <td><span class="ok">Full</span> — different languages per service if needed</td>
+        </tr>
+        <tr>
+          <td><strong>Team independence</strong></td>
+          <td><span class="ok2">Good</span> — module ownership, shared CI/CD</td>
+          <td><span class="ok">Best</span> — fully independent deploy, full team autonomy</td>
+        </tr>
+        <tr>
+          <td><strong>Right for 40 engineers?</strong></td>
+          <td><span class="ok">✓ Yes — strong fit</span></td>
+          <td><span class="bad">✗ Usually premature — overhead too high</span></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-ico">▸</span>
+      <div class="callout-body"><strong>The Amazon mistake:</strong> The famous Amazon/Netflix microservices journey is constantly cited but rarely contextualized. Amazon had hundreds of engineers before they decomposed. Netflix had massive, asymmetric scaling needs (video streaming CDN vs. metadata API). If your entire product serves under 100M requests/day, the modular monolith is almost certainly the right call.</div>
+    </div>
+  </section>
+
+  <!-- ══ 12 MIGRATION ══ -->
+  <section id="migration">
+    <div class="section-header">
+      <div class="sec-num">12</div>
+      <div class="sec-text">
+        <h2>Migration Path</h2>
+        <div class="sub">// FROM MESSY MONOLITH OR TOWARD MICROSERVICES</div>
+      </div>
+    </div>
+
+    <p class="prose">A modular monolith is a <strong>destination in itself</strong> but also the best preparation for microservices if you ever need them. Jumping directly from a messy monolith to microservices is one of the most common and costly architectural mistakes in the industry.</p>
+
+    <div class="maturity">
+      <div class="m-stage ms-1">
+        <div class="m-lvl">Stage 01</div>
+        <div class="m-name">Big Ball of Mud</div>
+        <ul>
+          <li>No internal structure</li>
+          <li>Everything references everything</li>
+          <li>Fear-driven development</li>
+          <li>2-week regressions for small changes</li>
+          <li>No team ownership</li>
+        </ul>
+      </div>
+      <div class="m-stage ms-2">
+        <div class="m-lvl">Stage 02</div>
+        <div class="m-name">Modular Monolith ★</div>
+        <ul>
+          <li>Domain-based modules</li>
+          <li>Enforced boundaries</li>
+          <li>Team ownership per module</li>
+          <li>Independent test suites</li>
+          <li>Clean event contracts</li>
+          <li>Horizontal scaling works</li>
+        </ul>
+      </div>
+      <div class="m-stage ms-3">
+        <div class="m-lvl">Stage 03</div>
+        <div class="m-name">Selective Microservices</div>
+        <ul>
+          <li>Extract 1–2 hot modules if needed</li>
+          <li>Core stays as modular monolith</li>
+          <li>Event bus becomes message queue</li>
+          <li>Only for justified scale needs</li>
+          <li>Most teams never need this</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Migrating from a Legacy Monolith — The Strangler Fig</h3>
+    <div class="code-wrap">
+      <div class="code-top"><span class="code-label">Strategy — Strangler Fig Migration</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## STEP 1 — Identify domain boundaries (4–6 weeks)</span>
+  → Event storming workshop with product + engineering
+  → Draw context map: who owns what, what data is duplicated
+  → Identify "seams" — where the app can be cut with least pain
+
+<span class="cm">## STEP 2 — Create module structure alongside existing code (2–4 weeks)</span>
+  → Add Modules/ folder, SharedKernel project
+  → Don't move anything yet — just create the scaffolding
+  → Establish CI rules: ArchUnitNET tests, linting boundaries
+
+<span class="cm">## STEP 3 — Module by module extraction (2–4 weeks each)</span>
+  → Start with the MOST isolated module (e.g., Notifications — few dependencies)
+  → Move code into the module: controllers, services, repositories
+  → Create module's own DbContext/schema (data migration in same DB, new schema)
+  → All old code still works via a thin adapter during transition
+
+<span class="cm">## STEP 4 — Enforce communication patterns (as you go)</span>
+  → Replace direct calls between modules with ICatalogApi interfaces
+  → Replace direct DB cross-queries with in-process events
+  → Write architecture tests after each module is "clean"
+
+<span class="cm">## STEP 5 — Remove the old code (as each module completes)</span>
+  → Delete the old Controllers/, Services/, Repositories/ files for migrated domains
+  → All traffic now goes through the module's own entry points
+  → Celebrate — you now have a seam
+
+<span class="cm">## Timeline for a 40-person team on medium codebase</span>
+  → 6 modules × 3–4 weeks each = ~6 months total
+  → Can be parallelized: 3 teams × 2 modules each = ~3 months
+  → Keep shipping features throughout — strangler fig is live migration</div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-ico">▸</span>
+      <div class="callout-body"><strong>Reference reading:</strong> Sam Newman's <em>Building Microservices</em> and <em>Monolith to Microservices</em> are the canonical texts. The modular monolith pattern is explicitly recommended as the intermediate step. Also see Shopify's engineering blog on their modular Rails monolith — a 40M-user system that remains a disciplined monolith today.</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = 'var(--gold)';
+    btn.style.borderColor = 'var(--gold)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-56px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

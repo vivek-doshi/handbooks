@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uvicorn Handbook — Reference Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:        #080b10;
+    --bg-surface:     #0d1117;
+    --bg-card:        #131a24;
+    --bg-code:        #090d13;
+    --bg-sidebar:     #0b0f18;
+    --border:         #1c2333;
+    --border-accent:  #253044;
+    --text-primary:   #e2e8f5;
+    --text-secondary: #8896b0;
+    --text-muted:     #404d65;
+    --accent-teal:    #2dd4bf;
+    --accent-blue:    #60a5fa;
+    --accent-green:   #4ade80;
+    --accent-amber:   #fbbf24;
+    --accent-purple:  #a78bfa;
+    --accent-pink:    #f472b6;
+    --accent-red:     #f87171;
+    --accent-cyan:    #22d3ee;
+    --hl-keyword:     #a78bfa;
+    --hl-string:      #4ade80;
+    --hl-number:      #fbbf24;
+    --hl-comment:     #3d4d65;
+    --hl-func:        #60a5fa;
+    --hl-class:       #2dd4bf;
+    --sidebar-w:      272px;
+    --top-h:          58px;
+    --radius:         8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ─── TOP BAR ─── */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: var(--top-h);
+    background: rgba(8,11,16,0.97);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+  }
+  .topbar-logo {
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'DM Sans', sans-serif; font-size: 17px; font-weight: 700;
+    color: var(--text-primary); text-decoration: none; letter-spacing: -0.4px;
+  }
+  .logo-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: #fff;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .logo-sub { color: var(--text-secondary); font-weight: 400; font-size: 13px; margin-left: 3px; }
+  .topbar-meta { display: flex; align-items: center; gap: 12px; }
+  .badge {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    padding: 3px 10px; border-radius: 20px; letter-spacing: 0.4px; font-weight: 500;
+  }
+  .badge-version { background: rgba(45,212,191,0.12); color: var(--accent-teal); border: 1px solid rgba(45,212,191,0.3); }
+  .badge-asgi    { background: rgba(96,165,250,0.12); color: var(--accent-blue); border: 1px solid rgba(96,165,250,0.28); }
+  .badge-py      { background: rgba(74,222,128,0.1);  color: var(--accent-green);border: 1px solid rgba(74,222,128,0.28); }
+
+  /* ─── LAYOUT ─── */
+  .layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    position: sticky; top: var(--top-h);
+    height: calc(100vh - var(--top-h));
+    overflow-y: auto; overflow-x: hidden;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    padding: 24px 0 40px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 4px; }
+  .sidebar-section { margin-bottom: 6px; }
+  .sidebar-section-title {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--text-muted); padding: 12px 20px 5px;
+  }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 20px; text-decoration: none;
+    color: var(--text-secondary); font-size: 13.5px; font-weight: 400;
+    border-left: 2px solid transparent; transition: all 0.16s; line-height: 1.3;
+  }
+  .sidebar-link:hover { color: var(--text-primary); background: rgba(255,255,255,0.035); border-left-color: var(--border-accent); }
+  .sidebar-link.active { color: var(--accent-teal); background: rgba(45,212,191,0.07); border-left-color: var(--accent-teal); font-weight: 500; }
+  .sidebar-link .icon { font-size: 14px; opacity: 0.8; width: 17px; text-align: center; }
+
+  /* ─── MAIN ─── */
+  .main { flex: 1; min-width: 0; padding: 48px 56px 80px; max-width: 960px; }
+
+  /* ─── HERO ─── */
+  .hero {
+    margin-bottom: 60px; padding: 48px 52px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 90% 10%, rgba(45,212,191,0.11) 0%, transparent 50%),
+      radial-gradient(ellipse at 5% 90%,  rgba(96,165,250,0.07) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent-teal); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hero-tag::before { content: '//'; opacity: 0.4; }
+  .hero h1 {
+    font-family: 'DM Sans', sans-serif; font-size: 38px; font-weight: 700;
+    line-height: 1.12; letter-spacing: -1px; margin-bottom: 16px;
+    background: linear-gradient(130deg, #e2e8f5 30%, #2dd4bf 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero p { color: var(--text-secondary); font-size: 16px; max-width: 560px; line-height: 1.7; }
+  .hero-chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+  .chip {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    padding: 5px 14px; border-radius: 6px; border: 1px solid;
+  }
+  .chip-teal   { color: var(--accent-teal);   border-color: rgba(45,212,191,0.35);  background: rgba(45,212,191,0.08); }
+  .chip-blue   { color: var(--accent-blue);   border-color: rgba(96,165,250,0.35);  background: rgba(96,165,250,0.08); }
+  .chip-green  { color: var(--accent-green);  border-color: rgba(74,222,128,0.35);  background: rgba(74,222,128,0.08); }
+  .chip-amber  { color: var(--accent-amber);  border-color: rgba(251,191,36,0.35);  background: rgba(251,191,36,0.08); }
+  .chip-purple { color: var(--accent-purple); border-color: rgba(167,139,250,0.35); background: rgba(167,139,250,0.08); }
+  .chip-pink   { color: var(--accent-pink);   border-color: rgba(244,114,182,0.35); background: rgba(244,114,182,0.08); }
+
+  /* ─── SECTIONS ─── */
+  .section { margin-bottom: 64px; scroll-margin-top: calc(var(--top-h) + 24px); }
+  .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 26px; }
+  .section-icon {
+    width: 38px; height: 38px; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .icon-teal   { background: rgba(45,212,191,0.13); }
+  .icon-blue   { background: rgba(96,165,250,0.13); }
+  .icon-green  { background: rgba(74,222,128,0.13); }
+  .icon-amber  { background: rgba(251,191,36,0.13); }
+  .icon-purple { background: rgba(167,139,250,0.13); }
+  .icon-pink   { background: rgba(244,114,182,0.13); }
+  .icon-red    { background: rgba(248,113,113,0.13); }
+  .icon-cyan   { background: rgba(34,211,238,0.13); }
+
+  .section-title-wrap h2 {
+    font-family: 'DM Sans', sans-serif; font-size: 21px; font-weight: 700;
+    letter-spacing: -0.3px; color: var(--text-primary);
+  }
+  .section-title-wrap .section-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .section-divider { height: 1px; background: linear-gradient(to right, var(--border), transparent); margin-bottom: 26px; }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 24px; margin-bottom: 14px;
+  }
+  .card-title {
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    color: var(--text-primary); margin-bottom: 9px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot-teal   { background: var(--accent-teal); }
+  .dot-blue   { background: var(--accent-blue); }
+  .dot-green  { background: var(--accent-green); }
+  .dot-amber  { background: var(--accent-amber); }
+  .dot-purple { background: var(--accent-purple); }
+  .dot-pink   { background: var(--accent-pink); }
+  .dot-red    { background: var(--accent-red); }
+  .dot-cyan   { background: var(--accent-cyan); }
+
+  .card p, .card li { color: var(--text-secondary); font-size: 14px; }
+  .card ul { padding-left: 18px; }
+  .card ul li { margin-bottom: 5px; }
+
+  /* ─── CODE BLOCKS ─── */
+  .code-wrap {
+    background: var(--bg-code); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin: 16px 0;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .code-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 18px; background: rgba(255,255,255,0.025);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-lang { font-size: 11px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+  .copy-btn {
+    font-size: 11px; color: var(--text-muted); background: none;
+    border: 1px solid var(--border); border-radius: 4px; padding: 3px 10px;
+    cursor: pointer; font-family: inherit; transition: all 0.18s;
+  }
+  .copy-btn:hover { color: var(--accent-teal); border-color: var(--accent-teal); }
+  .code-block { padding: 18px 20px; overflow-x: auto; font-size: 13px; line-height: 1.75; white-space: pre; tab-size: 4; }
+
+  /* syntax highlight */
+  .kw { color: var(--hl-keyword); }
+  .st { color: var(--hl-string); }
+  .nm { color: var(--hl-number); }
+  .cm { color: var(--hl-comment); font-style: italic; }
+  .fn { color: var(--hl-func); }
+  .cl { color: var(--hl-class); }
+  .im { color: var(--accent-pink); }
+  .op { color: var(--text-muted); }
+  .at { color: var(--accent-amber); }
+  .flag { color: var(--accent-amber); }
+  .env { color: var(--accent-purple); }
+
+  /* ─── INFO BOXES ─── */
+  .info-box {
+    display: flex; gap: 14px; padding: 15px 18px;
+    border-radius: var(--radius); margin: 16px 0; border-left: 3px solid;
+  }
+  .info-box.tip  { background: rgba(74,222,128,0.07);  border-color: var(--accent-green); }
+  .info-box.note { background: rgba(96,165,250,0.07);  border-color: var(--accent-blue); }
+  .info-box.warn { background: rgba(251,191,36,0.07);  border-color: var(--accent-amber); }
+  .info-box.perf { background: rgba(167,139,250,0.07); border-color: var(--accent-purple); }
+  .info-box.new  { background: rgba(45,212,191,0.07);  border-color: var(--accent-teal); }
+  .info-box.danger { background: rgba(248,113,113,0.07); border-color: var(--accent-red); }
+  .info-icon { font-size: 15px; flex-shrink: 0; margin-top: 2px; }
+  .info-content { font-size: 13.5px; color: var(--text-secondary); line-height: 1.65; }
+  .info-content strong { color: var(--text-primary); }
+
+  /* ─── INLINE CODE ─── */
+  code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+    background: rgba(45,212,191,0.1); color: var(--accent-teal);
+    padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(45,212,191,0.2);
+  }
+
+  /* ─── GRID ─── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+  /* ─── TABLE ─── */
+  .ref-table { width: 100%; border-collapse: collapse; margin: 14px 0; }
+  .ref-table th {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-muted); padding: 10px 16px;
+    text-align: left; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border);
+  }
+  .ref-table td {
+    padding: 10px 16px; font-size: 13.5px; color: var(--text-secondary);
+    border-bottom: 1px solid rgba(28,35,51,0.7); vertical-align: top;
+  }
+  .ref-table tr:last-child td { border-bottom: none; }
+  .ref-table tr:hover td { background: rgba(255,255,255,0.018); }
+  .ref-table td code { font-size: 11.5px; }
+  .option-name { color: var(--accent-teal); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .default-val { color: var(--accent-amber); font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; }
+
+  /* ─── FLOW DIAGRAM ─── */
+  .flow-diagram {
+    display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+    margin: 20px 0; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 22px;
+  }
+  .flow-step {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 11px 14px; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-size: 12px; min-width: 90px;
+  }
+  .flow-step .ficon { font-size: 20px; }
+  .flow-step .flabel { font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: var(--text-muted); letter-spacing: 0.8px; text-transform: uppercase; }
+  .flow-step .fname { font-size: 12px; color: var(--text-secondary); font-weight: 500; text-align: center; }
+  .flow-arrow { color: var(--border-accent); font-size: 18px; margin: 0 5px; }
+
+  /* ─── PROSE ─── */
+  .section p { color: var(--text-secondary); margin-bottom: 14px; font-size: 14.5px; }
+  h3 { font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 28px 0 12px; }
+  h4 { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin: 20px 0 8px; }
+
+  /* ─── COMPARISON TABLE ─── */
+  .vs-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .vs-table th {
+    font-size: 12px; font-weight: 600; padding: 10px 16px;
+    text-align: left; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .vs-table td { padding: 10px 16px; font-size: 13.5px; color: var(--text-secondary); border-bottom: 1px solid rgba(28,35,51,0.6); vertical-align: top; }
+  .vs-table tr:last-child td { border-bottom: none; }
+  .vs-table tr:hover td { background: rgba(255,255,255,0.015); }
+  .vs-check  { color: var(--accent-green); font-weight: 600; }
+  .vs-cross  { color: var(--accent-red); font-weight: 600; }
+  .vs-partial { color: var(--accent-amber); font-weight: 600; }
+  .col-server { background: rgba(45,212,191,0.06); }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 5px; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { padding: 32px 22px 60px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .hero { padding: 32px 26px; }
+    .hero h1 { font-size: 28px; }
+    .flow-diagram { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <a class="topbar-logo" href="#">
+    <div class="logo-icon">uv</div>
+    <span>Uvicorn</span>
+    <span class="logo-sub">Handbook</span>
+  </a>
+  <div class="topbar-meta">
+    <span class="badge badge-version">v0.32+</span>
+    <span class="badge badge-asgi">ASGI</span>
+    <span class="badge badge-py">Python 3.8+</span>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Overview</div>
+    <a href="#what"       class="sidebar-link active"><span class="icon">📡</span> What is Uvicorn?</a>
+    <a href="#why"        class="sidebar-link"><span class="icon">💡</span> Why Use It?</a>
+    <a href="#when"       class="sidebar-link"><span class="icon">🕐</span> When to Use</a>
+    <a href="#install"    class="sidebar-link"><span class="icon">📦</span> Installation</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Getting Started</div>
+    <a href="#quickstart" class="sidebar-link"><span class="icon">⚡</span> Quick Start</a>
+    <a href="#asgi"       class="sidebar-link"><span class="icon">🔌</span> ASGI Primer</a>
+    <a href="#frameworks" class="sidebar-link"><span class="icon">🧩</span> Frameworks</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Configuration</div>
+    <a href="#cli"        class="sidebar-link"><span class="icon">💻</span> CLI Reference</a>
+    <a href="#config"     class="sidebar-link"><span class="icon">⚙️</span> Config File</a>
+    <a href="#workers"    class="sidebar-link"><span class="icon">👷</span> Workers</a>
+    <a href="#ssl"        class="sidebar-link"><span class="icon">🔒</span> SSL / TLS</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Production</div>
+    <a href="#gunicorn"   class="sidebar-link"><span class="icon">🦄</span> Gunicorn + Uvicorn</a>
+    <a href="#docker"     class="sidebar-link"><span class="icon">🐳</span> Docker</a>
+    <a href="#nginx"      class="sidebar-link"><span class="icon">🌐</span> Nginx Proxy</a>
+    <a href="#logging"    class="sidebar-link"><span class="icon">📋</span> Logging</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Reference</div>
+    <a href="#comparison" class="sidebar-link"><span class="icon">⚖️</span> Server Comparison</a>
+    <a href="#api-ref"    class="sidebar-link"><span class="icon">📚</span> Programmatic API</a>
+    <a href="#cheatsheet" class="sidebar-link"><span class="icon">🗒️</span> Cheat Sheet</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-tag">ASGI Server for Python</div>
+    <h1>Uvicorn<br>Handbook</h1>
+    <p>A complete reference for running async Python web applications — covering ASGI fundamentals, CLI options, production deployment with Gunicorn, Docker, Nginx, and performance tuning.</p>
+    <div class="hero-chips">
+      <span class="chip chip-teal">ASGI / asyncio</span>
+      <span class="chip chip-blue">FastAPI &amp; Starlette</span>
+      <span class="chip chip-green">HTTP/1.1 + HTTP/2</span>
+      <span class="chip chip-amber">WebSockets</span>
+      <span class="chip chip-purple">Gunicorn workers</span>
+      <span class="chip chip-pink">Production ready</span>
+    </div>
+  </div>
+
+  <!-- ══════ WHAT IS UVICORN ══════ -->
+  <section class="section" id="what">
+    <div class="section-header">
+      <div class="section-icon icon-teal">📡</div>
+      <div class="section-title-wrap">
+        <h2>What is Uvicorn?</h2>
+        <div class="section-sub">A lightning-fast ASGI server built on uvloop and httptools</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>Uvicorn is a production-grade, minimal ASGI (Asynchronous Server Gateway Interface) server for Python. It acts as the bridge between your async Python web application and the outside world — it listens for HTTP/WebSocket connections and passes them to your app following the ASGI spec.</p>
+    <p>It is built on two C-extension libraries: <code>uvloop</code> (a fast asyncio event loop based on libuv) and <code>httptools</code> (a fast HTTP parser based on Node.js's http-parser). This gives it throughput comparable to Go and Node.js.</p>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-teal"></span>ASGI Server</div>
+        <p>Uvicorn implements the ASGI spec — it runs your async Python app the same way Apache runs PHP. It is the runtime layer, not the framework.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>Built for async</div>
+        <p>Designed from the ground up for Python's <code>asyncio</code>. Natively supports <code>async def</code> views, WebSockets, Server-Sent Events, and long-lived connections.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>Framework agnostic</div>
+        <p>Works with any ASGI-compatible framework: FastAPI, Starlette, Django (≥3.0), Quart, Litestar, BlackSheep, and more.</p>
+      </div>
+    </div>
+
+    <h3>How Uvicorn fits in the stack</h3>
+    <div class="flow-diagram">
+      <div class="flow-step"><span class="ficon">🌍</span><span class="flabel">Client</span><span class="fname">Browser / API</span></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step"><span class="ficon">🌐</span><span class="flabel">Reverse proxy</span><span class="fname">Nginx / Caddy</span></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step"><span class="ficon">🦄</span><span class="flabel">Process mgr</span><span class="fname">Gunicorn</span></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step"><span class="ficon">⚡</span><span class="flabel">ASGI server</span><span class="fname">Uvicorn worker</span></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step"><span class="ficon">🧩</span><span class="flabel">Framework</span><span class="fname">FastAPI / Starlette</span></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step"><span class="ficon">📦</span><span class="flabel">App logic</span><span class="fname">Your code</span></div>
+    </div>
+
+    <div class="info-box new">
+      <div class="info-icon">🆕</div>
+      <div class="info-content"><strong>Uvicorn v0.30+</strong> introduces lifespan protocol improvements, HTTP/2 support via <code>h2</code>, and first-class support for <code>uvicorn[standard]</code> extras which bundles <code>uvloop</code>, <code>httptools</code>, and <code>websockets</code> for maximum performance.</div>
+    </div>
+  </section>
+
+  <!-- ══════ WHY ══════ -->
+  <section class="section" id="why">
+    <div class="section-header">
+      <div class="section-icon icon-amber">💡</div>
+      <div class="section-title-wrap">
+        <h2>Why Use Uvicorn?</h2>
+        <div class="section-sub">Performance, async support, and the ASGI ecosystem</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-teal"></span>Exceptional throughput</div>
+        <p>uvloop replaces asyncio's default event loop with a Cython-based implementation of libuv, delivering 2–4× faster I/O performance compared to the stdlib event loop.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>True async concurrency</div>
+        <p>Unlike WSGI servers (Gunicorn, uWSGI) that rely on threads or processes per request, Uvicorn can handle thousands of concurrent connections on a single thread via coroutines.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>WebSocket &amp; SSE support</div>
+        <p>First-class, spec-compliant support for WebSocket connections and Server-Sent Events — no bolt-on solutions needed.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-amber"></span>Hot reload for dev</div>
+        <p><code>--reload</code> watches your source files and restarts the server on changes. Supports <code>watchfiles</code> for faster, more precise detection.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-purple"></span>Minimal footprint</div>
+        <p>Uvicorn itself has very few dependencies. It does one thing well — serve ASGI apps — and composes cleanly with Gunicorn for process management.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-pink"></span>Industry standard</div>
+        <p>The default server for FastAPI (used at Uber, Netflix, Microsoft) and Starlette. Used in production at massive scale worldwide.</p>
+      </div>
+    </div>
+
+    <div class="info-box tip">
+      <div class="info-icon">✅</div>
+      <div class="info-content"><strong>Benchmark context:</strong> In independent TechEmpower benchmarks, FastAPI + Uvicorn consistently ranks among the top Python web frameworks — outperforming Django + Gunicorn by 3–10× on JSON serialisation and plain-text responses, while matching Node.js Express in many scenarios.</div>
+    </div>
+  </section>
+
+  <!-- ══════ WHEN ══════ -->
+  <section class="section" id="when">
+    <div class="section-header">
+      <div class="section-icon icon-cyan">🕐</div>
+      <div class="section-title-wrap">
+        <h2>When to Use Uvicorn</h2>
+        <div class="section-sub">Right tool for the right job</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>✅ Use Uvicorn when…</div>
+        <ul>
+          <li>You're building with FastAPI, Starlette, or any ASGI framework</li>
+          <li>Your app is I/O-heavy (DB queries, HTTP calls, file reads)</li>
+          <li>You need WebSocket or SSE support</li>
+          <li>You want high concurrency without scaling to many processes</li>
+          <li>You're doing async background tasks in your web process</li>
+          <li>You're building APIs, streaming endpoints, or chat-like systems</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-red"></span>❌ Consider alternatives when…</div>
+        <ul>
+          <li>Your codebase is entirely synchronous Django/Flask (use Gunicorn + gevent)</li>
+          <li>You need battle-hardened WSGI compatibility (uWSGI)</li>
+          <li>You have CPU-heavy workloads where more processes matter more than async</li>
+          <li>You're on a platform where uvloop isn't available (pure Python fallback is slower)</li>
+          <li>You need Mod_WSGI Apache integration (ASGI isn't supported there)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="info-box note">
+      <div class="info-icon">ℹ️</div>
+      <div class="info-content"><strong>WSGI vs ASGI:</strong> Django 3.0+ and Flask 2.0+ both support ASGI, so you can use Uvicorn with them too. However, if your views are synchronous, the performance benefit is minimal — the async layer adds overhead for purely sync code.</div>
+    </div>
+  </section>
+
+  <!-- ══════ INSTALL ══════ -->
+  <section class="section" id="install">
+    <div class="section-header">
+      <div class="section-icon icon-blue">📦</div>
+      <div class="section-title-wrap">
+        <h2>Installation</h2>
+        <div class="section-sub">pip, extras, and optional high-performance dependencies</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Minimal install (pure Python fallback, no uvloop/httptools)</span>
+pip install uvicorn
+
+<span class="cm"># RECOMMENDED: full performance extras</span>
+pip install "uvicorn[standard]"
+<span class="cm"># Installs: uvicorn + uvloop + httptools + websockets + watchfiles</span>
+
+<span class="cm"># With Gunicorn for production process management</span>
+pip install "uvicorn[standard]" gunicorn
+
+<span class="cm"># Verify install</span>
+uvicorn --version
+<span class="cm"># → Running uvicorn 0.32.0 with CPython 3.12.0 on Linux</span></div>
+    </div>
+
+    <h3>What each extra installs</h3>
+    <table class="ref-table">
+      <thead><tr><th>Package</th><th>Purpose</th><th>Included in [standard]</th></tr></thead>
+      <tbody>
+        <tr><td><code>uvloop</code></td><td>Fast asyncio event loop (C extension, 2–4× faster). Falls back to asyncio on Windows.</td><td>✅</td></tr>
+        <tr><td><code>httptools</code></td><td>Fast HTTP/1.1 parser (C extension, from Node.js http-parser)</td><td>✅</td></tr>
+        <tr><td><code>websockets</code></td><td>WebSocket protocol implementation</td><td>✅</td></tr>
+        <tr><td><code>watchfiles</code></td><td>Efficient file watching for <code>--reload</code> (replaces older watchdog)</td><td>✅</td></tr>
+        <tr><td><code>python-dotenv</code></td><td>Load <code>.env</code> files for environment configuration</td><td>❌ (manual)</td></tr>
+        <tr><td><code>h2</code></td><td>HTTP/2 protocol support</td><td>❌ (manual)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="info-box warn">
+      <div class="info-icon">⚠️</div>
+      <div class="info-content"><strong>Windows note:</strong> <code>uvloop</code> does not support Windows. On Windows, Uvicorn falls back to the standard asyncio event loop automatically. Performance is still acceptable but lower than Linux/macOS. For production, deploy on Linux.</div>
+    </div>
+  </section>
+
+  <!-- ══════ QUICK START ══════ -->
+  <section class="section" id="quickstart">
+    <div class="section-header">
+      <div class="section-icon icon-green">⚡</div>
+      <div class="section-title-wrap">
+        <h2>Quick Start</h2>
+        <div class="section-sub">Your first ASGI app running in 60 seconds</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>Minimal ASGI app (no framework)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python — main.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># A raw ASGI app — no framework needed</span>
+<span class="kw">async def</span> <span class="fn">app</span>(scope, receive, send):
+    <span class="kw">assert</span> scope[<span class="st">'type'</span>] == <span class="st">'http'</span>
+    <span class="kw">await</span> send({
+        <span class="st">'type'</span>: <span class="st">'http.response.start'</span>,
+        <span class="st">'status'</span>: <span class="nm">200</span>,
+        <span class="st">'headers'</span>: [[<span class="kw">b</span><span class="st">'content-type'</span>, <span class="kw">b</span><span class="st">'text/plain'</span>]],
+    })
+    <span class="kw">await</span> send({
+        <span class="st">'type'</span>: <span class="st">'http.response.body'</span>,
+        <span class="st">'body'</span>: <span class="kw">b</span><span class="st">'Hello, Uvicorn!'</span>,
+    })</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">uvicorn main:app
+<span class="cm"># → INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)</span></div>
+    </div>
+
+    <h3>With FastAPI (typical usage)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python — main.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">from</span> <span class="cl">fastapi</span> <span class="kw">import</span> FastAPI
+
+app = <span class="cl">FastAPI</span>()
+
+<span class="at">@app.get</span>(<span class="st">"/"</span>)
+<span class="kw">async def</span> <span class="fn">root</span>():
+    <span class="kw">return</span> {<span class="st">"message"</span>: <span class="st">"Hello World"</span>}
+
+<span class="at">@app.get</span>(<span class="st">"/items/{item_id}"</span>)
+<span class="kw">async def</span> <span class="fn">read_item</span>(item_id: <span class="cl">int</span>, q: <span class="cl">str</span> | <span class="kw">None</span> = <span class="kw">None</span>):
+    <span class="kw">return</span> {<span class="st">"item_id"</span>: item_id, <span class="st">"q"</span>: q}</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Development — with auto-reload</span>
+uvicorn main:app <span class="flag">--reload</span>
+
+<span class="cm"># Custom host and port</span>
+uvicorn main:app <span class="flag">--host</span> 0.0.0.0 <span class="flag">--port</span> 8080 <span class="flag">--reload</span>
+
+<span class="cm"># Production — multiple workers</span>
+uvicorn main:app <span class="flag">--workers</span> 4 <span class="flag">--host</span> 0.0.0.0 <span class="flag">--port</span> 8000</div>
+    </div>
+
+    <h3>Running programmatically</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> <span class="cl">uvicorn</span>
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    uvicorn.<span class="fn">run</span>(
+        <span class="st">"main:app"</span>,       <span class="cm"># module:attribute string (enables reload)</span>
+        host=<span class="st">"0.0.0.0"</span>,
+        port=<span class="nm">8000</span>,
+        reload=<span class="kw">True</span>,       <span class="cm"># dev only</span>
+        log_level=<span class="st">"info"</span>,
+    )
+
+<span class="cm"># Or pass the app object directly (reload not available)</span>
+<span class="kw">from</span> <span class="cl">main</span> <span class="kw">import</span> app
+uvicorn.<span class="fn">run</span>(app, host=<span class="st">"127.0.0.1"</span>, port=<span class="nm">8000</span>)</div>
+    </div>
+  </section>
+
+  <!-- ══════ ASGI PRIMER ══════ -->
+  <section class="section" id="asgi">
+    <div class="section-header">
+      <div class="section-icon icon-purple">🔌</div>
+      <div class="section-title-wrap">
+        <h2>ASGI Primer</h2>
+        <div class="section-sub">The protocol Uvicorn implements — scope, receive, send</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>ASGI is the successor to WSGI. Where WSGI is synchronous and request/response only, ASGI is async and supports long-lived connections (WebSockets, SSE, HTTP/2 push). Every ASGI app is a callable with this signature:</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Every ASGI app is an async callable(scope, receive, send)</span>
+
+<span class="cm"># scope  → dict describing the connection</span>
+<span class="cm"># receive → awaitable — yields incoming events (request body, WS messages)</span>
+<span class="cm"># send    → awaitable — sends events back (response start, body, WS message)</span>
+
+<span class="kw">async def</span> <span class="fn">app</span>(scope, receive, send):
+    <span class="kw">if</span> scope[<span class="st">'type'</span>] == <span class="st">'http'</span>:
+        <span class="cm"># scope keys: method, path, query_string, headers, client, server</span>
+        body_event = <span class="kw">await</span> receive()  <span class="cm"># {'type': 'http.request', 'body': b'...', 'more_body': False}</span>
+
+        <span class="kw">await</span> send({<span class="st">'type'</span>: <span class="st">'http.response.start'</span>, <span class="st">'status'</span>: <span class="nm">200</span>,
+                    <span class="st">'headers'</span>: [[<span class="kw">b</span><span class="st">'content-type'</span>, <span class="kw">b</span><span class="st">'application/json'</span>]]})
+        <span class="kw">await</span> send({<span class="st">'type'</span>: <span class="st">'http.response.body'</span>, <span class="st">'body'</span>: <span class="kw">b</span><span class="st">'{"ok": true}'</span>})
+
+    <span class="kw">elif</span> scope[<span class="st">'type'</span>] == <span class="st">'websocket'</span>:
+        <span class="kw">await</span> send({<span class="st">'type'</span>: <span class="st">'websocket.accept'</span>})
+        event = <span class="kw">await</span> receive()
+        <span class="kw">if</span> event[<span class="st">'type'</span>] == <span class="st">'websocket.receive'</span>:
+            <span class="kw">await</span> send({<span class="st">'type'</span>: <span class="st">'websocket.send'</span>, <span class="st">'text'</span>: event[<span class="st">'text'</span>]})
+
+    <span class="kw">elif</span> scope[<span class="st">'type'</span>] == <span class="st">'lifespan'</span>:
+        <span class="kw">while True</span>:
+            event = <span class="kw">await</span> receive()
+            <span class="kw">if</span> event[<span class="st">'type'</span>] == <span class="st">'lifespan.startup'</span>:
+                <span class="cm"># initialize DB pool, load models, etc.</span>
+                <span class="kw">await</span> send({<span class="st">'type'</span>: <span class="st">'lifespan.startup.complete'</span>})
+            <span class="kw">elif</span> event[<span class="st">'type'</span>] == <span class="st">'lifespan.shutdown'</span>:
+                <span class="cm"># teardown gracefully</span>
+                <span class="kw">await</span> send({<span class="st">'type'</span>: <span class="st">'lifespan.shutdown.complete'</span>})
+                <span class="kw">return</span></div>
+    </div>
+
+    <div class="info-box note">
+      <div class="info-icon">ℹ️</div>
+      <div class="info-content"><strong>Lifespan events</strong> are the ASGI way to run startup/shutdown logic — initialize database connection pools, ML models, background tasks. FastAPI exposes this via <code>@app.on_event("startup")</code> or the newer <code>lifespan</code> context manager parameter.</div>
+    </div>
+  </section>
+
+  <!-- ══════ FRAMEWORKS ══════ -->
+  <section class="section" id="frameworks">
+    <div class="section-header">
+      <div class="section-icon icon-pink">🧩</div>
+      <div class="section-title-wrap">
+        <h2>Compatible Frameworks</h2>
+        <div class="section-sub">Every ASGI framework works with Uvicorn out of the box</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — any ASGI framework</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># FastAPI</span>
+pip install fastapi uvicorn[standard]
+uvicorn main:app <span class="flag">--reload</span>
+
+<span class="cm"># Starlette</span>
+pip install starlette uvicorn[standard]
+uvicorn app:app <span class="flag">--reload</span>
+
+<span class="cm"># Django (3.0+ ASGI)</span>
+pip install django uvicorn[standard]
+uvicorn myproject.asgi:application <span class="flag">--reload</span>
+
+<span class="cm"># Litestar (formerly Starlite)</span>
+pip install litestar uvicorn[standard]
+uvicorn app:app <span class="flag">--reload</span>
+
+<span class="cm"># Quart (async Flask-like)</span>
+pip install quart uvicorn[standard]
+uvicorn app:app <span class="flag">--reload</span></div>
+    </div>
+
+    <table class="ref-table">
+      <thead><tr><th>Framework</th><th>ASGI?</th><th>Built-in dev server</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>FastAPI</td><td>✅ Native</td><td>Uses Uvicorn internally (<code>fastapi dev</code>)</td><td>Most popular combo. FastAPI wraps Starlette.</td></tr>
+        <tr><td>Starlette</td><td>✅ Native</td><td>—</td><td>Uvicorn's closest sibling project (same author)</td></tr>
+        <tr><td>Django 3.0+</td><td>✅ via asgi.py</td><td><code>runserver</code> (Daphne)</td><td>Point Uvicorn at <code>myproject.asgi:application</code></td></tr>
+        <tr><td>Flask 2.0+</td><td>⚠️ Limited</td><td>Werkzeug dev server</td><td>Async views only; sync views have overhead</td></tr>
+        <tr><td>Litestar</td><td>✅ Native</td><td>Uses Uvicorn internally</td><td>High-performance alternative to FastAPI</td></tr>
+        <tr><td>Quart</td><td>✅ Native</td><td>Hypercorn</td><td>Flask API, async implementation</td></tr>
+        <tr><td>Sanic</td><td>❌ Custom</td><td>Built-in server</td><td>Sanic has its own server; doesn't use ASGI/Uvicorn</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════ CLI REFERENCE ══════ -->
+  <section class="section" id="cli">
+    <div class="section-header">
+      <div class="section-icon icon-teal">💻</div>
+      <div class="section-title-wrap">
+        <h2>CLI Reference</h2>
+        <div class="section-sub">Every command-line flag explained</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — full syntax</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">uvicorn [OPTIONS] APP
+
+<span class="cm"># APP format: module_path:attribute</span>
+<span class="cm"># Examples:</span>
+uvicorn main:app                  <span class="cm"># main.py, variable `app`</span>
+uvicorn mypackage.server:create_app  <span class="cm"># factory function</span>
+uvicorn app.main:app              <span class="cm"># nested module</span></div>
+    </div>
+
+    <h3>Connection &amp; binding</h3>
+    <table class="ref-table">
+      <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="option-name">--host TEXT</td><td class="default-val">127.0.0.1</td><td>Bind to this host. Use <code>0.0.0.0</code> to listen on all interfaces (production).</td></tr>
+        <tr><td class="option-name">--port INT</td><td class="default-val">8000</td><td>Bind to this port.</td></tr>
+        <tr><td class="option-name">--uds TEXT</td><td class="default-val">—</td><td>Bind to a Unix domain socket path (e.g. <code>/tmp/uvicorn.sock</code>). Faster than TCP for local Nginx proxy.</td></tr>
+        <tr><td class="option-name">--fd INT</td><td class="default-val">—</td><td>Bind to a socket from a file descriptor (systemd socket activation).</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Workers &amp; concurrency</h3>
+    <table class="ref-table">
+      <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="option-name">--workers INT</td><td class="default-val">1</td><td>Number of worker processes. Rule of thumb: <code>(2 × CPU cores) + 1</code>. Use Gunicorn instead for better process management.</td></tr>
+        <tr><td class="option-name">--loop [auto|asyncio|uvloop]</td><td class="default-val">auto</td><td>Event loop implementation. <code>auto</code> picks uvloop if available.</td></tr>
+        <tr><td class="option-name">--http [auto|h11|httptools]</td><td class="default-val">auto</td><td>HTTP implementation. <code>auto</code> picks httptools if available.</td></tr>
+        <tr><td class="option-name">--ws [auto|none|websockets|wsproto]</td><td class="default-val">auto</td><td>WebSocket implementation.</td></tr>
+        <tr><td class="option-name">--lifespan [auto|on|off]</td><td class="default-val">auto</td><td>Control ASGI lifespan events. Set <code>on</code> to require startup/shutdown handlers.</td></tr>
+        <tr><td class="option-name">--limit-concurrency INT</td><td class="default-val">—</td><td>Maximum concurrent connections before returning 503 Service Unavailable.</td></tr>
+        <tr><td class="option-name">--backlog INT</td><td class="default-val">2048</td><td>Maximum number of connections to hold in the listen backlog.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Development</h3>
+    <table class="ref-table">
+      <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="option-name">--reload</td><td class="default-val">False</td><td>Enable auto-reload when source files change. Requires app passed as a string (<code>"main:app"</code>), not an import.</td></tr>
+        <tr><td class="option-name">--reload-dir PATH</td><td class="default-val">cwd</td><td>Directory to watch. Can be specified multiple times. Defaults to current working directory.</td></tr>
+        <tr><td class="option-name">--reload-include GLOB</td><td class="default-val">*.py</td><td>Glob patterns of files to include in watch. Example: <code>*.py *.html *.jinja2</code></td></tr>
+        <tr><td class="option-name">--reload-exclude GLOB</td><td class="default-val">—</td><td>Glob patterns to exclude from watch. Example: <code>tests/*</code></td></tr>
+        <tr><td class="option-name">--reload-delay FLOAT</td><td class="default-val">0.25</td><td>Seconds to wait before triggering reload after a file change.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Logging</h3>
+    <table class="ref-table">
+      <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="option-name">--log-level [critical|error|warning|info|debug|trace]</td><td class="default-val">info</td><td>Log level for the Uvicorn logger.</td></tr>
+        <tr><td class="option-name">--log-config PATH</td><td class="default-val">—</td><td>Path to a JSON or YAML logging config file (Python logging dict config format).</td></tr>
+        <tr><td class="option-name">--access-log / --no-access-log</td><td class="default-val">True</td><td>Enable/disable HTTP access logging. Disable in production if Nginx logs requests instead.</td></tr>
+        <tr><td class="option-name">--use-colors / --no-use-colors</td><td class="default-val">auto</td><td>Colorized output. Disabled automatically if not writing to a TTY.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Timeouts &amp; limits</h3>
+    <table class="ref-table">
+      <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="option-name">--timeout-keep-alive INT</td><td class="default-val">5</td><td>Seconds to wait for a new request on a keep-alive connection before closing it.</td></tr>
+        <tr><td class="option-name">--timeout-notify INT</td><td class="default-val">30</td><td>Seconds between SIGSIGNAL to Gunicorn (workers only). Prevents "Worker timed out" false positives.</td></tr>
+        <tr><td class="option-name">--timeout-graceful-shutdown INT</td><td class="default-val">—</td><td>Seconds to wait for in-flight requests to complete before forcing shutdown on SIGTERM.</td></tr>
+        <tr><td class="option-name">--limit-max-requests INT</td><td class="default-val">—</td><td>Max requests per worker before restarting. Useful to combat memory leaks over time.</td></tr>
+        <tr><td class="option-name">--header NAME VALUE</td><td class="default-val">—</td><td>Inject a custom response header on every request. E.g. <code>--header X-Served-By uvicorn</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════ CONFIG FILE ══════ -->
+  <section class="section" id="config">
+    <div class="section-header">
+      <div class="section-icon icon-amber">⚙️</div>
+      <div class="section-title-wrap">
+        <h2>Configuration File</h2>
+        <div class="section-sub">uvicorn.toml / pyproject.toml / programmatic Config object</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>Uvicorn does not have a native config file format, but you can use <code>pyproject.toml</code>, or pass config as a Python dict via the programmatic API. Many teams use a <code>gunicorn.conf.py</code> when running with Gunicorn (see the Gunicorn section).</p>
+
+    <h3>Via pyproject.toml (using Gunicorn)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">toml — pyproject.toml</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">[tool.uvicorn]
+host = "0.0.0.0"
+port = 8000
+workers = 4
+log_level = "info"
+access_log = true
+reload = false</div>
+    </div>
+
+    <h3>Programmatic Config object</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> <span class="cl">uvicorn</span>
+<span class="kw">from</span> <span class="cl">uvicorn.config</span> <span class="kw">import</span> Config
+<span class="kw">from</span> <span class="cl">uvicorn.main</span> <span class="kw">import</span> Server
+
+<span class="kw">from</span> <span class="cl">main</span> <span class="kw">import</span> app
+
+config = Config(
+    app=app,
+    host=<span class="st">"0.0.0.0"</span>,
+    port=<span class="nm">8000</span>,
+    workers=<span class="nm">4</span>,
+    log_level=<span class="st">"info"</span>,
+    access_log=<span class="kw">True</span>,
+    reload=<span class="kw">False</span>,
+    timeout_keep_alive=<span class="nm">30</span>,
+    limit_max_requests=<span class="nm">10000</span>,  <span class="cm"># recycle workers after 10k requests</span>
+)
+server = Server(config)
+
+<span class="cm"># Run inside an existing event loop</span>
+<span class="kw">import</span> <span class="cl">asyncio</span>
+asyncio.<span class="fn">run</span>(server.<span class="fn">serve</span>())
+
+<span class="cm"># Or use the simple shorthand</span>
+uvicorn.<span class="fn">run</span>(app, host=<span class="st">"0.0.0.0"</span>, port=<span class="nm">8000</span>)</div>
+    </div>
+
+    <div class="info-box tip">
+      <div class="info-icon">✅</div>
+      <div class="info-content"><strong>Best practice:</strong> Use environment variables for environment-specific config (port, workers, log level). Keep a <code>gunicorn.conf.py</code> file for production settings. Avoid hardcoding host/port in application code.</div>
+    </div>
+  </section>
+
+  <!-- ══════ WORKERS ══════ -->
+  <section class="section" id="workers">
+    <div class="section-header">
+      <div class="section-icon icon-blue">👷</div>
+      <div class="section-title-wrap">
+        <h2>Workers &amp; Concurrency</h2>
+        <div class="section-sub">Processes, threads, and the async event loop</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>Uvicorn handles concurrency through the asyncio event loop — a single process can handle thousands of concurrent I/O-bound requests. For CPU-bound scaling, use multiple worker processes.</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-teal"></span>Single worker (default)</div>
+        <p>One process, one event loop. All requests are handled concurrently via coroutines. Great for development and for apps on containers with a single vCPU. Handles thousands of simultaneous connections.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>Multiple workers</div>
+        <p>Multiple OS processes, each with its own event loop. Necessary for multi-core servers. Formula: <strong>(2 × CPU cores) + 1</strong>. State is not shared between workers — use Redis/DB for session state.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># 4 workers for a 2-core machine (formula: 2 × cores + 1)</span>
+uvicorn main:app <span class="flag">--workers</span> 4
+
+<span class="cm"># Recycle workers after N requests (prevents memory leaks)</span>
+uvicorn main:app <span class="flag">--workers</span> 4 <span class="flag">--limit-max-requests</span> 10000
+
+<span class="cm"># Limit max concurrent connections (return 503 if exceeded)</span>
+uvicorn main:app <span class="flag">--limit-concurrency</span> 500</div>
+    </div>
+
+    <div class="info-box warn">
+      <div class="info-icon">⚠️</div>
+      <div class="info-content"><strong>Avoid blocking the event loop.</strong> All I/O must be async. Calling synchronous blocking functions (e.g. <code>requests.get()</code>, <code>time.sleep()</code>, CPU-heavy code) in an <code>async def</code> view will block the entire event loop and starve all other requests. Use <code>httpx.AsyncClient</code>, <code>asyncio.sleep()</code>, or run sync code in a thread pool via <code>loop.run_in_executor()</code>.</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python — avoiding event loop blocking</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> <span class="cl">asyncio</span>
+<span class="kw">from</span> <span class="cl">fastapi</span> <span class="kw">import</span> FastAPI
+
+app = <span class="cl">FastAPI</span>()
+
+<span class="cm"># ❌ WRONG — blocks event loop</span>
+<span class="at">@app.get</span>(<span class="st">"/bad"</span>)
+<span class="kw">async def</span> <span class="fn">bad_endpoint</span>():
+    <span class="kw">import</span> <span class="cl">time</span>
+    time.<span class="fn">sleep</span>(<span class="nm">2</span>)  <span class="cm"># blocks ALL concurrent requests for 2 seconds</span>
+    <span class="kw">return</span> {<span class="st">"status"</span>: <span class="st">"done"</span>}
+
+<span class="cm"># ✅ CORRECT — yields control back to event loop</span>
+<span class="at">@app.get</span>(<span class="st">"/good"</span>)
+<span class="kw">async def</span> <span class="fn">good_endpoint</span>():
+    <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(<span class="nm">2</span>)  <span class="cm"># other requests run during this pause</span>
+    <span class="kw">return</span> {<span class="st">"status"</span>: <span class="st">"done"</span>}
+
+<span class="cm"># ✅ Run sync code without blocking (thread pool)</span>
+<span class="at">@app.get</span>(<span class="st">"/sync-safe"</span>)
+<span class="kw">async def</span> <span class="fn">sync_safe_endpoint</span>():
+    loop = asyncio.<span class="fn">get_event_loop</span>()
+    result = <span class="kw">await</span> loop.<span class="fn">run_in_executor</span>(<span class="kw">None</span>, some_blocking_function)
+    <span class="kw">return</span> {<span class="st">"result"</span>: result}</div>
+    </div>
+  </section>
+
+  <!-- ══════ SSL ══════ -->
+  <section class="section" id="ssl">
+    <div class="section-header">
+      <div class="section-icon icon-green">🔒</div>
+      <div class="section-title-wrap">
+        <h2>SSL / TLS</h2>
+        <div class="section-sub">HTTPS directly on Uvicorn (dev) or via Nginx (production)</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — development self-signed cert</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Generate a self-signed cert for local dev</span>
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes \
+  -subj "/CN=localhost"
+
+<span class="cm"># Run Uvicorn with SSL</span>
+uvicorn main:app <span class="flag">--ssl-keyfile</span> key.pem <span class="flag">--ssl-certfile</span> cert.pem <span class="flag">--port</span> 443</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python — programmatic SSL</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">uvicorn.<span class="fn">run</span>(
+    <span class="st">"main:app"</span>,
+    host=<span class="st">"0.0.0.0"</span>,
+    port=<span class="nm">443</span>,
+    ssl_keyfile=<span class="st">"./key.pem"</span>,
+    ssl_certfile=<span class="st">"./cert.pem"</span>,
+    ssl_ca_certs=<span class="st">"./ca-bundle.pem"</span>,   <span class="cm"># optional: client cert verification</span>
+    ssl_ciphers=<span class="st">"TLSv1.2"</span>,              <span class="cm"># optional: minimum TLS version</span>
+)</div>
+    </div>
+
+    <div class="info-box note">
+      <div class="info-icon">ℹ️</div>
+      <div class="info-content"><strong>Production recommendation:</strong> Terminate TLS at Nginx or a load balancer, not at Uvicorn. Let Nginx handle certificate management (certbot/Let's Encrypt), HTTP→HTTPS redirects, and HTTP/2. Uvicorn talks plain HTTP on <code>localhost</code> behind the proxy. This is simpler and gives you more control.</div>
+    </div>
+  </section>
+
+  <!-- ══════ GUNICORN ══════ -->
+  <section class="section" id="gunicorn">
+    <div class="section-header">
+      <div class="section-icon icon-purple">🦄</div>
+      <div class="section-title-wrap">
+        <h2>Gunicorn + Uvicorn</h2>
+        <div class="section-sub">The recommended production deployment pattern</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <p>For production, use Gunicorn as the process manager with <code>UvicornWorker</code> as the worker class. Gunicorn handles worker lifecycle, graceful restarts, and health monitoring. Uvicorn handles the actual async I/O within each worker process.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">pip install gunicorn "uvicorn[standard]"
+
+<span class="cm"># Basic — 4 workers on port 8000</span>
+gunicorn main:app \
+    <span class="flag">--workers</span> 4 \
+    <span class="flag">--worker-class</span> uvicorn.workers.UvicornWorker \
+    <span class="flag">--bind</span> 0.0.0.0:8000
+
+<span class="cm"># With Unix socket (recommended with Nginx)</span>
+gunicorn main:app \
+    <span class="flag">--workers</span> 4 \
+    <span class="flag">--worker-class</span> uvicorn.workers.UvicornWorker \
+    <span class="flag">--bind</span> unix:/run/uvicorn.sock \
+    <span class="flag">--umask</span> 007 \
+    <span class="flag">--daemon</span>                         \
+    <span class="flag">--pid</span> /run/gunicorn.pid
+
+<span class="cm"># For HTTP/2 support</span>
+gunicorn main:app \
+    <span class="flag">--worker-class</span> uvicorn.workers.UvicornH2CWorker \
+    <span class="flag">--workers</span> 4</div>
+    </div>
+
+    <h3>gunicorn.conf.py — recommended approach</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python — gunicorn.conf.py</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> <span class="cl">multiprocessing</span>
+<span class="kw">import</span> <span class="cl">os</span>
+
+<span class="cm"># Binding</span>
+bind = <span class="st">f"0.0.0.0:{os.getenv('PORT', '8000')}"</span>
+backlog = <span class="nm">2048</span>
+
+<span class="cm"># Worker processes</span>
+workers = <span class="nm">2</span> * multiprocessing.<span class="fn">cpu_count</span>() + <span class="nm">1</span>
+worker_class = <span class="st">"uvicorn.workers.UvicornWorker"</span>
+worker_connections = <span class="nm">1000</span>
+
+<span class="cm"># Restart workers to prevent memory leaks</span>
+max_requests = <span class="nm">10000</span>
+max_requests_jitter = <span class="nm">1000</span>     <span class="cm"># randomise to avoid thundering herd</span>
+
+<span class="cm"># Timeouts</span>
+timeout = <span class="nm">120</span>
+keepalive = <span class="nm">5</span>
+graceful_timeout = <span class="nm">30</span>
+
+<span class="cm"># Logging</span>
+accesslog = <span class="st">"-"</span>      <span class="cm"># stdout</span>
+errorlog = <span class="st">"-"</span>       <span class="cm"># stdout</span>
+loglevel = <span class="st">"info"</span>
+access_log_format = <span class="st">'%(h)s "%(r)s" %(s)s %(b)s %(D)sµs'</span>
+
+<span class="cm"># Process naming</span>
+proc_name = <span class="st">"myapp-gunicorn"</span>
+</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — run with config file</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">gunicorn main:app <span class="flag">--config</span> gunicorn.conf.py</div>
+    </div>
+  </section>
+
+  <!-- ══════ DOCKER ══════ -->
+  <section class="section" id="docker">
+    <div class="section-header">
+      <div class="section-icon icon-cyan">🐳</div>
+      <div class="section-title-wrap">
+        <h2>Docker</h2>
+        <div class="section-sub">Production-ready Dockerfile patterns</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <h3>Single-stage (simple)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">dockerfile</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]</div>
+    </div>
+
+    <h3>Multi-stage (production, smaller image)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">dockerfile</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Build stage</span>
+FROM python:3.12-slim AS builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
+
+<span class="cm"># Production stage</span>
+FROM python:3.12-slim AS production
+WORKDIR /app
+
+<span class="cm"># Create non-root user</span>
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+<span class="cm"># Copy dependencies from builder</span>
+COPY --from=builder /install /usr/local
+
+<span class="cm"># Copy application code</span>
+COPY --chown=appuser:appuser . .
+
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+CMD ["gunicorn", "main:app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "4", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "120", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — build and run</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">docker build -t myapp:latest .
+docker run -d -p 8000:8000 --name myapp myapp:latest
+
+<span class="cm"># With environment variables</span>
+docker run -d -p 8000:8000 \
+  -e DATABASE_URL=postgresql://... \
+  -e SECRET_KEY=... \
+  myapp:latest</div>
+    </div>
+  </section>
+
+  <!-- ══════ NGINX ══════ -->
+  <section class="section" id="nginx">
+    <div class="section-header">
+      <div class="section-icon icon-green">🌐</div>
+      <div class="section-title-wrap">
+        <h2>Nginx Reverse Proxy</h2>
+        <div class="section-sub">TLS termination, static files, and WebSocket proxying</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">nginx — /etc/nginx/sites-available/myapp</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">upstream uvicorn {
+    server unix:/run/uvicorn.sock fail_timeout=0;
+    <span class="cm"># Or TCP: server 127.0.0.1:8000 fail_timeout=0;</span>
+}
+
+server {
+    listen 80;
+    server_name example.com www.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name example.com www.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+
+    <span class="cm"># Security headers</span>
+    add_header X-Content-Type-Options  nosniff;
+    add_header X-Frame-Options         DENY;
+    add_header X-XSS-Protection        "1; mode=block";
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    <span class="cm"># Static files served directly by Nginx</span>
+    location /static/ {
+        alias /app/static/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    <span class="cm"># WebSocket upgrade headers</span>
+    location /ws/ {
+        proxy_pass http://uvicorn;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host       $host;
+        proxy_read_timeout 86400;   <span class="cm"># long-lived WS connections</span>
+    }
+
+    <span class="cm"># All other requests → Uvicorn</span>
+    location / {
+        proxy_pass         http://uvicorn;
+        proxy_set_header   Host             $host;
+        proxy_set_header   X-Real-IP        $remote_addr;
+        proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_redirect     off;
+        proxy_buffering    off;   <span class="cm"># disable for streaming responses / SSE</span>
+    }
+}</div>
+    </div>
+
+    <div class="info-box warn">
+      <div class="info-icon">⚠️</div>
+      <div class="info-content"><strong>Forwarded headers:</strong> When behind Nginx, your app sees <code>127.0.0.1</code> as the client IP. Use the <code>X-Forwarded-For</code> and <code>X-Forwarded-Proto</code> headers to get the real client IP and scheme. In FastAPI/Starlette, add <code>ProxyHeadersMiddleware</code> to trust these headers. Only enable this if you are behind a trusted proxy.</div>
+    </div>
+  </section>
+
+  <!-- ══════ LOGGING ══════ -->
+  <section class="section" id="logging">
+    <div class="section-header">
+      <div class="section-icon icon-amber">📋</div>
+      <div class="section-title-wrap">
+        <h2>Logging</h2>
+        <div class="section-sub">Access logs, structured JSON, and custom log config</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python — log_config.json</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+    <span class="st">"version"</span>: <span class="nm">1</span>,
+    <span class="st">"disable_existing_loggers"</span>: <span class="kw">false</span>,
+    <span class="st">"formatters"</span>: {
+        <span class="st">"default"</span>: {
+            <span class="st">"format"</span>: <span class="st">"%(asctime)s %(levelname)s %(name)s %(message)s"</span>,
+            <span class="st">"datefmt"</span>: <span class="st">"%Y-%m-%d %H:%M:%S"</span>
+        },
+        <span class="st">"access"</span>: {
+            <span class="st">"format"</span>: <span class="st">"%(asctime)s %(levelname)s [%(name)s] %(client_addr)s - \"%(request_line)s\" %(status_code)s"</span>
+        }
+    },
+    <span class="st">"handlers"</span>: {
+        <span class="st">"default"</span>: { <span class="st">"class"</span>: <span class="st">"logging.StreamHandler"</span>, <span class="st">"formatter"</span>: <span class="st">"default"</span>, <span class="st">"stream"</span>: <span class="st">"ext://sys.stderr"</span> },
+        <span class="st">"access"</span>:  { <span class="st">"class"</span>: <span class="st">"logging.StreamHandler"</span>, <span class="st">"formatter"</span>: <span class="st">"access"</span>,  <span class="st">"stream"</span>: <span class="st">"ext://sys.stdout"</span> }
+    },
+    <span class="st">"loggers"</span>: {
+        <span class="st">"uvicorn"</span>:         { <span class="st">"handlers"</span>: [<span class="st">"default"</span>], <span class="st">"level"</span>: <span class="st">"INFO"</span>, <span class="st">"propagate"</span>: <span class="kw">false</span> },
+        <span class="st">"uvicorn.error"</span>:   { <span class="st">"level"</span>: <span class="st">"INFO"</span> },
+        <span class="st">"uvicorn.access"</span>:  { <span class="st">"handlers"</span>: [<span class="st">"access"</span>],  <span class="st">"level"</span>: <span class="st">"INFO"</span>, <span class="st">"propagate"</span>: <span class="kw">false</span> }
+    }
+}</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">uvicorn main:app <span class="flag">--log-config</span> log_config.json</div>
+    </div>
+
+    <h3>Structured JSON logging (with python-json-logger)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python — structured logging setup</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">pip install python-json-logger
+
+<span class="cm"># In your app's logging setup:</span>
+<span class="kw">import</span> <span class="cl">logging</span>
+<span class="kw">from</span> <span class="cl">pythonjsonlogger</span> <span class="kw">import</span> jsonlogger
+
+logger = logging.<span class="fn">getLogger</span>()
+handler = logging.<span class="cl">StreamHandler</span>()
+formatter = jsonlogger.<span class="cl">JsonFormatter</span>(
+    fmt=<span class="st">'%(asctime)s %(levelname)s %(name)s %(message)s'</span>
+)
+handler.<span class="fn">setFormatter</span>(formatter)
+logger.<span class="fn">addHandler</span>(handler)
+logger.<span class="fn">setLevel</span>(logging.INFO)</div>
+    </div>
+  </section>
+
+  <!-- ══════ COMPARISON ══════ -->
+  <section class="section" id="comparison">
+    <div class="section-header">
+      <div class="section-icon icon-red">⚖️</div>
+      <div class="section-title-wrap">
+        <h2>Server Comparison</h2>
+        <div class="section-sub">Uvicorn vs Gunicorn vs Hypercorn vs Daphne vs uWSGI</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <table class="vs-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th class="col-server">Uvicorn</th>
+          <th>Gunicorn</th>
+          <th>Hypercorn</th>
+          <th>Daphne</th>
+          <th>uWSGI</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Protocol</td>
+          <td class="col-server">ASGI</td>
+          <td>WSGI (+ ASGI via worker)</td>
+          <td>ASGI</td>
+          <td>ASGI</td>
+          <td>WSGI</td>
+        </tr>
+        <tr>
+          <td>HTTP/2</td>
+          <td class="col-server"><span class="vs-check">✓</span> (via h2)</td>
+          <td><span class="vs-cross">✗</span></td>
+          <td><span class="vs-check">✓</span> native</td>
+          <td><span class="vs-partial">~</span> partial</td>
+          <td><span class="vs-cross">✗</span></td>
+        </tr>
+        <tr>
+          <td>WebSockets</td>
+          <td class="col-server"><span class="vs-check">✓</span></td>
+          <td><span class="vs-cross">✗</span></td>
+          <td><span class="vs-check">✓</span></td>
+          <td><span class="vs-check">✓</span></td>
+          <td><span class="vs-cross">✗</span></td>
+        </tr>
+        <tr>
+          <td>Process management</td>
+          <td class="col-server"><span class="vs-partial">~</span> basic</td>
+          <td><span class="vs-check">✓</span> excellent</td>
+          <td><span class="vs-partial">~</span> basic</td>
+          <td><span class="vs-partial">~</span> basic</td>
+          <td><span class="vs-check">✓</span> excellent</td>
+        </tr>
+        <tr>
+          <td>Hot reload (dev)</td>
+          <td class="col-server"><span class="vs-check">✓</span></td>
+          <td><span class="vs-cross">✗</span></td>
+          <td><span class="vs-check">✓</span></td>
+          <td><span class="vs-cross">✗</span></td>
+          <td><span class="vs-cross">✗</span></td>
+        </tr>
+        <tr>
+          <td>Performance</td>
+          <td class="col-server">⭐⭐⭐⭐⭐</td>
+          <td>⭐⭐⭐</td>
+          <td>⭐⭐⭐⭐</td>
+          <td>⭐⭐⭐</td>
+          <td>⭐⭐⭐</td>
+        </tr>
+        <tr>
+          <td>Production maturity</td>
+          <td class="col-server">⭐⭐⭐⭐</td>
+          <td>⭐⭐⭐⭐⭐</td>
+          <td>⭐⭐⭐</td>
+          <td>⭐⭐⭐</td>
+          <td>⭐⭐⭐⭐⭐</td>
+        </tr>
+        <tr>
+          <td>Best for</td>
+          <td class="col-server">FastAPI / Starlette / ASGI apps</td>
+          <td>WSGI apps + Uvicorn workers</td>
+          <td>HTTP/2-heavy apps</td>
+          <td>Django Channels</td>
+          <td>Legacy Python apps</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box tip">
+      <div class="info-icon">✅</div>
+      <div class="info-content"><strong>Production recommendation:</strong> Use <strong>Gunicorn + UvicornWorker</strong> rather than running Uvicorn directly with <code>--workers</code>. Gunicorn provides superior process management, graceful restarts, and health monitoring that Uvicorn's own multi-process mode lacks.</div>
+    </div>
+  </section>
+
+  <!-- ══════ PROGRAMMATIC API ══════ -->
+  <section class="section" id="api-ref">
+    <div class="section-header">
+      <div class="section-icon icon-blue">📚</div>
+      <div class="section-title-wrap">
+        <h2>Programmatic API</h2>
+        <div class="section-sub">Run and control Uvicorn from within your Python code</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> <span class="cl">asyncio</span>
+<span class="kw">import</span> <span class="cl">signal</span>
+<span class="kw">import</span> <span class="cl">uvicorn</span>
+<span class="kw">from</span> <span class="cl">uvicorn.config</span> <span class="kw">import</span> Config
+<span class="kw">from</span> <span class="cl">uvicorn.main</span> <span class="kw">import</span> Server
+
+<span class="cm"># ── Simple run ──</span>
+uvicorn.<span class="fn">run</span>(<span class="st">"main:app"</span>, host=<span class="st">"0.0.0.0"</span>, port=<span class="nm">8000</span>)
+
+<span class="cm"># ── Advanced: run alongside other async tasks ──</span>
+<span class="kw">async def</span> <span class="fn">serve</span>():
+    config = Config(<span class="st">"main:app"</span>, host=<span class="st">"0.0.0.0"</span>, port=<span class="nm">8000</span>, log_level=<span class="st">"info"</span>)
+    server = Server(config)
+    <span class="kw">await</span> server.<span class="fn">serve</span>()
+
+<span class="cm"># ── Run server + background task concurrently ──</span>
+<span class="kw">async def</span> <span class="fn">background_worker</span>():
+    <span class="kw">while True</span>:
+        <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(<span class="nm">60</span>)
+        <span class="cm"># do something every minute</span>
+
+<span class="kw">async def</span> <span class="fn">main</span>():
+    config = Config(<span class="st">"main:app"</span>, host=<span class="st">"0.0.0.0"</span>, port=<span class="nm">8000</span>)
+    server = Server(config)
+    <span class="kw">async with</span> asyncio.<span class="fn">TaskGroup</span>() <span class="kw">as</span> tg:
+        tg.<span class="fn">create_task</span>(server.<span class="fn">serve</span>())
+        tg.<span class="fn">create_task</span>(background_worker())
+
+asyncio.<span class="fn">run</span>(<span class="fn">main</span>())
+
+<span class="cm"># ── Graceful shutdown from inside the app ──</span>
+<span class="kw">async def</span> <span class="fn">run_with_shutdown</span>():
+    config = Config(<span class="st">"main:app"</span>, host=<span class="st">"0.0.0.0"</span>, port=<span class="nm">8000</span>)
+    server = Server(config)
+    loop = asyncio.<span class="fn">get_event_loop</span>()
+
+    <span class="kw">def</span> <span class="fn">shutdown</span>():
+        server.<span class="fn">should_exit</span> = <span class="kw">True</span>  <span class="cm"># trigger graceful shutdown</span>
+
+    loop.<span class="fn">add_signal_handler</span>(signal.SIGTERM, shutdown)
+    <span class="kw">await</span> server.<span class="fn">serve</span>()</div>
+    </div>
+
+    <h3>Key uvicorn.run() parameters</h3>
+    <table class="ref-table">
+      <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td class="option-name">app</td><td>str | callable</td><td>—</td><td>ASGI app or module:attribute string</td></tr>
+        <tr><td class="option-name">host</td><td>str</td><td><code>"127.0.0.1"</code></td><td>Bind host</td></tr>
+        <tr><td class="option-name">port</td><td>int</td><td><code>8000</code></td><td>Bind port</td></tr>
+        <tr><td class="option-name">uds</td><td>str</td><td><code>None</code></td><td>Unix domain socket path</td></tr>
+        <tr><td class="option-name">reload</td><td>bool</td><td><code>False</code></td><td>Enable auto-reload (app must be string)</td></tr>
+        <tr><td class="option-name">reload_dirs</td><td>list[str]</td><td><code>None</code></td><td>Directories to watch for reload</td></tr>
+        <tr><td class="option-name">workers</td><td>int</td><td><code>None</code></td><td>Number of worker processes</td></tr>
+        <tr><td class="option-name">log_level</td><td>str</td><td><code>"info"</code></td><td>Logging level</td></tr>
+        <tr><td class="option-name">access_log</td><td>bool</td><td><code>True</code></td><td>Enable access logging</td></tr>
+        <tr><td class="option-name">use_colors</td><td>bool</td><td><code>None</code></td><td>Colorised output (auto-detected)</td></tr>
+        <tr><td class="option-name">proxy_headers</td><td>bool</td><td><code>True</code></td><td>Trust X-Forwarded-* headers</td></tr>
+        <tr><td class="option-name">forwarded_allow_ips</td><td>str</td><td><code>"127.0.0.1"</code></td><td>IPs to trust for proxy headers</td></tr>
+        <tr><td class="option-name">ssl_keyfile</td><td>str</td><td><code>None</code></td><td>Path to SSL private key</td></tr>
+        <tr><td class="option-name">ssl_certfile</td><td>str</td><td><code>None</code></td><td>Path to SSL certificate</td></tr>
+        <tr><td class="option-name">timeout_keep_alive</td><td>int</td><td><code>5</code></td><td>Keep-alive timeout in seconds</td></tr>
+        <tr><td class="option-name">limit_max_requests</td><td>int</td><td><code>None</code></td><td>Worker restarts after N requests</td></tr>
+        <tr><td class="option-name">limit_concurrency</td><td>int</td><td><code>None</code></td><td>Max concurrent connections</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════ CHEAT SHEET ══════ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-header">
+      <div class="section-icon icon-amber">🗒️</div>
+      <div class="section-title-wrap">
+        <h2>Cheat Sheet</h2>
+        <div class="section-sub">Most-used commands at a glance</div>
+      </div>
+    </div>
+    <div class="section-divider"></div>
+
+    <div class="grid-2">
+
+      <div class="card">
+        <div class="card-title"><span class="dot dot-teal"></span>Development</div>
+        <div class="code-wrap" style="margin:10px 0 0">
+          <div class="code-block" style="font-size:12px;padding:12px 14px"><span class="cm"># Auto-reload on file change</span>
+uvicorn main:app <span class="flag">--reload</span>
+
+<span class="cm"># Custom port</span>
+uvicorn main:app <span class="flag">--reload --port</span> 3000
+
+<span class="cm"># Watch extra dirs (e.g. templates)</span>
+uvicorn main:app <span class="flag">--reload \
+  --reload-dir</span> src <span class="flag">--reload-dir</span> templates
+
+<span class="cm"># Debug log level</span>
+uvicorn main:app <span class="flag">--reload --log-level</span> debug</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span>Production (direct)</div>
+        <div class="code-wrap" style="margin:10px 0 0">
+          <div class="code-block" style="font-size:12px;padding:12px 14px"><span class="cm"># Multi-worker on all interfaces</span>
+uvicorn main:app <span class="flag">--host</span> 0.0.0.0 \
+  <span class="flag">--workers</span> 4
+
+<span class="cm"># Unix socket (Nginx-friendly)</span>
+uvicorn main:app \
+  <span class="flag">--uds</span> /tmp/uvicorn.sock
+
+<span class="cm"># Limit connections, recycle workers</span>
+uvicorn main:app <span class="flag">--workers</span> 4 \
+  <span class="flag">--limit-max-requests</span> 10000 \
+  <span class="flag">--no-access-log</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot dot-purple"></span>Gunicorn + Uvicorn</div>
+        <div class="code-wrap" style="margin:10px 0 0">
+          <div class="code-block" style="font-size:12px;padding:12px 14px"><span class="cm"># Basic</span>
+gunicorn main:app \
+  <span class="flag">-w</span> 4 \
+  <span class="flag">-k</span> uvicorn.workers.UvicornWorker
+
+<span class="cm"># With config file</span>
+gunicorn main:app \
+  <span class="flag">-c</span> gunicorn.conf.py
+
+<span class="cm"># Reload workers gracefully</span>
+kill -HUP $(cat /run/gunicorn.pid)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span>Programmatic</div>
+        <div class="code-wrap" style="margin:10px 0 0">
+          <div class="code-block" style="font-size:12px;padding:12px 14px"><span class="kw">import</span> <span class="cl">uvicorn</span>
+
+<span class="cm"># Simplest</span>
+uvicorn.<span class="fn">run</span>(<span class="st">"main:app"</span>, reload=<span class="kw">True</span>)
+
+<span class="cm"># Production config</span>
+uvicorn.<span class="fn">run</span>(
+    <span class="st">"main:app"</span>,
+    host=<span class="st">"0.0.0.0"</span>,
+    port=<span class="nm">8000</span>,
+    workers=<span class="nm">4</span>,
+    log_level=<span class="st">"info"</span>,
+)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot dot-amber"></span>SSL</div>
+        <div class="code-wrap" style="margin:10px 0 0">
+          <div class="code-block" style="font-size:12px;padding:12px 14px"><span class="cm"># Generate self-signed cert</span>
+openssl req -x509 -newkey rsa:4096 \
+  -keyout key.pem -out cert.pem \
+  -days 365 -nodes -subj "/CN=localhost"
+
+<span class="cm"># Run with SSL</span>
+uvicorn main:app \
+  <span class="flag">--ssl-keyfile</span> key.pem \
+  <span class="flag">--ssl-certfile</span> cert.pem \
+  <span class="flag">--port</span> 443</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot dot-pink"></span>Environment vars</div>
+        <div class="code-wrap" style="margin:10px 0 0">
+          <div class="code-block" style="font-size:12px;padding:12px 14px"><span class="cm"># Uvicorn reads these env vars</span>
+<span class="env">UVICORN_HOST</span>=0.0.0.0
+<span class="env">UVICORN_PORT</span>=8000
+<span class="env">UVICORN_WORKERS</span>=4
+<span class="env">UVICORN_LOG_LEVEL</span>=info
+<span class="env">UVICORN_RELOAD</span>=false
+<span class="env">UVICORN_ACCESS_LOG</span>=true
+
+<span class="cm"># Then just:</span>
+uvicorn main:app</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="info-box note">
+      <div class="info-icon">📚</div>
+      <div class="info-content">
+        <strong>Further reading:</strong> Official docs at <code>www.uvicorn.org</code>. ASGI spec at <code>asgi.readthedocs.io</code>. For FastAPI-specific deployment patterns see <code>fastapi.tiangolo.com/deployment</code>. For benchmarks, check <code>www.techempower.com/benchmarks</code> (Python section).
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+  function copyCode(btn) {
+    const block = btn.closest('.code-wrap').querySelector('.code-block');
+    navigator.clipboard.writeText(block.innerText).then(() => {
+      btn.textContent = 'copied!';
+      btn.style.color = 'var(--accent-green)';
+      btn.style.borderColor = 'var(--accent-green)';
+      setTimeout(() => {
+        btn.textContent = 'copy';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 1800);
+    });
+  }
+
+  const sections = document.querySelectorAll('.section');
+  const links    = document.querySelectorAll('.sidebar-link');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+      }
+    });
+  }, { rootMargin: '-60px 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

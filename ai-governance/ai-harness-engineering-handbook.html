@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Harness Engineering — Field Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --void:        #04050a;
+  --void2:       #080b14;
+  --void3:       #0d1120;
+  --void4:       #121829;
+  --void5:       #192035;
+  --border:      rgba(120,160,255,0.07);
+  --border2:     rgba(120,160,255,0.14);
+  --text:        #dde6ff;
+  --text2:       #7b93c8;
+  --muted:       #3a4d72;
+  --indigo:      #6c8fff;
+  --indigo-dim:  rgba(108,143,255,0.10);
+  --indigo-glow: rgba(108,143,255,0.18);
+  --violet:      #b57cff;
+  --violet-dim:  rgba(181,124,255,0.10);
+  --cyan:        #22d4bf;
+  --cyan-dim:    rgba(34,212,191,0.10);
+  --amber:       #f5a623;
+  --amber-dim:   rgba(245,166,35,0.10);
+  --rose:        #ff5e7d;
+  --rose-dim:    rgba(255,94,125,0.10);
+  --emerald:     #2ecc8f;
+  --emerald-dim: rgba(46,204,143,0.10);
+  --mono:        'DM Mono', monospace;
+  --display:     'Outfit', sans-serif;
+  --serif:       'Instrument Serif', serif;
+  --sidebar-w:   272px;
+  --top-h:       54px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 14px;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* noise texture overlay */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* grid bg */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(108,143,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108,143,255,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(4,5,10,0.94);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+}
+.topbar-left { display: flex; align-items: center; gap: 16px; }
+.topbar-logo {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--indigo) 0%, var(--violet) 100%);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 11px; font-weight: 500; color: #fff;
+  letter-spacing: -0.5px; flex-shrink: 0;
+}
+.topbar-title {
+  font-family: var(--display); font-size: 15px; font-weight: 700;
+  color: var(--text); letter-spacing: -0.2px;
+}
+.topbar-title span { color: var(--indigo); }
+.topbar-right {
+  display: flex; align-items: center; gap: 16px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px;
+}
+.topbar-pill {
+  padding: 3px 12px; border-radius: 20px;
+  font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.5px;
+}
+.pill-indigo { background: var(--indigo-dim); color: var(--indigo); border: 1px solid rgba(108,143,255,0.25); }
+.pill-violet { background: var(--violet-dim); color: var(--violet); border: 1px solid rgba(181,124,255,0.25); }
+.pill-emerald { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(46,204,143,0.25); }
+
+/* ─── LAYOUT ─── */
+.layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); position: relative; z-index: 1; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto;
+  background: var(--void2);
+  border-right: 1px solid var(--border);
+  padding-bottom: 48px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sb-header {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(108,143,255,0.04) 0%, transparent 100%);
+}
+.sb-version {
+  font-family: var(--mono); font-size: 10px; color: var(--indigo);
+  letter-spacing: 2px; margin-bottom: 5px; text-transform: uppercase;
+}
+.sb-tagline { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+.nav-group { margin-top: 6px; }
+.nav-group-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+  padding: 14px 22px 5px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 22px;
+  text-decoration: none; font-size: 13px;
+  color: var(--text2);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-link-num {
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  width: 20px; flex-shrink: 0; text-align: right;
+}
+.nav-link:hover { color: var(--text); background: rgba(108,143,255,0.04); border-left-color: var(--border2); }
+.nav-link.active { color: var(--indigo); border-left-color: var(--indigo); background: var(--indigo-dim); }
+.nav-link.active .nav-link-num { color: var(--indigo); opacity: 0.6; }
+
+/* ─── MAIN ─── */
+.main { flex: 1; min-width: 0; padding: 52px 64px 100px; max-width: 1000px; }
+
+/* ─── HERO ─── */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  background: var(--void3);
+  padding: 58px 60px 52px;
+  margin-bottom: 72px;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%,   rgba(108,143,255,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(181,124,255,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 40%,  rgba(34,212,191,0.04) 0%, transparent 40%);
+  pointer-events: none;
+}
+.hero-overline {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+  text-transform: uppercase; color: var(--indigo);
+  margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+}
+.hero-overline::before { content: '▸'; font-size: 10px; opacity: 0.5; }
+.hero h1 {
+  font-family: var(--display); font-size: 72px; font-weight: 900;
+  line-height: 0.88; letter-spacing: -3px;
+  text-transform: uppercase; color: var(--text);
+  margin-bottom: 26px;
+}
+.hero h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--indigo) 20%, var(--violet) 80%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.hero-axiom {
+  font-family: var(--serif); font-style: italic;
+  font-size: 17px; color: var(--text2);
+  border-left: 2px solid var(--indigo);
+  padding: 8px 16px; margin-bottom: 26px;
+  background: var(--indigo-dim);
+  display: inline-block;
+}
+.hero-desc { color: var(--text2); font-size: 15px; max-width: 580px; line-height: 1.8; margin-bottom: 28px; }
+.hero-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 5px 14px; border: 1px solid; border-radius: 2px;
+}
+.c-indigo  { color: var(--indigo);  border-color: rgba(108,143,255,0.35); background: var(--indigo-dim); }
+.c-violet  { color: var(--violet);  border-color: rgba(181,124,255,0.35); background: var(--violet-dim); }
+.c-cyan    { color: var(--cyan);    border-color: rgba(34,212,191,0.35);  background: var(--cyan-dim); }
+.c-amber   { color: var(--amber);   border-color: rgba(245,166,35,0.35);  background: var(--amber-dim); }
+.c-rose    { color: var(--rose);    border-color: rgba(255,94,125,0.35);  background: var(--rose-dim); }
+.c-emerald { color: var(--emerald); border-color: rgba(46,204,143,0.35);  background: var(--emerald-dim); }
+
+/* ─── SECTIONS ─── */
+section { margin-bottom: 80px; scroll-margin-top: calc(var(--top-h) + 24px); }
+
+.section-header {
+  display: flex; align-items: flex-start; gap: 18px;
+  margin-bottom: 28px; padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 60px; height: 1px; background: var(--indigo);
+}
+.section-num {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--muted); margin-top: 4px; flex-shrink: 0; width: 36px;
+}
+.section-title-block h2 {
+  font-family: var(--display); font-size: 28px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: -0.5px; color: var(--text); line-height: 1;
+}
+.section-sub {
+  font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-top: 6px;
+}
+
+/* ─── PROSE ─── */
+.prose { color: var(--text2); font-size: 14px; line-height: 1.85; margin-bottom: 16px; }
+.prose strong { color: var(--text); font-weight: 600; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--void3);
+  border: 1px solid var(--border);
+  padding: 22px 24px;
+  margin-bottom: 12px;
+  border-radius: 2px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.card:hover { border-color: var(--border2); background: var(--void4); }
+.card-left-indigo  { border-left: 3px solid var(--indigo); }
+.card-left-violet  { border-left: 3px solid var(--violet); }
+.card-left-cyan    { border-left: 3px solid var(--cyan); }
+.card-left-amber   { border-left: 3px solid var(--amber); }
+.card-left-rose    { border-left: 3px solid var(--rose); }
+.card-left-emerald { border-left: 3px solid var(--emerald); }
+
+.card-title {
+  font-family: var(--display); font-size: 14px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.8px; color: var(--text);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
+}
+.card-tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 8px; border-radius: 2px;
+}
+.tag-indigo  { color: var(--indigo);  background: var(--indigo-dim);  border: 1px solid rgba(108,143,255,0.3); }
+.tag-violet  { color: var(--violet);  background: var(--violet-dim);  border: 1px solid rgba(181,124,255,0.3); }
+.tag-cyan    { color: var(--cyan);    background: var(--cyan-dim);    border: 1px solid rgba(34,212,191,0.3); }
+.tag-amber   { color: var(--amber);   background: var(--amber-dim);   border: 1px solid rgba(245,166,35,0.3); }
+.tag-rose    { color: var(--rose);    background: var(--rose-dim);    border: 1px solid rgba(255,94,125,0.3); }
+.tag-emerald { color: var(--emerald); background: var(--emerald-dim); border: 1px solid rgba(46,204,143,0.3); }
+
+.card p, .card li { color: var(--text2); font-size: 13.5px; line-height: 1.65; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; }
+
+/* ─── GRID ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+/* ─── CODE ─── */
+.code-wrap {
+  background: #03040a;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  margin: 18px 0;
+  font-family: var(--mono);
+  position: relative;
+}
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 18px;
+  background: rgba(108,143,255,0.04);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang {
+  font-size: 10px; font-weight: 500; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--indigo);
+}
+.copy-btn {
+  font-size: 10px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+  letter-spacing: 1px; text-transform: uppercase; border-radius: 2px;
+}
+.copy-btn:hover { color: var(--indigo); border-color: var(--indigo); }
+.code-block {
+  padding: 18px 20px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.75; white-space: pre; tab-size: 2; color: var(--text2);
+}
+.kw  { color: #a78bfa; }
+.st  { color: #6ee7b7; }
+.cm  { color: #3d4f72; font-style: italic; }
+.fn  { color: #60a5fa; }
+.nu  { color: #fdba74; }
+.at  { color: var(--indigo); }
+.cl  { color: var(--cyan); }
+.hl  { background: rgba(108,143,255,0.05); display: block; margin: 0 -20px; padding: 0 20px; border-left: 2px solid var(--indigo); }
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--indigo-dim); color: var(--indigo);
+  padding: 1px 7px; border: 1px solid rgba(108,143,255,0.2); border-radius: 2px;
+}
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 14px;
+  padding: 14px 18px; margin: 18px 0;
+  border-left: 3px solid; font-size: 13.5px; border-radius: 0 2px 2px 0;
+}
+.callout-body { color: var(--text2); line-height: 1.7; }
+.callout-body strong { color: var(--text); }
+.callout.tip     { background: rgba(108,143,255,0.05); border-color: var(--indigo); }
+.callout.warn    { background: rgba(245,166,35,0.06);  border-color: var(--amber); }
+.callout.danger  { background: rgba(255,94,125,0.06);  border-color: var(--rose); }
+.callout.success { background: rgba(46,204,143,0.05);  border-color: var(--emerald); }
+.callout.violet  { background: rgba(181,124,255,0.05); border-color: var(--violet); }
+.callout-icon { flex-shrink: 0; font-size: 14px; margin-top: 2px; }
+
+/* ─── TABLES ─── */
+.table-wrap {
+  border: 1px solid var(--border); margin: 18px 0; overflow-x: auto; border-radius: 2px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: rgba(108,143,255,0.05);
+  color: var(--indigo); font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+td code { font-size: 11px; }
+.ok      { color: var(--emerald); font-weight: 700; font-family: var(--mono); }
+.no      { color: var(--rose);    font-weight: 700; font-family: var(--mono); }
+.partial { color: var(--amber);   font-weight: 700; font-family: var(--mono); }
+
+/* ─── ARCH DIAGRAM ─── */
+.arch {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--border); border: 1px solid var(--border);
+  margin: 20px 0;
+}
+.arch-cell {
+  background: var(--void3); padding: 18px 16px; text-align: center;
+  position: relative; transition: background 0.2s;
+}
+.arch-cell:hover { background: var(--void4); }
+.arch-icon { font-size: 24px; margin-bottom: 8px; }
+.arch-label {
+  font-family: var(--display); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text); margin-bottom: 4px;
+}
+.arch-sub { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.arch-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; }
+.ab-indigo  { background: var(--indigo); }
+.ab-violet  { background: var(--violet); }
+.ab-cyan    { background: var(--cyan); }
+.ab-amber   { background: var(--amber); }
+.ab-rose    { background: var(--rose); }
+.ab-emerald { background: var(--emerald); }
+
+/* ─── FLOW ─── */
+.flow {
+  display: flex; align-items: center; flex-wrap: nowrap;
+  overflow-x: auto; gap: 0;
+  margin: 20px 0; padding: 20px 24px;
+  background: var(--void3); border: 1px solid var(--border);
+}
+.flow-step {
+  flex-shrink: 0; text-align: center; padding: 12px 16px;
+  background: var(--void4); border: 1px solid var(--border2); min-width: 100px;
+}
+.flow-label {
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--muted); margin-bottom: 4px;
+}
+.flow-name {
+  font-family: var(--display); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; color: var(--text); line-height: 1.2;
+}
+.flow-arrow { color: var(--indigo); font-size: 18px; margin: 0 6px; flex-shrink: 0; }
+.flow-arrow-deny { color: var(--rose); }
+
+/* ─── MATURITY ─── */
+.maturity { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 18px 0; }
+.mat-stage {
+  background: var(--void3); border: 1px solid var(--border); padding: 18px 16px; position: relative; overflow: hidden;
+}
+.mat-stage::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.ms1::before { background: var(--muted); }
+.ms2::before { background: var(--amber); }
+.ms3::before { background: var(--cyan); }
+.ms4::before { background: linear-gradient(90deg, var(--indigo), var(--violet)); box-shadow: 0 0 8px var(--indigo); }
+.mat-level { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+.mat-name  { font-family: var(--display); font-size: 15px; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; color: var(--text); }
+.ms1 .mat-name { color: var(--muted); }
+.ms2 .mat-name { color: var(--amber); }
+.ms3 .mat-name { color: var(--cyan); }
+.ms4 .mat-name { color: var(--indigo); }
+.mat-stage ul { padding-left: 14px; }
+.mat-stage li { font-size: 11.5px; color: var(--muted); margin-bottom: 3px; line-height: 1.5; }
+.ms2 li, .ms3 li, .ms4 li { color: var(--text2); }
+
+/* ─── COMPARE ─── */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0; }
+.compare-block { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+.compare-header {
+  padding: 10px 18px; font-family: var(--display);
+  font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.compare-bad  .compare-header { background: var(--rose-dim);    color: var(--rose);    border-bottom: 1px solid rgba(255,94,125,0.2); }
+.compare-good .compare-header { background: var(--emerald-dim); color: var(--emerald); border-bottom: 1px solid rgba(46,204,143,0.2); }
+.compare-body { padding: 14px 18px; }
+.compare-body li { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+.compare-body ul { padding-left: 14px; }
+
+/* ─── TOOL COMPARISON TABLE ─── */
+.tool-table { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; margin: 18px 0; }
+.tool-row { display: grid; grid-template-columns: 160px 1fr 1fr 1fr; border-bottom: 1px solid var(--border); }
+.tool-row:last-child { border-bottom: none; }
+.tool-row.header { background: rgba(108,143,255,0.05); }
+.tool-cell {
+  padding: 12px 14px; font-size: 12.5px; color: var(--text2);
+  border-right: 1px solid var(--border);
+}
+.tool-cell:last-child { border-right: none; }
+.tool-row.header .tool-cell { font-family: var(--mono); font-size: 10px; color: var(--indigo); text-transform: uppercase; letter-spacing: 1px; font-weight: 500; }
+.tool-label { color: var(--text); font-weight: 600; font-size: 13px; }
+
+/* ─── PHASE STRIP ─── */
+.phases { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; margin: 20px 0; }
+.phase-step { background: var(--void3); border: 1px solid var(--border); padding: 14px 10px; text-align: center; position: relative; }
+.phase-step::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.ph1::before { background: var(--rose); }
+.ph2::before { background: var(--amber); }
+.ph3::before { background: var(--indigo); }
+.ph4::before { background: var(--cyan); }
+.ph5::before { background: var(--emerald); }
+.ph6::before { background: var(--violet); }
+.phase-num { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+.phase-name { font-family: var(--display); font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 3px; }
+.phase-sub { font-size: 10px; color: var(--muted); line-height: 1.3; }
+
+/* ─── H3/H4 ─── */
+h3 {
+  font-family: var(--display); font-size: 16px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--text);
+  margin: 32px 0 12px; display: flex; align-items: center; gap: 10px;
+}
+h3::before { content: '//'; font-family: var(--mono); font-size: 11px; color: var(--indigo); }
+h4 { font-family: var(--mono); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin: 22px 0 8px; }
+
+/* ─── scrollbar ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; max-width: 100%; }
+  .grid-2, .grid-3, .arch, .maturity, .compare-grid, .phases { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 44px; }
+  .flow { flex-direction: column; align-items: flex-start; }
+  .flow-arrow { transform: rotate(90deg); }
+  .tool-row { grid-template-columns: 1fr; }
+  .tool-row.header .tool-cell:not(:first-child) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">HE</div>
+    <div class="topbar-title"><span>Harness</span> Engineering · AI</div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-pill pill-indigo">2026 Edition</span>
+    <span class="topbar-pill pill-violet">Multi-Agent</span>
+    <span class="topbar-pill pill-emerald">Production</span>
+  </div>
+</header>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sb-header">
+    <div class="sb-version">// HE-FIELD-2026</div>
+    <div class="sb-tagline">The layer beneath the prompt. Execution environments, orchestration, and production AI reliability.</div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Foundations</div>
+    <a class="nav-link active" href="#what-is"><span class="nav-link-num">01</span>What Is Harness Engineering</a>
+    <a class="nav-link" href="#why-now"><span class="nav-link-num">02</span>Why It Matters in 2026</a>
+    <a class="nav-link" href="#layers"><span class="nav-link-num">03</span>The Three-Layer Model</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Core Pillars</div>
+    <a class="nav-link" href="#tool-orch"><span class="nav-link-num">04</span>Tool Orchestration</a>
+    <a class="nav-link" href="#guardrails"><span class="nav-link-num">05</span>Guardrails & Safety</a>
+    <a class="nav-link" href="#error-recovery"><span class="nav-link-num">06</span>Error Recovery</a>
+    <a class="nav-link" href="#feedback"><span class="nav-link-num">07</span>Feedback Loops</a>
+    <a class="nav-link" href="#observability"><span class="nav-link-num">08</span>Observability</a>
+    <a class="nav-link" href="#hitl"><span class="nav-link-num">09</span>Human-in-the-Loop</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Tools in Practice</div>
+    <a class="nav-link" href="#claude-code"><span class="nav-link-num">10</span>Claude Code Harness</a>
+    <a class="nav-link" href="#copilot"><span class="nav-link-num">11</span>GitHub Copilot / Codex</a>
+    <a class="nav-link" href="#frameworks"><span class="nav-link-num">12</span>Orchestration Frameworks</a>
+    <a class="nav-link" href="#mcp"><span class="nav-link-num">13</span>MCP & A2A Protocols</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Production</div>
+    <a class="nav-link" href="#maturity"><span class="nav-link-num">14</span>Maturity Model</a>
+    <a class="nav-link" href="#patterns"><span class="nav-link-num">15</span>Patterns & Anti-Patterns</a>
+    <a class="nav-link" href="#roadmap"><span class="nav-link-num">16</span>Implementation Roadmap</a>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-overline">Field Handbook · Production AI Systems</div>
+    <h1>Harness<br><em>Engineering</em></h1>
+    <div class="hero-axiom">"Prompt engineering was 2023. Harness engineering is 2026."</div>
+    <p class="hero-desc">The complete operational guide to building reliable AI systems — covering tool orchestration, multi-layer guardrails, error recovery, feedback loops, observability, and human oversight. Goes beyond individual model calls to the production infrastructure that makes AI agents dependable.</p>
+    <div class="hero-chips">
+      <span class="chip c-indigo">Tool Orchestration</span>
+      <span class="chip c-violet">Multi-Agent</span>
+      <span class="chip c-cyan">Observability</span>
+      <span class="chip c-amber">Guardrails</span>
+      <span class="chip c-rose">Error Recovery</span>
+      <span class="chip c-emerald">Human-in-Loop</span>
+    </div>
+  </div>
+
+  <!-- ══ 01 WHAT IS ══ -->
+  <section id="what-is">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title-block">
+        <h2>What Is Harness Engineering</h2>
+        <div class="section-sub">// DEFINITION AND SCOPE</div>
+      </div>
+    </div>
+
+    <p class="prose"><strong>Harness engineering</strong> is the discipline of designing the execution environment, tooling infrastructure, and orchestration logic that surrounds a language model. It is everything that is not the model itself — context assembly, tool dispatch, memory management, guardrails, retry logic, state tracking, output validation, and observability.</p>
+
+    <p class="prose">The harness converts a probabilistic text generator into a reliable, auditable, goal-directed system. Without a harness, an LLM is a demo. With a production-grade harness, the same model becomes infrastructure.</p>
+
+    <div class="compare-grid">
+      <div class="compare-block compare-bad">
+        <div class="compare-header">✕ Without a Harness</div>
+        <div class="compare-body">
+          <ul>
+            <li>Model calls are stateless — no continuity across turns</li>
+            <li>Errors surface as hallucinated "success" responses</li>
+            <li>Tools invoked with no permission scoping</li>
+            <li>No retry, no fallback, no circuit breaking</li>
+            <li>Unlimited token burn — no cost guardrails</li>
+            <li>Invisible — no tracing, no audit, no replay</li>
+            <li>Human oversight requires manual monitoring</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-block compare-good">
+        <div class="compare-header">✓ With a Production Harness</div>
+        <div class="compare-body">
+          <ul>
+            <li>Structured state handoffs between context windows</li>
+            <li>Deterministic validation of every output</li>
+            <li>Tools scoped to minimum required permissions</li>
+            <li>Retry with backoff, fallback strategies, circuit breakers</li>
+            <li>Token budgets, rate limits, cost alerting</li>
+            <li>Full distributed trace: every decision auditable</li>
+            <li>Policy-defined human approval gates</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Key insight from 2025 benchmarks:</strong> Improving the harness on the same model consistently outperforms switching to a more capable model on real production workloads. The scaffolding is the system — the model is just a component. The same Opus 4.7 running inside different harnesses produces dramatically different reliability profiles.</div>
+    </div>
+  </section>
+
+  <!-- ══ 02 WHY NOW ══ -->
+  <section id="why-now">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title-block">
+        <h2>Why It Matters in 2026</h2>
+        <div class="section-sub">// THE SHIFT FROM PROMPT TO SYSTEM</div>
+      </div>
+    </div>
+
+    <p class="prose">Three converging forces have made harness engineering the dominant discipline for production AI teams in 2026: models are reasoning-capable by default (reducing prompt ROI), agents are now taking consequential real-world actions (raising the cost of failure), and multi-agent topologies mean errors compound across parallel execution paths.</p>
+
+    <div class="grid-3">
+      <div class="card card-left-rose">
+        <div class="card-title">Prompt ROI Collapse <span class="card-tag tag-rose">Driver</span></div>
+        <p>Stanford HAI (late 2025): marginal returns on prompt optimization have flattened as frontier models reason by default. The leverage has moved entirely to execution infrastructure — context assembly, tool selection, and output validation.</p>
+      </div>
+      <div class="card card-left-amber">
+        <div class="card-title">Consequential Actions <span class="card-tag tag-amber">Driver</span></div>
+        <p>Agents now write to databases, push to production branches, send emails, submit PRs, and provision cloud resources. Errors are no longer correctable by re-reading the chat. A harness-less agent with shell access is an uncontrolled blast radius.</p>
+      </div>
+      <div class="card card-left-indigo">
+        <div class="card-title">Multi-Agent Compounding <span class="card-tag tag-indigo">Driver</span></div>
+        <p>Ten agents running in parallel each making small errors creates cascading failures that are nearly impossible to debug post-hoc. The harness provides the isolation, state boundaries, and inter-agent contracts that prevent compound failure.</p>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>OWASP LLM06:2025 — Excessive Agency:</strong> The most dangerous harness anti-pattern is over-provisioning. An agent given filesystem write access, network egress, and process execution rights — when it only needs to run tests — is an amplified attack surface. OWASP classifies unnecessary permissions as a top-tier LLM risk. The harness is the enforcement layer that limits what an agent can actually do versus what it thinks it can do.</div>
+    </div>
+  </section>
+
+  <!-- ══ 03 LAYERS ══ -->
+  <section id="layers">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title-block">
+        <h2>The Three-Layer Model</h2>
+        <div class="section-sub">// ARCHITECTURE OVERVIEW</div>
+      </div>
+    </div>
+
+    <p class="prose">Every production AI harness — regardless of the model or framework — is composed of three concentric layers. Most teams in 2025 only built Layer 1. Teams shipping reliable production AI in 2026 engineer all three deliberately.</p>
+
+    <div class="arch">
+      <div class="arch-cell">
+        <div class="arch-icon">💬</div>
+        <div class="arch-label">Layer 1: Model Interface</div>
+        <div class="arch-sub">Prompt construction, context assembly, response parsing, token management</div>
+        <div class="arch-bar ab-indigo"></div>
+      </div>
+      <div class="arch-cell">
+        <div class="arch-icon">⚙️</div>
+        <div class="arch-label">Layer 2: Runtime Environment</div>
+        <div class="arch-sub">Tool definitions, memory stores, input validation, output guardrails, context window management</div>
+        <div class="arch-bar ab-violet"></div>
+      </div>
+      <div class="arch-cell">
+        <div class="arch-icon">🌐</div>
+        <div class="arch-label">Layer 3: Orchestration</div>
+        <div class="arch-sub">Agent loops, task decomposition, conditional branching, human approval gates, parallel execution, state handoffs</div>
+        <div class="arch-bar ab-cyan"></div>
+      </div>
+    </div>
+
+    <h3>Agent Execution Loop (Plan–Execute–Verify)</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-label">Input</div>
+        <div class="flow-name">Task + Context</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-label">Plan</div>
+        <div class="flow-name">Decompose + Select Tools</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-label">Guardrail</div>
+        <div class="flow-name">Input Validation</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-label">Execute</div>
+        <div class="flow-name">Tool Calls</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-label">Verify</div>
+        <div class="flow-name">Output Validation</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-label">Feedback</div>
+        <div class="flow-name">Pass / Fix / Escalate</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 04 TOOL ORCHESTRATION ══ -->
+  <section id="tool-orch">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div class="section-title-block">
+        <h2>Tool Orchestration</h2>
+        <div class="section-sub">// CAPABILITY REGISTRY, DISPATCH, AND PERMISSIONS</div>
+      </div>
+    </div>
+
+    <p class="prose">Tools give an agent capabilities beyond text generation — web search, code execution, database queries, file operations, API calls. The harness is responsible for defining the tool registry, enforcing permission scopes, handling tool failures, and composing multi-tool workflows into coherent agent actions.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Start with 3–5 well-defined tools.</strong> A lean, well-scoped tool registry outperforms a broad, loosely defined one. Each tool should have: a clear natural-language description for model selection, typed input/output schema, explicit permission scope, timeout budget, and a documented fallback behavior.</div>
+    </div>
+
+    <h3>Tool Registry Design</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Tool Registry with Permissions</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">from</span> <span class="cl">dataclasses</span> <span class="kw">import</span> dataclass
+<span class="kw">from</span> <span class="cl">enum</span> <span class="kw">import</span> Enum
+<span class="kw">from</span> <span class="cl">typing</span> <span class="kw">import</span> Callable, Any
+<span class="kw">import</span> <span class="cl">anthropic</span>
+
+<span class="kw">class</span> <span class="cl">PermissionLevel</span>(Enum):
+    READ_ONLY  = <span class="st">"read_only"</span>    <span class="cm"># no side effects</span>
+    WRITE      = <span class="st">"write"</span>         <span class="cm"># modifies state, reversible</span>
+    DESTRUCTIVE = <span class="st">"destructive"</span>  <span class="cm"># requires human approval</span>
+
+@dataclass
+<span class="kw">class</span> <span class="cl">HarnessTool</span>:
+    name:        str
+    description: str
+    schema:      dict          <span class="cm"># JSON Schema for inputs</span>
+    handler:     Callable
+    permission:  PermissionLevel
+    timeout_s:   int = <span class="nu">30</span>
+    max_retries: int = <span class="nu">3</span>
+
+<span class="cm"># Tool registry — define capabilities explicitly</span>
+TOOL_REGISTRY: dict[str, HarnessTool] = {
+    <span class="st">"read_file"</span>: HarnessTool(
+        name=<span class="st">"read_file"</span>,
+        description=<span class="st">"Read the contents of a file. Only files under ./src/ are accessible."</span>,
+        schema={
+            <span class="st">"type"</span>: <span class="st">"object"</span>,
+            <span class="st">"properties"</span>: {
+                <span class="st">"path"</span>: {<span class="st">"type"</span>: <span class="st">"string"</span>, <span class="st">"pattern"</span>: <span class="st">"^\\./src/"</span>}
+            },
+            <span class="st">"required"</span>: [<span class="st">"path"</span>]
+        },
+        handler=handle_read_file,
+        permission=PermissionLevel.READ_ONLY,
+    ),
+    <span class="st">"run_tests"</span>: HarnessTool(
+        name=<span class="st">"run_tests"</span>,
+        description=<span class="st">"Execute the test suite. Returns exit code, stdout, and stderr."</span>,
+        schema={<span class="st">"type"</span>: <span class="st">"object"</span>, <span class="st">"properties"</span>: {
+            <span class="st">"test_path"</span>: {<span class="st">"type"</span>: <span class="st">"string"</span>, <span class="st">"default"</span>: <span class="st">"tests/"</span>}
+        }},
+        handler=handle_run_tests,
+        permission=PermissionLevel.READ_ONLY,
+        timeout_s=<span class="nu">120</span>,
+    ),
+    <span class="st">"write_file"</span>: HarnessTool(
+        name=<span class="st">"write_file"</span>,
+        description=<span class="st">"Write content to a file. Restricted to ./src/. Creates backup before writing."</span>,
+        schema={
+            <span class="st">"type"</span>: <span class="st">"object"</span>,
+            <span class="st">"properties"</span>: {
+                <span class="st">"path"</span>:    {<span class="st">"type"</span>: <span class="st">"string"</span>, <span class="st">"pattern"</span>: <span class="st">"^\\./src/"</span>},
+                <span class="st">"content"</span>: {<span class="st">"type"</span>: <span class="st">"string"</span>}
+            },
+            <span class="st">"required"</span>: [<span class="st">"path"</span>, <span class="st">"content"</span>]
+        },
+        handler=handle_write_file,
+        permission=PermissionLevel.WRITE,
+    ),
+    <span class="st">"delete_file"</span>: HarnessTool(
+        name=<span class="st">"delete_file"</span>,
+        description=<span class="st">"Delete a file. REQUIRES human approval before execution."</span>,
+        schema={<span class="st">"type"</span>: <span class="st">"object"</span>, <span class="st">"properties"</span>: {
+            <span class="st">"path"</span>: {<span class="st">"type"</span>: <span class="st">"string"</span>}
+        }},
+        handler=handle_delete_file,
+        permission=PermissionLevel.DESTRUCTIVE,  <span class="cm"># always gate to human</span>
+    ),
+}</code></div>
+    </div>
+
+    <h3>Multi-Tool Workflow: Write–Test–Fix Loop</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Harness Execution with Tool Dispatch</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> <span class="cl">anthropic</span>, json, time
+<span class="kw">from</span> <span class="cl">harness</span> <span class="kw">import</span> TOOL_REGISTRY, PermissionLevel, require_human_approval
+
+client = anthropic.Anthropic()
+
+<span class="kw">def</span> <span class="fn">run_agent_loop</span>(task: str, max_iterations: int = <span class="nu">20</span>) -> str:
+    <span class="st">"""
+    Bounded Plan–Execute–Verify loop with tool dispatch.
+    Exits on: task completion, max iterations, or unrecoverable error.
+    """</span>
+    messages = [{<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: task}]
+    tool_defs = [t_to_anthropic_schema(t) <span class="kw">for</span> t <span class="kw">in</span> TOOL_REGISTRY.values()]
+    iteration  = <span class="nu">0</span>
+
+    <span class="kw">while</span> iteration < max_iterations:
+        iteration += <span class="nu">1</span>
+        <span class="cm"># ── Model call ──────────────────────────────────────────</span>
+        response = client.messages.create(
+            model=<span class="st">"claude-sonnet-4-6"</span>,
+            max_tokens=<span class="nu">8192</span>,
+            tools=tool_defs,
+            messages=messages,
+        )
+
+        <span class="cm"># ── Stop conditions ─────────────────────────────────────</span>
+        <span class="kw">if</span> response.stop_reason == <span class="st">"end_turn"</span>:
+            <span class="kw">return</span> extract_text(response)          <span class="cm"># task complete</span>
+
+        <span class="cm"># ── Tool use ────────────────────────────────────────────</span>
+        tool_results = []
+        <span class="kw">for</span> block <span class="kw">in</span> response.content:
+            <span class="kw">if</span> block.type != <span class="st">"tool_use"</span>:
+                <span class="kw">continue</span>
+
+            tool = TOOL_REGISTRY.get(block.name)
+            <span class="kw">if not</span> tool:
+                tool_results.append(tool_error(block.id, <span class="st">f"Unknown tool: {block.name}"</span>))
+                <span class="kw">continue</span>
+
+            <span class="cm"># ── Permission gate ─────────────────────────────────────</span>
+            <span class="kw">if</span> tool.permission == PermissionLevel.DESTRUCTIVE:
+                approved = require_human_approval(block.name, block.input)
+                <span class="kw">if not</span> approved:
+                    tool_results.append(tool_error(block.id, <span class="st">"Action rejected by operator"</span>))
+                    <span class="kw">continue</span>
+
+            <span class="cm"># ── Execute with timeout + retry ────────────────────────</span>
+            result = execute_with_retry(tool, block.input)
+            tool_results.append({<span class="st">"type"</span>: <span class="st">"tool_result"</span>, <span class="st">"tool_use_id"</span>: block.id, <span class="st">"content"</span>: result})
+
+        messages.append({<span class="st">"role"</span>: <span class="st">"assistant"</span>, <span class="st">"content"</span>: response.content})
+        messages.append({<span class="st">"role"</span>: <span class="st">"user"</span>,      <span class="st">"content"</span>: tool_results})
+
+    <span class="kw">raise</span> <span class="cl">HarnessError</span>(<span class="st">f"Max iterations ({max_iterations}) reached without completion"</span>)
+
+
+<span class="kw">def</span> <span class="fn">execute_with_retry</span>(tool, inputs, attempt=<span class="nu">0</span>):
+    <span class="kw">try</span>:
+        result = run_with_timeout(tool.handler, inputs, tool.timeout_s)
+        <span class="kw">return</span> json.dumps(result)
+    <span class="kw">except</span> <span class="cl">TimeoutError</span>:
+        <span class="kw">return</span> json.dumps({<span class="st">"error"</span>: <span class="st">"timeout"</span>, <span class="st">"tool"</span>: tool.name, <span class="st">"timeout_s"</span>: tool.timeout_s})
+    <span class="kw">except</span> <span class="cl">Exception</span> <span class="kw">as</span> e:
+        <span class="kw">if</span> attempt < tool.max_retries:
+            time.sleep(<span class="nu">2</span> ** attempt)              <span class="cm"># exponential backoff</span>
+            <span class="kw">return</span> execute_with_retry(tool, inputs, attempt + <span class="nu">1</span>)
+        <span class="kw">return</span> json.dumps({<span class="st">"error"</span>: str(e), <span class="st">"final_attempt"</span>: <span class="kw">True</span>})</div>
+    </div>
+  </section>
+
+  <!-- ══ 05 GUARDRAILS ══ -->
+  <section id="guardrails">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div class="section-title-block">
+        <h2>Guardrails & Safety</h2>
+        <div class="section-sub">// MULTI-LAYER BEHAVIORAL ENFORCEMENT</div>
+      </div>
+    </div>
+
+    <p class="prose">Guardrails are the deterministic rules that prevent agents from taking harmful, unauthorized, or out-of-scope actions. Unlike model-level safety (stochastic), harness guardrails are deterministic and composable. They operate at five distinct intercept points: before input reaches the model, during tool invocation, on output before delivery, at the session boundary, and at the infrastructure level.</p>
+
+    <div class="arch">
+      <div class="arch-cell">
+        <div class="arch-icon">🔍</div>
+        <div class="arch-label">Input Rails</div>
+        <div class="arch-sub">Prompt injection detection, content classification, scope validation</div>
+        <div class="arch-bar ab-rose"></div>
+      </div>
+      <div class="arch-cell">
+        <div class="arch-icon">⛓️</div>
+        <div class="arch-label">Dialog Rails</div>
+        <div class="arch-sub">Conversation flow control, topic boundaries, CoT steering</div>
+        <div class="arch-bar ab-amber"></div>
+      </div>
+      <div class="arch-cell">
+        <div class="arch-icon">🔧</div>
+        <div class="arch-label">Execution Rails</div>
+        <div class="arch-sub">Tool allow/deny lists, parameter validation, sandbox boundaries</div>
+        <div class="arch-bar ab-indigo"></div>
+      </div>
+      <div class="arch-cell">
+        <div class="arch-icon">📤</div>
+        <div class="arch-label">Output Rails</div>
+        <div class="arch-sub">Schema validation, linting, test gate, PII scrubbing</div>
+        <div class="arch-bar ab-cyan"></div>
+      </div>
+      <div class="arch-cell">
+        <div class="arch-icon">💰</div>
+        <div class="arch-label">Cost Rails</div>
+        <div class="arch-sub">Token budgets, rate limits, per-session cost caps</div>
+        <div class="arch-bar ab-emerald"></div>
+      </div>
+      <div class="arch-cell">
+        <div class="arch-icon">📁</div>
+        <div class="arch-label">Data Rails</div>
+        <div class="arch-sub">File path allowlists, secret detection, data classification gates</div>
+        <div class="arch-bar ab-violet"></div>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>NVIDIA NeMo Guardrails pattern:</strong> Define rails using the Colang DSL at each intercept layer. The execution rail layer specifically governs what tools the LLM can invoke and what their inputs/outputs may contain — the reference for behavioral-level enforcement when static allow/deny lists are insufficient. More constraints yield more reliability, not less.</div>
+    </div>
+
+    <h3>Guardrail Implementation: CLAUDE.md / AGENTS.md</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Markdown — CLAUDE.md Harness Config (Claude Code)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># CLAUDE.md — Project Harness Configuration
+# Loaded automatically at session start by Claude Code</span>
+
+<span class="at">## Project Context</span>
+This is a TypeScript Node.js API service. Tests use Vitest. Deployment via GitHub Actions.
+
+<span class="at">## Allowed Actions</span>
+- Read and modify files under <span class="st">./src/</span> and <span class="st">./tests/</span>
+- Run: <span class="st">npm test</span>, <span class="st">npm run lint</span>, <span class="st">npm run typecheck</span>
+- Create new files following the naming convention: <span class="st">kebab-case.ts</span>
+
+<span class="at">## Prohibited Actions</span>
+- NEVER modify <span class="st">.env</span>, <span class="st">.env.production</span>, or any secrets file
+- NEVER run <span class="st">npm publish</span>, <span class="st">git push</span>, or deployment scripts
+- NEVER install new packages without confirming with the user first
+- NEVER delete files — move to <span class="st">./trash/</span> directory instead
+- NEVER expose API keys, tokens, or credentials in any output
+
+<span class="at">## Required Verification Steps</span>
+After any code change, you MUST:
+1. Run <span class="st">npm run typecheck</span> — zero errors required
+2. Run <span class="st">npm test</span> — all tests must pass
+3. Run <span class="st">npm run lint</span> — zero warnings for new code
+
+<span class="at">## Output Format</span>
+- Always explain the change made and why
+- List files modified
+- Show test results summary
+- Flag any remaining TODOs
+
+<span class="at">## Escalation Triggers</span>
+Pause and ask the user before proceeding if:
+- Any test failure that you cannot fix in 2 attempts
+- A change affects more than 5 files
+- You encounter an architectural decision not covered here</div>
+    </div>
+
+    <h3>Output Validation Gate</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Multi-Layer Output Guardrail</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> subprocess, re
+<span class="kw">from</span> <span class="cl">dataclasses</span> <span class="kw">import</span> dataclass
+
+@dataclass
+<span class="kw">class</span> <span class="cl">ValidationResult</span>:
+    passed:  bool
+    errors:  list[str]
+    warnings: list[str]
+
+<span class="kw">def</span> <span class="fn">validate_code_output</span>(code: str, file_path: str) -> ValidationResult:
+    <span class="st">"""
+    Multi-layer output validation before accepting agent-written code.
+    Each layer is deterministic — not reliant on the model.
+    """</span>
+    errors, warnings = [], []
+
+    <span class="cm"># Layer 1: Secret detection (never commit secrets)</span>
+    SECRET_PATTERNS = [
+        r<span class="st">'sk-[A-Za-z0-9]{32,}'</span>,          <span class="cm"># OpenAI / Anthropic keys</span>
+        r<span class="st">'AKIA[A-Z0-9]{16}'</span>,               <span class="cm"># AWS access key</span>
+        r<span class="st">'ghp_[A-Za-z0-9]{36}'</span>,            <span class="cm"># GitHub PAT</span>
+        r<span class="st">'password\s*=\s*["\'][^"\']{8,}'</span>, <span class="cm"># hardcoded password</span>
+    ]
+    <span class="kw">for</span> pattern <span class="kw">in</span> SECRET_PATTERNS:
+        <span class="kw">if</span> re.search(pattern, code, re.IGNORECASE):
+            errors.append(<span class="st">f"SECRET_DETECTED: pattern '{pattern}' found in output"</span>)
+
+    <span class="cm"># Layer 2: Static analysis (TypeScript example)</span>
+    <span class="kw">if</span> file_path.endswith(<span class="st">'.ts'</span>):
+        r = subprocess.run([<span class="st">'npx'</span>, <span class="st">'tsc'</span>, <span class="st">'--noEmit'</span>, file_path], capture_output=<span class="kw">True</span>, text=<span class="kw">True</span>)
+        <span class="kw">if</span> r.returncode != <span class="nu">0</span>:
+            errors.append(<span class="st">f"TYPE_ERROR: {r.stdout[:500]}"</span>)
+
+    <span class="cm"># Layer 3: Lint</span>
+    r = subprocess.run([<span class="st">'npx'</span>, <span class="st">'eslint'</span>, file_path, <span class="st">'--format=json'</span>], capture_output=<span class="kw">True</span>, text=<span class="kw">True</span>)
+    <span class="kw">if</span> r.returncode != <span class="nu">0</span>:
+        warnings.append(<span class="st">f"LINT_WARNING: {r.stdout[:300]}"</span>)
+
+    <span class="cm"># Layer 4: Unit tests (if applicable)</span>
+    r = subprocess.run([<span class="st">'npm'</span>, <span class="st">'test'</span>, <span class="st">'--'</span>, <span class="st">'--run'</span>], capture_output=<span class="kw">True</span>, text=<span class="kw">True</span>, timeout=<span class="nu">60</span>)
+    <span class="kw">if</span> r.returncode != <span class="nu">0</span>:
+        errors.append(<span class="st">f"TEST_FAILURE:\n{r.stdout[-800:]}"</span>)
+
+    <span class="kw">return</span> ValidationResult(passed=<span class="kw">len</span>(errors)==<span class="nu">0</span>, errors=errors, warnings=warnings)</div>
+    </div>
+  </section>
+
+  <!-- ══ 06 ERROR RECOVERY ══ -->
+  <section id="error-recovery">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div class="section-title-block">
+        <h2>Error Recovery</h2>
+        <div class="section-sub">// RETRY STRATEGIES, FALLBACKS, AND CIRCUIT BREAKERS</div>
+      </div>
+    </div>
+
+    <p class="prose">Agent failures fall into three categories: transient (network timeout, rate limit), recoverable (test failure, type error, tool validation error), and unrecoverable (stuck in a loop, contradiction in task requirements, permission denied). Each category demands a different recovery strategy. The harness must distinguish between them and respond appropriately rather than retrying uniformly.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Error Type</th><th>Examples</th><th>Recovery Strategy</th><th>Max Attempts</th></tr>
+        <tr>
+          <td><strong>Transient</strong></td>
+          <td>API timeout, 429 rate limit, network flap</td>
+          <td>Exponential backoff with jitter</td>
+          <td>3 with backoff</td>
+        </tr>
+        <tr>
+          <td><strong>Tool Failure</strong></td>
+          <td>Tool returns error, invalid output schema</td>
+          <td>Return structured error to model; allow re-plan</td>
+          <td>Model decides</td>
+        </tr>
+        <tr>
+          <td><strong>Validation Failure</strong></td>
+          <td>Tests fail, typecheck fails, lint errors</td>
+          <td>Pass error output back to model as feedback</td>
+          <td>2–3 fix attempts</td>
+        </tr>
+        <tr>
+          <td><strong>Loop Detection</strong></td>
+          <td>Same tool called 3x with same inputs</td>
+          <td>Break loop, surface to human checkpoint</td>
+          <td>1 detection → escalate</td>
+        </tr>
+        <tr>
+          <td><strong>Budget Exceeded</strong></td>
+          <td>Token limit, cost cap, iteration cap hit</td>
+          <td>Checkpoint state, pause, notify operator</td>
+          <td>Hard stop</td>
+        </tr>
+        <tr>
+          <td><strong>Unrecoverable</strong></td>
+          <td>Conflicting requirements, missing credentials</td>
+          <td>Escalate to human with diagnosis</td>
+          <td>Immediate</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Circuit Breaker + Loop Detection</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">from</span> <span class="cl">collections</span> <span class="kw">import</span> Counter, defaultdict
+<span class="kw">from</span> <span class="cl">datetime</span> <span class="kw">import</span> datetime, timedelta
+
+<span class="kw">class</span> <span class="cl">HarnessCircuitBreaker</span>:
+    <span class="st">"""
+    Detects and breaks pathological execution patterns before they
+    exhaust tokens, loop infinitely, or cause runaway tool calls.
+    """</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self.tool_call_history = []     <span class="cm"># (tool_name, input_hash, timestamp)</span>
+        self.iteration_count   = <span class="nu">0</span>
+        self.fix_attempts      = defaultdict(int)  <span class="cm"># tool -> consecutive failures</span>
+
+    <span class="kw">def</span> <span class="fn">record_tool_call</span>(self, tool_name: str, inputs: dict) -> None:
+        self.tool_call_history.append((tool_name, hash(str(inputs)), datetime.now()))
+
+    <span class="kw">def</span> <span class="fn">check_for_loops</span>(self) -> tuple[bool, str]:
+        <span class="st">"""Detect identical tool+input pairs in recent history."""</span>
+        recent = self.tool_call_history[-<span class="nu">6</span>:]  <span class="cm"># last 6 calls</span>
+        call_counts = Counter((name, h) <span class="kw">for</span> name, h, _ <span class="kw">in</span> recent)
+        <span class="kw">for</span> (tool, h), count <span class="kw">in</span> call_counts.items():
+            <span class="kw">if</span> count >= <span class="nu">3</span>:
+                <span class="kw">return</span> <span class="kw">True</span>, <span class="st">f"Loop detected: '{tool}' called {count}x with identical inputs"</span>
+        <span class="kw">return False</span>, <span class="st">""</span>
+
+    <span class="kw">def</span> <span class="fn">record_fix_failure</span>(self, tool: str) -> bool:
+        <span class="st">"""Returns True if fix attempts exhausted — escalate to human."""</span>
+        self.fix_attempts[tool] += <span class="nu">1</span>
+        <span class="kw">return</span> self.fix_attempts[tool] >= <span class="nu">3</span>
+
+    <span class="kw">def</span> <span class="fn">reset_fix_counter</span>(self, tool: str) -> None:
+        self.fix_attempts[tool] = <span class="nu">0</span>   <span class="cm"># success — reset counter</span>
+
+
+<span class="cm"># ─── Recovery message injected back to model ─────────────────────────────</span>
+RECOVERY_PROMPT_TEMPLATE = <span class="st">"""
+The previous action failed. Here is the structured error:
+
+ERROR TYPE: {error_type}
+ERROR DETAIL:
+{error_detail}
+
+Attempt {attempt} of {max_attempts}.
+{"This is your FINAL attempt. If you cannot fix this, respond with ESCALATE: <reason>." if attempt >= max_attempts else ""}
+
+Diagnose the root cause from the error output above and try a different approach.
+"""</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 07 FEEDBACK LOOPS ══ -->
+  <section id="feedback">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div class="section-title-block">
+        <h2>Feedback Loops</h2>
+        <div class="section-sub">// WRITE–TEST–FIX, ONLINE EVAL, CONTINUOUS LEARNING</div>
+      </div>
+    </div>
+
+    <p class="prose">Feedback loops are the mechanism by which agent output drives the next agent action. The simplest and most effective feedback loop for coding agents is the write–test–fix cycle: the agent writes code, the harness runs tests, failure output is fed back as the next input. This tight loop converts test failures into self-correction signals without human involvement.</p>
+
+    <div class="phases">
+      <div class="phase-step ph1">
+        <div class="phase-num">01</div>
+        <div class="phase-name">Write</div>
+        <div class="phase-sub">Agent modifies code</div>
+      </div>
+      <div class="phase-step ph2">
+        <div class="phase-num">02</div>
+        <div class="phase-name">Validate</div>
+        <div class="phase-sub">Lint + typecheck (sync)</div>
+      </div>
+      <div class="phase-step ph3">
+        <div class="phase-num">03</div>
+        <div class="phase-name">Test</div>
+        <div class="phase-sub">Run test suite</div>
+      </div>
+      <div class="phase-step ph4">
+        <div class="phase-num">04</div>
+        <div class="phase-name">Evaluate</div>
+        <div class="phase-sub">Pass / Fail / Partial</div>
+      </div>
+      <div class="phase-step ph5">
+        <div class="phase-num">05</div>
+        <div class="phase-name">Feed Back</div>
+        <div class="phase-sub">Inject error context</div>
+      </div>
+      <div class="phase-step ph6">
+        <div class="phase-num">06</div>
+        <div class="phase-name">Fix or Escalate</div>
+        <div class="phase-sub">Retry or → Human</div>
+      </div>
+    </div>
+
+    <h3>Structured Feedback Injection</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Feedback Context Assembly</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">def</span> <span class="fn">build_feedback_context</span>(validation: ValidationResult, attempt: int) -> str:
+    <span class="st">"""
+    Transforms raw validation output into structured feedback the model
+    can act on. Critical: include the exact error, not a summary of it.
+    Models fix errors they can see; they hallucinate fixes for errors they can't.
+    """</span>
+    lines = [<span class="st">f"=== VALIDATION FEEDBACK (attempt {attempt}) ==="</span>]
+
+    <span class="kw">if</span> validation.errors:
+        lines.append(<span class="st">"\n🔴 ERRORS (must fix before proceeding):"</span>)
+        <span class="kw">for</span> err <span class="kw">in</span> validation.errors:
+            lines.append(<span class="st">f"  • {err}"</span>)
+
+    <span class="kw">if</span> validation.warnings:
+        lines.append(<span class="st">"\n🟡 WARNINGS (fix if possible):"</span>)
+        <span class="kw">for</span> w <span class="kw">in</span> validation.warnings:
+            lines.append(<span class="st">f"  • {w}"</span>)
+
+    lines.append(<span class="st">"\nRequired action: Fix ALL errors above. Re-run validation after changes."</span>)
+    lines.append(<span class="st">f"Attempts remaining: {3 - attempt}"</span>)
+    <span class="kw">return</span> <span class="st">"\n"</span>.join(lines)
+
+
+<span class="cm"># ─── Offline eval loop (run after session, improve harness) ──────────────</span>
+<span class="kw">def</span> <span class="fn">run_offline_eval</span>(harness_config: dict, eval_suite: list[dict]) -> dict:
+    <span class="st">"""
+    Replay agent tasks against a golden eval suite to measure harness quality.
+    Key metrics: task completion rate, iteration count, token cost, error rate.
+    Run in CI to catch harness regressions before production deployment.
+    """</span>
+    results = {<span class="st">"passed"</span>: <span class="nu">0</span>, <span class="st">"failed"</span>: <span class="nu">0</span>, <span class="st">"total_tokens"</span>: <span class="nu">0</span>, <span class="st">"avg_iterations"</span>: <span class="nu">0</span>}
+    <span class="kw">for</span> case <span class="kw">in</span> eval_suite:
+        outcome = run_agent_loop(case[<span class="st">"task"</span>], max_iterations=case.get(<span class="st">"max_iter"</span>, <span class="nu">15</span>))
+        passed  = evaluate_outcome(outcome, case[<span class="st">"expected"</span>])
+        results[<span class="st">"passed"</span> <span class="kw">if</span> passed <span class="kw">else</span> <span class="st">"failed"</span>] += <span class="nu">1</span>
+    <span class="kw">return</span> results</div>
+    </div>
+
+    <div class="callout success">
+      <span class="callout-icon">✓</span>
+      <div class="callout-body"><strong>Write–test–fix loop quality:</strong> Agent frameworks reporting 80–90%+ task completion on SWE-bench benchmarks all implement a tight write–test–fix feedback loop. The loop is more valuable than model size. A Claude Sonnet in a well-instrumented feedback harness consistently outperforms Opus running without one on multi-step coding tasks.</div>
+    </div>
+  </section>
+
+  <!-- ══ 08 OBSERVABILITY ══ -->
+  <section id="observability">
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <div class="section-title-block">
+        <h2>Observability</h2>
+        <div class="section-sub">// TRACES, METRICS, LOGS, AND COST ATTRIBUTION</div>
+      </div>
+    </div>
+
+    <p class="prose">You cannot improve what you cannot observe. AI harness observability requires three signal types: distributed traces (for step-by-step action reconstruction), structured metrics (for quantitative performance tracking), and cost attribution (for token and compute accountability). Unlike traditional software, AI observability must also capture reasoning transparency — the decisions the model made and why.</p>
+
+    <div class="grid-3">
+      <div class="card card-left-indigo">
+        <div class="card-title">Distributed Traces</div>
+        <p>Capture every model call, tool invocation, and validation step as a span in a trace. OpenTelemetry is the standard. Each span should record: model, input tokens, output tokens, duration, tool name, inputs, outputs, and the parent span that triggered it.</p>
+      </div>
+      <div class="card card-left-cyan">
+        <div class="card-title">Session Metrics</div>
+        <p>Track per-session: total iterations, tool calls by type, error/retry counts, total token cost, task completion status, human intervention count, and time-to-completion. These drive harness tuning over time.</p>
+      </div>
+      <div class="card card-left-violet">
+        <div class="card-title">Cost Attribution</div>
+        <p>Log input tokens, output tokens, model tier, and compute duration for every call. Attribute cost to task, session, user, and team. Cost spikes are the earliest signal of runaway loops or harness misconfiguration.</p>
+      </div>
+    </div>
+
+    <h3>Structured Session Logging</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — OpenTelemetry Harness Instrumentation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">from</span> <span class="cl">opentelemetry</span> <span class="kw">import</span> trace
+<span class="kw">from</span> <span class="cl">opentelemetry.trace</span> <span class="kw">import</span> Status, StatusCode
+<span class="kw">import</span> <span class="cl">json</span>, <span class="cl">time</span>
+
+tracer = trace.get_tracer(<span class="st">"ai.harness"</span>)
+
+<span class="kw">class</span> <span class="cl">HarnessObserver</span>:
+    <span class="st">"""
+    Wraps every harness action in an OTel span.
+    Integrates with Jaeger, Honeycomb, Datadog, or any OTel backend.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">trace_model_call</span>(self, session_id: str, messages: list, response) -> None:
+        <span class="kw">with</span> tracer.start_as_current_span(<span class="st">"llm.call"</span>) <span class="kw">as</span> span:
+            span.set_attribute(<span class="st">"session.id"</span>,          session_id)
+            span.set_attribute(<span class="st">"llm.model"</span>,           response.model)
+            span.set_attribute(<span class="st">"llm.input_tokens"</span>,    response.usage.input_tokens)
+            span.set_attribute(<span class="st">"llm.output_tokens"</span>,   response.usage.output_tokens)
+            span.set_attribute(<span class="st">"llm.stop_reason"</span>,     response.stop_reason)
+            span.set_attribute(<span class="st">"llm.tool_use"</span>,        response.stop_reason == <span class="st">"tool_use"</span>)
+            <span class="cm"># Cost attribution: input=$3/M, output=$15/M for Sonnet</span>
+            cost_usd = (response.usage.input_tokens * <span class="nu">3</span> +
+                        response.usage.output_tokens * <span class="nu">15</span>) / <span class="nu">1_000_000</span>
+            span.set_attribute(<span class="st">"llm.cost_usd"</span>, cost_usd)
+
+    <span class="kw">def</span> <span class="fn">trace_tool_call</span>(self, tool_name: str, inputs: dict, result: str,
+                        duration_ms: float, error: str = <span class="kw">None</span>) -> None:
+        <span class="kw">with</span> tracer.start_as_current_span(<span class="st">f"tool.{tool_name}"</span>) <span class="kw">as</span> span:
+            span.set_attribute(<span class="st">"tool.name"</span>,        tool_name)
+            span.set_attribute(<span class="st">"tool.input_size"</span>,  <span class="kw">len</span>(json.dumps(inputs)))
+            span.set_attribute(<span class="st">"tool.duration_ms"</span>, duration_ms)
+            span.set_attribute(<span class="st">"tool.success"</span>,     error <span class="kw">is None</span>)
+            <span class="kw">if</span> error:
+                span.set_status(Status(StatusCode.ERROR, error))
+                span.record_exception(Exception(error))
+
+    <span class="kw">def</span> <span class="fn">emit_session_summary</span>(self, session: dict) -> None:
+        <span class="st">"""Structured log line — queryable in any log aggregation platform."""</span>
+        log_line = {
+            <span class="st">"event"</span>:          <span class="st">"harness.session.complete"</span>,
+            <span class="st">"session_id"</span>:     session[<span class="st">"id"</span>],
+            <span class="st">"task"</span>:           session[<span class="st">"task"</span>][:120],
+            <span class="st">"completed"</span>:      session[<span class="st">"completed"</span>],
+            <span class="st">"iterations"</span>:     session[<span class="st">"iterations"</span>],
+            <span class="st">"tool_calls"</span>:     session[<span class="st">"tool_calls"</span>],
+            <span class="st">"errors"</span>:         session[<span class="st">"error_count"</span>],
+            <span class="st">"hitl_events"</span>:    session[<span class="st">"human_interventions"</span>],
+            <span class="st">"total_tokens"</span>:   session[<span class="st">"input_tokens"</span>] + session[<span class="st">"output_tokens"</span>],
+            <span class="st">"cost_usd"</span>:       round(session[<span class="st">"cost_usd"</span>], <span class="nu">4</span>),
+            <span class="st">"duration_s"</span>:     session[<span class="st">"duration_s"</span>],
+            <span class="st">"timestamp"</span>:      time.strftime(<span class="st">"%Y-%m-%dT%H:%M:%SZ"</span>, time.gmtime()),
+        }
+        print(json.dumps(log_line))  <span class="cm"># structured → Splunk / Datadog / CloudWatch</span></div>
+    </div>
+
+    <h3>Key Metrics Dashboard: What to Track</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Metric</th><th>Target</th><th>Alert Threshold</th><th>Diagnosis</th></tr>
+        <tr><td><strong>Task Completion Rate</strong></td><td>&gt;85%</td><td>&lt;70%</td><td>Harness guardrails too restrictive, or model+task mismatch</td></tr>
+        <tr><td><strong>Avg Iterations / Task</strong></td><td>&lt;8</td><td>&gt;15</td><td>Feedback loop not informative; tool errors not being surfaced properly</td></tr>
+        <tr><td><strong>Human Intervention Rate</strong></td><td>&lt;15%</td><td>&gt;40%</td><td>Escalation thresholds miscalibrated or task scope too ambiguous</td></tr>
+        <tr><td><strong>Tool Error Rate</strong></td><td>&lt;5%</td><td>&gt;20%</td><td>Tool schema unclear; model misusing tools; infrastructure instability</td></tr>
+        <tr><td><strong>Cost / Task (USD)</strong></td><td>Baseline ±20%</td><td>&gt;3× baseline</td><td>Loop detection failure; context not being compacted; model over-calling tools</td></tr>
+        <tr><td><strong>P99 Latency</strong></td><td>&lt;60s / iteration</td><td>&gt;120s</td><td>Tool timeouts; upstream API degradation; context window size issues</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ 09 HITL ══ -->
+  <section id="hitl">
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <div class="section-title-block">
+        <h2>Human-in-the-Loop</h2>
+        <div class="section-sub">// APPROVAL GATES, ESCALATION POLICIES, AND BREAK-GLASS</div>
+      </div>
+    </div>
+
+    <p class="prose">Human-in-the-loop (HITL) is not a safety afterthought — it is an architectural primitive. The harness defines where and when human judgment is injected into the agent loop. The goal is not maximum oversight but <strong>right-placed oversight</strong>: humans at the decisions where autonomy risk is highest, automation everywhere else.</p>
+
+    <div class="grid-2">
+      <div class="card card-left-rose">
+        <div class="card-title">Mandatory HITL Gates <span class="card-tag tag-rose">Always</span></div>
+        <ul>
+          <li>Destructive operations (delete, drop table, terminate instance)</li>
+          <li>External communications (send email, post to Slack, submit PR)</li>
+          <li>Credential or secret access beyond scoped tools</li>
+          <li>Changes to CI/CD pipelines or deployment configurations</li>
+          <li>Any action affecting more than N files (configurable)</li>
+          <li>Loop detection trigger — model stuck in retry cycle</li>
+          <li>Unrecoverable errors after max fix attempts</li>
+        </ul>
+      </div>
+      <div class="card card-left-emerald">
+        <div class="card-title">Configurable HITL Thresholds <span class="card-tag tag-emerald">Tunable</span></div>
+        <ul>
+          <li>File change scope: ask if modifying &gt;5 files</li>
+          <li>Cost gate: pause if session exceeds $X</li>
+          <li>Architectural decisions outside CLAUDE.md scope</li>
+          <li>Package installation / dependency changes</li>
+          <li>Test coverage drops below threshold</li>
+          <li>New external network connections introduced</li>
+          <li>Off-hours execution of sensitive operations</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>HITL Approval Flow Implementation</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Python — Human Approval Gate</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">from</span> <span class="cl">enum</span> <span class="kw">import</span> Enum
+<span class="kw">import</span> <span class="cl">asyncio</span>
+
+<span class="kw">class</span> <span class="cl">ApprovalOutcome</span>(Enum):
+    APPROVED  = <span class="st">"approved"</span>
+    REJECTED  = <span class="st">"rejected"</span>
+    MODIFIED  = <span class="st">"modified"</span>   <span class="cm"># human edits the proposed action</span>
+    ESCALATED = <span class="st">"escalated"</span>  <span class="cm"># routed to senior approver</span>
+
+<span class="kw">class</span> <span class="cl">HITLGate</span>:
+    <span class="st">"""
+    Pauses agent execution, presents action + context to a human operator,
+    and resumes (or terminates) based on their decision.
+    Supports async approvals via Slack, web UI, or CLI.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, notification_backend):
+        self.backend   = notification_backend  <span class="cm"># Slack, PagerDuty, web webhook</span>
+        self.pending   = {}                    <span class="cm"># request_id → asyncio.Future</span>
+
+    <span class="kw">async def</span> <span class="fn">request_approval</span>(self,
+                               action_type: str,
+                               proposed_action: dict,
+                               context: str,
+                               timeout_s: int = <span class="nu">300</span>) -> ApprovalOutcome:
+        request_id = generate_id()
+        future     = asyncio.get_event_loop().create_future()
+        self.pending[request_id] = future
+
+        <span class="cm"># Notify operator (non-blocking)</span>
+        <span class="kw">await</span> self.backend.notify({
+            <span class="st">"request_id"</span>:     request_id,
+            <span class="st">"action_type"</span>:    action_type,
+            <span class="st">"proposed_action"</span>: proposed_action,
+            <span class="st">"context"</span>:        context[:500],
+            <span class="st">"approve_url"</span>:    <span class="st">f"https://harness.internal/approve/{request_id}"</span>,
+            <span class="st">"reject_url"</span>:     <span class="st">f"https://harness.internal/reject/{request_id}"</span>,
+        })
+
+        <span class="kw">try</span>:
+            <span class="cm"># Block agent loop until human responds or timeout</span>
+            result = <span class="kw">await</span> asyncio.wait_for(future, timeout=timeout_s)
+            <span class="kw">return</span> result
+        <span class="kw">except</span> asyncio.TimeoutError:
+            <span class="cm"># Timeout policy: default deny for destructive, allow for safe</span>
+            <span class="kw">return</span> ApprovalOutcome.REJECTED  <span class="cm"># conservative default</span>
+        <span class="kw">finally</span>:
+            self.pending.pop(request_id, <span class="kw">None</span>)
+
+    <span class="kw">def</span> <span class="fn">resolve</span>(self, request_id: str, outcome: ApprovalOutcome) -> None:
+        <span class="st">"""Called by the approval webhook when human responds."""</span>
+        <span class="kw">if</span> request_id <span class="kw">in</span> self.pending:
+            self.pending[request_id].set_result(outcome)
+
+
+<span class="cm"># ─── Example: Slack notification for HITL approval ───────────────────────</span>
+SLACK_HITL_BLOCK = {
+    <span class="st">"blocks"</span>: [
+        {<span class="st">"type"</span>: <span class="st">"header"</span>, <span class="st">"text"</span>: {<span class="st">"type"</span>: <span class="st">"plain_text"</span>, <span class="st">"text"</span>: <span class="st">"🤖 Agent Action Requires Approval"</span>}},
+        {<span class="st">"type"</span>: <span class="st">"section"</span>, <span class="st">"fields"</span>: [
+            {<span class="st">"type"</span>: <span class="st">"mrkdwn"</span>, <span class="st">"text"</span>: <span class="st">"*Action:*\nDelete database migration file"</span>},
+            {<span class="st">"type"</span>: <span class="st">"mrkdwn"</span>, <span class="st">"text"</span>: <span class="st">"*Risk Level:*\n🔴 HIGH — irreversible"</span>},
+        ]},
+        {<span class="st">"type"</span>: <span class="st">"actions"</span>, <span class="st">"elements"</span>: [
+            {<span class="st">"type"</span>: <span class="st">"button"</span>, <span class="st">"text"</span>: {<span class="st">"type"</span>: <span class="st">"plain_text"</span>, <span class="st">"text"</span>: <span class="st">"✅ Approve"</span>}, <span class="st">"style"</span>: <span class="st">"primary"</span>},
+            {<span class="st">"type"</span>: <span class="st">"button"</span>, <span class="st">"text"</span>: {<span class="st">"type"</span>: <span class="st">"plain_text"</span>, <span class="st">"text"</span>: <span class="st">"❌ Reject"</span>},  <span class="st">"style"</span>: <span class="st">"danger"</span>},
+        ]},
+    ]
+}</div>
+    </div>
+  </section>
+
+  <!-- ══ 10 CLAUDE CODE ══ -->
+  <section id="claude-code">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title-block">
+        <h2>Claude Code Harness</h2>
+        <div class="section-sub">// HOOKS, SKILLS, MCP, AND SESSION MANAGEMENT</div>
+      </div>
+    </div>
+
+    <p class="prose">Claude Code is Anthropic's terminal-based agentic coding CLI with a built-in harness layer. It exposes three primary harness extension points: <strong>hooks</strong> (lifecycle callbacks at pre/post-tool execution), <strong>CLAUDE.md</strong> (session-scoped behavioral constraints), and <strong>MCP server integrations</strong> (tool capability extensions). Used together, these allow full harness engineering without writing custom agent scaffolding.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">JSON — Claude Code Settings Harness Config</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// .claude/settings.json — project-level harness configuration</span>
+{
+  <span class="st">"model"</span>: <span class="st">"claude-sonnet-4-6"</span>,
+  <span class="st">"env"</span>: {
+    <span class="st">"MAX_THINKING_TOKENS"</span>:           <span class="st">"10000"</span>,   <span class="cm">// cap extended thinking</span>
+    <span class="st">"CLAUDE_AUTOCOMPACT_PCT_OVERRIDE"</span>: <span class="st">"50"</span>      <span class="cm">// compact at 50% context, not 95%</span>
+  },
+
+  <span class="st">"hooks"</span>: {
+    <span class="cm">// PRE-TOOL: validate all bash commands before execution</span>
+    <span class="st">"PreToolUse"</span>: [
+      {
+        <span class="st">"matcher"</span>: <span class="st">"Bash"</span>,
+        <span class="st">"hooks"</span>: [{
+          <span class="st">"type"</span>:    <span class="st">"command"</span>,
+          <span class="st">"command"</span>: <span class="st">"./harness/validate-command.sh"</span>
+          <span class="cm">// Non-zero exit = BLOCK the command + return error to model</span>
+        }]
+      }
+    ],
+    <span class="cm">// POST-TOOL: run linting after every file write</span>
+    <span class="st">"PostToolUse"</span>: [
+      {
+        <span class="st">"matcher"</span>: <span class="st">"Write"</span>,
+        <span class="st">"hooks"</span>: [{
+          <span class="st">"type"</span>:    <span class="st">"command"</span>,
+          <span class="st">"command"</span>: <span class="st">"./harness/post-write.sh"</span>
+          <span class="cm">// Runs: lint → typecheck → output to model as feedback</span>
+        }]
+      }
+    ],
+    <span class="cm">// POST-TURN: log every session turn for observability</span>
+    <span class="st">"PostTurn"</span>: [{
+      <span class="st">"type"</span>:    <span class="st">"command"</span>,
+      <span class="st">"command"</span>: <span class="st">"./harness/log-turn.sh"</span>
+    }]
+  },
+
+  <span class="st">"permissions"</span>: {
+    <span class="st">"allow"</span>: [
+      <span class="st">"Bash(npm run *)"</span>,      <span class="cm">// npm scripts: yes</span>
+      <span class="st">"Bash(git status)"</span>,     <span class="cm">// git read: yes</span>
+      <span class="st">"Bash(git diff *)"</span>,
+      <span class="st">"Read(src/**)"</span>,         <span class="cm">// src read: yes</span>
+      <span class="st">"Write(src/**)"</span>         <span class="cm">// src write: yes</span>
+    ],
+    <span class="st">"deny"</span>: [
+      <span class="st">"Bash(git push *)"</span>,     <span class="cm">// no remote push</span>
+      <span class="st">"Bash(rm -rf *)"</span>,       <span class="cm">// no mass delete</span>
+      <span class="st">"Bash(npm publish)"</span>,    <span class="cm">// no publish</span>
+      <span class="st">"Bash(curl * | bash)"</span>,  <span class="cm">// no remote execution</span>
+      <span class="st">"Read(.env*)"</span>           <span class="cm">// no secrets access</span>
+    ]
+  }
+}</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Bash — Pre-Tool Hook: Command Validation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">#!/bin/bash
+# harness/validate-command.sh
+# Claude Code passes tool input via stdin as JSON.
+# Exit 0 = allow. Exit 1 = BLOCK. Exit 2 = BLOCK + return message to model.</span>
+
+INPUT=$(cat)  <span class="cm"># Read JSON from stdin: {"command": "...", "description": "..."}</span>
+CMD=$(echo $INPUT | jq -r .command)
+
+<span class="cm"># Block patterns — never allow these regardless of context</span>
+BLOCKED=(
+  "rm -rf /"
+  "dd if=/"
+  "mkfs"
+  "chmod 777"
+  ":(){:|:&};:"  <span class="cm"># fork bomb</span>
+  "curl.*|.*bash"
+  "wget.*|.*sh"
+)
+
+<span class="kw">for</span> pattern <span class="kw">in</span> "${BLOCKED[@]}"; <span class="kw">do</span>
+  <span class="kw">if</span> echo "$CMD" | grep -qE "$pattern"; <span class="kw">then</span>
+    echo "BLOCKED: Command matches prohibited pattern: $pattern" >&2
+    exit <span class="nu">2</span>  <span class="cm"># Exit 2 = message returned to model</span>
+  <span class="kw">fi</span>
+<span class="kw">done</span>
+
+<span class="cm"># Log all commands for audit trail</span>
+echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") CMD: $CMD" >> logs/harness-audit.log
+
+exit 0  <span class="cm"># Allow command to proceed</span></div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>MCP server risk:</strong> Don't enable all MCP servers at once. Each MCP server expands the agent's tool surface. Run <code>npx ecc-agentshield scan</code> (AgentShield, 2026) to audit your MCP config, hooks, and CLAUDE.md for injection risks, permission over-grants, and secret exposure patterns before production use.</div>
+    </div>
+  </section>
+
+  <!-- ══ 11 COPILOT / CODEX ══ -->
+  <section id="copilot">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div class="section-title-block">
+        <h2>GitHub Copilot & Codex CLI</h2>
+        <div class="section-sub">// HARNESS CONFIGURATION FOR EDITOR-NATIVE AGENTS</div>
+      </div>
+    </div>
+
+    <p class="prose">GitHub Copilot and OpenAI Codex CLI each provide harness configuration primitives that parallel Claude Code's CLAUDE.md/hooks model. Copilot uses repository instruction files and organization-level policy. Codex uses AGENTS.md and sandbox permissions. Understanding the harness surface of each tool lets you apply the same disciplined engineering regardless of which agent is running.</p>
+
+    <div class="tool-table">
+      <div class="tool-row header">
+        <div class="tool-cell">Dimension</div>
+        <div class="tool-cell">Claude Code</div>
+        <div class="tool-cell">GitHub Copilot Agent</div>
+        <div class="tool-cell">OpenAI Codex CLI</div>
+      </div>
+      <div class="tool-row">
+        <div class="tool-cell tool-label">Config File</div>
+        <div class="tool-cell"><code>CLAUDE.md</code> + <code>settings.json</code></div>
+        <div class="tool-cell"><code>.github/copilot-instructions.md</code></div>
+        <div class="tool-cell"><code>AGENTS.md</code></div>
+      </div>
+      <div class="tool-row">
+        <div class="tool-cell tool-label">Hooks / Lifecycle</div>
+        <div class="tool-cell"><span class="ok">YES</span> — PreToolUse, PostToolUse, PostTurn</div>
+        <div class="tool-cell"><span class="partial">PARTIAL</span> — GitHub Actions triggers</div>
+        <div class="tool-cell"><span class="no">NO</span> — static config only</div>
+      </div>
+      <div class="tool-row">
+        <div class="tool-cell tool-label">Permission Scoping</div>
+        <div class="tool-cell"><span class="ok">FINE-GRAINED</span> — per-tool allow/deny</div>
+        <div class="tool-cell"><span class="partial">MEDIUM</span> — org policy + repo rules</div>
+        <div class="tool-cell"><span class="partial">MEDIUM</span> — sandbox profiles</div>
+      </div>
+      <div class="tool-row">
+        <div class="tool-cell tool-label">Observability</div>
+        <div class="tool-cell">Custom hooks + OTel integration</div>
+        <div class="tool-cell">GitHub Audit Log + Copilot metrics</div>
+        <div class="tool-cell">AGENTS.md + external logging</div>
+      </div>
+      <div class="tool-row">
+        <div class="tool-cell tool-label">HITL</div>
+        <div class="tool-cell">Custom approval gate via hooks</div>
+        <div class="tool-cell">PR review workflow (native)</div>
+        <div class="tool-cell">Approval-required flag in config</div>
+      </div>
+      <div class="tool-row">
+        <div class="tool-cell tool-label">MCP Support</div>
+        <div class="tool-cell"><span class="ok">YES</span> — full MCP client</div>
+        <div class="tool-cell"><span class="ok">YES</span> — via Agent HQ (Feb 2026)</div>
+        <div class="tool-cell"><span class="partial">LIMITED</span> — plugin model</div>
+      </div>
+      <div class="tool-row">
+        <div class="tool-cell tool-label">Feedback Loop</div>
+        <div class="tool-cell">Built-in + customizable via hooks</div>
+        <div class="tool-cell">CI/CD pipeline feedback</div>
+        <div class="tool-cell">AGENTS.md defines test commands</div>
+      </div>
+    </div>
+
+    <h3>AGENTS.md — Codex Harness Config</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Markdown — AGENTS.md (OpenAI Codex)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># AGENTS.md — OpenAI Codex Harness Configuration
+# Equivalent to CLAUDE.md for the Codex CLI environment</span>
+
+<span class="at">## Project</span>
+Python FastAPI service. Tests: pytest. Linting: ruff. Type checking: mypy.
+
+<span class="at">## Commands</span>
+<span class="cm"># These are the ONLY commands the agent should run unsupervised</span>
+- Run tests:     <span class="st">pytest tests/ -v --tb=short</span>
+- Lint:          <span class="st">ruff check . --fix</span>
+- Type check:    <span class="st">mypy src/ --strict</span>
+- Format:        <span class="st">ruff format .</span>
+
+<span class="at">## Sandbox Permissions (network isolation)</span>
+<span class="cm"># Codex runs in a network-isolated sandbox by default</span>
+network: disabled   <span class="cm"># prevent exfiltration, force offline operation</span>
+
+<span class="at">## Required Workflow</span>
+For EVERY code change, in this order:
+1. Make targeted, minimal changes
+2. Run mypy — zero new errors
+3. Run ruff — auto-fix, then zero remaining issues
+4. Run pytest — all existing tests must pass
+5. Add tests for new behavior (minimum 1 test per new function)
+
+<span class="at">## Boundaries</span>
+- Modify ONLY files under <span class="st">src/</span> and <span class="st">tests/</span>
+- Do NOT modify <span class="st">pyproject.toml</span> or <span class="st">requirements.txt</span> without asking
+- Do NOT create new API endpoints without showing the design first
+- Do NOT use <span class="st">subprocess</span> in application code
+
+<span class="at">## On Failure</span>
+If any check fails after 2 attempts: output the exact error and ask for guidance.
+Do NOT try a third fix attempt independently.</div>
+    </div>
+  </section>
+
+  <!-- ══ 12 FRAMEWORKS ══ -->
+  <section id="frameworks">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div class="section-title-block">
+        <h2>Orchestration Frameworks</h2>
+        <div class="section-sub">// LANGCHAIN, LANGGRAPH, CREWAI, AND BEYOND</div>
+      </div>
+    </div>
+
+    <p class="prose">Orchestration frameworks provide composable harness primitives — prompt templates, tool definitions, memory abstractions, and agent loop logic — so teams don't build the execution layer from scratch. Choice of framework shapes harness architecture. Pick based on production requirements, not demo simplicity.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Framework</th><th>Model</th><th>Best For</th><th>Harness Maturity</th><th>Production Uses</th></tr>
+        <tr>
+          <td><strong>LangGraph</strong></td>
+          <td>Graph / stateful</td>
+          <td>Complex multi-step workflows with branching and cycles</td>
+          <td><span class="ok">HIGH</span></td>
+          <td>Klarna, Replit, Elastic</td>
+        </tr>
+        <tr>
+          <td><strong>LangChain</strong></td>
+          <td>Chain / pipeline</td>
+          <td>Rapid prototyping, broad integrations (100k+ stars)</td>
+          <td><span class="partial">MEDIUM</span></td>
+          <td>Widely deployed, vary in rigor</td>
+        </tr>
+        <tr>
+          <td><strong>CrewAI</strong></td>
+          <td>Multi-agent crews</td>
+          <td>Role-based agent teams with task delegation</td>
+          <td><span class="partial">MEDIUM</span></td>
+          <td>Enterprise automation pilots</td>
+        </tr>
+        <tr>
+          <td><strong>AWS Bedrock AgentCore</strong></td>
+          <td>Runtime + gateway</td>
+          <td>Full production stack: runtime, memory, identity, observability</td>
+          <td><span class="ok">HIGH</span></td>
+          <td>AWS-native enterprise</td>
+        </tr>
+        <tr>
+          <td><strong>Custom + Anthropic SDK</strong></td>
+          <td>Direct API</td>
+          <td>Maximum control, minimum abstraction overhead</td>
+          <td><span class="ok">MAX</span> (manual)</td>
+          <td>High-reliability production systems</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout violet">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>LangGraph v1.0 (October 2025):</strong> Graph-based stateful orchestration for complex agent workflows. Nodes are agent steps; edges are conditional routing logic; state is a typed dict persisted across the graph. First-class support for human-in-the-loop checkpoints, streaming, and tool-use error recovery. The reference framework for production multi-agent harnesses as of 2026.</div>
+    </div>
+  </section>
+
+  <!-- ══ 13 MCP ══ -->
+  <section id="mcp">
+    <div class="section-header">
+      <div class="section-num">13</div>
+      <div class="section-title-block">
+        <h2>MCP & A2A Protocols</h2>
+        <div class="section-sub">// TOOL INTEROPERABILITY AND AGENT-TO-AGENT DELEGATION</div>
+      </div>
+    </div>
+
+    <p class="prose">The Model Context Protocol (MCP) is the emerging standard for tool interoperability — any MCP-compliant client (Claude Code, Copilot, LangChain) can consume any MCP-compliant tool server without bespoke integration. The Agent-to-Agent (A2A) protocol extends this to multi-agent topologies: orchestrator agents delegate to specialist subagents through a standardized calling convention.</p>
+
+    <div class="grid-2">
+      <div class="card card-left-indigo">
+        <div class="card-title">Model Context Protocol (MCP) <span class="card-tag tag-indigo">Standard</span></div>
+        <p>Defines the interface between model clients and tool servers. Tool servers expose: capabilities manifest, tool schemas, and a call endpoint. Clients invoke tools by name with validated inputs. The harness governs which MCP servers are loaded per session and what their permission scopes are.</p>
+        <p style="margin-top:8px"><strong>Supported by:</strong> Claude Code, Copilot Agent HQ, LangChain, LangGraph, Cursor, and 200+ community servers.</p>
+      </div>
+      <div class="card card-left-violet">
+        <div class="card-title">Agent-to-Agent (A2A) <span class="card-tag tag-violet">2026</span></div>
+        <p>Standardized protocol for orchestrator→subagent delegation. An orchestrator agent can spawn a specialist subagent (code reviewer, security scanner, documentation writer) as a structured API call. A2A ensures: typed task contracts, result schemas, error propagation, and cost attribution across agent boundaries.</p>
+        <p style="margin-top:8px"><strong>Reference:</strong> IEEE CAI 2026 Tutorial on Engineering Trustworthy Multi-Agent Systems.</p>
+      </div>
+    </div>
+
+    <h3>MCP Harness Configuration Example</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">JSON — MCP Server Config (.claude/settings.json)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">// Only include servers needed for the current project.
+// Each server = expanded attack surface. Audit with ecc-agentshield.</span>
+{
+  <span class="st">"mcpServers"</span>: {
+    <span class="st">"filesystem"</span>: {
+      <span class="st">"command"</span>: <span class="st">"npx"</span>,
+      <span class="st">"args"</span>: [<span class="st">"-y"</span>, <span class="st">"@modelcontextprotocol/server-filesystem"</span>, <span class="st">"./src"</span>],
+      <span class="cm">// Scoped to ./src only — not the full filesystem</span>
+      <span class="st">"description"</span>: <span class="st">"Read/write access to project source files only"</span>
+    },
+    <span class="st">"github"</span>: {
+      <span class="st">"command"</span>: <span class="st">"npx"</span>,
+      <span class="st">"args"</span>: [<span class="st">"-y"</span>, <span class="st">"@modelcontextprotocol/server-github"</span>],
+      <span class="st">"env"</span>: {
+        <span class="st">"GITHUB_PERSONAL_ACCESS_TOKEN"</span>: <span class="st">"${GITHUB_TOKEN}"</span>
+        <span class="cm">// Never hardcode tokens — use env var references</span>
+      }
+    },
+    <span class="st">"postgres"</span>: {
+      <span class="st">"command"</span>: <span class="st">"npx"</span>,
+      <span class="st">"args"</span>: [<span class="st">"-y"</span>, <span class="st">"@modelcontextprotocol/server-postgres"</span>,
+               <span class="st">"postgresql://readonly_user@localhost/mydb"</span>],
+      <span class="cm">// READ-ONLY database user — never give agents write access to prod DB</span>
+      <span class="st">"description"</span>: <span class="st">"Read-only access to development database schema and data"</span>
+    }
+    <span class="cm">// Intentionally excluded: shell execution, network access, cloud control plane</span>
+  }
+}</div>
+    </div>
+  </section>
+
+  <!-- ══ 14 MATURITY ══ -->
+  <section id="maturity">
+    <div class="section-header">
+      <div class="section-num">14</div>
+      <div class="section-title-block">
+        <h2>Harness Maturity Model</h2>
+        <div class="section-sub">// WHERE IS YOUR TEAM TODAY</div>
+      </div>
+    </div>
+
+    <p class="prose">Harness engineering maturity maps to the CISA ZTA model structure: four stages across five dimensions. Teams rarely advance all dimensions simultaneously. Start with guardrails and feedback loops (highest safety ROI), then add observability and HITL rigor, then optimize orchestration.</p>
+
+    <div class="maturity">
+      <div class="mat-stage ms1">
+        <div class="mat-level">Stage 01</div>
+        <div class="mat-name">Ad Hoc</div>
+        <ul>
+          <li>No config files</li>
+          <li>No permission scoping</li>
+          <li>No feedback loop</li>
+          <li>Manual testing only</li>
+          <li>No cost visibility</li>
+          <li>All-or-nothing iteration</li>
+        </ul>
+      </div>
+      <div class="mat-stage ms2">
+        <div class="mat-level">Stage 02</div>
+        <div class="mat-name">Structured</div>
+        <ul>
+          <li>CLAUDE.md / AGENTS.md present</li>
+          <li>Basic allow/deny rules</li>
+          <li>Test feedback loop</li>
+          <li>Manual HITL checkpoints</li>
+          <li>Basic cost logging</li>
+          <li>Iteration cap set</li>
+        </ul>
+      </div>
+      <div class="mat-stage ms3">
+        <div class="mat-level">Stage 03</div>
+        <div class="mat-name">Production</div>
+        <ul>
+          <li>Multi-layer guardrails</li>
+          <li>Structured error recovery</li>
+          <li>OTel traces + metrics</li>
+          <li>Automated HITL gates</li>
+          <li>Offline eval suite (CI)</li>
+          <li>MCP scoped per project</li>
+        </ul>
+      </div>
+      <div class="mat-stage ms4">
+        <div class="mat-level">Stage 04</div>
+        <div class="mat-name">Optimal</div>
+        <ul>
+          <li>Policy-as-code guardrails</li>
+          <li>Dynamic HITL thresholds</li>
+          <li>Full A2A + orchestration</li>
+          <li>Continuous harness eval</li>
+          <li>Cost attribution per team</li>
+          <li>Security scan in CI/CD</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 15 PATTERNS ══ -->
+  <section id="patterns">
+    <div class="section-header">
+      <div class="section-num">15</div>
+      <div class="section-title-block">
+        <h2>Patterns & Anti-Patterns</h2>
+        <div class="section-sub">// WHAT WORKS, WHAT FAILS, AND WHY</div>
+      </div>
+    </div>
+
+    <div class="compare-grid">
+      <div class="compare-block compare-bad">
+        <div class="compare-header">✕ Anti-Patterns (Production Failures)</div>
+        <div class="compare-body">
+          <ul>
+            <li><strong>Unbounded iteration</strong> — no max_iterations cap; agent burns tokens until OOM or API limit</li>
+            <li><strong>Silent errors</strong> — tool returns error as empty string; model assumes success</li>
+            <li><strong>Broad file access</strong> — agent has write access to entire repo including secrets, CI config</li>
+            <li><strong>No state checkpoints</strong> — 20-iteration task has no recovery point on failure</li>
+            <li><strong>Prompt-only guardrails</strong> — "don't touch .env" in the prompt; not enforced deterministically</li>
+            <li><strong>No loop detection</strong> — same tool called 8× with identical inputs before token exhaustion</li>
+            <li><strong>All MCPs enabled</strong> — every integration loaded regardless of current task</li>
+            <li><strong>Human gate theater</strong> — HITL approval always auto-approves due to timeout policy</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-block compare-good">
+        <div class="compare-header">✓ Production Patterns (What Ships)</div>
+        <div class="compare-body">
+          <ul>
+            <li><strong>Bounded loops</strong> — hard iteration cap; structured handoff artifact on max-iter</li>
+            <li><strong>Structured tool errors</strong> — every error has type, detail, and suggested recovery hint</li>
+            <li><strong>Minimal tool surface</strong> — 3–5 scoped tools per session, not a full tool registry</li>
+            <li><strong>Explicit checkpointing</strong> — write progress artifact to disk every N iterations</li>
+            <li><strong>Deterministic guardrails</strong> — hook scripts enforce rules at OS level, not prompt level</li>
+            <li><strong>Loop detection</strong> — circuit breaker triggers HITL on 3× same tool+input</li>
+            <li><strong>Task-scoped MCP</strong> — only load servers required for the current task category</li>
+            <li><strong>Tiered HITL</strong> — auto-approve low-risk, manual-approve destructive, reject on timeout</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout danger">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Prompt injection via tools:</strong> When an agent reads external content (files, web pages, emails, database rows) and that content contains instructions ("Ignore previous instructions and..."), indirect prompt injection attacks can hijack the agent loop. Defense: treat all external tool output as untrusted data, not as instructions. Sanitize tool outputs before injection into the conversation; use a dedicated trusted/untrusted content zone in the context window.</div>
+    </div>
+  </section>
+
+  <!-- ══ 16 ROADMAP ══ -->
+  <section id="roadmap">
+    <div class="section-header">
+      <div class="section-num">16</div>
+      <div class="section-title-block">
+        <h2>Implementation Roadmap</h2>
+        <div class="section-sub">// SIX STEPS TO PRODUCTION-GRADE HARNESS</div>
+      </div>
+    </div>
+
+    <p class="prose">Whether you're starting from a bare API call or retrofitting an existing agent, the path to production harness engineering follows the same six steps. Each step independently improves reliability. The order matters: guardrails before observability, feedback loop before HITL tuning.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Roadmap — 6-Step Harness Engineering Path</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">STEP 1 — ASSET INVENTORY (Day 1–2)</span>
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ List every tool the agent currently uses or could use
+  ✦ Classify each tool: read-only / write / destructive
+  ✦ Identify data the agent can touch (files, DBs, APIs, credentials)
+  ✦ Map current failure modes: what breaks, how often, impact
+
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">STEP 2 — CONFIGURATION FILE (Day 3–4)</span>
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Create CLAUDE.md / AGENTS.md with:
+      - Explicit allowed operations
+      - Explicit prohibited operations
+      - Required verification steps after any change
+      - Escalation triggers (when to stop and ask)
+  ✦ Set iteration cap (start: 15 for coding, 30 for research)
+  ✦ Define context compaction strategy (compact at 50%, not 95%)
+
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">STEP 3 — FEEDBACK LOOP (Week 1)</span>   ROI: HIGHEST
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Implement write-test-fix cycle:
+      - Agent writes → tests run automatically → failures injected as next input
+  ✦ Add output validation: secret detection + static analysis + lint
+  ✦ Structure error messages: type + detail + recovery hint
+  ✦ Set max fix attempts (2–3) before escalating to human
+
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">STEP 4 — GUARDRAILS (Week 2)</span>
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Add pre-tool hook: validate commands before execution
+  ✦ Scope file/directory access to minimum needed
+  ✦ Add loop detection (3× same tool+input = escalate)
+  ✦ Set token budget + cost alert threshold
+  ✦ Define HITL gates for all destructive operations
+
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">STEP 5 — OBSERVABILITY (Week 3)</span>
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Instrument all model calls with OTel spans
+  ✦ Log: every tool call, duration, error rate, cost
+  ✦ Emit structured session summary on completion
+  ✦ Set up dashboard: completion rate, avg iterations, cost/task
+  ✦ Add post-turn hook for audit trail
+
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+<span class="at">STEP 6 — EVALUATE AND ITERATE (Ongoing)</span>
+<span class="cm">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>
+  ✦ Build an offline eval suite (10–20 representative tasks)
+  ✦ Run eval in CI on every harness config change
+  ✦ Track: completion rate, cost/task, iteration count, error rate
+  ✦ Review HITL logs weekly — tune thresholds based on outcomes
+  ✦ Scan harness config for security issues (ecc-agentshield)
+  ✦ Update CLAUDE.md/AGENTS.md as project evolves</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-left-rose">
+        <div class="card-title">Common Failure Modes <span class="card-tag tag-rose">Avoid</span></div>
+        <ul>
+          <li>Starting with orchestration before feedback loop is solid</li>
+          <li>Treating CLAUDE.md as documentation, not a contract</li>
+          <li>Giving the same agent all MCP servers for all tasks</li>
+          <li>HITL gates that always auto-approve due to short timeouts</li>
+          <li>No eval suite — can't tell if harness changes help or hurt</li>
+          <li>Measuring only task success rate, not cost efficiency</li>
+        </ul>
+      </div>
+      <div class="card card-left-emerald">
+        <div class="card-title">Success Indicators <span class="card-tag tag-emerald">Target</span></div>
+        <ul>
+          <li>Task completion rate &gt;85% without human intervention</li>
+          <li>Agent self-corrects test failures in &lt;3 iterations</li>
+          <li>No secret or PII ever appears in agent output</li>
+          <li>Cost per task stable within ±20% across model upgrades</li>
+          <li>Full trace replay possible for any failed session</li>
+          <li>Harness config checked into source control, reviewed in PR</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout success">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Reference implementations and resources:</strong> NIST AI Agent Standards Initiative (Feb 2026) · OWASP LLM Top 10 (2025) — especially LLM01 Prompt Injection and LLM06 Excessive Agency · IEEE CAI 2026 — Engineering Trustworthy Multi-Agent Systems · everything-claude-code (Anthropic Hackathon Winner, 140k⭐) — battle-tested hooks, skills, MCP configs · ecc-agentshield — harness security scanner · AWS AgentCore Samples — full production harness reference across multiple frameworks</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'copied';
+    btn.style.color = 'var(--emerald)';
+    btn.style.borderColor = 'var(--emerald)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-54px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
