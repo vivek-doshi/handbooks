@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modular Monolith & DevOps Architecture Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:          #07080c;
+  --bg2:         #0d1017;
+  --bg3:         #121620;
+  --bg4:         #181e2c;
+  --bg5:         #1e2535;
+  --border:      rgba(255,255,255,0.06);
+  --border2:     rgba(255,255,255,0.11);
+  --text:        #dce4f5;
+  --muted:       #6b7a99;
+  --muted2:      #4a5570;
+  --teal:        #00c9b1;
+  --teal-dim:    rgba(0,201,177,0.12);
+  --teal-border: rgba(0,201,177,0.28);
+  --blue:        #4f9eff;
+  --blue-dim:    rgba(79,158,255,0.1);
+  --amber:       #f5a623;
+  --amber-dim:   rgba(245,166,35,0.1);
+  --red:         #f06060;
+  --red-dim:     rgba(240,96,96,0.09);
+  --green:       #3ec97e;
+  --green-dim:   rgba(62,201,126,0.1);
+  --purple:      #9d7ef0;
+  --purple-dim:  rgba(157,126,240,0.1);
+  --pink:        #e879a2;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Manrope', sans-serif;
+  --serif: 'Fraunces', serif;
+  --sidebar-w: 270px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.75;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+  padding-bottom: 48px;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.sb-brand {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(0,201,177,0.08), rgba(79,158,255,0.05));
+}
+.sb-eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 6px;
+}
+.sb-title {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+.sb-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.nav-group-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  padding: 16px 20px 5px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 20px;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+  line-height: 1.3;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.nav-link.active { color: var(--teal); border-left-color: var(--teal); background: var(--teal-dim); }
+.nav-icon { font-size: 13px; opacity: 0.7; width: 16px; text-align: center; }
+
+/* ─── MAIN ─── */
+.main {
+  flex: 1;
+  max-width: 980px;
+  padding: 52px 56px 100px;
+  overflow-x: hidden;
+}
+
+/* ─── HERO ─── */
+.hero {
+  margin-bottom: 56px;
+  padding: 44px 48px;
+  border-radius: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 90% 10%, rgba(0,201,177,0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 5% 90%, rgba(79,158,255,0.07) 0%, transparent 45%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hero-eyebrow::before { content: '//'; opacity: 0.4; }
+.hero h1 {
+  font-family: var(--serif);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #dce4f5 0%, #00c9b1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-desc {
+  font-size: 15px;
+  color: var(--muted);
+  max-width: 600px;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+.badge-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+.b-teal   { background: var(--teal-dim);   color: var(--teal);   border: 1px solid var(--teal-border); }
+.b-blue   { background: var(--blue-dim);   color: var(--blue);   border: 1px solid rgba(79,158,255,0.3); }
+.b-amber  { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(245,166,35,0.3); }
+.b-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(157,126,240,0.3); }
+.b-green  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(62,201,126,0.3); }
+.b-pink   { background: rgba(232,121,162,0.1); color: var(--pink); border: 1px solid rgba(232,121,162,0.3); }
+
+/* ─── SECTION ─── */
+section {
+  margin-bottom: 64px;
+  scroll-margin-top: 28px;
+}
+h2 {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.h2-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; flex-shrink: 0;
+}
+h2 .h2-text { display: flex; flex-direction: column; gap: 2px; }
+h2 .h2-sub { font-family: var(--sans); font-size: 12px; font-weight: 400; color: var(--muted); font-style: normal; }
+
+h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 28px 0 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+h3::before { content: '→'; color: var(--teal); font-size: 13px; }
+
+h4 {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 20px 0 8px;
+}
+
+p { color: var(--muted); font-size: 13.5px; margin-bottom: 12px; line-height: 1.8; }
+p strong { color: var(--text); font-weight: 600; }
+
+ul, ol { margin: 8px 0 14px 18px; }
+li { color: var(--muted); font-size: 13.5px; margin-bottom: 5px; line-height: 1.7; }
+li strong { color: var(--text); font-weight: 600; }
+
+code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: rgba(0,201,177,0.1);
+  color: var(--teal);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,201,177,0.2);
+}
+
+/* ─── DECISION BOX ─── */
+.decision {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 14px 0;
+  position: relative;
+}
+.decision-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.label-why   { color: var(--teal); }
+.label-tool  { color: var(--blue); }
+.label-rule  { color: var(--amber); }
+.label-warn  { color: var(--red); }
+.label-good  { color: var(--green); }
+.decision p { margin-bottom: 0; }
+
+/* ─── CALLOUT ─── */
+.callout {
+  display: flex;
+  gap: 12px;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 14px 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.callout-icon { font-size: 16px; flex-shrink: 0; }
+.callout-body { color: var(--muted); }
+.callout-body strong { color: var(--text); }
+.c-teal   { background: var(--teal-dim);   border: 1px solid var(--teal-border); }
+.c-blue   { background: var(--blue-dim);   border: 1px solid rgba(79,158,255,0.25); }
+.c-amber  { background: var(--amber-dim);  border: 1px solid rgba(245,166,35,0.25); }
+.c-red    { background: var(--red-dim);    border: 1px solid rgba(240,96,96,0.2); }
+.c-green  { background: var(--green-dim);  border: 1px solid rgba(62,201,126,0.25); }
+.c-purple { background: var(--purple-dim); border: 1px solid rgba(157,126,240,0.25); }
+
+/* ─── GRID ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 14px 0; }
+
+/* ─── CARD ─── */
+.card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  transition: border-color 0.15s;
+}
+.card:hover { border-color: var(--border2); }
+.card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-body { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+/* ─── TOOL ROW ─── */
+.tool-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 18px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.tool-icon { font-size: 22px; flex-shrink: 0; padding-top: 2px; }
+.tool-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.tool-why  { font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
+.tool-tag  {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 6px;
+  letter-spacing: 0.5px;
+}
+
+/* ─── PIPELINE FLOW ─── */
+.pipeline-container {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 24px;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+.pipeline {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-width: max-content;
+}
+.pipe-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 18px;
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  min-width: 100px;
+  text-align: center;
+}
+.pipe-step:hover { border-color: var(--teal); }
+.pipe-step .ps-icon { font-size: 24px; }
+.pipe-step .ps-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pipe-step .ps-name { font-size: 11.5px; font-weight: 600; color: var(--text); }
+.pipe-step .ps-tool { font-family: var(--mono); font-size: 10px; color: var(--teal); margin-top: 2px; }
+.pipe-arrow {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--muted2);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.pipe-arrow.trigger { color: var(--teal); font-size: 14px; }
+
+/* ─── TABLE ─── */
+.tw { overflow-x: auto; margin: 14px 0; border-radius: 10px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left;
+  padding: 10px 16px;
+  background: var(--bg3);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  vertical-align: top;
+  font-size: 13px;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+td strong { color: var(--text); font-weight: 600; }
+td code { font-size: 11px; }
+
+/* ─── BRANCH VISUAL ─── */
+.branch-visual {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.9;
+  overflow-x: auto;
+  margin: 14px 0;
+}
+.br-main    { color: var(--teal); }
+.br-develop { color: var(--blue); }
+.br-feature { color: var(--amber); }
+.br-release { color: var(--purple); }
+.br-hotfix  { color: var(--red); }
+.br-comment { color: var(--muted2); font-style: italic; }
+
+/* ─── REPO STRUCTURE ─── */
+.repo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.repo-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.repo-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--teal);
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+.repo-type {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ─── SECTION DIVIDER ─── */
+.divider { height: 1px; background: linear-gradient(to right, var(--border), transparent); margin-bottom: 28px; }
+
+/* ─── REFERENCE ─── */
+.ref-footer {
+  margin-top: 48px;
+  padding: 28px 32px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  border-top: 3px solid var(--teal);
+}
+.ref-footer h3::before { display: none; }
+.ref-footer h3 { color: var(--teal); margin: 0 0 10px; font-size: 14px; }
+.ref-footer a { color: var(--teal); font-family: var(--mono); font-size: 13px; text-decoration: none; }
+.ref-footer a:hover { text-decoration: underline; }
+.ref-footer p { color: var(--muted); font-size: 13px; margin-top: 8px; }
+
+/* ─── DECISION TABLE ─── */
+.dtable {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 14px 0;
+}
+.drow {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.drow:last-child { border-bottom: none; }
+.drow-label {
+  padding: 14px 18px;
+  background: var(--bg4);
+  border-right: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--teal);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 16px;
+}
+.drow-body {
+  padding: 13px 18px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.drow-body strong { color: var(--text); }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 5px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { padding: 28px 20px 60px; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .hero { padding: 28px 24px; }
+  .hero h1 { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══ -->
+<nav class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-eyebrow">Architecture Handbook</div>
+    <div class="sb-title">Modular Monolith<br>+ DevOps Blueprint</div>
+    <div class="sb-sub">Angular · .NET Core · Kubernetes</div>
+  </div>
+
+  <div class="nav-group-label">Application</div>
+  <a class="nav-link" href="#arch"><span class="nav-icon">🧱</span> Modular Monolith Design</a>
+  <a class="nav-link" href="#module-split"><span class="nav-icon">📦</span> Module Boundaries</a>
+  <a class="nav-link" href="#frontend"><span class="nav-icon">🌐</span> Angular Frontend</a>
+
+  <div class="nav-group-label">Source Control</div>
+  <a class="nav-link" href="#repos"><span class="nav-icon">📁</span> 20-Repo Strategy</a>
+  <a class="nav-link" href="#branches"><span class="nav-icon">🌿</span> Branch Strategy</a>
+  <a class="nav-link" href="#gitops-repo"><span class="nav-icon">🗃️</span> GitOps Repo Decision</a>
+
+  <div class="nav-group-label">CI / CD Pipeline</div>
+  <a class="nav-link" href="#pipeline-overview"><span class="nav-icon">⚙️</span> Pipeline Overview</a>
+  <a class="nav-link" href="#local-dev"><span class="nav-icon">💻</span> Local Dev</a>
+  <a class="nav-link" href="#pre-commit"><span class="nav-icon">🔒</span> Pre-commit</a>
+  <a class="nav-link" href="#ci"><span class="nav-icon">🏗️</span> CI: Build + Test + Scan</a>
+  <a class="nav-link" href="#image-push"><span class="nav-icon">📤</span> Image Push</a>
+  <a class="nav-link" href="#gitops-update"><span class="nav-icon">🔄</span> GitOps Update</a>
+  <a class="nav-link" href="#argocd"><span class="nav-icon">🚀</span> ArgoCD Sync</a>
+  <a class="nav-link" href="#kubernetes"><span class="nav-icon">☸️</span> Kubernetes</a>
+  <a class="nav-link" href="#observability"><span class="nav-icon">📊</span> Observability & Alerts</a>
+
+  <div class="nav-group-label">Tools</div>
+  <a class="nav-link" href="#helm"><span class="nav-icon">⛵</span> Why Helm</a>
+  <a class="nav-link" href="#tool-summary"><span class="nav-icon">🔧</span> Tool Decisions</a>
+  <a class="nav-link" href="#environments"><span class="nav-icon">🌍</span> Environment Strategy</a>
+</nav>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Architecture Decision Record</div>
+    <h1>Modular Monolith<br>& DevOps Architecture</h1>
+    <p class="hero-desc">A complete architectural blueprint for an Angular + .NET Core modular monolith — covering application structure, 20-repo strategy, GitOps, CI/CD pipeline, Helm, ArgoCD, Kubernetes, and production observability. Every decision is explained with its rationale.</p>
+    <div class="badge-row">
+      <span class="badge b-teal">Angular Frontend</span>
+      <span class="badge b-blue">.NET Core Backend</span>
+      <span class="badge b-amber">GitHub 20 Repos</span>
+      <span class="badge b-purple">Helm + ArgoCD</span>
+      <span class="badge b-green">Kubernetes</span>
+      <span class="badge b-pink">GitOps</span>
+    </div>
+  </div>
+
+  <!-- ═══ MODULAR MONOLITH ARCH ═══ -->
+  <section id="arch">
+    <h2>
+      <div class="h2-icon" style="background: rgba(0,201,177,0.12);">🧱</div>
+      <div class="h2-text">Modular Monolith Design<span class="h2-sub">Why not microservices — and why not a big ball of mud</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ WHY MODULAR MONOLITH</div>
+      <p>A modular monolith delivers <strong>microservice-level domain separation</strong> without the operational overhead of inter-service networking, distributed tracing, and service mesh. For most teams up to ~30 engineers, it is the pragmatic default. It deploys as one unit, shares one database (with schema-level isolation per module), and can be <strong>sliced into microservices later</strong> along well-established seams — if that day ever comes.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">✅ Modular Monolith Wins</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li>One deploy artifact — simpler CI/CD</li>
+            <li>In-process calls — no network latency between modules</li>
+            <li>Shared transaction boundary — ACID across modules</li>
+            <li>Easier debugging — single process, single log stream</li>
+            <li>Lower infra cost — fewer containers, no service mesh</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Key Discipline Required</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li>Enforce module boundaries via compiler — no cross-module internal references</li>
+            <li>Each module owns its own database schema</li>
+            <li>Cross-module communication via interfaces, not concrete classes</li>
+            <li>Architecture tests (ArchUnitNET) fail the build on violations</li>
+            <li>Module = vertical slice: API → Application → Domain → Infra</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ MODULE BOUNDARIES ═══ -->
+  <section id="module-split">
+    <h2>
+      <div class="h2-icon" style="background: rgba(79,158,255,0.12);">📦</div>
+      <div class="h2-text">Module Boundaries<span class="h2-sub">Domain-driven slicing of the .NET Core backend</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <p>Each <strong>module</strong> is a separate C# project within the same solution. Modules communicate only through published interfaces or an internal event bus — never by referencing each other's internals.</p>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title">🔐 Identity Module</div>
+        <div class="card-body">Auth, users, roles, permissions. Exposes <code>ICurrentUser</code> interface to other modules.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">📦 Catalog Module</div>
+        <div class="card-body">Products, categories, pricing. Own DB schema. Events: <code>ProductUpdated</code>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🛒 Orders Module</div>
+        <div class="card-body">Order lifecycle, cart, checkout. Depends on Catalog via interface only.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">💳 Payments Module</div>
+        <div class="card-body">Payment processing, gateway abstraction, refunds. Raises domain events.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">📬 Notifications Module</div>
+        <div class="card-body">Email, SMS, push. Consumes events from Orders/Payments. Zero upstream deps.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Reporting Module</div>
+        <div class="card-body">Read-only projections. Can query its own read DB built from events.</div>
+      </div>
+    </div>
+
+    <div class="callout c-amber">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body"><strong>The shared kernel:</strong> Keep a <code>Shared</code> project with only value objects, interfaces, and contracts that multiple modules genuinely need. No business logic lives there. It is a contract library, not a dumping ground.</div>
+    </div>
+  </section>
+
+  <!-- ═══ ANGULAR FRONTEND ═══ -->
+  <section id="frontend">
+    <h2>
+      <div class="h2-icon" style="background: rgba(240,96,96,0.12);">🌐</div>
+      <div class="h2-text">Angular Frontend<span class="h2-sub">Standalone SPA aligned to backend module boundaries</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <p>The Angular frontend follows a <strong>feature-module structure</strong> that mirrors the backend's domain modules. This is not cosmetic — it means each Angular feature team owns its slice end-to-end.</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📁 Frontend Structure</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li><code>features/</code> — one folder per backend module</li>
+            <li><code>core/</code> — auth, HTTP interceptors, guards</li>
+            <li><code>shared/</code> — UI components, design system</li>
+            <li><code>shell/</code> — app router, layout, nav</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">⚡ Build & Deploy</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li>Lazy-loaded feature modules — Angular standalone APIs</li>
+            <li>Built to static assets — served via Nginx container</li>
+            <li>Runtime config via <code>/assets/config.json</code> — no rebuild per env</li>
+            <li>CSP headers enforced at Nginx level</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ REPO STRATEGY ═══ -->
+  <section id="repos">
+    <h2>
+      <div class="h2-icon" style="background: rgba(245,166,35,0.12);">📁</div>
+      <div class="h2-text">20-Repo Strategy<span class="h2-sub">How to organize 20 GitHub repos without chaos</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ WHY NOT A MONOREPO</div>
+      <p>With 20 repos and a modular monolith, a true monorepo (Nx/Turborepo) introduces significant tooling overhead for non-JS stacks. A <strong>polyrepo with strong conventions</strong> is simpler to reason about, grants cleaner CODEOWNERS boundaries, and each repo maps to a clear deployment artifact or library.</p>
+    </div>
+
+    <h3>Repo Categories</h3>
+
+    <div class="repo-grid">
+      <div class="repo-card"><div class="repo-name">app-frontend</div><div class="repo-type">Angular SPA</div></div>
+      <div class="repo-card"><div class="repo-name">app-backend</div><div class="repo-type">.NET Core solution (all modules)</div></div>
+      <div class="repo-card"><div class="repo-name">lib-design-system</div><div class="repo-type">Angular component lib</div></div>
+      <div class="repo-card"><div class="repo-name">lib-api-client</div><div class="repo-type">Generated API client (OpenAPI)</div></div>
+      <div class="repo-card"><div class="repo-name">lib-shared-kernel</div><div class="repo-type">Shared C# contracts / NuGet</div></div>
+      <div class="repo-card"><div class="repo-name">infra-terraform</div><div class="repo-type">Cloud infra (IaC)</div></div>
+      <div class="repo-card"><div class="repo-name">infra-kubernetes</div><div class="repo-type">Base K8s manifests</div></div>
+      <div class="repo-card"><div class="repo-name">gitops-config</div><div class="repo-type">GitOps repo — Helm values</div></div>
+      <div class="repo-card"><div class="repo-name">svc-notification</div><div class="repo-type">Standalone sidecar worker</div></div>
+      <div class="repo-card"><div class="repo-name">svc-pdf-renderer</div><div class="repo-type">Isolated utility service</div></div>
+      <div class="repo-card"><div class="repo-name">svc-job-scheduler</div><div class="repo-type">Background job runner</div></div>
+      <div class="repo-card"><div class="repo-name">svc-data-import</div><div class="repo-type">ETL / data pipeline service</div></div>
+      <div class="repo-card"><div class="repo-name">tools-cli</div><div class="repo-type">Internal developer tooling</div></div>
+      <div class="repo-card"><div class="repo-name">tools-seed-data</div><div class="repo-type">Dev/staging data seeding</div></div>
+      <div class="repo-card"><div class="repo-name">test-e2e</div><div class="repo-type">Playwright E2E test suite</div></div>
+      <div class="repo-card"><div class="repo-name">docs-architecture</div><div class="repo-type">ADRs, runbooks, architecture docs</div></div>
+      <div class="repo-card"><div class="repo-name">ops-monitoring</div><div class="repo-type">Grafana dashboards, alert rules</div></div>
+      <div class="repo-card"><div class="repo-name">ops-runbooks</div><div class="repo-type">Incident runbooks (auto-linked)</div></div>
+      <div class="repo-card"><div class="repo-name">platform-gateway</div><div class="repo-type">API Gateway config / NGINX</div></div>
+      <div class="repo-card"><div class="repo-name">platform-shared-ci</div><div class="repo-type">Reusable GitHub Actions workflows</div></div>
+    </div>
+
+    <div class="callout c-teal">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>platform-shared-ci</strong> is the glue. It contains reusable GitHub Actions workflow templates (build, test, scan, push, deploy) that every other repo calls via <code>uses: org/platform-shared-ci/.github/workflows/build.yml@main</code>. This means updating the pipeline in one place propagates to all 20 repos instantly.</div>
+    </div>
+  </section>
+
+  <!-- ═══ BRANCH STRATEGY ═══ -->
+  <section id="branches">
+    <h2>
+      <div class="h2-icon" style="background: rgba(62,201,126,0.12);">🌿</div>
+      <div class="h2-text">Branch Strategy<span class="h2-sub">Environment-aligned branching — Gitflow with trunk evolution</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ DECISION: MODIFIED GITFLOW</div>
+      <p>Pure trunk-based development works for teams with very high test confidence and feature flags. For a 20-repo modular monolith with a QA cycle and staging environment, <strong>modified Gitflow</strong> gives clearer environment promotion and safer hotfix paths. <code>develop</code> → <code>release</code> → <code>main</code> maps directly to <strong>dev → staging → production</strong>.</p>
+    </div>
+
+    <div class="branch-visual">
+<span class="br-main">main</span>           <span class="br-comment">──── always deployable · triggers production deploy · protected · requires 2 approvals + passing CI</span>
+  │
+  ├─ <span class="br-release">release/1.4.0</span>  <span class="br-comment">──── short-lived · from develop · only bug fixes allowed · merges into main + develop</span>
+  │
+<span class="br-develop">develop</span>        <span class="br-comment">──── integration branch · auto-deploys to dev environment · 1 approval required</span>
+  │
+  ├─ <span class="br-feature">feature/JIRA-123-order-api</span>    <span class="br-comment">──── from develop · merge via PR · short-lived (&lt; 2 days ideal)</span>
+  ├─ <span class="br-feature">feature/JIRA-456-catalog-search</span>  <span class="br-comment">──── squash merge preferred · deletes after merge</span>
+  ├─ <span class="br-feature">chore/update-dotnet-sdk</span>
+  └─ <span class="br-feature">fix/JIRA-789-null-ref-payment</span>
+
+<span class="br-hotfix">hotfix/JIRA-999-prod-incident</span>  <span class="br-comment">──── from main only · fast-tracked CI · merges into main + develop</span>
+    </div>
+
+    <div class="tw">
+      <table>
+        <tr><th>Branch</th><th>Maps to Environment</th><th>Deploy Trigger</th><th>Protection Rules</th></tr>
+        <tr><td><strong>main</strong></td><td>Production</td><td>Manual approval gate after merge</td><td>2 reviewers, CI must pass, no force-push</td></tr>
+        <tr><td><strong>release/*</strong></td><td>Staging</td><td>Auto on push to release branch</td><td>1 reviewer, CI must pass</td></tr>
+        <tr><td><strong>develop</strong></td><td>Dev / Integration</td><td>Auto on merge</td><td>1 reviewer, CI must pass</td></tr>
+        <tr><td><strong>feature/*</strong></td><td>None (PR preview optional)</td><td>CI only, no deploy</td><td>CI must pass before merge</td></tr>
+        <tr><td><strong>hotfix/*</strong></td><td>Production fast-track</td><td>Manual gate, expedited</td><td>1 reviewer + senior lead</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ GITOPS REPO DECISION ═══ -->
+  <section id="gitops-repo">
+    <h2>
+      <div class="h2-icon" style="background: rgba(157,126,240,0.12);">🗃️</div>
+      <div class="h2-text">GitOps Repo Decision<span class="h2-sub">Should you have a dedicated gitops-config repo? Yes. Here's why.</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ DECISION: DEDICATED gitops-config REPO — SEPARATE FROM APPLICATION CODE</div>
+      <p>The <strong>gitops-config</strong> repo is the <em>single source of truth for what is deployed where</em>. It contains Helm values files per environment, image tag references, and resource overrides. It does NOT contain application code, Dockerfiles, or business logic.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">✅ Why Separate GitOps Repo</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li>Clean audit trail — every production change is a git commit</li>
+            <li>ArgoCD watches only this repo — reduces blast radius of app repo access</li>
+            <li>Environment promotion = PR + review, not a kubectl command</li>
+            <li>Different access rights: devs push to app repos; only CD pipeline + SRE push to gitops repo</li>
+            <li>No secrets ever live here — only references (Vault paths, Sealed Secrets)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📁 gitops-config Structure</div>
+        <div class="card-body">
+          <div style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); line-height: 1.9;">
+            <span style="color: var(--teal);">gitops-config/</span><br>
+            &nbsp;├─ <span style="color: var(--blue);">apps/</span><br>
+            &nbsp;│&nbsp;&nbsp;├─ app-frontend/<br>
+            &nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;├─ <span style="color: var(--amber);">dev.values.yaml</span><br>
+            &nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;├─ <span style="color: var(--amber);">staging.values.yaml</span><br>
+            &nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;└─ <span style="color: var(--amber);">prod.values.yaml</span><br>
+            &nbsp;│&nbsp;&nbsp;└─ app-backend/ …<br>
+            &nbsp;├─ <span style="color: var(--blue);">clusters/</span><br>
+            &nbsp;│&nbsp;&nbsp;├─ dev/  staging/  prod/<br>
+            &nbsp;└─ <span style="color: var(--blue);">argocd-apps/</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;└─ ApplicationSet manifests
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout c-blue">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>The promotion flow:</strong> CI builds an image and tags it <code>sha-abc123</code> → CI opens an automated PR to <code>gitops-config</code> updating <code>dev.values.yaml</code> → PR auto-merges for dev, requires review for staging/prod → ArgoCD detects the diff → reconciles the cluster. No human types kubectl commands.</div>
+    </div>
+  </section>
+
+  <!-- ═══ PIPELINE OVERVIEW ═══ -->
+  <section id="pipeline-overview">
+    <h2>
+      <div class="h2-icon" style="background: rgba(0,201,177,0.12);">⚙️</div>
+      <div class="h2-text">Pipeline Overview<span class="h2-sub">local dev → pre-commit → CI → image push → GitOps update → ArgoCD sync → K8s → alerts</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="pipeline-container">
+      <div class="pipeline">
+        <div class="pipe-step">
+          <div class="ps-icon">💻</div>
+          <div class="ps-label">Stage 0</div>
+          <div class="ps-name">Local Dev</div>
+          <div class="ps-tool">Docker Compose</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+          <div class="ps-icon">🔒</div>
+          <div class="ps-label">Stage 1</div>
+          <div class="ps-name">Pre-commit</div>
+          <div class="ps-tool">Husky + Hooks</div>
+        </div>
+        <div class="pipe-arrow trigger">— git push →</div>
+        <div class="pipe-step">
+          <div class="ps-icon">🏗️</div>
+          <div class="ps-label">Stage 2</div>
+          <div class="ps-name">CI Build</div>
+          <div class="ps-tool">GitHub Actions</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+          <div class="ps-icon">🧪</div>
+          <div class="ps-label">Stage 3</div>
+          <div class="ps-name">Test + Scan</div>
+          <div class="ps-tool">xUnit / Sonar</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+          <div class="ps-icon">📤</div>
+          <div class="ps-label">Stage 4</div>
+          <div class="ps-name">Image Push</div>
+          <div class="ps-tool">GHCR / ECR</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+          <div class="ps-icon">🔄</div>
+          <div class="ps-label">Stage 5</div>
+          <div class="ps-name">GitOps PR</div>
+          <div class="ps-tool">gitops-config</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+          <div class="ps-icon">🚀</div>
+          <div class="ps-label">Stage 6</div>
+          <div class="ps-name">ArgoCD Sync</div>
+          <div class="ps-tool">ArgoCD</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+          <div class="ps-icon">☸️</div>
+          <div class="ps-label">Stage 7</div>
+          <div class="ps-name">Kubernetes</div>
+          <div class="ps-tool">EKS / AKS / GKE</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step">
+          <div class="ps-icon">📊</div>
+          <div class="ps-label">Stage 8</div>
+          <div class="ps-name">Observe</div>
+          <div class="ps-tool">Grafana / PagerDuty</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ LOCAL DEV ═══ -->
+  <section id="local-dev">
+    <h2>
+      <div class="h2-icon" style="background: rgba(62,201,126,0.12);">💻</div>
+      <div class="h2-text">Local Development<span class="h2-sub">Fast feedback loop without a Kubernetes cluster on your laptop</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-tool">◆ TOOL: Docker Compose</div>
+      <p>Docker Compose spins up the full stack locally — .NET backend, Angular dev server (or built Nginx container), PostgreSQL, Redis, and any sidecar services. Developers should be able to <code>docker compose up</code> and have a working environment in under 3 minutes.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🐳 What Compose Runs Locally</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li><strong>app-backend</strong> — hot-reload with <code>dotnet watch</code></li>
+            <li><strong>app-frontend</strong> — Angular dev server with proxy to backend</li>
+            <li><strong>postgres</strong> — schema-per-module, seeded with test data</li>
+            <li><strong>redis</strong> — distributed cache</li>
+            <li><strong>mailhog</strong> — local email catcher</li>
+            <li><strong>seq</strong> — local structured log viewer</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Developer Contract</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li>One <code>.env.local</code> file, never committed</li>
+            <li><code>tools-seed-data</code> repo provides realistic dev data</li>
+            <li>DB migrations run automatically on startup</li>
+            <li>No need for cloud credentials for basic development</li>
+            <li>Feature flags default to "on" in local env</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout c-teal">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body"><strong>Starter resource:</strong> See the DevOps Playbook at <a href="https://vivek-doshi.github.io/devops-playbook/" style="color: var(--teal);">vivek-doshi.github.io/devops-playbook/</a> for ready-to-use Docker Compose configs and local dev setup scripts aligned with this architecture.</div>
+    </div>
+  </section>
+
+  <!-- ═══ PRE-COMMIT ═══ -->
+  <section id="pre-commit">
+    <h2>
+      <div class="h2-icon" style="background: rgba(240,96,96,0.12);">🔒</div>
+      <div class="h2-text">Pre-commit Hooks<span class="h2-sub">Catch problems before they reach CI — not after</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ WHY PRE-COMMIT</div>
+      <p>CI minutes are expensive and slow. A pre-commit hook that runs in 10 seconds catches 80% of the obvious issues that would otherwise waste a 4-minute CI run. The golden rule: <strong>if it can run locally fast, it should run locally first.</strong></p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <tr><th>Hook</th><th>Tool</th><th>Checks</th></tr>
+        <tr><td><strong>Format</strong></td><td><code>dotnet format --verify-no-changes</code> · <code>ng lint</code> + Prettier</td><td>Code style, whitespace, import order</td></tr>
+        <tr><td><strong>Secrets scan</strong></td><td><code>detect-secrets</code> / <code>gitleaks</code></td><td>API keys, connection strings, tokens in diff</td></tr>
+        <tr><td><strong>Commit message</strong></td><td>commitlint + conventional commits</td><td><code>feat(auth): add MFA support [JIRA-123]</code></td></tr>
+        <tr><td><strong>Unit test smoke</strong></td><td><code>dotnet test --filter Category=Unit</code> (fast subset)</td><td>Run only tests touching changed projects</td></tr>
+        <tr><td><strong>File size guard</strong></td><td>Custom shell check</td><td>Reject files &gt; 1MB committed by accident</td></tr>
+      </table>
+    </div>
+
+    <div class="callout c-amber">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body"><strong>Husky for Node / Angular repos, .git hooks for .NET repos.</strong> Keep pre-commit hooks fast — under 30 seconds total. Slow hooks get bypassed with <code>--no-verify</code>. If a check needs 2+ minutes, it belongs in CI, not pre-commit.</div>
+    </div>
+  </section>
+
+  <!-- ═══ CI ═══ -->
+  <section id="ci">
+    <h2>
+      <div class="h2-icon" style="background: rgba(79,158,255,0.12);">🏗️</div>
+      <div class="h2-text">CI: Build + Test + Scan<span class="h2-sub">GitHub Actions — everything happens here before an image is produced</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-tool">◆ TOOL: GitHub Actions</div>
+      <p>Source code is already in GitHub. GitHub Actions is the zero-friction choice — no separate CI server to maintain, native secret management, reusable workflows, and tight integration with PRs, branch protection, and environments. The <strong>platform-shared-ci</strong> repo provides reusable workflow templates called by all 20 repos.</p>
+    </div>
+
+    <h3>CI Pipeline Stages (GitHub Actions)</h3>
+    <div class="dtable">
+      <div class="drow">
+        <div class="drow-label">1. Trigger</div>
+        <div class="drow-body">Every pull request to <code>develop</code>, <code>release/*</code>, or <code>main</code>. Also on push to <code>develop</code> (for auto-deploy to dev). Feature branch pushes run CI without deploy.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">2. Restore & Build</div>
+        <div class="drow-body"><strong>Backend:</strong> <code>dotnet restore</code> + <code>dotnet build --configuration Release /warnaserror</code> — warnings are errors. <strong>Frontend:</strong> <code>npm ci</code> + <code>ng build --configuration=production</code>. Both run in parallel jobs.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">3. Unit Tests</div>
+        <div class="drow-body"><code>dotnet test</code> with XPlat Code Coverage. Angular with <code>ng test --watch=false --code-coverage</code>. Coverage threshold enforced: fail CI below 80% on business logic projects. Test results posted as PR comment.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">4. Integration Tests</div>
+        <div class="drow-body">Testcontainers spins up real PostgreSQL + Redis in the CI runner. Tests tagged <code>[Integration]</code> run against a real database. Runs on PRs to <code>release/*</code> and <code>main</code> — skipped on feature-branch PRs to keep feedback fast.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">5. Static Analysis</div>
+        <div class="drow-body">SonarCloud scans .NET + Angular in parallel. StyleCop + Roslynator violations fail the build. <code>dotnet format --verify-no-changes</code> enforced. Angular ESLint checked. Security hotspots block merge on <code>main</code>.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">6. Dependency Scan</div>
+        <div class="drow-body">Dependabot alerts + <strong>OWASP Dependency-Check</strong> or <strong>Snyk</strong> scan NuGet and npm packages. Critical CVEs block the pipeline. Results uploaded to GitHub Security tab.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">7. Architecture Tests</div>
+        <div class="drow-body">ArchUnitNET tests verify module boundaries: no cross-module internal references, no domain layer depending on infrastructure, etc. These are ordinary xUnit tests — they just happen to assert structural constraints.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">8. Container Build</div>
+        <div class="drow-body">Docker multi-stage build. Only runs if all prior steps pass. Uses BuildKit layer caching. Image NOT pushed yet — just built and tagged locally to verify it builds successfully. SBOM generated.</div>
+      </div>
+    </div>
+
+    <div class="callout c-green">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body"><strong>Target CI runtime:</strong> Feature-branch PRs should complete in under <strong>8 minutes</strong>. Merges to <code>main</code> (including integration tests) should complete in under <strong>15 minutes</strong>. Use matrix builds and parallel jobs aggressively.</div>
+    </div>
+  </section>
+
+  <!-- ═══ IMAGE PUSH ═══ -->
+  <section id="image-push">
+    <h2>
+      <div class="h2-icon" style="background: rgba(232,121,162,0.12);">📤</div>
+      <div class="h2-text">Image Push<span class="h2-sub">When, where, and how images are published</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ DECISION: GHCR (GitHub Container Registry)</div>
+      <p>Since source is in GitHub, <strong>GitHub Container Registry (GHCR)</strong> is the natural choice — no extra credentials, native GITHUB_TOKEN auth, image visibility tied to repo visibility, and no additional monthly cost on GitHub Enterprise. For regulated environments needing image scanning at registry level, AWS ECR is an alternative with Clair/Inspector integration.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🏷️ Image Tagging Strategy</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li><code>sha-&lt;7-char-git-sha&gt;</code> — primary immutable tag, always</li>
+            <li><code>develop</code> — latest develop build (mutable)</li>
+            <li><code>staging</code> — latest staging-ready build</li>
+            <li><code>v1.4.2</code> — on git tag, semantic version</li>
+            <li><strong>Never push <code>:latest</code></strong> — it's a footgun in production</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔍 Image Security Before Push</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li><strong>Trivy</strong> scan on image before push — fail on CRITICAL CVEs</li>
+            <li>Multi-stage Dockerfile — final image is distroless or Alpine</li>
+            <li>Run as non-root user inside container</li>
+            <li>Image SBOM (Software Bill of Materials) attached to image</li>
+            <li>Image signed with <strong>cosign</strong> — verified at deploy time by K8s admission</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout c-purple">
+      <span class="callout-icon">🔐</span>
+      <div class="callout-body"><strong>Image signing with cosign:</strong> After push, the CI pipeline signs the image using Sigstore's cosign with a keyless flow (OIDC from GitHub Actions). A Kubernetes admission controller (e.g., Kyverno policy) can then enforce that only signed images from your registry are ever scheduled — blocking accidental or malicious image substitution.</div>
+    </div>
+  </section>
+
+  <!-- ═══ GITOPS UPDATE ═══ -->
+  <section id="gitops-update">
+    <h2>
+      <div class="h2-icon" style="background: rgba(0,201,177,0.12);">🔄</div>
+      <div class="h2-text">GitOps Update<span class="h2-sub">The CI pipeline opens a PR against gitops-config — it never directly deploys</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ THE SEPARATION OF PUSH AND DEPLOY</div>
+      <p>The application CI pipeline's job ends when the image is pushed. It does NOT run <code>kubectl apply</code> or <code>helm upgrade</code>. Instead, it <strong>opens a PR</strong> (or auto-merges for dev) to the <code>gitops-config</code> repo, updating the image tag in the relevant values file. This separation is intentional: it decouples <em>what was built</em> from <em>what is deployed</em>, and makes every environment change auditable in git.</p>
+    </div>
+
+    <div class="dtable">
+      <div class="drow">
+        <div class="drow-label">Dev branch</div>
+        <div class="drow-body">CI auto-merges the image tag update PR to <code>gitops-config/apps/app-backend/dev.values.yaml</code>. No human action needed. ArgoCD detects the change and syncs within ~3 minutes.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">Staging branch</div>
+        <div class="drow-body">CI opens a PR to update <code>staging.values.yaml</code>. Requires 1 review from a team lead. Merge triggers ArgoCD sync to staging cluster.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">Production</div>
+        <div class="drow-body">PR to <code>prod.values.yaml</code> requires 2 senior approvals + a deployment window comment. Merge is the approval record. ArgoCD sync follows — with manual sync gate option for major releases.</div>
+      </div>
+      <div class="drow">
+        <div class="drow-label">Rollback</div>
+        <div class="drow-body">Rollback is a git revert PR on <code>gitops-config</code> — restoring the previous image tag. ArgoCD reconciles. No custom rollback scripts needed. Full audit trail preserved.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ ARGOCD ═══ -->
+  <section id="argocd">
+    <h2>
+      <div class="h2-icon" style="background: rgba(157,126,240,0.12);">🚀</div>
+      <div class="h2-text">ArgoCD — GitOps Continuous Delivery<span class="h2-sub">Why ArgoCD over Flux or push-based CD</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ WHY ARGOCD</div>
+      <p>ArgoCD is the industry standard for Kubernetes GitOps. Its UI makes drift visible at a glance. It is <strong>pull-based</strong> — the cluster pulls desired state from git rather than CI pushing manifests in. This means no CI system ever needs kubectl credentials to the production cluster, which is a major security win. Compared to Flux, ArgoCD's UI and ApplicationSet patterns are better suited for 20-repo organizations.</p>
+    </div>
+
+    <h3>ArgoCD Setup Decisions</h3>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🗂️ ApplicationSet Pattern</div>
+        <div class="card-body">Use <code>ApplicationSet</code> with a <strong>Git generator</strong> to auto-create ArgoCD Application objects from directories in <code>gitops-config/apps/</code>. Adding a new service = adding a folder. No manual ArgoCD configuration needed per service.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔄 Sync Policy</div>
+        <div class="card-body">Dev cluster: <strong>auto-sync with self-heal</strong> — any drift is corrected automatically. Staging: auto-sync, no self-heal (manual drift inspection required). Prod: <strong>manual sync</strong> — a human presses Sync after reviewing the diff in ArgoCD UI.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔑 Secrets Management</div>
+        <div class="card-body"><strong>Sealed Secrets</strong> or <strong>External Secrets Operator</strong> (pulling from AWS Secrets Manager / Azure Key Vault). No plaintext secrets in gitops-config ever. ArgoCD itself uses OIDC (GitHub/Okta) for user auth — RBAC aligned to GitHub teams.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🏥 Health Checks</div>
+        <div class="card-body">ArgoCD understands Kubernetes Deployment rollout health. It will show an app as "Degraded" if a new pod crashes. Custom health checks added for CRDs (e.g., database migration jobs). Notifications to Slack on sync failure or degraded status.</div>
+      </div>
+    </div>
+
+    <div class="callout c-blue">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body"><strong>ArgoCD lives inside the cluster it manages</strong> (same cluster or management cluster pattern). For production isolation, use a dedicated <em>management cluster</em> running ArgoCD that manages spoke clusters. This prevents the "bootstrap problem" where ArgoCD going down takes prod deployment with it.</div>
+    </div>
+  </section>
+
+  <!-- ═══ KUBERNETES ═══ -->
+  <section id="kubernetes">
+    <h2>
+      <div class="h2-icon" style="background: rgba(79,158,255,0.12);">☸️</div>
+      <div class="h2-text">Kubernetes<span class="h2-sub">Cluster design, namespace strategy, and workload configuration</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🏗️ Cluster Strategy</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li><strong>Dev cluster</strong> — shared, smaller nodes, preemptible/spot instances</li>
+            <li><strong>Staging cluster</strong> — mirrors prod sizing, same region, used for load tests</li>
+            <li><strong>Prod cluster</strong> — dedicated, multi-AZ, managed (EKS/AKS/GKE)</li>
+            <li>Separate cluster per environment — not namespace-only separation</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📁 Namespace Design</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li><code>apps</code> — all application workloads</li>
+            <li><code>platform</code> — ArgoCD, cert-manager, ingress-nginx</li>
+            <li><code>monitoring</code> — Prometheus, Grafana, Loki</li>
+            <li><code>secrets</code> — External Secrets Operator</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Standard Workload Configuration per Service</h3>
+    <div class="tw">
+      <table>
+        <tr><th>Concern</th><th>Decision</th><th>Reason</th></tr>
+        <tr><td><strong>Health checks</strong></td><td>Liveness + readiness + startup probes</td><td>Startup probe prevents premature kill during .NET startup</td></tr>
+        <tr><td><strong>Resource limits</strong></td><td>CPU request ≠ limit, Memory request = limit</td><td>CPU bursting OK; OOM kill is preferable to slow response</td></tr>
+        <tr><td><strong>HPA</strong></td><td>Horizontal Pod Autoscaler on CPU + custom metric (request rate)</td><td>Scale out under load before hitting CPU ceiling</td></tr>
+        <tr><td><strong>PodDisruptionBudget</strong></td><td>minAvailable: 1 on prod</td><td>Prevents cluster upgrades taking down all pods</td></tr>
+        <tr><td><strong>Anti-affinity</strong></td><td>Prefer spread across nodes and AZs</td><td>Single node failure shouldn't take down service</td></tr>
+        <tr><td><strong>Image pull policy</strong></td><td><code>IfNotPresent</code> with immutable tags</td><td>Never pull <code>:latest</code> — non-deterministic</td></tr>
+        <tr><td><strong>Network policy</strong></td><td>Default deny, explicit allow per service</td><td>Module A cannot talk to Module B's DB pod</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ OBSERVABILITY ═══ -->
+  <section id="observability">
+    <h2>
+      <div class="h2-icon" style="background: rgba(245,166,35,0.12);">📊</div>
+      <div class="h2-text">Observability & Alerts<span class="h2-sub">Metrics → Logs → Traces → Alerts — the four pillars</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="grid-2">
+      <div class="tool-row">
+        <span class="tool-icon">📈</span>
+        <div>
+          <div class="tool-name">Prometheus + Grafana</div>
+          <div class="tool-why">Metrics collection and dashboarding. .NET exposes metrics via <code>OpenTelemetry.Exporter.Prometheus</code>. Angular performance via RUM. Grafana dashboards live in <code>ops-monitoring</code> repo — provisioned as code.</div>
+          <span class="tool-tag b-teal">Metrics</span>
+        </div>
+      </div>
+      <div class="tool-row">
+        <span class="tool-icon">📝</span>
+        <div>
+          <div class="tool-name">Loki + Grafana</div>
+          <div class="tool-why">Log aggregation. Serilog outputs structured JSON → Loki. Logs correlated to traces via TraceId. Grafana queries both metrics and logs in the same dashboard.</div>
+          <span class="tool-tag b-blue">Logs</span>
+        </div>
+      </div>
+      <div class="tool-row">
+        <span class="tool-icon">🔍</span>
+        <div>
+          <div class="tool-name">Tempo (or Jaeger)</div>
+          <div class="tool-why">Distributed tracing. OpenTelemetry SDK instruments .NET and Angular. Traces show the full request path across modules and async jobs. Essential for debugging latency spikes.</div>
+          <span class="tool-tag b-purple">Traces</span>
+        </div>
+      </div>
+      <div class="tool-row">
+        <span class="tool-icon">🚨</span>
+        <div>
+          <div class="tool-name">Alertmanager + PagerDuty</div>
+          <div class="tool-why">Prometheus Alertmanager routes alerts. Severity P1/P2 → PagerDuty on-call. P3/P4 → Slack channel. Alert rules live in <code>ops-monitoring</code> repo and are applied via Helm chart.</div>
+          <span class="tool-tag b-pink">Alerts</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>What to Alert On (Signals, Not Symptoms)</h3>
+    <div class="tw">
+      <table>
+        <tr><th>Signal</th><th>Threshold</th><th>Severity</th></tr>
+        <tr><td>HTTP 5xx error rate</td><td>&gt; 1% over 5 min window</td><td>P2 — Slack + PagerDuty</td></tr>
+        <tr><td>HTTP p99 latency</td><td>&gt; 2s sustained 10 min</td><td>P2 — Slack</td></tr>
+        <tr><td>Pod crash loop</td><td>3+ restarts in 15 min</td><td>P1 — PagerDuty immediate</td></tr>
+        <tr><td>ArgoCD sync failed</td><td>Any failure on prod</td><td>P2 — Slack</td></tr>
+        <tr><td>Certificate expiry</td><td>&lt; 30 days remaining</td><td>P3 — Slack warning</td></tr>
+        <tr><td>DB connection pool saturation</td><td>&gt; 80% pool used</td><td>P2 — Slack</td></tr>
+        <tr><td>Disk usage on PVC</td><td>&gt; 80% of claim</td><td>P3 — Slack</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ HELM ═══ -->
+  <section id="helm">
+    <h2>
+      <div class="h2-icon" style="background: rgba(0,201,177,0.12);">⛵</div>
+      <div class="h2-text">Why Helm<span class="h2-sub">The definitive answer to "why not just raw YAML?"</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ WHY HELM — NOT KUSTOMIZE, NOT RAW YAML</div>
+      <p>With 20 repos and 3 environments (dev, staging, prod), raw Kubernetes YAML means maintaining 3× duplicated manifests per service — 60+ manifest sets. <strong>Helm solves environment parameterization</strong>: one chart template, three values files, one source of truth.</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">✅ Helm Gives You</div>
+        <div class="card-body">
+          <ul style="padding-left: 16px; margin: 0;">
+            <li><strong>Templating</strong> — one chart, values files per environment. No YAML duplication.</li>
+            <li><strong>Release management</strong> — <code>helm history</code> shows every deploy with rollback support</li>
+            <li><strong>Dependency management</strong> — subchart dependencies versioned like npm packages</li>
+            <li><strong>ArgoCD native</strong> — ArgoCD understands Helm natively, renders values before applying</li>
+            <li><strong>Community charts</strong> — PostgreSQL, Redis, Ingress-NGINX, Cert-Manager all ship as production-grade Helm charts</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📁 Helm Chart Structure</div>
+        <div class="card-body">
+          <div style="font-family: var(--mono); font-size: 11.5px; color: var(--muted); line-height: 1.9;">
+            <span style="color: var(--teal);">charts/app-backend/</span><br>
+            &nbsp;├─ <span style="color: var(--blue);">Chart.yaml</span> &nbsp;&nbsp;<span style="color: var(--muted2);">— name, version, appVersion</span><br>
+            &nbsp;├─ <span style="color: var(--blue);">values.yaml</span> &nbsp;<span style="color: var(--muted2);">— sensible defaults</span><br>
+            &nbsp;└─ <span style="color: var(--blue);">templates/</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;├─ deployment.yaml<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;├─ service.yaml<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;├─ ingress.yaml<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;├─ hpa.yaml<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;├─ configmap.yaml<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;└─ pdb.yaml
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout c-amber">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body"><strong>Helm chart location decision:</strong> Application-specific Helm charts live in the application's own repo (e.g., <code>app-backend/charts/</code>). The <strong>gitops-config</strong> repo references these charts by version and overrides only environment-specific values. This keeps chart logic close to the code it deploys, while keeping environment config separate.</div>
+    </div>
+
+    <div class="decision">
+      <div class="decision-label label-why">◆ KUSTOMIZE vs HELM</div>
+      <p>Kustomize is a valid alternative (and is ArgoCD-native too). It is better when you have simple overlays and no need for parameterized logic. <strong>Helm wins</strong> when you have complex conditionals (HPA only in prod, different ingress annotations per env, feature flag toggles). For this architecture with 3 environments and 20 services, Helm's templating capability justifies the learning curve.</p>
+    </div>
+  </section>
+
+  <!-- ═══ TOOL SUMMARY ═══ -->
+  <section id="tool-summary">
+    <h2>
+      <div class="h2-icon" style="background: rgba(62,201,126,0.12);">🔧</div>
+      <div class="h2-text">Tool Decisions Summary<span class="h2-sub">Every choice with its rationale — no cargo-culting</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="tw">
+      <table>
+        <tr><th>Stage</th><th>Tool Chosen</th><th>Why This, Not Alternatives</th></tr>
+        <tr>
+          <td><strong>Source control</strong></td>
+          <td>GitHub</td>
+          <td>Stated requirement. GitHub Actions native CI, GHCR, branch protection, CODEOWNERS all in one platform.</td>
+        </tr>
+        <tr>
+          <td><strong>CI/CD engine</strong></td>
+          <td>GitHub Actions</td>
+          <td>Source is GitHub — zero friction. Reusable workflows (platform-shared-ci) serve as DRY CI templates. No separate Jenkins/GitLab to maintain.</td>
+        </tr>
+        <tr>
+          <td><strong>Container registry</strong></td>
+          <td>GHCR</td>
+          <td>Native GitHub auth, no extra service. ECR if AWS-native is required with Inspector scanning.</td>
+        </tr>
+        <tr>
+          <td><strong>Image security scan</strong></td>
+          <td>Trivy</td>
+          <td>Open source, fast, scans OS packages + language deps, integrates with GitHub Actions via action, widely adopted.</td>
+        </tr>
+        <tr>
+          <td><strong>Static analysis</strong></td>
+          <td>SonarCloud + Roslynator</td>
+          <td>SonarCloud for security hotspots + code smells + PR decoration. Roslynator for .NET-specific patterns at build time. Both are complementary.</td>
+        </tr>
+        <tr>
+          <td><strong>GitOps controller</strong></td>
+          <td>ArgoCD</td>
+          <td>Best UI for drift visibility, ApplicationSet for multi-app management, mature RBAC, active community. Flux is valid alternative but ArgoCD UI wins for teams new to GitOps.</td>
+        </tr>
+        <tr>
+          <td><strong>K8s packaging</strong></td>
+          <td>Helm</td>
+          <td>Environment parameterization, rich community charts, ArgoCD native. Kustomize for simpler single-environment projects.</td>
+        </tr>
+        <tr>
+          <td><strong>Secrets</strong></td>
+          <td>External Secrets Operator</td>
+          <td>Pulls secrets from AWS Secrets Manager / Azure Key Vault at runtime. Sealed Secrets if no cloud secret store. Never store secrets in gitops-config.</td>
+        </tr>
+        <tr>
+          <td><strong>Metrics</strong></td>
+          <td>Prometheus + Grafana</td>
+          <td>Industry standard. OpenTelemetry SDK in .NET exports to Prometheus. Grafana dashboards as code in ops-monitoring repo.</td>
+        </tr>
+        <tr>
+          <td><strong>Logs</strong></td>
+          <td>Loki + Grafana</td>
+          <td>Same Grafana instance queries both metrics and logs. Loki is cost-effective vs Elasticsearch for structured log querying.</td>
+        </tr>
+        <tr>
+          <td><strong>Tracing</strong></td>
+          <td>Tempo</td>
+          <td>Grafana native, same observability stack. OpenTelemetry traces from .NET → Tempo. Jaeger is alternative.</td>
+        </tr>
+        <tr>
+          <td><strong>Alerting</strong></td>
+          <td>Alertmanager → PagerDuty + Slack</td>
+          <td>Prometheus Alertmanager routes by severity. PagerDuty for P1/P2 on-call escalation. Slack for P3/P4 visibility.</td>
+        </tr>
+        <tr>
+          <td><strong>Local dev</strong></td>
+          <td>Docker Compose</td>
+          <td>No Kubernetes overhead on developer laptops. Full stack in one command. Tilt.dev optional for hot-reload with K8s.</td>
+        </tr>
+        <tr>
+          <td><strong>E2E testing</strong></td>
+          <td>Playwright</td>
+          <td>Cross-browser, fast, great Angular support, component testing mode. Lives in test-e2e repo, runs against deployed staging.</td>
+        </tr>
+        <tr>
+          <td><strong>Image signing</strong></td>
+          <td>cosign (Sigstore)</td>
+          <td>Keyless signing via GitHub OIDC. Supply chain security without managing private keys. Verified at admission by Kyverno.</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ ENVIRONMENTS ═══ -->
+  <section id="environments">
+    <h2>
+      <div class="h2-icon" style="background: rgba(157,126,240,0.12);">🌍</div>
+      <div class="h2-text">Environment Strategy<span class="h2-sub">Dev, Staging, Production — and how they differ</span></div>
+    </h2>
+    <div class="divider"></div>
+
+    <div class="tw">
+      <table>
+        <tr>
+          <th>Environment</th>
+          <th>Cluster</th>
+          <th>Deploy Trigger</th>
+          <th>ArgoCD Sync</th>
+          <th>Data</th>
+          <th>Purpose</th>
+        </tr>
+        <tr>
+          <td><strong>Local</strong></td>
+          <td>Docker Compose</td>
+          <td>Developer runs manually</td>
+          <td>N/A</td>
+          <td>Seeded synthetic</td>
+          <td>Fast iteration, debugging</td>
+        </tr>
+        <tr>
+          <td><strong>Dev</strong></td>
+          <td>Shared K8s (small)</td>
+          <td>Merge to develop</td>
+          <td>Auto + self-heal</td>
+          <td>Seeded synthetic</td>
+          <td>Integration smoke tests</td>
+        </tr>
+        <tr>
+          <td><strong>Staging</strong></td>
+          <td>Dedicated K8s (prod-size)</td>
+          <td>Release branch push + PR approval</td>
+          <td>Auto, no self-heal</td>
+          <td>Anonymized prod copy</td>
+          <td>QA, load testing, UAT</td>
+        </tr>
+        <tr>
+          <td><strong>Production</strong></td>
+          <td>Dedicated K8s (HA, multi-AZ)</td>
+          <td>Merge to main + manual gitops PR</td>
+          <td>Manual sync only</td>
+          <td>Live production data</td>
+          <td>Serve real users</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout c-red">
+      <span class="callout-icon">🚫</span>
+      <div class="callout-body"><strong>Production access:</strong> No developer has <code>kubectl exec</code> access to production pods. All production changes go through the gitops-config PR process. Break-glass emergency access exists for SRE leads only, with session recording and automatic ticket creation. Every kubectl command in production is a post-incident finding waiting to happen.</div>
+    </div>
+
+    <!-- REFERENCE FOOTER -->
+    <div class="ref-footer">
+      <h3>📚 Starter Resource — DevOps Playbook</h3>
+      <a href="https://vivek-doshi.github.io/devops-playbook/" target="_blank">https://vivek-doshi.github.io/devops-playbook/</a>
+      <p>Use this playbook as your starter repository for production-ready CI scripts, CD scripts, Docker Compose configurations, Dockerfile templates, and GitHub Actions workflow patterns. The playbook aligns with the architecture decisions documented in this handbook — covering Docker multi-stage builds, environment-aware compose files, GitHub Actions reusable workflow patterns, and deployment pipeline scaffolding for both Angular frontend and .NET Core backend workloads.</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+const links = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle(
+        'active', l.getAttribute('href') === '#' + e.target.id
+      ));
+    }
+  });
+}, { rootMargin: '-10% 0px -75% 0px' });
+sections.forEach(s => s.id && io.observe(s));
+</script>
+</body>
+</html>
