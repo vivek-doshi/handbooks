@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Networking — Field Handbook</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link rel="stylesheet" href="../styles/shared-ui.css">
+<link rel="stylesheet" href="../styles/content-utilities.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black:       #050608;
+  --black2:      #0a0c0f;
+  --black3:      #0f1216;
+  --black4:      #161a20;
+  --black5:      #1e242d;
+  --border:      rgba(255,255,255,0.06);
+  --border2:     rgba(255,255,255,0.11);
+  --text:        #d8e0ec;
+  --text2:       #8fa3be;
+  --muted:       #4a5a70;
+  --blue:        #2979ff;
+  --blue-dim:    rgba(41,121,255,0.10);
+  --blue-glow:   rgba(41,121,255,0.14);
+  --green:       #00e87a;
+  --green-dim:   #00b85e;
+  --green-glow:  rgba(0,232,122,0.10);
+  --red:         #ff4757;
+  --red-dim:     rgba(255,71,87,0.12);
+  --amber:       #ffb300;
+  --amber-dim:   rgba(255,179,0,0.10);
+  --teal:        #00e5cc;
+  --teal-dim:    rgba(0,229,204,0.10);
+  --purple:      #a259ff;
+  --purple-dim:  rgba(162,89,255,0.10);
+  --mono:        'IBM Plex Mono', monospace;
+  --display:     'Barlow Condensed', sans-serif;
+  --body:        'Barlow', sans-serif;
+  --sidebar-w:   268px;
+  --top-h:       52px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--black);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
+  pointer-events: none;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: var(--top-h);
+  background: rgba(5,6,8,0.97);
+  border-bottom: 1px solid var(--blue);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+}
+.topbar-left { display: flex; align-items: center; gap: 16px; }
+.topbar-classification {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 3px; color: var(--black);
+  background: var(--blue); padding: 3px 12px; text-transform: uppercase;
+}
+.topbar-title {
+  font-family: var(--display); font-size: 17px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--text);
+}
+.topbar-right {
+  display: flex; align-items: center; gap: 20px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px;
+}
+.topbar-status { display: flex; align-items: center; gap: 6px; color: var(--blue); }
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--blue); box-shadow: 0 0 6px var(--blue);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* ── LAYOUT ── */
+.layout { display: flex; margin-top: var(--top-h); min-height: calc(100vh - var(--top-h)); position: relative; z-index: 1; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  position: sticky; top: var(--top-h);
+  height: calc(100vh - var(--top-h));
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--black2);
+  border-right: 1px solid var(--border2);
+  padding-bottom: 48px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sb-header {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(41,121,255,0.07) 0%, transparent 100%);
+}
+.sb-docnum { font-family: var(--mono); font-size: 10px; color: var(--blue); letter-spacing: 2px; margin-bottom: 4px; }
+.sb-subtitle { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+.nav-group-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+  padding: 16px 20px 5px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 20px; text-decoration: none; font-size: 12.5px;
+  color: var(--text2); font-family: var(--body);
+  border-left: 2px solid transparent; transition: all 0.15s;
+}
+.nav-link::before {
+  content: attr(data-num);
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  width: 22px; flex-shrink: 0; text-align: right;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); border-left-color: var(--border2); }
+.nav-link.active { color: var(--blue); border-left-color: var(--blue); background: var(--blue-glow); }
+.nav-link.active::before { color: var(--blue); }
+
+/* ── MAIN ── */
+.main { flex: 1; min-width: 0; padding: 48px 60px 100px; max-width: 980px; }
+
+/* ── HERO ── */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--blue);
+  background: var(--black3);
+  padding: 52px 56px; margin-bottom: 64px;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(41,121,255,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(0,229,204,0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero-corner {
+  position: absolute; top: 0; right: 0;
+  width: 0; height: 0; border-style: solid;
+  border-width: 0 60px 60px 0;
+  border-color: transparent var(--blue) transparent transparent;
+}
+.hero-corner-label {
+  position: absolute; top: 6px; right: 4px;
+  font-family: var(--mono); font-size: 8px; color: #fff;
+  transform: rotate(45deg); letter-spacing: 0.5px;
+}
+.hero-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+  color: var(--blue); text-transform: uppercase; margin-bottom: 18px;
+  display: flex; align-items: center; gap: 12px;
+}
+.hero-eyebrow::before { content: '['; opacity: 0.4; }
+.hero-eyebrow::after  { content: ']'; opacity: 0.4; }
+.hero h1 {
+  font-family: var(--display); font-size: 64px; font-weight: 900;
+  line-height: 0.9; letter-spacing: -1px; text-transform: uppercase;
+  color: var(--text); margin-bottom: 24px;
+}
+.hero h1 span { color: var(--blue); }
+.hero-desc { color: var(--text2); font-size: 15px; max-width: 560px; line-height: 1.75; margin-bottom: 28px; }
+.hero-axiom {
+  font-family: var(--mono); font-size: 13px;
+  color: var(--blue); border-left: 3px solid var(--blue);
+  padding: 10px 16px; background: var(--blue-glow);
+  display: inline-block; margin-bottom: 28px;
+}
+.hero-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 5px 14px; border: 1px solid; border-radius: 2px;
+}
+.chip-blue   { color: var(--blue);   border-color: rgba(41,121,255,0.4);   background: var(--blue-dim); }
+.chip-green  { color: var(--green);  border-color: rgba(0,232,122,0.4);    background: var(--green-glow); }
+.chip-amber  { color: var(--amber);  border-color: rgba(255,179,0,0.35);   background: var(--amber-dim); }
+.chip-red    { color: var(--red);    border-color: rgba(255,71,87,0.35);   background: var(--red-dim); }
+.chip-teal   { color: var(--teal);   border-color: rgba(0,229,204,0.35);   background: var(--teal-dim); }
+.chip-purple { color: var(--purple); border-color: rgba(162,89,255,0.35);  background: var(--purple-dim); }
+
+/* ── SECTIONS ── */
+section { margin-bottom: 72px; scroll-margin-top: calc(var(--top-h) + 20px); }
+.section-header {
+  display: flex; align-items: flex-start; gap: 16px;
+  margin-bottom: 24px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border); position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 80px; height: 1px; background: var(--blue);
+}
+.section-num { font-family: var(--mono); font-size: 11px; color: var(--blue); margin-top: 3px; flex-shrink: 0; width: 40px; }
+.section-title-block h2 {
+  font-family: var(--display); font-size: 30px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text); line-height: 1;
+}
+.section-title-block .section-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-top: 5px; }
+
+/* ── PROSE ── */
+.prose { color: var(--text2); font-size: 14px; line-height: 1.8; margin-bottom: 16px; }
+.prose strong { color: var(--text); font-weight: 600; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--black3); border: 1px solid var(--border);
+  padding: 22px 24px; margin-bottom: 12px; position: relative; transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border2); }
+.card-accent-blue   { border-left: 3px solid var(--blue); }
+.card-accent-green  { border-left: 3px solid var(--green); }
+.card-accent-red    { border-left: 3px solid var(--red); }
+.card-accent-amber  { border-left: 3px solid var(--amber); }
+.card-accent-teal   { border-left: 3px solid var(--teal); }
+.card-accent-purple { border-left: 3px solid var(--purple); }
+.card-title {
+  font-family: var(--display); font-size: 16px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
+}
+.card-tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase; padding: 2px 8px; border-radius: 2px;
+}
+.tag-blue   { color: var(--blue);   background: var(--blue-dim);   border: 1px solid rgba(41,121,255,0.3); }
+.tag-green  { color: var(--green);  background: var(--green-glow); border: 1px solid rgba(0,232,122,0.3); }
+.tag-red    { color: var(--red);    background: var(--red-dim);    border: 1px solid rgba(255,71,87,0.3); }
+.tag-amber  { color: var(--amber);  background: var(--amber-dim);  border: 1px solid rgba(255,179,0,0.3); }
+.tag-teal   { color: var(--teal);   background: var(--teal-dim);   border: 1px solid rgba(0,229,204,0.3); }
+.tag-purple { color: var(--purple); background: var(--purple-dim); border: 1px solid rgba(162,89,255,0.3); }
+.card p, .card li { color: var(--text2); font-size: 13.5px; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; line-height: 1.6; }
+
+/* ── GRIDS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+/* ── CODE ── */
+.code-wrap {
+  background: #040507; border: 1px solid var(--border2);
+  margin: 16px 0; position: relative; font-family: var(--mono);
+}
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 16px; background: rgba(41,121,255,0.04);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--blue); }
+.copy-btn {
+  font-size: 10px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 10px;
+  cursor: pointer; font-family: var(--mono); transition: all 0.2s;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--blue); border-color: var(--blue); }
+.code-block {
+  padding: 18px 20px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.75; white-space: pre; tab-size: 4; color: #8fa3be;
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); }
+.kw  { color: #81a1c1; }
+.st  { color: #a3be8c; }
+.cm  { color: #3d4f63; font-style: italic; }
+.fn  { color: #88c0d0; }
+.nu  { color: #d08770; }
+.at  { color: #4f9ef7; }
+.hl  { background: rgba(41,121,255,0.07); display: block; margin: 0 -20px; padding: 0 20px; border-left: 2px solid var(--blue); }
+code {
+  font-family: var(--mono); font-size: 12px;
+  background: rgba(41,121,255,0.10); color: var(--blue);
+  padding: 1px 7px; border: 1px solid rgba(41,121,255,0.25);
+}
+
+/* ── CALLOUTS ── */
+.callout {
+  display: flex; gap: 14px; padding: 14px 18px; margin: 16px 0;
+  border-left: 3px solid; font-size: 13.5px;
+}
+.callout-icon { flex-shrink: 0; font-size: 14px; margin-top: 2px; }
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.callout.tip     { background: rgba(41,121,255,0.06);  border-color: var(--blue); }
+.callout.warning { background: rgba(255,179,0,0.06);   border-color: var(--amber); }
+.callout.danger  { background: rgba(255,71,87,0.06);   border-color: var(--red); }
+.callout.good    { background: rgba(0,232,122,0.05);   border-color: var(--green); }
+.callout.note    { background: rgba(0,229,204,0.05);   border-color: var(--teal); }
+
+/* ── TABLES ── */
+.table-wrap { border: 1px solid var(--border); margin: 16px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: rgba(41,121,255,0.06);
+  color: var(--blue); font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+td code { font-size: 11px; }
+.ok  { color: var(--green); font-weight: 700; font-family: var(--mono); }
+.no  { color: var(--red);   font-weight: 700; font-family: var(--mono); }
+.partial { color: var(--amber); font-weight: 700; font-family: var(--mono); }
+
+/* ── COMPARE ── */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.compare-block { border: 1px solid var(--border); }
+.compare-header {
+  padding: 10px 18px; font-family: var(--display);
+  font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+  display: flex; align-items: center; gap: 8px;
+}
+.compare-old .compare-header { background: var(--red-dim);    color: var(--red);   border-bottom: 1px solid rgba(255,71,87,0.2); }
+.compare-new .compare-header { background: var(--blue-glow);  color: var(--blue);  border-bottom: 1px solid rgba(41,121,255,0.2); }
+.compare-body { padding: 14px 18px; }
+.compare-body li { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+.compare-body ul { padding-left: 14px; }
+
+/* ── FLOW ── */
+.flow {
+  display: flex; align-items: center; gap: 0; overflow-x: auto;
+  margin: 20px 0; padding: 24px; background: var(--black3); border: 1px solid var(--border);
+}
+.flow-step {
+  flex-shrink: 0; text-align: center; padding: 14px 18px;
+  background: var(--black4); border: 1px solid var(--border2); min-width: 110px;
+}
+.flow-step-label { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 5px; }
+.flow-step-name { font-family: var(--display); font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--text); letter-spacing: 0.5px; line-height: 1.2; }
+.flow-arrow { color: var(--blue); font-size: 20px; margin: 0 6px; flex-shrink: 0; }
+
+/* ── DIAGRAM BOX ── */
+.diagram {
+  background: var(--black3); border: 1px solid var(--border2);
+  padding: 28px; margin: 20px 0; position: relative; overflow: hidden;
+}
+.diagram::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(41,121,255,0.05) 0%, transparent 65%);
+  pointer-events: none;
+}
+.diagram-title {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px;
+}
+.diagram-title::before { content: '//'; color: var(--blue); }
+
+/* ── ASCII-STYLE BOXES ── */
+.net-diagram { font-family: var(--mono); font-size: 12px; line-height: 1.5; color: var(--text2); white-space: pre; overflow-x: auto; }
+.net-diagram .d-blue   { color: var(--blue); }
+.net-diagram .d-green  { color: var(--green); }
+.net-diagram .d-amber  { color: var(--amber); }
+.net-diagram .d-teal   { color: var(--teal); }
+.net-diagram .d-red    { color: var(--red); }
+.net-diagram .d-purple { color: var(--purple); }
+.net-diagram .d-muted  { color: var(--muted); }
+
+/* ── HEADINGS ── */
+h3 {
+  font-family: var(--display); font-size: 18px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  margin: 28px 0 12px; display: flex; align-items: center; gap: 10px;
+}
+h3::before { content: '//'; font-family: var(--mono); font-size: 12px; color: var(--blue); }
+h4 { font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin: 20px 0 8px; }
+
+/* ── BITS VISUAL ── */
+.octet-row { display: flex; gap: 4px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
+.bit {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  border: 1px solid var(--border2);
+}
+.bit-1 { background: rgba(41,121,255,0.2); color: var(--blue);   border-color: rgba(41,121,255,0.4); }
+.bit-0 { background: var(--black4);        color: var(--muted);  border-color: var(--border); }
+.bit-x { background: rgba(255,71,87,0.1);  color: var(--red);    border-color: rgba(255,71,87,0.3); }
+.octet-sep { color: var(--muted); font-family: var(--mono); font-size: 18px; padding: 0 2px; }
+.bit-label { font-family: var(--mono); font-size: 9px; color: var(--muted); text-align: center; margin-top: 2px; width: 32px; }
+
+/* ── PORT TABLE ── */
+.port-pill {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  padding: 2px 10px; border-radius: 2px; display: inline-block;
+}
+.port-open   { background: rgba(0,232,122,0.12); color: var(--green); border: 1px solid rgba(0,232,122,0.3); }
+.port-closed { background: rgba(255,71,87,0.10); color: var(--red);   border: 1px solid rgba(255,71,87,0.25); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 60px; }
+  .grid-2, .grid-3, .compare-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 44px; }
+  .flow { flex-direction: column; align-items: flex-start; }
+  .octet-row { gap: 2px; }
+  .bit { width: 26px; height: 26px; font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-classification">FIELD MANUAL</div>
+    <div class="topbar-title">Cloud Networking</div>
+  </div>
+  <div class="topbar-right">
+    <span>DOC-NET-2024</span>
+    <div class="topbar-status"><span class="status-dot"></span>LIVE</div>
+  </div>
+</header>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sb-header">
+    <div class="sb-docnum">// NET-FIELD-001</div>
+    <div class="sb-subtitle">VPC · Subnet · Kubernetes · Access</div>
+  </div>
+
+  <div class="nav-group-label">Networking Fundamentals</div>
+  <a class="nav-link active" href="#ip-basics"    data-num="01">IP Addresses &amp; Notation</a>
+  <a class="nav-link"        href="#subnets"       data-num="02">Subnets &amp; CIDR Masks</a>
+  <a class="nav-link"        href="#howtraffic"    data-num="03">How Packets Travel</a>
+
+  <div class="nav-group-label">Cloud VPC</div>
+  <a class="nav-link"  href="#vpc"           data-num="04">VPC Architecture</a>
+  <a class="nav-link"  href="#ingress-egress" data-num="05">Ingress &amp; Egress</a>
+  <a class="nav-link"  href="#routetables"   data-num="06">Route Tables &amp; Gateways</a>
+  <a class="nav-link"  href="#sg-nacl"       data-num="07">Security Groups &amp; NACLs</a>
+
+  <div class="nav-group-label">Kubernetes Networking</div>
+  <a class="nav-link"  href="#k8s-model"     data-num="08">Kubernetes Network Model</a>
+  <a class="nav-link"  href="#k8s-services"  data-num="09">Services &amp; DNS</a>
+  <a class="nav-link"  href="#k8s-ingress"   data-num="10">Ingress Controllers</a>
+  <a class="nav-link"  href="#k8s-netpol"    data-num="11">Network Policies</a>
+
+  <div class="nav-group-label">Access Control</div>
+  <a class="nav-link"  href="#least-access"  data-num="12">Least-Port Principle</a>
+  <a class="nav-link"  href="#bastion"       data-num="13">Bastion Hosts</a>
+  <a class="nav-link"  href="#private-only"  data-num="14">Private-Only Architecture</a>
+  <a class="nav-link"  href="#cheatsheet"    data-num="15">Quick Reference</a>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-corner"></div>
+    <div class="hero-corner-label">NET</div>
+    <div class="hero-eyebrow">Architecture Field Handbook</div>
+    <h1>Cloud<br><span>Networking</span></h1>
+    <div class="hero-axiom">// "Every open port is an attack surface. Every route is a decision."</div>
+    <p class="hero-desc">From IP fundamentals and CIDR masks to VPC architecture, Kubernetes traffic flows, and hardened access control. Covers bastion hosts, private subnets, security groups, and the principle of minimum exposure.</p>
+    <div class="hero-chips">
+      <span class="chip chip-blue">VPC &amp; Subnets</span>
+      <span class="chip chip-teal">CIDR / Masks</span>
+      <span class="chip chip-green">Kubernetes</span>
+      <span class="chip chip-amber">Ingress / Egress</span>
+      <span class="chip chip-red">Access Hardening</span>
+      <span class="chip chip-purple">Bastion Hosts</span>
+    </div>
+  </div>
+
+  <!-- ══ 01 IP BASICS ══ -->
+  <section id="ip-basics">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title-block">
+        <h2>IP Addresses &amp; Notation</h2>
+        <div class="section-sub">// IPv4, BINARY, PRIVATE RANGES</div>
+      </div>
+    </div>
+
+    <p class="prose">An IPv4 address is a 32-bit number written as four <strong>octets</strong> (0–255) separated by dots. Every device on a network needs a unique IP to send and receive traffic. Cloud resources — VMs, containers, load balancers — all get IPs assigned from the address ranges you define.</p>
+
+    <h3>An IP address in binary</h3>
+    <p class="prose">The address <strong>192.168.1.10</strong> is actually four 8-bit numbers. Each bit position doubles in value: 128, 64, 32, 16, 8, 4, 2, 1.</p>
+
+    <div class="diagram">
+      <div class="diagram-title">192.168.1.10 — binary breakdown</div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div>
+          <div style="font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:4px;">192 = 11000000</div>
+          <div class="octet-row">
+            <div><div class="bit bit-1">1</div></div>
+            <div><div class="bit bit-1">1</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <span class="octet-sep">.</span>
+            <div><div class="bit bit-1">1</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-1">1</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-1">1</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <span class="octet-sep">.</span>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-1">1</div></div>
+            <span class="octet-sep">.</span>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-1">1</div></div>
+            <div><div class="bit bit-0">0</div></div>
+            <div><div class="bit bit-1">1</div></div>
+            <div><div class="bit bit-0">0</div></div>
+          </div>
+          <div class="octet-row" style="margin-top:2px; gap:4px;">
+            <div style="font-family:var(--mono); font-size:9px; color:var(--muted); width:32px; text-align:center;">192</div>
+            <div style="width:4px;"></div>
+            <div style="font-family:var(--mono); font-size:9px; color:var(--muted); width:32px; text-align:center;"></div>
+            <div style="font-family:var(--mono); font-size:9px; color:var(--muted); width:32px; text-align:center;"></div>
+            <div style="font-family:var(--mono); font-size:9px; color:var(--muted); width:32px; text-align:center;"></div>
+            <div style="font-family:var(--mono); font-size:9px; color:var(--muted); width:32px; text-align:center;"></div>
+            <div style="font-family:var(--mono); font-size:9px; color:var(--muted); width:32px; text-align:center;"></div>
+            <div style="font-family:var(--mono); font-size:9px; color:var(--muted); width:32px; text-align:center;"></div>
+            <div style="font-family:var(--mono); font-size:9px; color:var(--muted); width:32px; text-align:center;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Private vs Public IP Ranges</h3>
+    <p class="prose">RFC 1918 defines three blocks of IPv4 addresses reserved for private (non-routable) use. Cloud VPCs are always built from these. Traffic from private IPs cannot reach the internet directly — it must go through a NAT gateway or internet gateway.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Range</th><th>CIDR</th><th>Addresses</th><th>Typical Use</th></tr>
+        <tr>
+          <td><strong>Class A Private</strong></td>
+          <td><code>10.0.0.0/8</code></td>
+          <td>16,777,216</td>
+          <td>Large VPCs, enterprise networks. Most common in cloud.</td>
+        </tr>
+        <tr>
+          <td><strong>Class B Private</strong></td>
+          <td><code>172.16.0.0/12</code></td>
+          <td>1,048,576</td>
+          <td>Docker default bridge network, mid-size VPCs.</td>
+        </tr>
+        <tr>
+          <td><strong>Class C Private</strong></td>
+          <td><code>192.168.0.0/16</code></td>
+          <td>65,536</td>
+          <td>Home/office routers, small networks, dev environments.</td>
+        </tr>
+        <tr>
+          <td><strong>Loopback</strong></td>
+          <td><code>127.0.0.0/8</code></td>
+          <td>16,777,216</td>
+          <td>Local machine only. <code>127.0.0.1</code> = "this device".</td>
+        </tr>
+        <tr>
+          <td><strong>Link-local</strong></td>
+          <td><code>169.254.0.0/16</code></td>
+          <td>65,536</td>
+          <td>Cloud instance metadata endpoint (e.g., AWS 169.254.169.254).</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Cloud metadata service:</strong> Every cloud VM can reach <code>169.254.169.254</code> to fetch its own identity, IAM role credentials, and bootstrap data. This is how EC2 instances get AWS credentials without hardcoding them. It's also a famous SSRF attack target — restrict it in your security groups and block it from containers that don't need it.</div>
+    </div>
+  </section>
+
+  <!-- ══ 02 SUBNETS ══ -->
+  <section id="subnets">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title-block">
+        <h2>Subnets &amp; CIDR Masks</h2>
+        <div class="section-sub">// CLASSLESS INTER-DOMAIN ROUTING</div>
+      </div>
+    </div>
+
+    <p class="prose">CIDR (Classless Inter-Domain Routing) notation expresses an IP range as a base address plus a <strong>prefix length</strong> — the number of fixed bits in the network portion. The remaining bits define host addresses. <code>10.0.1.0/24</code> means the first 24 bits are fixed (the network), leaving 8 bits for hosts (256 addresses, 254 usable).</p>
+
+    <div class="diagram">
+      <div class="diagram-title">10.0.1.0/24 — network vs host bits</div>
+      <div class="octet-row">
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <div style="font-family:var(--mono); font-size:9px; color:var(--blue); letter-spacing:1px; margin-bottom:4px;">NETWORK (fixed — 24 bits)</div>
+          <div style="display:flex; gap:4px;">
+            <div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">0</div>
+            <div class="bit bit-1">1</div><div class="bit bit-1">0</div><div class="bit bit-1">1</div><div class="bit bit-1">0</div>
+            <span class="octet-sep">.</span>
+            <div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">0</div>
+            <div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">0</div>
+            <span class="octet-sep">.</span>
+            <div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">0</div>
+            <div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">0</div><div class="bit bit-1">1</div>
+            <span class="octet-sep">.</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <div style="font-family:var(--mono); font-size:9px; color:var(--amber); letter-spacing:1px; margin-bottom:4px;">HOST (variable — 8 bits)</div>
+          <div style="display:flex; gap:4px;">
+            <div class="bit bit-x">*</div><div class="bit bit-x">*</div><div class="bit bit-x">*</div><div class="bit bit-x">*</div>
+            <div class="bit bit-x">*</div><div class="bit bit-x">*</div><div class="bit bit-x">*</div><div class="bit bit-x">*</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-family:var(--mono); font-size:11px; color:var(--text2); margin-top:14px; line-height:2;">
+        <span style="color:var(--blue);">10.0.1.0</span>   = network address (not assignable)<br>
+        <span style="color:var(--green);">10.0.1.1 – 10.0.1.254</span>  = 254 usable host addresses<br>
+        <span style="color:var(--red);">10.0.1.255</span> = broadcast address (not assignable)
+      </div>
+    </div>
+
+    <h3>CIDR Reference Table</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>CIDR</th><th>Subnet Mask</th><th>Total IPs</th><th>Usable Hosts</th><th>Typical Use</th></tr>
+        <tr><td><code>/8</code></td>  <td><code>255.0.0.0</code></td>      <td>16,777,216</td><td>16,777,214</td><td>Entire VPC allocation (very large)</td></tr>
+        <tr><td><code>/16</code></td> <td><code>255.255.0.0</code></td>    <td>65,536</td>    <td>65,534</td>    <td>Standard VPC size (AWS default)</td></tr>
+        <tr><td><code>/20</code></td> <td><code>255.255.240.0</code></td>  <td>4,096</td>     <td>4,091</td>     <td>Large subnet (AWS default per-AZ)</td></tr>
+        <tr><td><code>/24</code></td> <td><code>255.255.255.0</code></td>  <td>256</td>       <td>251*</td>      <td>Standard subnet — most common</td></tr>
+        <tr><td><code>/27</code></td> <td><code>255.255.255.224</code></td><td>32</td>        <td>27*</td>       <td>Small subnet for specific tiers</td></tr>
+        <tr><td><code>/28</code></td> <td><code>255.255.255.240</code></td><td>16</td>        <td>11*</td>       <td>Tiny subnet — NAT GW, bastion</td></tr>
+        <tr><td><code>/32</code></td> <td><code>255.255.255.255</code></td><td>1</td>         <td>1</td>         <td>Single host — security group rules</td></tr>
+      </table>
+    </div>
+    <p class="prose" style="font-size:12px;">* AWS reserves 5 IPs per subnet: network address, VPC router, DNS, future use, broadcast.</p>
+
+    <h3>How to Read a Subnet Mask</h3>
+    <p class="prose">A subnet mask has all 1s in the network portion and all 0s in the host portion. <strong>Bitwise AND</strong> of any IP with the mask gives the network address. This is how routers know whether a destination is local (same subnet) or remote (needs routing).</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Subnet Math — worked example</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Is 10.0.1.42 in the subnet 10.0.1.0/24?</span>
+
+IP address:     10.0.1.42   = 00001010.00000000.00000001.00101010
+Subnet mask: /24 255.255.255.0 = 11111111.11111111.11111111.00000000
+               AND operation:
+               00001010.00000000.00000001.00000000 = 10.0.1.0  ← network address
+
+Compare to subnet network: 10.0.1.0  → <span class="at">MATCH</span> — same subnet, local delivery
+
+<span class="cm"># Is 10.0.2.5 in the same subnet?</span>
+IP address:     10.0.2.5   = 00001010.00000000.00000010.00000101
+AND with mask:             = 00001010.00000000.00000010.00000000 = 10.0.2.0
+
+Compare to 10.0.1.0 → <span class="fn">NO MATCH</span> — different subnet, must route via gateway
+
+<span class="cm"># Quick mental math: /24 → last octet is host. /16 → last two octets are host.</span>
+<span class="cm"># /24 gives 256 addresses.  /23 gives 512.  /22 gives 1024.  Each -1 doubles.</span></div>
+    </div>
+
+    <div class="callout good">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Subnet planning rule:</strong> Plan for growth. If you need 50 hosts, use <code>/25</code> (128 IPs), not <code>/26</code> (64). Once a subnet is created in AWS/GCP/Azure, its CIDR cannot be changed. Avoid overlap with on-premises ranges if you'll need VPN or Direct Connect in the future.</div>
+    </div>
+  </section>
+
+  <!-- ══ 03 HOW TRAFFIC WORKS ══ -->
+  <section id="howtraffic">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title-block">
+        <h2>How Packets Travel</h2>
+        <div class="section-sub">// L2 vs L3, ARP, ROUTING, NAT</div>
+      </div>
+    </div>
+
+    <p class="prose">A network packet travels from source to destination through a layered decision process. At each hop, a device examines the destination IP and decides: deliver locally (Layer 2 / ARP) or forward to the next hop (Layer 3 routing). Understanding this is the foundation for cloud VPC design.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-step-label">Application</div>
+        <div class="flow-step-name">Sends to IP:Port</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">OS Stack</div>
+        <div class="flow-step-name">Same subnet?</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">YES: ARP</div>
+        <div class="flow-step-name">Get MAC, deliver direct</div>
+      </div>
+      <div class="flow-arrow" style="color:var(--muted)">|</div>
+      <div class="flow-step">
+        <div class="flow-step-label">NO: Route</div>
+        <div class="flow-step-name">Forward to gateway</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Gateway</div>
+        <div class="flow-step-name">Next hop decision</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-blue">
+        <div class="card-title">Layer 2 — Same Subnet <span class="card-tag tag-blue">Local</span></div>
+        <p>When source and destination are in the same subnet, the OS uses <strong>ARP</strong> (Address Resolution Protocol) to discover the destination's MAC address, then sends the frame directly. No router involved. In cloud VPCs, the hypervisor handles this — virtual NICs communicate without leaving the host in many implementations.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Layer 3 — Different Subnet <span class="card-tag tag-amber">Routed</span></div>
+        <p>When subnets differ, the OS forwards the packet to its <strong>default gateway</strong> (the router's IP on that subnet, e.g. <code>10.0.1.1</code>). The router reads the destination IP, looks up its routing table, and forwards to the next hop. This repeats until the packet reaches its destination or is dropped.</p>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">NAT — Private to Internet <span class="card-tag tag-green">Outbound</span></div>
+        <p><strong>Network Address Translation</strong> allows private IPs to reach the internet. The NAT gateway replaces the packet's private source IP with its own public IP, maintains a translation table, and rewrites the return traffic. The internet sees only the NAT gateway's IP — internal topology is hidden.</p>
+      </div>
+      <div class="card card-accent-red">
+        <div class="card-title">DNS — Names to IPs <span class="card-tag tag-red">Essential</span></div>
+        <p>Before any packet is sent, the OS resolves the hostname to an IP via DNS. In a VPC, there's a built-in resolver at <code>169.254.169.253</code> (AWS) or the second IP of your VPC range. Kubernetes has its own internal DNS (CoreDNS) that resolves service names to cluster IPs.</p>
+      </div>
+    </div>
+
+    <h3>TCP Connection: The Three-Way Handshake</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">TCP Handshake &amp; Stateful Tracking</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">Client (10.0.1.5)          Gateway / Firewall          Server (10.0.2.10:443)
+
+<span class="at">── SYN ──────────────────────────────────────────────────────►</span>
+   seq=1000                  <span class="cm">  [NEW connection tracked]</span>
+                                                               <span class="fn">← SYN-ACK ──</span>
+                              <span class="cm">  [ESTABLISHED in state table]</span>   seq=5000, ack=1001
+<span class="at">── ACK ──────────────────────────────────────────────────────►</span>
+   ack=5001
+   <span class="cm"># Connection now ESTABLISHED. Data flows.</span>
+
+<span class="cm"># Stateful firewalls (Security Groups, iptables with conntrack) track this.</span>
+<span class="cm"># Return traffic (SYN-ACK, data) is AUTO-ALLOWED because the connection state is known.</span>
+<span class="cm"># You do NOT need a separate inbound rule for the return traffic.</span>
+
+<span class="cm"># STATELESS firewalls (NACLs) do NOT track state.</span>
+<span class="cm"># You MUST explicitly allow both directions: outbound rule + inbound rule for ephemeral ports.</span>
+<span class="cm"># Ephemeral (return) ports: 1024-65535 (client OS chooses randomly from this range)</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 04 VPC ══ -->
+  <section id="vpc">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div class="section-title-block">
+        <h2>VPC Architecture</h2>
+        <div class="section-sub">// VIRTUAL PRIVATE CLOUD — YOUR ISOLATED NETWORK</div>
+      </div>
+    </div>
+
+    <p class="prose">A Virtual Private Cloud (VPC) is a logically isolated network you define in the cloud. You choose the CIDR block, divide it into subnets across availability zones, and control all routing and access rules. Think of it as your private data center network, defined entirely in software.</p>
+
+    <div class="diagram">
+      <div class="diagram-title">Standard 3-tier VPC layout</div>
+      <div class="net-diagram">
+<span class="d-muted">┌─────────────────────────────────────────────────────────────────────┐</span>
+<span class="d-muted">│</span>  <span class="d-blue">VPC  10.0.0.0/16</span>                                                   <span class="d-muted">│</span>
+<span class="d-muted">│</span>                                                                       <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">┌──────────────────────────────────────────────────────────────┐</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span>  <span class="d-green">PUBLIC SUBNETS</span>  (10.0.1.0/24, 10.0.2.0/24 — one per AZ)       <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span>  <span class="d-green">Load Balancer</span>  |  <span class="d-green">NAT Gateway</span>  |  <span class="d-green">Bastion Host</span>              <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span>  route: 0.0.0.0/0 → <span class="d-blue">Internet Gateway</span>                          <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">└──────────────────────────────────────────────────────────────┘</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>              <span class="d-blue">↕ (LB forwards traffic)</span>                                <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">┌──────────────────────────────────────────────────────────────┐</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span>  <span class="d-amber">PRIVATE SUBNETS</span>  (10.0.10.0/24, 10.0.11.0/24 — one per AZ)  <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span>  <span class="d-amber">App Servers / Kubernetes Nodes / API Services</span>                <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span>  route: 0.0.0.0/0 → <span class="d-green">NAT Gateway</span>  (outbound only)              <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">└──────────────────────────────────────────────────────────────┘</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>              <span class="d-amber">↕ (app queries database)</span>                               <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">┌──────────────────────────────────────────────────────────────┐</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span>  <span class="d-red">ISOLATED SUBNETS</span>  (10.0.20.0/24, 10.0.21.0/24)               <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span>  <span class="d-red">Databases (RDS, Redis, Elasticsearch)</span>                        <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span>  <span class="d-red">NO route to internet — no NAT, no IGW</span>                        <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">└──────────────────────────────────────────────────────────────┘</span>   <span class="d-muted">│</span>
+<span class="d-muted">└─────────────────────────────────────────────────────────────────────┘</span>
+                     <span class="d-blue">│ Internet Gateway │</span>
+                     <span class="d-muted">──────── Internet ────────</span></div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card card-accent-green">
+        <div class="card-title">Public Subnet <span class="card-tag tag-green">Internet-Facing</span></div>
+        <p>Has a route to the Internet Gateway. Resources here can have public IPs. Use for: load balancers, NAT gateways, bastion hosts. <strong>Never</strong> put databases or app servers here.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Private Subnet <span class="card-tag tag-amber">Outbound Only</span></div>
+        <p>Routes outbound traffic through NAT gateway (can reach internet, but internet cannot reach in). Use for: app servers, EKS/GKE nodes, microservices. The right home for compute.</p>
+      </div>
+      <div class="card card-accent-red">
+        <div class="card-title">Isolated Subnet <span class="card-tag tag-red">No Internet</span></div>
+        <p>No route to internet at all — not even NAT. Only reachable from within the VPC. Use for: databases, secrets stores, HSMs. If a DB doesn't need internet, remove the route.</p>
+      </div>
+    </div>
+
+    <div class="callout danger">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Multi-AZ is not optional:</strong> Always spread public and private subnets across at least two Availability Zones. A single-AZ architecture fails entirely when that AZ has a hardware issue. Your load balancers, NAT gateways, and EKS nodes should all exist in ≥2 AZs.</div>
+    </div>
+  </section>
+
+  <!-- ══ 05 INGRESS EGRESS ══ -->
+  <section id="ingress-egress">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div class="section-title-block">
+        <h2>Ingress &amp; Egress</h2>
+        <div class="section-sub">// INBOUND VS OUTBOUND — WHO INITIATES</div>
+      </div>
+    </div>
+
+    <p class="prose"><strong>Ingress</strong> is traffic flowing <em>into</em> a resource. <strong>Egress</strong> is traffic flowing <em>out</em>. The distinction matters enormously for security rules: you control what can reach your resources (ingress) and what your resources can reach (egress). In cloud networking, these are configured at the security group, NACL, and routing layer.</p>
+
+    <div class="compare-grid">
+      <div class="compare-block compare-old">
+        <div class="compare-header">← Ingress (Inbound)</div>
+        <div class="compare-body">
+          <ul>
+            <li>Traffic arriving at your resource</li>
+            <li>Examples: user HTTP request, SSH connection, DB query from app</li>
+            <li>Security groups check this for ALLOW rules</li>
+            <li>Load balancer → app server is ingress to the app server</li>
+            <li>SYN packet that starts a TCP connection</li>
+            <li>Rate-limited by WAF, DDoS protection</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-block compare-new">
+        <div class="compare-header">→ Egress (Outbound)</div>
+        <div class="compare-body">
+          <ul>
+            <li>Traffic leaving your resource</li>
+            <li>Examples: app calling external API, downloading packages, DNS queries</li>
+            <li>Often overlooked — attackers exploit unrestricted egress for C2/exfil</li>
+            <li>Goes through NAT gateway if resource is in private subnet</li>
+            <li>Filter via firewall, proxy, or DNS allowlisting</li>
+            <li>Lock down to known destinations (egress allowlist)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Internet Gateway vs NAT Gateway</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Component</th><th>Direction</th><th>Who Has a Public IP</th><th>Use For</th></tr>
+        <tr>
+          <td><strong>Internet Gateway (IGW)</strong></td>
+          <td>Bidirectional</td>
+          <td>The resource itself must have a public IP</td>
+          <td>Public subnets — load balancers, bastion hosts that need inbound from internet</td>
+        </tr>
+        <tr>
+          <td><strong>NAT Gateway</strong></td>
+          <td>Outbound only</td>
+          <td>The NAT gateway has the public IP; private resources stay private</td>
+          <td>Private subnet resources that need to call the internet (e.g., download packages, call APIs)</td>
+        </tr>
+        <tr>
+          <td><strong>VPC Endpoint (AWS)</strong></td>
+          <td>Internal only</td>
+          <td>No public IP involved — traffic stays on AWS backbone</td>
+          <td>Access S3, DynamoDB, SSM, STS without internet routing. Cheaper + private.</td>
+        </tr>
+        <tr>
+          <td><strong>Private Link</strong></td>
+          <td>Internal only</td>
+          <td>No public IP — interface endpoint in your VPC</td>
+          <td>Access other VPCs or partner services privately across the AWS network.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout warning">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Egress is an attack vector:</strong> Ransomware and malware need outbound connectivity to phone home to C2 servers, exfiltrate data, and pull in additional payloads. If your workloads only need to call specific APIs, restrict egress to exactly those domains/IPs. Use a NAT gateway + security group egress rules or a dedicated egress proxy with allowlisting.</div>
+    </div>
+  </section>
+
+  <!-- ══ 06 ROUTE TABLES ══ -->
+  <section id="routetables">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div class="section-title-block">
+        <h2>Route Tables &amp; Gateways</h2>
+        <div class="section-sub">// HOW THE VPC DECIDES WHERE TO SEND PACKETS</div>
+      </div>
+    </div>
+
+    <p class="prose">Every subnet in a VPC is associated with a <strong>route table</strong> — a list of destination CIDR → target mappings. When a packet leaves a resource, the VPC looks up the most specific matching route. The "local" route (your VPC CIDR) is always present and non-deletable.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Route Table Examples — AWS</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## Public Subnet Route Table</span>
+Destination          Target
+───────────────────  ─────────────────────────────────────
+<span class="at">10.0.0.0/16</span>          local         <span class="cm"># VPC-local traffic stays inside VPC</span>
+<span class="at">0.0.0.0/0</span>            igw-xxxxxxxx  <span class="cm"># Everything else → Internet Gateway</span>
+
+<span class="cm"># The 0.0.0.0/0 route is what makes this subnet "public"</span>
+<span class="cm"># Resources here can receive inbound if they have a public IP</span>
+
+<span class="cm">## Private Subnet Route Table</span>
+Destination          Target
+───────────────────  ─────────────────────────────────────
+<span class="at">10.0.0.0/16</span>          local
+<span class="at">0.0.0.0/0</span>            nat-xxxxxxxx  <span class="cm"># Outbound → NAT Gateway (then to internet)</span>
+
+<span class="cm"># No inbound from internet possible. Outbound works through NAT.</span>
+
+<span class="cm">## Isolated Subnet Route Table (database)</span>
+Destination          Target
+───────────────────  ─────────────────────────────────────
+<span class="at">10.0.0.0/16</span>          local         <span class="cm"># ONLY within VPC. No internet route at all.</span>
+
+<span class="cm">## Most specific route wins (longest prefix match)</span>
+<span class="cm"># 10.0.5.0/24 → peering-connection  takes precedence over 0.0.0.0/0 → igw</span>
+<span class="cm"># This is how VPC peering and Transit Gateway routes work</span></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-blue">
+        <div class="card-title">VPC Peering <span class="card-tag tag-blue">VPC-to-VPC</span></div>
+        <p>Direct routing between two VPCs (same or different accounts/regions). Add routes in both VPCs pointing to each other's CIDR via the peering connection. <strong>Non-transitive</strong> — A↔B and B↔C does not give A↔C. Use Transit Gateway for hub-and-spoke topologies.</p>
+      </div>
+      <div class="card card-accent-teal">
+        <div class="card-title">Transit Gateway <span class="card-tag tag-teal">Hub-and-Spoke</span></div>
+        <p>Central routing hub connecting multiple VPCs, on-premises networks (via VPN/DX), and accounts. Transitive routing — any spoke can reach any other. Centralize egress, inspection, and routing policy. Far simpler than a mesh of peering connections.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 07 SG & NACL ══ -->
+  <section id="sg-nacl">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div class="section-title-block">
+        <h2>Security Groups &amp; NACLs</h2>
+        <div class="section-sub">// TWO LAYERS OF FIREWALL — KNOW THE DIFFERENCE</div>
+      </div>
+    </div>
+
+    <p class="prose">AWS (and equivalents in Azure/GCP) provides two firewall mechanisms at different layers. <strong>Security Groups</strong> are stateful, virtual firewalls attached to individual resources (ENIs). <strong>Network ACLs</strong> are stateless, subnet-level guards applied before security groups. They complement each other.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Dimension</th><th>Security Group</th><th>Network ACL (NACL)</th></tr>
+        <tr>
+          <td><strong>Level</strong></td>
+          <td>Instance / ENI (virtual NIC)</td>
+          <td>Subnet perimeter</td>
+        </tr>
+        <tr>
+          <td><strong>Statefulness</strong></td>
+          <td class="ok">Stateful — return traffic auto-allowed</td>
+          <td class="no">Stateless — must allow both directions explicitly</td>
+        </tr>
+        <tr>
+          <td><strong>Default behavior</strong></td>
+          <td class="no">Deny all inbound, allow all outbound</td>
+          <td class="ok">Allow all inbound and outbound (by default)</td>
+        </tr>
+        <tr>
+          <td><strong>Rules</strong></td>
+          <td>Allow rules only (no explicit deny)</td>
+          <td>Allow and Deny rules, evaluated in number order</td>
+        </tr>
+        <tr>
+          <td><strong>Rule evaluation</strong></td>
+          <td>All rules evaluated; most permissive wins</td>
+          <td>First matching rule wins (numbered, stop-on-match)</td>
+        </tr>
+        <tr>
+          <td><strong>Source/Dest</strong></td>
+          <td>IP CIDR <em>or</em> another Security Group ID</td>
+          <td>IP CIDR only</td>
+        </tr>
+        <tr>
+          <td><strong>Primary use</strong></td>
+          <td>Instance-level micro-segmentation, app port control</td>
+          <td>Subnet-level subnet-to-subnet blocking, emergency deny</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Security Group Best Practices</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Security Group Rules — Three-Tier App</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## ALB Security Group (public-facing load balancer)</span>
+Inbound:
+  <span class="at">HTTP  TCP 80   0.0.0.0/0</span>   <span class="cm"># Allow HTTP from anywhere (redirect to HTTPS)</span>
+  <span class="at">HTTPS TCP 443  0.0.0.0/0</span>   <span class="cm"># Allow HTTPS from anywhere</span>
+Outbound:
+  <span class="fn">TCP  8080  sg-app-servers</span>    <span class="cm"># ONLY to app server security group on app port</span>
+
+<span class="cm">## App Server Security Group</span>
+Inbound:
+  <span class="fn">TCP  8080  sg-alb</span>            <span class="cm"># ONLY from ALB security group — NOT 0.0.0.0/0</span>
+  <span class="fn">TCP  22    sg-bastion</span>         <span class="cm"># SSH only from bastion security group</span>
+Outbound:
+  <span class="fn">TCP  5432  sg-database</span>        <span class="cm"># PostgreSQL to DB tier</span>
+  <span class="fn">TCP  6379  sg-redis</span>           <span class="cm"># Redis cache</span>
+  <span class="at">TCP  443   0.0.0.0/0</span>          <span class="cm"># HTTPS egress for API calls (restrict further if possible)</span>
+
+<span class="cm">## Database Security Group</span>
+Inbound:
+  <span class="fn">TCP  5432  sg-app-servers</span>     <span class="cm"># ONLY from app tier — never 0.0.0.0/0</span>
+  <span class="fn">TCP  5432  sg-bastion</span>         <span class="cm"># Allow DBA access through bastion (optional, restrict by user)</span>
+Outbound:
+  <span class="cm"># Databases rarely need outbound. Restrict to nothing or specific monitoring agents.</span>
+
+<span class="cm">## Key pattern: source/dest is a Security Group ID, not a CIDR range.</span>
+<span class="cm">## sg-alb automatically includes all IPs assigned to instances in that group.</span>
+<span class="cm">## This is dynamic — scales automatically, no manual IP updates.</span></div>
+    </div>
+
+    <div class="callout danger">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Never use 0.0.0.0/0 for SSH or RDP:</strong> Port 22 and 3389 open to the internet are attacked within seconds of being exposed. Automated scanners run 24/7. Use a bastion host or VPN for SSH access. If you must debug, restrict to your specific IP (<code>/32</code>) and remove the rule immediately after.</div>
+    </div>
+  </section>
+
+  <!-- ══ 08 K8S MODEL ══ -->
+  <section id="k8s-model">
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <div class="section-title-block">
+        <h2>Kubernetes Network Model</h2>
+        <div class="section-sub">// FLAT POD NETWORK, CNI PLUGINS, NODE IPS</div>
+      </div>
+    </div>
+
+    <p class="prose">Kubernetes imposes a networking model with three requirements: every Pod gets its own unique IP, all Pods can communicate with all other Pods without NAT, and nodes can communicate with all Pods. This flat model is implemented by the <strong>CNI (Container Network Interface)</strong> plugin — Cilium, Calico, Flannel, or the cloud-native option (Amazon VPC CNI, GKE Dataplane V2).</p>
+
+    <div class="diagram">
+      <div class="diagram-title">Kubernetes network layers</div>
+      <div class="net-diagram">
+<span class="d-muted">┌─────────────────────────── Node A (10.0.10.5) ─────────────────────────────┐</span>
+<span class="d-muted">│</span>                                                                             <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-blue">Pod: payment-api</span>     <span class="d-blue">Pod: auth-service</span>    <span class="d-blue">Pod: nginx-proxy</span>            <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-blue">IP: 10.0.100.5</span>       <span class="d-blue">IP: 10.0.100.6</span>       <span class="d-blue">IP: 10.0.100.7</span>              <span class="d-muted">│</span>
+<span class="d-muted">│</span>     <span class="d-muted">│                     │                     │</span>                            <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-amber">veth0</span>               <span class="d-amber">veth1</span>               <span class="d-amber">veth2</span>   <span class="d-muted">← virtual ethernet</span>    <span class="d-muted">│</span>
+<span class="d-muted">│</span>     <span class="d-muted">└────────────────────┴─────────────────────┘</span>                            <span class="d-muted">│</span>
+<span class="d-muted">│</span>                         <span class="d-amber">cbr0 / bridge</span>         <span class="d-muted">← CNI bridge</span>              <span class="d-muted">│</span>
+<span class="d-muted">│</span>                              <span class="d-muted">│</span>                                                  <span class="d-muted">│</span>
+<span class="d-muted">│</span>                         <span class="d-green">eth0 (node NIC)</span>        <span class="d-muted">← VPC ENI / vNIC</span>          <span class="d-muted">│</span>
+<span class="d-muted">└─────────────────────────────────────────────────────────────────────────────┘</span>
+                               <span class="d-muted">│</span>  VPC Network
+          <span class="d-muted">┌──────────────────┘</span>
+          <span class="d-muted">│</span>
+<span class="d-muted">┌─────────────── Node B (10.0.11.5) ──────────────────┐</span>
+<span class="d-muted">│</span>  <span class="d-blue">Pod: database-proxy</span>    <span class="d-blue">Pod: worker</span>                 <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-blue">IP: 10.0.101.3</span>         <span class="d-blue">IP: 10.0.101.4</span>              <span class="d-muted">│</span>
+<span class="d-muted">└─────────────────────────────────────────────────────┘</span>
+
+<span class="d-muted">Cross-node pod communication: payment-api (10.0.100.5) → database-proxy (10.0.101.3)</span>
+<span class="d-teal">  Via CNI overlay (VXLAN/Geneve) or native VPC routing (AWS VPC CNI uses real VPC IPs)</span></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-blue">
+        <div class="card-title">AWS VPC CNI <span class="card-tag tag-blue">Native</span></div>
+        <p>Pods get real VPC IP addresses (from your subnet CIDR). No overlay network — pod-to-pod traffic uses VPC routing directly. Security Groups can be applied per-pod. Requires enough IPs in your subnets — plan for <code>max_pods_per_node × node_count</code> free IPs.</p>
+      </div>
+      <div class="card card-accent-teal">
+        <div class="card-title">Cilium / Calico <span class="card-tag tag-teal">Overlay / eBPF</span></div>
+        <p>CNI plugins that create a virtual overlay network. Pods get IPs from a pod CIDR (separate from VPC CIDR). Cilium uses eBPF for kernel-level enforcement — fastest dataplane. Both support Kubernetes NetworkPolicy and extended policy (CiliumNetworkPolicy).</p>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>kube-proxy vs eBPF:</strong> By default, Kubernetes uses <code>kube-proxy</code> (iptables rules) to handle Service IP routing. Cilium in eBPF mode replaces kube-proxy entirely with kernel-level load balancing — faster, more observable, supports network policies at the same layer. Recommended for production EKS clusters.</div>
+    </div>
+  </section>
+
+  <!-- ══ 09 K8S SERVICES ══ -->
+  <section id="k8s-services">
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <div class="section-title-block">
+        <h2>Kubernetes Services &amp; DNS</h2>
+        <div class="section-sub">// STABLE ENDPOINT FOR EPHEMERAL PODS</div>
+      </div>
+    </div>
+
+    <p class="prose">Pods are ephemeral — they die and respawn with new IPs. A <strong>Service</strong> provides a stable virtual IP (ClusterIP) and DNS name. Traffic to the service is load-balanced across healthy matching pods. CoreDNS resolves <code>my-service.my-namespace.svc.cluster.local</code> to the ClusterIP.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Service Type</th><th>Reachable From</th><th>How</th><th>Use For</th></tr>
+        <tr>
+          <td><strong>ClusterIP</strong></td>
+          <td>Inside cluster only</td>
+          <td>Virtual IP in cluster CIDR (e.g. 172.20.x.x)</td>
+          <td>Internal service-to-service communication. Default type.</td>
+        </tr>
+        <tr>
+          <td><strong>NodePort</strong></td>
+          <td>Node IP + port (30000-32767)</td>
+          <td>Forwards node's port to pod</td>
+          <td>Dev/testing only. Exposes a port on every node — don't use in prod.</td>
+        </tr>
+        <tr>
+          <td><strong>LoadBalancer</strong></td>
+          <td>Internet or VPC (depends on annotation)</td>
+          <td>Provisions cloud LB (ALB, NLB, GLB)</td>
+          <td>External access. Use with <code>internal: true</code> annotation for VPC-only LBs.</td>
+        </tr>
+        <tr>
+          <td><strong>ExternalName</strong></td>
+          <td>Inside cluster only</td>
+          <td>CNAME alias to external DNS name</td>
+          <td>Abstract external dependencies (e.g., RDS endpoint) behind a service name.</td>
+        </tr>
+        <tr>
+          <td><strong>Headless</strong></td>
+          <td>Inside cluster only</td>
+          <td>DNS returns pod IPs directly, no ClusterIP</td>
+          <td>StatefulSets, databases with per-pod addressing (e.g., Kafka, Cassandra).</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Service YAML — ClusterIP + DNS resolution</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Service
+<span class="at">metadata</span>:
+  name: payment-api
+  namespace: production
+<span class="at">spec</span>:
+  type: ClusterIP         <span class="cm"># default — only reachable inside cluster</span>
+  selector:
+    app: payment-api      <span class="cm"># matches pods with this label</span>
+  ports:
+    - port: 80            <span class="cm"># port clients connect to</span>
+      targetPort: 8080    <span class="cm"># port the pod actually listens on</span>
+      protocol: TCP
+
+<span class="cm">---</span>
+<span class="cm"># DNS names automatically created by CoreDNS:</span>
+<span class="cm">#   payment-api                                  (within same namespace)</span>
+<span class="cm">#   payment-api.production                       (cross-namespace short)</span>
+<span class="cm">#   payment-api.production.svc                  </span>
+<span class="cm">#   payment-api.production.svc.cluster.local    (FQDN)</span>
+<span class="cm">#</span>
+<span class="cm"># A pod in any namespace can call: http://payment-api.production/charge</span>
+<span class="cm"># kube-proxy (or Cilium) rewrites ClusterIP → pod IP + load-balances</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 10 K8S INGRESS ══ -->
+  <section id="k8s-ingress">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title-block">
+        <h2>Kubernetes Ingress &amp; External Access</h2>
+        <div class="section-sub">// GETTING TRAFFIC IN FROM OUTSIDE THE CLUSTER</div>
+      </div>
+    </div>
+
+    <p class="prose">An <strong>Ingress</strong> resource defines HTTP/HTTPS routing rules — which hostname and path routes to which Service. The <strong>Ingress Controller</strong> (nginx, AWS ALB Controller, Traefik, Istio Gateway) watches Ingress resources and programs the actual load balancer or reverse proxy.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-step-label">Internet</div>
+        <div class="flow-step-name">User Browser</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">DNS</div>
+        <div class="flow-step-name">api.example.com</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Cloud LB</div>
+        <div class="flow-step-name">ALB / NLB (Public)</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Ingress Ctrl</div>
+        <div class="flow-step-name">nginx / ALB Ctrl</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-label">Service</div>
+        <div class="flow-step-name">ClusterIP → Pods</div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Ingress Resource — TLS + Path Routing</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: Ingress
+<span class="at">metadata</span>:
+  name: main-ingress
+  namespace: production
+  annotations:
+    <span class="cm"># AWS ALB Ingress Controller annotations</span>
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing   <span class="cm"># or "internal"</span>
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: <span class="st">"443"</span>
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
+    <span class="cm"># Security: restrict source IPs at LB level</span>
+    alb.ingress.kubernetes.io/inbound-cidrs: 0.0.0.0/0
+    <span class="cm"># WAF association</span>
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:...
+<span class="at">spec</span>:
+  tls:
+    - hosts: [api.example.com, app.example.com]
+      secretName: tls-cert-secret    <span class="cm"># cert-manager or ACM</span>
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /v1/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: payment-api
+                port: { number: 80 }
+          - path: /v1/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port: { number: 80 }
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { number: 80 }</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">Internal Ingress <span class="card-tag tag-green">VPC Only</span></div>
+        <p>Set <code>scheme: internal</code> on the ALB annotation. The load balancer gets a private IP in your VPC subnets. Only reachable from within the VPC, VPN, or Direct Connect. Used for inter-service APIs or admin tools that should never be internet-accessible.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Service Mesh (Istio/Linkerd) <span class="card-tag tag-amber">Advanced</span></div>
+        <p>Adds a sidecar proxy to every pod for mTLS, traffic shaping, retries, and observability. Use <code>Gateway</code> and <code>VirtualService</code> resources instead of Ingress. Provides deep L7 control: canary deployments, circuit breaking, and identity-aware authorization across all service traffic.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 11 K8S NETPOL ══ -->
+  <section id="k8s-netpol">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div class="section-title-block">
+        <h2>Kubernetes Network Policies</h2>
+        <div class="section-sub">// MICRO-SEGMENTATION INSIDE THE CLUSTER</div>
+      </div>
+    </div>
+
+    <p class="prose">By default, all pods in a Kubernetes cluster can communicate with all other pods. <strong>NetworkPolicy</strong> resources restrict this — defining exactly which pods can talk to which other pods, on which ports. Without network policies, a compromised pod has unrestricted access to every other pod in the cluster.</p>
+
+    <div class="callout danger">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Default-allow is insecure:</strong> A cluster with no NetworkPolicy applied is flat — any pod can reach any port on any other pod. Start by applying a default-deny policy to every namespace, then explicitly allow only the required flows. Many real-world breaches involved lateral movement between pods that should have been isolated.</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">NetworkPolicy — Default Deny + Selective Allow</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Step 1: Apply default-deny to a namespace</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: default-deny-all
+  namespace: production
+<span class="at">spec</span>:
+  podSelector: {}     <span class="cm"># matches ALL pods in namespace</span>
+  policyTypes: [Ingress, Egress]
+  <span class="cm"># No ingress or egress rules = deny everything</span>
+
+<span class="fn">---</span>
+<span class="cm"># Step 2: Allow specific flows</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: allow-payment-api-ingress
+  namespace: production
+<span class="at">spec</span>:
+  podSelector:
+    matchLabels:
+      app: payment-api     <span class="cm"># applies to payment-api pods</span>
+  policyTypes: [Ingress, Egress]
+
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway    <span class="cm"># ONLY from api-gateway pod</span>
+        - namespaceSelector:
+            matchLabels:
+              name: production    <span class="cm"># AND only within production namespace</span>
+      ports:
+        - protocol: TCP
+          port: 8080
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres      <span class="cm"># to database pods</span>
+      ports:
+        - protocol: TCP
+          port: 5432
+
+    - to:                         <span class="cm"># allow DNS resolution</span>
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53</div>
+    </div>
+  </section>
+
+  <!-- ══ 12 LEAST ACCESS ══ -->
+  <section id="least-access">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div class="section-title-block">
+        <h2>Least-Port Principle</h2>
+        <div class="section-sub">// ONLY OPEN WHAT IS EXPLICITLY REQUIRED</div>
+      </div>
+    </div>
+
+    <p class="prose">Every open port and permitted IP range is a potential attack surface. The <strong>principle of least access</strong> applied to networking: open only the exact ports needed for the exact source ranges that need them. Anything else is denied by default. Document every exception.</p>
+
+    <h3>Port Allowlisting Framework</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Port</th><th>Protocol</th><th>Allowed From</th><th>Justification Required</th></tr>
+        <tr><td><code>443</code></td><td>HTTPS</td><td><code>0.0.0.0/0</code> — load balancer only</td><td>Public web traffic — yes, restricted to LB SG</td></tr>
+        <tr><td><code>80</code></td><td>HTTP</td><td><code>0.0.0.0/0</code> — load balancer only</td><td>Redirect to HTTPS — yes, restricted to LB SG</td></tr>
+        <tr><td><code>22</code></td><td>SSH</td><td>Bastion SG only</td><td>Admin access — via bastion, never from internet</td></tr>
+        <tr><td><code>5432</code></td><td>PostgreSQL</td><td>App server SG only</td><td>DB queries — restricted to app tier SG</td></tr>
+        <tr><td><code>6379</code></td><td>Redis</td><td>App server SG only</td><td>Cache — restricted to app tier SG</td></tr>
+        <tr><td><code>3306</code></td><td>MySQL</td><td>App server SG only</td><td>DB queries — never to internet</td></tr>
+        <tr><td><code>8080/8443</code></td><td>HTTP/S internal</td><td>LB SG or specific SG</td><td>App port — never directly internet-exposed</td></tr>
+        <tr><td><code>3389</code></td><td>RDP</td><td><span class="no">BLOCKED — use SSM</span></td><td>Never expose RDP to internet or VPC without PAM</td></tr>
+        <tr><td><code>0-65535</code></td><td>ALL</td><td><span class="no">NEVER 0.0.0.0/0</span></td><td>Never allow all ports from anywhere</td></tr>
+      </table>
+    </div>
+
+    <h3>IP Allowlisting</h3>
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">Source IP Restriction <span class="card-tag tag-green">Do This</span></div>
+        <ul>
+          <li>Admin portals: restrict to office IP ranges + VPN (<code>/32</code> or <code>/24</code>)</li>
+          <li>CI/CD pipelines: restrict to known runner IPs</li>
+          <li>Monitoring agents: restrict to monitoring CIDR</li>
+          <li>Cross-account: restrict to specific account's VPC CIDR</li>
+          <li>Webhook receivers: restrict to vendor's published CIDR list (GitHub, Stripe, etc.)</li>
+        </ul>
+      </div>
+      <div class="card card-accent-red">
+        <div class="card-title">Common Mistakes <span class="card-tag tag-red">Avoid</span></div>
+        <ul>
+          <li><strong>0.0.0.0/0 on non-HTTP ports</strong> — instant scanning target</li>
+          <li><strong>Dev rules left in prod</strong> — audit SGs quarterly</li>
+          <li><strong>Wide CIDR for "internal"</strong> — use SG references instead of subnets</li>
+          <li><strong>No egress rules</strong> — restrict outbound, not just inbound</li>
+          <li><strong>Shared SGs across tiers</strong> — each tier gets its own SG</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Terraform — Minimal Security Group Example</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Web tier — only HTTPS from internet (via ALB)</span>
+resource <span class="st">"aws_security_group"</span> <span class="st">"alb"</span> {
+  name   = <span class="st">"alb-sg"</span>
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port   = <span class="nu">443</span>
+    to_port     = <span class="nu">443</span>
+    protocol    = <span class="st">"tcp"</span>
+    cidr_blocks = [<span class="st">"0.0.0.0/0"</span>]    <span class="cm"># HTTPS public</span>
+  }
+  ingress {
+    from_port   = <span class="nu">80</span>
+    to_port     = <span class="nu">80</span>
+    protocol    = <span class="st">"tcp"</span>
+    cidr_blocks = [<span class="st">"0.0.0.0/0"</span>]    <span class="cm"># HTTP → redirect to HTTPS</span>
+  }
+  egress {
+    from_port       = <span class="nu">8080</span>
+    to_port         = <span class="nu">8080</span>
+    protocol        = <span class="st">"tcp"</span>
+    security_groups = [aws_security_group.app.id]  <span class="cm"># only to app tier</span>
+  }
+}
+
+<span class="cm"># App tier — only from ALB</span>
+resource <span class="st">"aws_security_group"</span> <span class="st">"app"</span> {
+  name   = <span class="st">"app-sg"</span>
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port       = <span class="nu">8080</span>
+    to_port         = <span class="nu">8080</span>
+    protocol        = <span class="st">"tcp"</span>
+    security_groups = [aws_security_group.alb.id]  <span class="cm"># only from ALB SG</span>
+  }
+  egress {
+    from_port       = <span class="nu">5432</span>
+    to_port         = <span class="nu">5432</span>
+    protocol        = <span class="st">"tcp"</span>
+    security_groups = [aws_security_group.db.id]   <span class="cm"># only to DB</span>
+  }
+  egress {
+    from_port   = <span class="nu">443</span>
+    to_port     = <span class="nu">443</span>
+    protocol    = <span class="st">"tcp"</span>
+    cidr_blocks = [<span class="st">"0.0.0.0/0"</span>]                  <span class="cm"># HTTPS egress for external APIs</span>
+  }
+}
+
+<span class="cm"># DB tier — only from app tier</span>
+resource <span class="st">"aws_security_group"</span> <span class="st">"db"</span> {
+  name   = <span class="st">"db-sg"</span>
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port       = <span class="nu">5432</span>
+    to_port         = <span class="nu">5432</span>
+    protocol        = <span class="st">"tcp"</span>
+    security_groups = [aws_security_group.app.id]  <span class="cm"># only from app</span>
+  }
+  <span class="cm"># No egress rules = no outbound traffic at all</span>
+}</div>
+    </div>
+  </section>
+
+  <!-- ══ 13 BASTION ══ -->
+  <section id="bastion">
+    <div class="section-header">
+      <div class="section-num">13</div>
+      <div class="section-title-block">
+        <h2>Bastion Hosts</h2>
+        <div class="section-sub">// SECURE JUMP SERVER FOR ADMIN ACCESS</div>
+      </div>
+    </div>
+
+    <p class="prose">A <strong>bastion host</strong> (jump server) is a hardened, internet-facing instance whose sole purpose is to be the single entry point for administrative SSH/RDP access into your private network. Instead of exposing all your servers to SSH from the internet, you expose only the bastion — a small, auditable attack surface. All admin access flows through it.</p>
+
+    <div class="diagram">
+      <div class="diagram-title">Bastion host access pattern</div>
+      <div class="net-diagram">
+  Admin (your laptop)
+         <span class="d-blue">│  SSH to bastion public IP</span>
+         <span class="d-blue">▼</span>
+<span class="d-muted">┌──────────────── Public Subnet ────────────────────────────────────┐</span>
+<span class="d-muted">│</span>  <span class="d-amber">Bastion Host</span>                                                      <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-amber">Public IP: 1.2.3.4</span>    <span class="d-amber">Private IP: 10.0.1.10</span>                    <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-amber">SG: allow SSH from YOUR_IP/32 only</span>                               <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">Hardened OS, no other services, session logging enabled</span>          <span class="d-muted">│</span>
+<span class="d-muted">└──────────────────────────────────────────────────────────────────┘</span>
+         <span class="d-green">│  SSH hop (ProxyJump / -J flag)</span>
+         <span class="d-green">▼</span>
+<span class="d-muted">┌──────────────── Private Subnet ──────────────────────────────────┐</span>
+<span class="d-muted">│</span>  <span class="d-blue">App Server</span>  <span class="d-blue">DB Server</span>  <span class="d-blue">K8s Node</span>                               <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">SG: allow SSH only from bastion SG</span>                               <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">No public IPs. Not reachable from internet.</span>                      <span class="d-muted">│</span>
+<span class="d-muted">└──────────────────────────────────────────────────────────────────┘</span></div>
+    </div>
+
+    <h3>Bastion Hardening Checklist</h3>
+    <div class="grid-2">
+      <div class="card card-accent-blue">
+        <div class="card-title">Bastion Configuration <span class="card-tag tag-blue">Required</span></div>
+        <ul>
+          <li>Minimal OS — no unnecessary packages or services</li>
+          <li>SSH key-based auth only — disable password authentication</li>
+          <li>MFA on SSH login (e.g., <code>google-authenticator</code> PAM module)</li>
+          <li>Restrict inbound SSH to known IPs only (<code>/32</code> of your office/VPN)</li>
+          <li>No internet egress — bastion doesn't need outbound internet</li>
+          <li>Automatic session logging (audit trail of all commands)</li>
+          <li>No persistent local credentials — use IAM roles or certificate auth</li>
+          <li>Auto-patch via SSM or unattended-upgrades</li>
+        </ul>
+      </div>
+      <div class="card card-accent-purple">
+        <div class="card-title">Modern Alternatives <span class="card-tag tag-purple">Preferred</span></div>
+        <ul>
+          <li><strong>AWS SSM Session Manager</strong> — browser/CLI shell into private instances with no SSH port open at all. Uses IAM auth, full audit log, no bastion needed.</li>
+          <li><strong>Teleport</strong> — open-source bastion replacement with SSO, RBAC, session recording, and K8s access proxy.</li>
+          <li><strong>Boundary (HashiCorp)</strong> — dynamic credential injection, just-in-time access, identity-based tunneling.</li>
+          <li><strong>ZTNA / Client VPN</strong> — give engineers network-level access to the VPC, then connect directly. No jump host needed.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">SSH Config — ProxyJump through Bastion</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># ~/.ssh/config — client-side configuration</span>
+
+<span class="cm"># Bastion host definition</span>
+Host bastion-prod
+  HostName       1.2.3.4          <span class="cm"># bastion public IP</span>
+  User           ec2-user
+  IdentityFile   ~/.ssh/prod_key.pem
+  ServerAliveInterval 60
+
+<span class="cm"># Private instances — jump through bastion automatically</span>
+Host 10.0.*.*
+  User           ec2-user
+  IdentityFile   ~/.ssh/prod_key.pem
+  ProxyJump      bastion-prod      <span class="cm"># transparently tunnels through bastion</span>
+
+<span class="cm"># Usage: just ssh directly to private IP</span>
+<span class="cm"># $ ssh 10.0.10.25    ← works! tunnels through bastion automatically</span>
+
+<span class="cm"># Port forwarding for database access</span>
+<span class="cm"># $ ssh -L 5432:my-rds.cluster.us-east-1.rds.amazonaws.com:5432 bastion-prod</span>
+<span class="cm"># Then: psql -h 127.0.0.1 -p 5432 -U postgres  ← connects via bastion tunnel</span>
+
+<span class="cm">---</span>
+<span class="cm"># AWS SSM alternative (no open ports required)</span>
+<span class="cm"># $ aws ssm start-session --target i-0abc1234def56789</span>
+<span class="cm"># Tunnel a port via SSM (no SSH port 22 needed at all):</span>
+<span class="cm"># $ aws ssm start-session --target i-0abc123 \</span>
+<span class="cm">#     --document-name AWS-StartPortForwardingSessionToRemoteHost \</span>
+<span class="cm">#     --parameters '{"host":["my-rds.cluster.rds.amazonaws.com"],"portNumber":["5432"],"localPortNumber":["5432"]}'</span></div>
+    </div>
+  </section>
+
+  <!-- ══ 14 PRIVATE ONLY ══ -->
+  <section id="private-only">
+    <div class="section-header">
+      <div class="section-num">14</div>
+      <div class="section-title-block">
+        <h2>Private-Only Architecture</h2>
+        <div class="section-sub">// MAXIMUM ISOLATION — ZERO PUBLIC EXPOSURE</div>
+      </div>
+    </div>
+
+    <p class="prose">The gold standard for sensitive workloads: no resources have public IPs, no inbound traffic from the internet, all access is through VPN or private endpoints. Traffic between resources and AWS services (S3, STS, ECR) goes through <strong>VPC Endpoints</strong> — never touching the internet.</p>
+
+    <div class="diagram">
+      <div class="diagram-title">Private-only EKS cluster — zero public exposure</div>
+      <div class="net-diagram">
+  <span class="d-muted">Internet</span>
+       <span class="d-muted">│</span>
+       <span class="d-amber">▼ (developers only, through VPN)</span>
+<span class="d-muted">┌───────────── VPC 10.0.0.0/16 ────────────────────────────────────────────┐</span>
+<span class="d-muted">│</span>                                                                           <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-amber">Client VPN Endpoint</span>  ← devs connect here, gets 10.0.200.x/16 IP    <span class="d-muted">│</span>
+<span class="d-muted">│</span>                                                                           <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">┌──────────────────────────────────────────────────────────────────┐</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span> <span class="d-amber">Private Subnet A (10.0.10.0/24)     Private Subnet B (10.0.11.0/24)</span> <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span> <span class="d-amber">EKS Nodes + Pods            EKS Nodes + Pods</span>                      <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span> <span class="d-amber">Internal ALB only</span>          <span class="d-amber">Internal ALB only</span>                      <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">└──────────────────────────────────────────────────────────────────┘</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>          <span class="d-green">│ VPC Endpoints (no internet needed)</span>                            <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-green">S3 Endpoint  │  ECR Endpoint  │  SSM Endpoint  │  STS Endpoint</span>        <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">┌──────────────────────────────────────────────────────────────────┐</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span> <span class="d-red">Isolated DB Subnet (10.0.20.0/24)</span>                                 <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">│</span> <span class="d-red">RDS  │  ElastiCache  │  OpenSearch    NO internet route</span>           <span class="d-muted">│</span>   <span class="d-muted">│</span>
+<span class="d-muted">│</span>  <span class="d-muted">└──────────────────────────────────────────────────────────────────┘</span>   <span class="d-muted">│</span>
+<span class="d-muted">└───────────────────────────────────────────────────────────────────────────┘</span>
+  <span class="d-muted">No IGW attached. No NAT Gateway. No public IPs on any resource.</span>
+  <span class="d-muted">EKS API server endpoint: private only (no public endpoint).</span></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-blue">
+        <div class="card-title">VPC Endpoints to Know <span class="card-tag tag-blue">AWS</span></div>
+        <ul>
+          <li><code>com.amazonaws.region.s3</code> — S3 Gateway endpoint (free)</li>
+          <li><code>com.amazonaws.region.ecr.api</code> — pull container images privately</li>
+          <li><code>com.amazonaws.region.ecr.dkr</code> — ECR Docker registry</li>
+          <li><code>com.amazonaws.region.ssm</code> — SSM agent communication</li>
+          <li><code>com.amazonaws.region.ec2messages</code> — SSM run command</li>
+          <li><code>com.amazonaws.region.sts</code> — assume IAM roles privately</li>
+          <li><code>com.amazonaws.region.secretsmanager</code> — fetch secrets</li>
+          <li><code>com.amazonaws.region.logs</code> — CloudWatch Logs</li>
+        </ul>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">Private EKS API Server <span class="card-tag tag-green">Hardened</span></div>
+        <ul>
+          <li>Set <code>endpointPrivateAccess: true</code>, <code>endpointPublicAccess: false</code></li>
+          <li><code>kubectl</code> from within VPC only (or VPN)</li>
+          <li>CI/CD pipelines must be inside VPC or use VPN/transit gateway</li>
+          <li>Enable <code>audit</code> logs to CloudWatch — every API call logged</li>
+          <li>Restrict authorized networks even on private endpoint</li>
+          <li>Use IRSA (IAM Roles for Service Accounts) — no node-level access keys</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 15 CHEATSHEET ══ -->
+  <section id="cheatsheet">
+    <div class="section-header">
+      <div class="section-num">15</div>
+      <div class="section-title-block">
+        <h2>Quick Reference</h2>
+        <div class="section-sub">// DECISION TREES, COMMON PATTERNS, PORTS</div>
+      </div>
+    </div>
+
+    <h3>Architecture Decision Tree</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Should this resource have a public IP?</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">Does it need to RECEIVE traffic from the internet?
+├── YES → Does it need to handle requests directly?
+│   ├── YES (e.g., you're building a CDN edge node)
+│   │    → Public subnet + public IP + security group restricting to port 443/80 only
+│   └── NO (most apps)
+│        → <span class="at">Put a Load Balancer in front. LB gets public IP, app does NOT.</span>
+│          App server: private subnet, no public IP, SG only allows LB SG.
+│
+└── NO → Private subnet
+    ├── Needs to call the internet (npm install, API calls)?
+    │   └── YES → <span class="fn">NAT Gateway in public subnet</span> + private subnet route 0.0.0.0/0 → NAT
+    │
+    ├── Only talks to other VPC resources?
+    │   └── YES → <span class="at">Isolated subnet. No internet route at all.</span>
+    │             Use VPC Endpoints for AWS services (S3, SSM, etc.)
+    │
+    └── Database / cache / secrets?
+        └── <span class="fn">ALWAYS isolated subnet. Never internet-accessible. Ever.</span></div>
+    </div>
+
+    <h3>Essential Ports Reference</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Port</th><th>Service</th><th>Open to Internet?</th><th>Notes</th></tr>
+        <tr><td><code>22</code></td>    <td>SSH</td>              <td><span class="port-pill port-closed">NEVER</span></td>  <td>Use bastion/SSM. Source: bastion SG only.</td></tr>
+        <tr><td><code>80</code></td>    <td>HTTP</td>             <td><span class="port-pill port-open">LB ONLY</span></td> <td>Only on load balancer. Redirect to 443.</td></tr>
+        <tr><td><code>443</code></td>   <td>HTTPS</td>            <td><span class="port-pill port-open">LB ONLY</span></td> <td>Only on load balancer. TLS terminates here.</td></tr>
+        <tr><td><code>3306</code></td>  <td>MySQL</td>            <td><span class="port-pill port-closed">NEVER</span></td>  <td>App SG only. Isolated subnet.</td></tr>
+        <tr><td><code>5432</code></td>  <td>PostgreSQL</td>       <td><span class="port-pill port-closed">NEVER</span></td>  <td>App SG only. Isolated subnet.</td></tr>
+        <tr><td><code>6379</code></td>  <td>Redis</td>            <td><span class="port-pill port-closed">NEVER</span></td>  <td>App SG only. Isolated subnet.</td></tr>
+        <tr><td><code>27017</code></td> <td>MongoDB</td>          <td><span class="port-pill port-closed">NEVER</span></td>  <td>App SG only. Isolated subnet.</td></tr>
+        <tr><td><code>8080</code></td>  <td>HTTP Alt</td>         <td><span class="port-pill port-closed">NEVER</span></td>  <td>Internal app port. LB SG → app SG only.</td></tr>
+        <tr><td><code>2379/2380</code></td><td>etcd (K8s)</td>   <td><span class="port-pill port-closed">NEVER</span></td>  <td>Control plane internal only.</td></tr>
+        <tr><td><code>6443</code></td>  <td>K8s API Server</td>  <td><span class="port-pill port-closed">PRIVATE</span></td><td>VPN/bastion access only. Never public.</td></tr>
+        <tr><td><code>3389</code></td>  <td>RDP</td>              <td><span class="port-pill port-closed">NEVER</span></td>  <td>Use SSM Fleet Manager for Windows.</td></tr>
+        <tr><td><code>53</code></td>    <td>DNS (UDP/TCP)</td>    <td><span class="port-pill port-closed">INTERNAL</span></td><td>VPC resolver. Block external DNS on nodes; force through VPC DNS.</td></tr>
+      </table>
+    </div>
+
+    <h3>CIDR Quick Math</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">CIDR Reference</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># IPs per CIDR: 2^(32-prefix)</span>
+/32  =        1    single host or IP allow rule
+/30  =        4    (2 usable) point-to-point links
+/28  =       16    (11 usable in AWS) bastion / NAT GW subnet
+/27  =       32    (27 usable in AWS) very small service subnet
+/26  =       64    (59 usable in AWS)
+/25  =      128    (123 usable in AWS)
+/24  =      256    (251 usable in AWS)  ← standard application subnet
+/23  =      512    (506 usable in AWS)
+/22  =    1,024    (1,019 usable in AWS)
+/21  =    2,048
+/20  =    4,096    ← AWS default per-AZ subnet
+/18  =   16,384
+/16  =   65,536    ← standard VPC size (AWS default)
+/15  =  131,072
+/8   = 16,777,216  ← entire 10.x.x.x space
+
+<span class="cm"># Cloud-specific IP reservations per subnet (cannot use):</span>
+<span class="cm"># AWS: 5 IPs (network, router, DNS, future use, broadcast)</span>
+<span class="cm"># Azure: 5 IPs (network, gateway, DNS×2, broadcast)</span>
+<span class="cm"># GCP: 4 IPs (network, gateway, broadcast + 1 reserved)</span></div>
+    </div>
+
+    <div class="callout good">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Starting point VPC design:</strong> Use <code>10.x.0.0/16</code> for the VPC (65k IPs). Allocate <code>/24</code> subnets for app and DB tiers. Allocate <code>/28</code> subnets for NAT gateways and bastion hosts (they only need a few IPs). Reserve <code>10.x.128.0/17</code> for future growth. Leave adjacent <code>/16</code> blocks free if you'll ever need VPC peering — overlapping CIDRs cannot peer.</div>
+    </div>
+
+    <h3>Networking Checklist — Pre-Production</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">Pre-Production Networking Audit</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## VPC &amp; Subnet</span>
+<span class="at">□</span> VPC CIDR doesn't overlap with on-prem or other VPCs (for future peering)
+<span class="at">□</span> Public / private / isolated subnets in at least 2 AZs each
+<span class="at">□</span> Isolated subnets have NO route to internet (no NAT, no IGW)
+<span class="at">□</span> Route tables explicitly reviewed — no accidental 0.0.0.0/0 on isolated subnet
+
+<span class="cm">## Security Groups</span>
+<span class="at">□</span> No 0.0.0.0/0 on port 22, 3389, or any database port
+<span class="at">□</span> SG sources use SG references (not CIDRs) where possible
+<span class="at">□</span> Each tier has its own SG (ALB, app, DB — separate)
+<span class="at">□</span> Egress rules are restricted (not "allow all outbound")
+<span class="at">□</span> No unused SGs with broad rules
+
+<span class="cm">## Kubernetes</span>
+<span class="at">□</span> Nodes in private subnets only
+<span class="at">□</span> API server endpoint: private only
+<span class="at">□</span> default-deny NetworkPolicy applied to all namespaces
+<span class="at">□</span> No NodePort services exposed in production
+<span class="at">□</span> Ingress controller uses internal or public LB (intentionally chosen)
+<span class="at">□</span> Pod security groups configured (if using VPC CNI)
+
+<span class="cm">## Access</span>
+<span class="at">□</span> Admin SSH access only via bastion or SSM (no direct internet SSH)
+<span class="at">□</span> Bastion SG restricted to specific IP ranges
+<span class="at">□</span> Database access via bastion/SSM tunnel only
+<span class="at">□</span> VPC Endpoints configured for required AWS services
+<span class="at">□</span> No hard-coded credentials — IAM roles / IRSA for all workloads</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = 'var(--blue)';
+    btn.style.borderColor = 'var(--blue)';
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-52px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+<script src="../scripts/handbook-ui.js"></script>
+</body>
+</html>
