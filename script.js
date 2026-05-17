@@ -1,7 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
   const preloader = document.getElementById('preloader');
+  const handbookTotal = document.querySelector('[data-handbook-total]');
   const introAudio = new Audio('intro.mp3');
   let audioStarted = false;
+
+  if (handbookTotal) {
+    handbookTotal.textContent = String(document.querySelectorAll('.handbook-card').length);
+  }
 
   document.body.classList.add('is-loading');
   introAudio.preload = 'auto';
