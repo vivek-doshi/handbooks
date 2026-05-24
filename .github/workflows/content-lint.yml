@@ -1,0 +1,85 @@
+name: Content Lint
+
+on:
+  pull_request:
+    paths:
+      - '**/*.html'
+      - 'README.md'
+      - '.ai/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-content:
+    name: Lint handbook content
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Lint changed handbook files
+        shell: bash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+          import subprocess
+          import sys
+
+          def changed_files():
+              event_name = os.environ.get('GITHUB_EVENT_NAME', '')
+              base_ref = os.environ.get('BASE_REF', '')
+              if event_name == 'pull_request' and base_ref:
+                  cmd = ['git', 'diff', '--name-only', f'origin/{base_ref}...HEAD']
+              else:
+                  cmd = ['git', 'diff', '--name-only', 'HEAD~1', 'HEAD']
+              output = subprocess.check_output(cmd, text=True).splitlines()
+              return [line.strip() for line in output if line.strip()]
+
+          def fail(message):
+              print(message)
+              sys.exit(1)
+
+          files = changed_files()
+          handbook_files = [path for path in files if path.endswith('.html') and path != 'index.html']
+
+          for rel_path in handbook_files:
+              path = Path(rel_path)
+              if not path.exists():
+                  continue
+
+              content = path.read_text(encoding='utf-8')
+
+              if '<title>' not in content:
+                  fail(f'{rel_path}: missing <title> tag')
+
+              if 'TODO' in content or 'Lorem ipsum' in content:
+                  fail(f'{rel_path}: contains placeholder content')
+
+              if 'shared-ui.css' in content:
+                  if 'data-theme-toggle' not in content:
+                      fail(f'{rel_path}: shared UI stylesheet is present but the theme toggle is missing')
+                  if 'floating-actions' not in content:
+                      fail(f'{rel_path}: shared UI stylesheet is present but floating actions are missing')
+
+              if path.parts and path.parts[0] in {'python', 'devops', 'cloud', 'ai-frameworks', 'ai-governance', 'architecture', 'backend', 'data-engineering', 'databases', 'frontend', 'machine-learning', 'mlops', 'networking', 'observability', 'platform', 'security', 'tooling', 'fine-tuning'}:
+                  if '<html' not in content.lower():
+                      fail(f'{rel_path}: does not look like an HTML handbook page')
+
+          print(f'Linted {len(handbook_files)} changed handbook files successfully.')
+          PY
