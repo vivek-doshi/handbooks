@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CICD Reference Kit — Handbook</title>
+<link rel="stylesheet" href="../styles/shared-ui.css">
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --sidebar-width: 280px;
+  --header-height: 56px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --radius: 6px;
+  --transition: 0.2s ease;
+}
+
+[data-theme="dark"] {
+  --bg: #0d1117;
+  --bg-sidebar: #161b22;
+  --bg-card: #161b22;
+  --bg-code: #0d1117;
+  --bg-code-block: #161b22;
+  --bg-header: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --text-sidebar: #cdd9e5;
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --accent-green: #3fb950;
+  --accent-yellow: #d29922;
+  --accent-red: #f85149;
+  --accent-purple: #bc8cff;
+  --accent-orange: #ff9550;
+  --tag-bg: #1f3250;
+  --tag-text: #79c0ff;
+  --scrollbar: #30363d;
+  --highlight: rgba(88, 166, 255, 0.08);
+  --shadow: 0 1px 3px rgba(0,0,0,.5);
+}
+
+[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-sidebar: #f6f8fa;
+  --bg-card: #f6f8fa;
+  --bg-code: #f6f8fa;
+  --bg-code-block: #f6f8fa;
+  --bg-header: #ffffff;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --text-muted: #57606a;
+  --text-sidebar: #24292f;
+  --accent: #0969da;
+  --accent-hover: #0550ae;
+  --accent-green: #1a7f37;
+  --accent-yellow: #9a6700;
+  --accent-red: #cf222e;
+  --accent-purple: #8250df;
+  --accent-orange: #bc4c00;
+  --tag-bg: #ddf4ff;
+  --tag-text: #0969da;
+  --scrollbar: #d0d7de;
+  --highlight: rgba(9, 105, 218, 0.06);
+  --shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; font-size: 16px; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-height);
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  z-index: 200;
+  gap: 16px;
+}
+
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 20px;
+}
+
+.site-header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.logo-icon {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-purple));
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #fff; font-weight: 800;
+  flex-shrink: 0;
+}
+
+.header-search {
+  flex: 1;
+  max-width: 420px;
+  position: relative;
+  margin: 0 auto;
+}
+
+.header-search input {
+  width: 100%;
+  padding: 7px 12px 7px 34px;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.header-search input:focus { border-color: var(--accent); }
+
+.header-search .search-icon {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+.theme-toggle {
+  background: none; border: 1px solid var(--border);
+  color: var(--text); border-radius: 6px;
+  padding: 5px 10px; cursor: pointer;
+  font-size: 0.8rem; transition: border-color var(--transition);
+  white-space: nowrap;
+}
+.theme-toggle:hover { border-color: var(--accent); }
+
+.badge {
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.layout {
+  display: flex;
+  margin-top: var(--header-height);
+  min-height: calc(100vh - var(--header-height));
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  position: fixed;
+  top: var(--header-height);
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 0 32px;
+  z-index: 100;
+  transition: transform var(--transition);
+}
+
+.sidebar-group { margin-bottom: 4px; }
+
+.sidebar-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  justify-content: space-between;
+}
+
+.sidebar-group-header:hover { color: var(--text); }
+.sidebar-group-header .chevron { font-size: 10px; transition: transform var(--transition); }
+.sidebar-group.open .chevron { transform: rotate(90deg); }
+.sidebar-group-items { display: none; }
+.sidebar-group.open .sidebar-group-items { display: block; }
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px 5px 24px;
+  font-size: 0.83rem;
+  color: var(--text-sidebar);
+  text-decoration: none;
+  border-radius: 0;
+  transition: background var(--transition), color var(--transition);
+  border-left: 2px solid transparent;
+}
+
+.sidebar-link:hover { background: var(--highlight); color: var(--accent); }
+.sidebar-link.active { color: var(--accent); background: var(--highlight); border-left-color: var(--accent); font-weight: 600; }
+
+.sidebar-link .icon { font-size: 12px; width: 16px; text-align: center; opacity: 0.7; }
+
+/* ============================================================
+   MAIN CONTENT
+   ============================================================ */
+.main {
+  margin-left: var(--sidebar-width);
+  flex: 1;
+  padding: 0 48px 80px 48px;
+  max-width: calc(100% - var(--sidebar-width));
+}
+
+.content-section { padding: 48px 0 32px; border-bottom: 1px solid var(--border); }
+.content-section:last-child { border-bottom: none; }
+
+.section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+h1 { font-size: 2rem; font-weight: 800; color: var(--text); margin-bottom: 12px; line-height: 1.25; }
+h2 { font-size: 1.375rem; font-weight: 700; color: var(--text); margin: 32px 0 12px; padding-top: 8px; }
+h3 { font-size: 1.05rem; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+h4 { font-size: 0.9rem; font-weight: 600; color: var(--text-muted); margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+p { color: var(--text); margin-bottom: 12px; font-size: 0.925rem; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; color: var(--accent-hover); }
+
+ul, ol { padding-left: 20px; margin-bottom: 12px; }
+li { font-size: 0.925rem; margin-bottom: 4px; color: var(--text); }
+
+strong { color: var(--text); font-weight: 600; }
+
+/* ============================================================
+   HERO SECTION
+   ============================================================ */
+.hero {
+  padding: 48px 0 40px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+  line-height: 1.15;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  max-width: 600px;
+}
+
+.hero-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.hero-tag {
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.hero-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+
+.hero-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-decoration: none;
+  display: block;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.hero-card:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); text-decoration: none; }
+.hero-card-icon { font-size: 1.4rem; margin-bottom: 8px; }
+.hero-card-title { font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.hero-card-desc { font-size: 0.78rem; color: var(--text-muted); }
+.hero-link-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--highlight);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.hero-link-banner:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+.hero-link-banner svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   CODE BLOCKS
+   ============================================================ */
+code {
+  font-family: var(--font-mono);
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+  color: var(--accent-orange);
+}
+
+pre {
+  background: var(--bg-code-block);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  overflow-x: auto;
+  margin: 16px 0;
+  position: relative;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.pre-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.pre-header + pre {
+  border-radius: 0 0 var(--radius) var(--radius);
+  margin-top: 0;
+}
+
+/* Syntax colouring (static) */
+.kw { color: var(--accent-purple); }
+.st { color: var(--accent-green); }
+.cm { color: #6e7681; font-style: italic; }
+.nm { color: var(--accent); }
+.op { color: var(--accent-orange); }
+.cn { color: var(--accent-yellow); }
+
+/* ============================================================
+   TABLES
+   ============================================================ */
+.table-wrap { overflow-x: auto; margin: 16px 0; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+th {
+  background: var(--bg-sidebar);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+}
+
+td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: top;
+}
+
+tr:hover td { background: var(--highlight); }
+
+/* ============================================================
+   CALLOUTS
+   ============================================================ */
+.callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  margin: 16px 0;
+  font-size: 0.875rem;
+  border: 1px solid;
+}
+
+.callout-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+.callout-content { flex: 1; }
+.callout-content strong { display: block; margin-bottom: 2px; }
+
+.callout.info { background: rgba(88, 166, 255, 0.08); border-color: rgba(88, 166, 255, 0.3); }
+.callout.info .callout-icon { color: var(--accent); }
+.callout.warning { background: rgba(210, 153, 34, 0.08); border-color: rgba(210, 153, 34, 0.3); }
+.callout.warning .callout-icon { color: var(--accent-yellow); }
+.callout.success { background: rgba(63, 185, 80, 0.08); border-color: rgba(63, 185, 80, 0.3); }
+.callout.success .callout-icon { color: var(--accent-green); }
+.callout.danger { background: rgba(248, 81, 73, 0.08); border-color: rgba(248, 81, 73, 0.3); }
+.callout.danger .callout-icon { color: var(--accent-red); }
+
+/* ============================================================
+   GOLDEN PATH CARDS
+   ============================================================ */
+.path-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin: 16px 0; }
+
+.path-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: border-color var(--transition);
+}
+
+.path-card:hover { border-color: var(--accent); }
+.path-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.path-card-icon { font-size: 1.2rem; }
+.path-card-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+.path-card-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px; }
+.path-card-file { font-size: 0.75rem; font-family: var(--font-mono); color: var(--accent); }
+
+/* ============================================================
+   STEP LIST
+   ============================================================ */
+.step-list { list-style: none; padding: 0; counter-reset: steps; }
+.step-list li {
+  counter-increment: steps;
+  padding: 12px 16px 12px 48px;
+  position: relative;
+  border-left: 2px solid var(--border);
+  margin-left: 16px;
+  margin-bottom: 8px;
+}
+.step-list li::before {
+  content: counter(steps);
+  position: absolute;
+  left: -14px;
+  top: 12px;
+  width: 24px; height: 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 800;
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.tabs { margin: 16px 0; }
+.tab-nav { display: flex; border-bottom: 1px solid var(--border); gap: 0; overflow-x: auto; }
+.tab-btn {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-bottom: -1px;
+  transition: color var(--transition), border-color var(--transition);
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+.tab-panel { display: none; padding-top: 16px; }
+.tab-panel.active { display: block; }
+
+/* ============================================================
+   SECTION ANCHORS
+   ============================================================ */
+.section-anchor { scroll-margin-top: 72px; }
+
+/* ============================================================
+   DIVIDER
+   ============================================================ */
+.divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  .hamburger { display: flex; }
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; max-width: 100%; padding: 0 20px 80px; }
+  .hero-title { font-size: 1.75rem; }
+  h1 { font-size: 1.5rem; }
+}
+
+@media (max-width: 600px) {
+  .hero-cards { grid-template-columns: 1fr 1fr; }
+  .path-grid { grid-template-columns: 1fr; }
+  .header-search { display: none; }
+}
+
+/* ============================================================
+   SEARCH HIGHLIGHTS
+   ============================================================ */
+.search-highlight { background: rgba(210, 153, 34, 0.3); border-radius: 2px; }
+
+/* ============================================================
+   PRINT
+   ============================================================ */
+@media print {
+  .site-header, .sidebar { display: none; }
+  .main { margin-left: 0; padding: 0; }
+  pre { white-space: pre-wrap; }
+}
+
+/* ============================================================
+   TOC SIDE COLUMN (optional inline TOC bars)
+   ============================================================ */
+.toc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin: 2px;
+  text-decoration: none;
+  font-weight: 500;
+}
+.toc-pill:hover { text-decoration: underline; }
+
+.toc-pills { margin: 12px 0 24px; display: flex; flex-wrap: wrap; gap: 6px; }
+</style>
+</head>
+<body>
+
+<div class="floating-actions">
+  <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
+    <span class="sr-only">Back to handbooks index</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18 9 12l6-6"></path>
+      <path d="M9 12h10"></path>
+    </svg>
+  </a>
+  <button class="floating-button theme-toggle" type="button" data-theme-toggle>
+    <span class="sr-only">Toggle theme</span>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"></path>
+    </svg>
+  </button>
+</div>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="site-header">
+  <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation">&#9776;</button>
+  <a href="#overview" class="site-header-logo">
+    <div class="logo-icon">CI</div>
+    <span>CICD Reference Kit</span>
+  </a>
+  <div class="header-search">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="searchInput" placeholder="Search handbook..." aria-label="Search">
+  </div>
+  <div class="header-actions">
+    <span class="badge">v2.0</span>
+  </div>
+</header>
+
+<!-- ============================================================
+     SIDEBAR
+     ============================================================ -->
+<aside class="sidebar" id="sidebar">
+
+  <div class="sidebar-group open" data-group="intro">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>Introduction</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#overview" class="sidebar-link"><span class="icon">&#128218;</span> Overview</a>
+      <a href="#quickstart" class="sidebar-link"><span class="icon">&#9889;</span> Quick Start</a>
+      <a href="#structure" class="sidebar-link"><span class="icon">&#128193;</span> Repository Structure</a>
+      <a href="#devenv" class="sidebar-link"><span class="icon">&#128187;</span> Dev Environment</a>
+    </div>
+  </div>
+
+  <div class="sidebar-group open" data-group="paths">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>Golden Paths</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#path-k8s" class="sidebar-link"><span class="icon">&#9096;</span> Kubernetes Microservice</a>
+      <a href="#path-serverless" class="sidebar-link"><span class="icon">&#955;</span> Serverless App</a>
+      <a href="#path-spa" class="sidebar-link"><span class="icon">&#127760;</span> Frontend SPA</a>
+      <a href="#path-data" class="sidebar-link"><span class="icon">&#128202;</span> Data Pipeline</a>
+      <a href="#path-mlops" class="sidebar-link"><span class="icon">&#129302;</span> MLOps Workflow</a>
+      <a href="#path-incident" class="sidebar-link"><span class="icon">&#128680;</span> Incident Response</a>
+      <a href="#path-slo" class="sidebar-link"><span class="icon">&#127919;</span> SLO-Driven Development</a>
+      <a href="#path-finops" class="sidebar-link"><span class="icon">&#128200;</span> FinOps Optimization</a>
+      <a href="#path-catalog" class="sidebar-link"><span class="icon">&#128218;</span> Service Catalog</a>
+      <a href="#path-fleet" class="sidebar-link"><span class="icon">&#9741;</span> Multi-Cluster Fleet</a>
+      <a href="#path-supply" class="sidebar-link"><span class="icon">&#128274;</span> Supply Chain Security</a>
+      <a href="#path-compliance" class="sidebar-link"><span class="icon">&#9989;</span> Compliance Reporting</a>
+    </div>
+  </div>
+
+  <div class="sidebar-group open" data-group="ci">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>CI / CD</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#ci-github" class="sidebar-link"><span class="icon">&#9654;</span> GitHub Actions</a>
+      <a href="#ci-azure" class="sidebar-link"><span class="icon">&#9729;</span> Azure Pipelines</a>
+      <a href="#ci-gitlab" class="sidebar-link"><span class="icon">&#129355;</span> GitLab CI</a>
+      <a href="#ci-jenkins" class="sidebar-link"><span class="icon">&#128295;</span> Jenkins</a>
+      <a href="#cd-targets" class="sidebar-link"><span class="icon">&#128640;</span> Deployment Targets</a>
+    </div>
+  </div>
+
+  <div class="sidebar-group open" data-group="k8s">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>Kubernetes</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#k8s-base" class="sidebar-link"><span class="icon">&#128268;</span> Base Manifests</a>
+      <a href="#k8s-overlays" class="sidebar-link"><span class="icon">&#127744;</span> Kustomize Overlays</a>
+      <a href="#k8s-helm" class="sidebar-link"><span class="icon">&#9874;</span> Helm Charts</a>
+      <a href="#k8s-gitops" class="sidebar-link"><span class="icon">&#128260;</span> GitOps</a>
+      <a href="#k8s-fleet" class="sidebar-link"><span class="icon">&#9741;</span> Fleet Management</a>
+    </div>
+  </div>
+
+  <div class="sidebar-group" data-group="iac">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>Infrastructure as Code</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#tf-overview" class="sidebar-link"><span class="icon">&#9889;</span> Terraform Overview</a>
+      <a href="#tf-aws" class="sidebar-link"><span class="icon">&#9729;</span> AWS Modules</a>
+      <a href="#tf-azure" class="sidebar-link"><span class="icon">&#9729;</span> Azure Modules</a>
+      <a href="#tf-gcp" class="sidebar-link"><span class="icon">&#9729;</span> GCP Modules</a>
+      <a href="#pulumi" class="sidebar-link"><span class="icon">&#128272;</span> Pulumi</a>
+    </div>
+  </div>
+
+  <div class="sidebar-group" data-group="security">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>Security</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#sec-shift-left" class="sidebar-link"><span class="icon">&#128269;</span> Shift-Left Scanning</a>
+      <a href="#sec-runtime" class="sidebar-link"><span class="icon">&#128737;</span> Runtime Security</a>
+      <a href="#sec-supply-chain" class="sidebar-link"><span class="icon">&#128274;</span> Supply Chain</a>
+      <a href="#sec-secrets" class="sidebar-link"><span class="icon">&#128272;</span> Secrets Management</a>
+      <a href="#sec-policy" class="sidebar-link"><span class="icon">&#128195;</span> Policy Engine</a>
+    </div>
+  </div>
+
+  <div class="sidebar-group" data-group="obs">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>Observability</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#obs-prometheus" class="sidebar-link"><span class="icon">&#128202;</span> Prometheus & Grafana</a>
+      <a href="#obs-loki" class="sidebar-link"><span class="icon">&#128196;</span> Loki (Logs)</a>
+      <a href="#obs-tempo" class="sidebar-link"><span class="icon">&#128336;</span> Tempo (Traces)</a>
+      <a href="#obs-otel" class="sidebar-link"><span class="icon">&#128268;</span> OpenTelemetry</a>
+      <a href="#obs-slo" class="sidebar-link"><span class="icon">&#127919;</span> SLOs & Burn-Rate</a>
+      <a href="#obs-alerts" class="sidebar-link"><span class="icon">&#128276;</span> Alerting</a>
+    </div>
+  </div>
+
+  <div class="sidebar-group" data-group="finops">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>FinOps</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#finops-arch" class="sidebar-link"><span class="icon">&#128200;</span> Architecture</a>
+      <a href="#finops-loop" class="sidebar-link"><span class="icon">&#128260;</span> Optimization Loop</a>
+      <a href="#finops-scripts" class="sidebar-link"><span class="icon">&#128196;</span> Scripts Reference</a>
+      <a href="#finops-dashboards" class="sidebar-link"><span class="icon">&#128202;</span> Dashboards</a>
+    </div>
+  </div>
+
+  <div class="sidebar-group" data-group="catalog">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>Service Catalog</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#catalog-overview" class="sidebar-link"><span class="icon">&#128218;</span> Overview</a>
+      <a href="#catalog-schema" class="sidebar-link"><span class="icon">&#128196;</span> Schema</a>
+      <a href="#catalog-validate" class="sidebar-link"><span class="icon">&#9989;</span> Validation</a>
+      <a href="#catalog-codeowners" class="sidebar-link"><span class="icon">&#128101;</span> CODEOWNERS</a>
+      <a href="#catalog-backstage" class="sidebar-link"><span class="icon">&#128640;</span> Backstage Migration</a>
+    </div>
+  </div>
+
+  <div class="sidebar-group" data-group="ref">
+    <div class="sidebar-group-header" onclick="toggleGroup(this)">
+      <span>Reference</span>
+      <span class="chevron">&#9654;</span>
+    </div>
+    <div class="sidebar-group-items">
+      <a href="#guides" class="sidebar-link"><span class="icon">&#128196;</span> Guides</a>
+      <a href="#runbooks" class="sidebar-link"><span class="icon">&#128209;</span> Runbooks</a>
+      <a href="#adrs" class="sidebar-link"><span class="icon">&#128203;</span> Architecture Decisions</a>
+      <a href="#makefile" class="sidebar-link"><span class="icon">&#9881;</span> Makefile Targets</a>
+    </div>
+  </div>
+
+</aside>
+
+<!-- ============================================================
+     MAIN
+     ============================================================ -->
+<main class="main" id="mainContent">
+
+<!-- HERO / OVERVIEW -->
+<section id="overview" class="hero section-anchor">
+  <div class="section-label">DevOps Playbook</div>
+  <h1 class="hero-title">CICD Reference Kit</h1>
+  <p class="hero-subtitle">
+    Production-grade CI/CD, Kubernetes, IaC, security, observability, FinOps, and service ownership
+    patterns — all in one composable repository. Fork and adapt, don't start from scratch.
+  </p>
+  <a class="hero-link-banner" href="https://vivek-doshi.github.io/devops-playbook/" target="_blank" rel="noreferrer">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M14 5h5v5"></path>
+      <path d="M10 14 19 5"></path>
+      <path d="M19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4"></path>
+    </svg>
+    Complete implementation details are in the DevOps Playbook
+  </a>
+  <div class="hero-tags">
+    <span class="hero-tag">GitHub Actions</span>
+    <span class="hero-tag">Azure Pipelines</span>
+    <span class="hero-tag">GitLab CI</span>
+    <span class="hero-tag">Jenkins</span>
+    <span class="hero-tag">Kubernetes</span>
+    <span class="hero-tag">Helm</span>
+    <span class="hero-tag">ArgoCD</span>
+    <span class="hero-tag">Flux</span>
+    <span class="hero-tag">Terraform</span>
+    <span class="hero-tag">Pulumi</span>
+    <span class="hero-tag">Prometheus</span>
+    <span class="hero-tag">Grafana</span>
+    <span class="hero-tag">OpenTelemetry</span>
+    <span class="hero-tag">Kyverno</span>
+    <span class="hero-tag">Kubecost</span>
+  </div>
+  <div class="hero-cards">
+    <a href="#path-k8s" class="hero-card">
+      <div class="hero-card-icon">&#9096;</div>
+      <div class="hero-card-title">Kubernetes Microservice</div>
+      <div class="hero-card-desc">End-to-end golden path from code to production</div>
+    </a>
+    <a href="#ci-github" class="hero-card">
+      <div class="hero-card-icon">&#9654;</div>
+      <div class="hero-card-title">CI Templates</div>
+      <div class="hero-card-desc">GitHub Actions, Azure Pipelines, GitLab CI, Jenkins</div>
+    </a>
+    <a href="#sec-shift-left" class="hero-card">
+      <div class="hero-card-icon">&#128274;</div>
+      <div class="hero-card-title">Shift-Left Security</div>
+      <div class="hero-card-desc">SAST, secrets, IaC, container, supply chain</div>
+    </a>
+    <a href="#obs-slo" class="hero-card">
+      <div class="hero-card-icon">&#127919;</div>
+      <div class="hero-card-title">SLO Engineering</div>
+      <div class="hero-card-desc">Multi-window burn-rate alerts, error budgets</div>
+    </a>
+    <a href="#finops-loop" class="hero-card">
+      <div class="hero-card-icon">&#128200;</div>
+      <div class="hero-card-title">FinOps Loop</div>
+      <div class="hero-card-desc">Rightsizing, reserved capacity, anomaly detection</div>
+    </a>
+    <a href="#catalog-overview" class="hero-card">
+      <div class="hero-card-icon">&#128218;</div>
+      <div class="hero-card-title">Service Catalog</div>
+      <div class="hero-card-desc">Git-native ownership, CODEOWNERS, admission gate</div>
+    </a>
+  </div>
+</section>
+
+<!-- QUICK START -->
+<section id="quickstart" class="content-section section-anchor">
+  <div class="section-label">Getting Started</div>
+  <h1>Quick Start</h1>
+  <p>Five commands to go from clone to running local environment with a deployed workload.</p>
+
+  <div class="callout info">
+    <span class="callout-icon">&#8505;</span>
+    <div class="callout-content">
+      <strong>Prerequisites</strong>
+      Git 2.40+, Docker Desktop 4.x, <code>kubectl</code> 1.29+, <code>kind</code> 0.24+, Helm 3.14+, Python 3.12+, Node 20+
+    </div>
+  </div>
+
+  <div class="pre-header">bash</div>
+  <pre><code><span class="cm"># 1. Clone the repository</span>
+git clone https://github.com/your-org/cicd-reference.git
+cd cicd-reference
+
+<span class="cm"># 2. Verify all tools are installed</span>
+bash scripts/env-checker.sh
+
+<span class="cm"># 3. Install pre-commit hooks (run once)</span>
+make hooks
+
+<span class="cm"># 4. Start a local kind cluster with registry and ingress</span>
+make dev
+
+<span class="cm"># 5. Build and deploy the example app</span>
+make deploy-dev</code></pre>
+
+  <h2>What just happened?</h2>
+  <ul>
+    <li><code>make hooks</code> installs pre-commit guardrails for secrets, Dockerfile linting, Terraform validation, YAML checks, and conventional commits.</li>
+    <li><code>make dev</code> creates a kind cluster named <code>devops-playbook</code>, starts a local registry at <code>localhost:5001</code>, and installs ingress-nginx.</li>
+    <li><code>make deploy-dev</code> builds the Docker image, pushes it to the local registry, and applies the dev Kustomize overlay.</li>
+  </ul>
+
+  <h2>Common next steps</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Task</th><th>Command</th></tr>
+    <tr><td>Validate service catalog</td><td><code>make catalog-validate</code></td></tr>
+    <tr><td>Run compliance report</td><td><code>make compliance-report</code></td></tr>
+    <tr><td>Analyze cost rightsizing</td><td><code>make finops-rightsizing</code></td></tr>
+    <tr><td>Validate SLO YAML files</td><td><code>make slo-validate</code></td></tr>
+    <tr><td>Show policy violations</td><td><code>make policy-report</code></td></tr>
+    <tr><td>Release a version tag</td><td><code>make tag-release</code></td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- STRUCTURE -->
+<section id="structure" class="content-section section-anchor">
+  <div class="section-label">Codebase</div>
+  <h1>Repository Structure</h1>
+  <p>Each top-level directory is a domain. Golden paths cross domains and are documented in <code>docs/golden-paths/</code>.</p>
+
+  <div class="pre-header">Directory Tree</div>
+  <pre><code>cicd-reference/
+├── ci/                    <span class="cm"># CI templates: GitHub Actions, Azure Pipelines, GitLab CI, Jenkins</span>
+├── cd/                    <span class="cm"># CD: Kubernetes, Helm, GitOps, Pulumi, deployment targets</span>
+│   ├── kubernetes/        <span class="cm"># Kustomize base and overlays</span>
+│   ├── helm/              <span class="cm"># Helm chart templates</span>
+│   ├── gitops/            <span class="cm"># ArgoCD and Flux configurations</span>
+│   ├── fleet-overlays/    <span class="cm"># Multi-cluster fleet overlays</span>
+│   ├── pulumi/            <span class="cm"># Pulumi Node.js IaC projects</span>
+│   └── targets/           <span class="cm"># Cloud-specific deploy templates</span>
+├── terraform/             <span class="cm"># Terraform modules: AKS, EKS, GKE, ECS, Lambda</span>
+├── docker/                <span class="cm"># Dockerfile templates by language</span>
+├── compose/               <span class="cm"># Docker Compose stacks for local dev</span>
+├── local-dev/             <span class="cm"># kind cluster setup and teardown</span>
+├── ci-security/           <span class="cm"># Shift-left: SAST, container, secrets, dependency, IaC scanning</span>
+├── secops/                <span class="cm"># Runtime security: Falco, audit, supply chain, compliance</span>
+├── policy/                <span class="cm"># Kyverno admission policies and Conftest OPA checks</span>
+├── secrets/               <span class="cm"># External Secrets Operator, lifecycle guides, rotation</span>
+├── observability/         <span class="cm"># Prometheus, Loki, Tempo, OpenTelemetry, SLO assets</span>
+├── finops/                <span class="cm"># Cost governance: Kubecost, Infracost, dashboards, scripts</span>
+├── catalog/               <span class="cm"># Git-native service and team registry</span>
+├── notifications/         <span class="cm"># Alert routing: Slack, PagerDuty, Grafana, Teams, Datadog</span>
+├── quality/               <span class="cm"># SonarQube, language-specific quality configs</span>
+├── backup/                <span class="cm"># Velero, cloud database backup configs</span>
+├── docs/                  <span class="cm"># Golden paths, guides, ADRs, runbooks</span>
+│   ├── golden-paths/      <span class="cm"># 16 end-to-end workflows</span>
+│   ├── guides/            <span class="cm"># Operational guides (branching, OIDC, secrets, etc.)</span>
+│   ├── decisions/         <span class="cm"># Architecture Decision Records (ADRs)</span>
+│   └── runbooks/          <span class="cm"># Operational runbooks</span>
+└── scripts/               <span class="cm"># Utility scripts (env-checker, docker-cleanup, rollout)</span></code></pre>
+
+  <h2>Design Principles</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Principle</th><th>How it shows up</th></tr>
+    <tr><td>Production-grade defaults</td><td>Resource limits and security contexts are set everywhere. Insecure defaults are treated as bugs.</td></tr>
+    <tr><td>Golden paths over flexibility</td><td>16 opinionated end-to-end workflows prevent wheel-reinvention.</td></tr>
+    <tr><td>Security by default</td><td>Pre-commit gates, CI scanning, Kyverno admission enforcement, secret rotation automation.</td></tr>
+    <tr><td>Multi-cloud parity</td><td>Each domain isolates cloud-specific details in <code>targets/</code> or <code>terraform/&lt;cloud&gt;/</code>.</td></tr>
+    <tr><td>Policy as code</td><td>All guardrails are machine-enforceable YAML — no audit checklists.</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- DEV ENVIRONMENT -->
+<section id="devenv" class="content-section section-anchor">
+  <div class="section-label">Setup</div>
+  <h1>Dev Environment</h1>
+
+  <div class="tabs">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab(event,'devcontainer')">Dev Container</button>
+      <button class="tab-btn" onclick="switchTab(event,'local')">Local (Manual)</button>
+    </div>
+    <div id="tab-devcontainer" class="tab-panel active">
+      <p>The recommended approach is to use the provided dev container — all tools are pre-installed and version-pinned.</p>
+      <ol>
+        <li>Install <a href="https://www.docker.com/products/docker-desktop/" target="_blank" rel="noopener">Docker Desktop</a></li>
+        <li>Install the <strong>Dev Containers</strong> VS Code extension (<code>ms-vscode-remote.remote-containers</code>)</li>
+        <li>Open the repository folder in VS Code</li>
+        <li>Click <strong>Reopen in Container</strong> when prompted</li>
+      </ol>
+      <p>The post-create script installs helm plugins, configures pre-commit, and validates all tool versions.</p>
+      <h3>Tools included in the container</h3>
+      <div class="table-wrap">
+      <table>
+        <tr><th>Tool</th><th>Version</th><th>Purpose</th></tr>
+        <tr><td>Terraform</td><td>v1.14.9</td><td>IaC — all cloud targets</td></tr>
+        <tr><td>kubectl</td><td>v1.36.0</td><td>Kubernetes cluster management</td></tr>
+        <tr><td>Helm</td><td>v4.1.4</td><td>Kubernetes package manager</td></tr>
+        <tr><td>kind</td><td>v0.31.0</td><td>Local Kubernetes clusters</td></tr>
+        <tr><td>k9s</td><td>v0.50.18</td><td>Terminal Kubernetes UI</td></tr>
+        <tr><td>Pulumi</td><td>v3.231.0</td><td>Node.js IaC</td></tr>
+        <tr><td>Node.js</td><td>20.x</td><td>Pulumi, frontend builds</td></tr>
+        <tr><td>Python</td><td>3.12</td><td>Scripts, FinOps, compliance tools</td></tr>
+        <tr><td>Checkov</td><td>3.2.524</td><td>IaC security scanning</td></tr>
+        <tr><td>tfsec</td><td>v1.28.14</td><td>Terraform security scanning</td></tr>
+        <tr><td>Hadolint</td><td>v2.14.0</td><td>Dockerfile linting</td></tr>
+        <tr><td>Gitleaks</td><td>v8.30.1</td><td>Secret detection</td></tr>
+        <tr><td>TruffleHog</td><td>v3.95.2</td><td>Verified secret scanning</td></tr>
+        <tr><td>jq / yq</td><td>1.8.1 / 4.53.2</td><td>JSON/YAML processing</td></tr>
+        <tr><td>AWS CLI</td><td>v2.34.35</td><td>AWS deployments</td></tr>
+        <tr><td>Azure CLI</td><td>2.85.0</td><td>Azure deployments</td></tr>
+        <tr><td>gcloud</td><td>565.0.0</td><td>GCP deployments</td></tr>
+        <tr><td>kubectx / kubens</td><td>v0.11.0</td><td>Context/namespace switching</td></tr>
+        <tr><td>stern</td><td>v1.33.1</td><td>Multi-pod log tailing</td></tr>
+        <tr><td>pre-commit</td><td>4.6.0</td><td>Git hook automation</td></tr>
+      </table>
+      </div>
+    </div>
+    <div id="tab-local" class="tab-panel">
+      <p>Run the environment checker to identify missing tools:</p>
+      <div class="pre-header">bash</div>
+      <pre><code>bash scripts/env-checker.sh</code></pre>
+      <p>Install required tools using your package manager. On macOS with Homebrew:</p>
+      <div class="pre-header">bash</div>
+      <pre><code>brew install terraform kubectl helm kind k9s pulumi \
+     jq yq awscli azure-cli google-cloud-sdk \
+     gitleaks pre-commit hadolint stern kubectx
+
+pip3 install checkov pre-commit</code></pre>
+      <p>See <code>docs/guides/onboarding.md</code> for platform-specific install instructions.</p>
+    </div>
+  </div>
+</section>
+
+<!-- GOLDEN PATHS OVERVIEW -->
+<section id="golden-paths" class="content-section section-anchor">
+  <div class="section-label">Workflows</div>
+  <h1>Golden Paths</h1>
+  <p>Golden paths are opinionated, end-to-end workflows. Use them as the starting point — not documentation to read after something breaks.</p>
+  <div class="path-grid">
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#9096;</span><span class="path-card-title">Kubernetes Microservice</span></div><div class="path-card-desc">Backend API from code to production Kubernetes with CI/CD, scanning, and observability.</div><a href="#path-k8s" class="path-card-file">→ docs/golden-paths/kubernetes-microservice.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#955;</span><span class="path-card-title">Serverless App</span></div><div class="path-card-desc">Lambda / Cloud Run functions with CI integration, least-privilege IAM, and event triggers.</div><a href="#path-serverless" class="path-card-file">→ docs/golden-paths/serverless-app.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#127760;</span><span class="path-card-title">Frontend SPA</span></div><div class="path-card-desc">React or Angular app with CDN deployment, caching headers, and CI linting.</div><a href="#path-spa" class="path-card-file">→ docs/golden-paths/frontend-spa.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#128202;</span><span class="path-card-title">Data Pipeline</span></div><div class="path-card-desc">Batch jobs and scheduled tasks with retry, DLQ, and lineage tracking.</div><a href="#path-data" class="path-card-file">→ docs/golden-paths/data-pipeline.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#129302;</span><span class="path-card-title">MLOps Workflow</span></div><div class="path-card-desc">Model training, registry, versioned deployment, and drift monitoring.</div><a href="#path-mlops" class="path-card-file">→ docs/golden-paths/mlops-workflow.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#128680;</span><span class="path-card-title">Incident Response</span></div><div class="path-card-desc">Triage, diagnosis, mitigation, postmortem workflow with catalog ownership lookup.</div><a href="#path-incident" class="path-card-file">→ docs/golden-paths/incident-response.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#127919;</span><span class="path-card-title">SLO-Driven Development</span></div><div class="path-card-desc">Define SLOs, write recording rules, configure multi-window burn-rate alerts.</div><a href="#path-slo" class="path-card-file">→ docs/golden-paths/slo-driven-development.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#128200;</span><span class="path-card-title">FinOps Optimization</span></div><div class="path-card-desc">Rightsizing → reserved capacity → anomaly → label compliance loop.</div><a href="#path-finops" class="path-card-file">→ docs/golden-paths/finops-optimization.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#128218;</span><span class="path-card-title">Service Catalog</span></div><div class="path-card-desc">Register team, register service, validate, generate CODEOWNERS, enforce admission.</div><a href="#path-catalog" class="path-card-file">→ docs/golden-paths/service-catalog.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#9741;</span><span class="path-card-title">Multi-Cluster Fleet</span></div><div class="path-card-desc">Hub-and-spoke fleet topology, fleet ApplicationSets, observability aggregation.</div><a href="#path-fleet" class="path-card-file">→ docs/golden-paths/multi-cluster-fleet.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#128274;</span><span class="path-card-title">Supply Chain Security</span></div><div class="path-card-desc">Cosign keyless signing, SBOM generation, SLSA provenance, Kyverno verification.</div><a href="#path-supply" class="path-card-file">→ docs/golden-paths/supply-chain-security.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#9989;</span><span class="path-card-title">Compliance Reporting</span></div><div class="path-card-desc">SOC 2, CIS, ISO 27001 evidence collection, scoring, CI gating.</div><a href="#path-compliance" class="path-card-file">→ docs/golden-paths/compliance-reporting.md</a></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#128640;</span><span class="path-card-title">Platform Onboarding</span></div><div class="path-card-desc">Full platform from scratch: infra, CI/CD, monitoring, alerting, policies.</div><div class="path-card-file">→ docs/golden-paths/platform-onboarding.md</div></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#128201;</span><span class="path-card-title">Database Migrations</span></div><div class="path-card-desc">Zero-downtime schema migrations with pre/post validation and rollback.</div><div class="path-card-file">→ docs/golden-paths/database-migrations.md</div></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#128241;</span><span class="path-card-title">Mobile Backend</span></div><div class="path-card-desc">BFF API with OAuth/OIDC, versioning, rate limiting, push notifications.</div><div class="path-card-file">→ docs/golden-paths/mobile-backend.md</div></div>
+    <div class="path-card"><div class="path-card-header"><span class="path-card-icon">&#127968;</span><span class="path-card-title">Multi-Tenant SaaS</span></div><div class="path-card-desc">Namespace-per-tenant isolation, automated onboarding, billing instrumentation.</div><div class="path-card-file">→ docs/golden-paths/multi-tenant-saas.md</div></div>
+  </div>
+</section>
+
+<!-- PATH: KUBERNETES MICROSERVICE -->
+<section id="path-k8s" class="content-section section-anchor">
+  <div class="section-label">Golden Path</div>
+  <h1>Kubernetes Microservice</h1>
+  <p>End-to-end path: local dev → CI build+scan → image push → GitOps update → ArgoCD sync → Kubernetes → burn-rate alerts.</p>
+
+  <div class="callout info">
+    <span class="callout-icon">&#8505;</span>
+    <div class="callout-content"><strong>File:</strong> <code>docs/golden-paths/kubernetes-microservice.md</code></div>
+  </div>
+
+  <h2>Flow</h2>
+  <div class="pre-header">pipeline</div>
+  <pre><code>local dev → pre-commit → CI (build + test + scan) → image push
+         → GitOps update → ArgoCD sync → Kubernetes → alerts</code></pre>
+
+  <h2>Steps</h2>
+  <ol class="step-list">
+    <li><strong>Start local environment</strong> — <code>bash local-dev/kind/setup.sh</code> creates kind cluster, local registry, ingress-nginx, and applies dev overlay.</li>
+    <li><strong>Containerize</strong> — copy <code>docker/&lt;language&gt;/Dockerfile</code> template. Ensure non-root user, pinned base image digest, and <code>HEALTHCHECK</code>.</li>
+    <li><strong>Install pre-commit</strong> — <code>make hooks</code>. Guardrails: Hadolint, Gitleaks, Checkov, YAML/JSON validation, conventional commits.</li>
+    <li><strong>Pick a CI template</strong> — <code>ci/github-actions/</code>, <code>ci/azure-pipelines/</code>, or <code>ci/gitlab-ci/</code>. Copy the relevant template and connect to your repository.</li>
+    <li><strong>Write Kubernetes manifests</strong> — start from <code>cd/kubernetes/_base/</code>. Require CPU/memory limits, liveness/readiness probes, security context (<code>runAsNonRoot: true</code>).</li>
+    <li><strong>Create environment overlays</strong> — copy <code>cd/kubernetes/_overlays/dev/</code> and staging/production versions. Use Kustomize for image tags and replica counts.</li>
+    <li><strong>Set up GitOps</strong> — create an ArgoCD Application or Flux Kustomization pointing at your overlay path.</li>
+    <li><strong>Define SLOs</strong> — copy <code>observability/prometheus/slos/slo-schema.yaml</code>. Write recording rules with naming convention <code>slo:&lt;service&gt;:&lt;metric&gt;:&lt;window&gt;</code>.</li>
+    <li><strong>Register in service catalog</strong> — create <code>catalog/services/&lt;service&gt;.yaml</code>, set lifecycle, owner, runbook URL, SLO file, cost center.</li>
+    <li><strong>Validate everything</strong> — <code>make catalog-validate slo-validate policy-report</code>.</li>
+  </ol>
+</section>
+
+<!-- PATH: SLO-DRIVEN DEVELOPMENT -->
+<section id="path-slo" class="content-section section-anchor">
+  <div class="section-label">Golden Path</div>
+  <h1>SLO-Driven Development</h1>
+  <p>Define availability or latency SLOs, write multi-window burn-rate alerts, connect error budget tracking, and run quarterly reviews.</p>
+
+  <div class="callout warning">
+    <span class="callout-icon">&#9888;</span>
+    <div class="callout-content"><strong>Model constraint:</strong> Only the multi-window burn-rate model (Google SRE Workbook) is used. Four fixed alert tiers — never deviate from these thresholds.</div>
+  </div>
+
+  <h2>Burn-Rate Alert Tiers</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Tier</th><th>Burn Rate</th><th>Windows</th><th><code>for</code> Duration</th><th>Severity</th></tr>
+    <tr><td>1 — Critical</td><td>14.4×</td><td>1h + 5m</td><td>2m</td><td>Page immediately</td></tr>
+    <tr><td>2 — High</td><td>6×</td><td>6h + 30m</td><td>15m</td><td>Page during business hours</td></tr>
+    <tr><td>3 — Warning</td><td>3×</td><td>24h + 2h</td><td>1h</td><td>Ticket</td></tr>
+    <tr><td>4 — Info</td><td>1×</td><td>72h + 6h</td><td>3h</td><td>Weekly review</td></tr>
+  </table>
+  </div>
+
+  <h2>Recording Rule Naming Convention</h2>
+  <div class="pre-header">prometheus</div>
+  <pre><code><span class="cm"># Pattern: slo:&lt;service&gt;:&lt;metric&gt;:&lt;window&gt;</span>
+record: <span class="st">slo:api_gateway:error_rate:1h</span>
+expr: |
+  sum(rate(http_requests_total{job="api-gateway",status=~"5.."}[1h]))
+  / sum(rate(http_requests_total{job="api-gateway"}[1h]))</code></pre>
+
+  <h2>Steps</h2>
+  <ol class="step-list">
+    <li>Copy <code>observability/prometheus/slos/slo-schema.yaml</code> to <code>&lt;service&gt;-slo.yaml</code>.</li>
+    <li>Write recording rules — never inline multi-window ratios into alert expressions.</li>
+    <li>Define burn-rate alerts referencing recording rules at all 4 tiers.</li>
+    <li>Import <code>observability/prometheus/dashboards/slo-dashboard.json</code> in Grafana.</li>
+    <li>Connect Alertmanager to PagerDuty or Slack (<code>notifications/</code>).</li>
+    <li>Add <code>slo.definition_file</code> to your service catalog entry.</li>
+    <li>Schedule quarterly error budget review using <code>docs/runbooks/slo-quarterly-review.md</code>.</li>
+  </ol>
+
+  <h2>Compliance Mapping</h2>
+  <p>SLO recording rules and alert history satisfy SOC 2 controls <strong>CC7.2</strong> (monitoring) and <strong>CC7.4</strong> (incident response). Include this cross-reference in your compliance evidence.</p>
+</section>
+
+<!-- PATH: SERVICE CATALOG -->
+<section id="path-catalog" class="content-section section-anchor">
+  <div class="section-label">Golden Path</div>
+  <h1>Service Catalog Registration</h1>
+  <p>Standardizes how teams register services, validate ownership metadata, and enforce admission guardrails in Kubernetes.</p>
+
+  <h2>Two-Gate Model</h2>
+  <p>Every service registration passes through two mandatory gates:</p>
+  <ol>
+    <li><strong>CI Gate</strong> — <code>catalog/scripts/validate-catalog.py --strict</code> runs on every PR touching <code>catalog/</code>.</li>
+    <li><strong>Admission Gate</strong> — Kyverno <code>require-catalog-registration</code> ClusterPolicy blocks deployments in production namespaces that lack the <code>catalog.io/registered: "true"</code> annotation.</li>
+  </ol>
+
+  <h2>lifecycle Requirements</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Field</th><th><code>alpha</code></th><th><code>beta</code></th><th><code>stable</code></th></tr>
+    <tr><td><code>metadata.owner</code></td><td>Required</td><td>Required</td><td>Required</td></tr>
+    <tr><td><code>spec.runbook_url</code></td><td>Optional</td><td>Optional</td><td><strong>Required</strong></td></tr>
+    <tr><td><code>spec.slo.definition_file</code></td><td>Optional</td><td>Optional</td><td><strong>Required</strong></td></tr>
+    <tr><td><code>spec.cost_center</code></td><td>Optional</td><td>Optional</td><td><strong>Required</strong></td></tr>
+  </table>
+  </div>
+
+  <h2>Steps</h2>
+  <ol class="step-list">
+    <li>Create <code>catalog/teams/&lt;team-name&gt;.yaml</code> from <code>catalog/teams/schema/team.yaml</code>.</li>
+    <li>Create <code>catalog/services/&lt;service-name&gt;.yaml</code> from <code>catalog/schema/service.yaml</code>. Ensure <code>metadata.name</code> matches the Deployment <code>app</code> label.</li>
+    <li>Validate locally: <code>python catalog/scripts/validate-catalog.py --strict --skip-url-check</code></li>
+    <li>Regenerate CODEOWNERS: <code>python catalog/scripts/generate-codeowners.py --output .github/CODEOWNERS</code></li>
+    <li>Open PR — CI gate validates automatically via <code>.github/workflows/validate-catalog.yml</code>.</li>
+    <li>Annotate Deployment: <code>catalog.io/registered: "true"</code></li>
+    <li>Apply Kyverno policy: <code>kubectl apply -f policy/kyverno/require-catalog-registration.yaml</code></li>
+  </ol>
+</section>
+
+<!-- PATH: FINOPS OPTIMIZATION -->
+<section id="path-finops" class="content-section section-anchor">
+  <div class="section-label">Golden Path</div>
+  <h1>FinOps Optimization Loop</h1>
+  <p>Four-type loop: rightsizing → reserved capacity → anomaly investigation → label compliance. All four must run regularly.</p>
+
+  <div class="callout warning">
+    <span class="callout-icon">&#9888;</span>
+    <div class="callout-content"><strong>Safety Rule:</strong> <code>generate-optimization-pr.py</code> raises an exception (not a warning) if memory reduction > 50% in a single change. Reserved capacity recommendations require risk scoring — never recommend a 3-year commitment for a workload under 3 months old.</div>
+  </div>
+
+  <h2>The Four Optimization Types</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Type</th><th>Script</th><th>Frequency</th></tr>
+    <tr><td>Rightsizing</td><td><code>finops/scripts/analyze-rightsizing.py</code></td><td>Weekly</td></tr>
+    <tr><td>Reserved Capacity</td><td><code>finops/scripts/reserved-capacity-advisor.py</code></td><td>Quarterly</td></tr>
+    <tr><td>Anomaly Investigation</td><td>Kubecost anomaly dashboard</td><td>On alert</td></tr>
+    <tr><td>Label Compliance</td><td><code>finops/scripts/normalize-cloud-costs.py</code></td><td>Weekly</td></tr>
+  </table>
+  </div>
+
+  <h2>Cross-Cloud Normalization Formula</h2>
+  <div class="pre-header">python</div>
+  <pre><code><span class="cm"># Standard unit for multi-cloud cost comparison
+# This is an approximation. Use actual invoices for financial reporting.
+# Pricing: # &lt;-- UPDATE QUARTERLY</span>
+normalized_cost = (vcpu_hours * <span class="cn">0.048</span>) + (gib_hours * <span class="cn">0.006</span>)</code></pre>
+
+  <h2>Verify Savings</h2>
+  <div class="callout success">
+    <span class="callout-icon">&#10003;</span>
+    <div class="callout-content">After every optimization cycle, verify savings in the Kubecost dashboard within 48 hours.</div>
+  </div>
+</section>
+
+<!-- PATH: SUPPLY CHAIN SECURITY -->
+<section id="path-supply" class="content-section section-anchor">
+  <div class="section-label">Golden Path</div>
+  <h1>Supply Chain Security</h1>
+  <p>Keyless image signing with Cosign, SBOM generation, SLSA provenance, and Kyverno admission verification.</p>
+
+  <div class="callout info">
+    <span class="callout-icon">&#8505;</span>
+    <div class="callout-content"><strong>Prerequisite:</strong> OIDC federation must be configured before keyless signing works. See <code>docs/guides/github-actions-oidc.md</code>.</div>
+  </div>
+
+  <h2>Key Rules</h2>
+  <ul>
+    <li>Always pin <code>cosign</code>, <code>slsa-github-generator</code>, and <code>anchore/sbom-action</code> to specific versions or SHAs — never floating tags. Add <code># &lt;-- UPDATE QUARTERLY</code> to each pin.</li>
+    <li>Every <code>cosign verify</code> must include <code>--certificate-identity-regexp</code> and <code>--certificate-oidc-issuer</code>.</li>
+    <li>New supply chain policies extend <code>secops/supply-chain/</code> — never replace existing policies.</li>
+  </ul>
+
+  <div class="pre-header">yaml — .github/workflows/build.yml (excerpt)</div>
+  <pre><code><span class="kw">- name:</span> <span class="st">Sign image with Cosign</span>
+  <span class="kw">uses:</span> <span class="st">sigstore/cosign-installer@v3.4.0</span>  <span class="cm"># &lt;-- UPDATE QUARTERLY</span>
+  <span class="kw">with:</span>
+    <span class="kw">cosign-release:</span> <span class="st">'v2.2.3'</span>             <span class="cm"># &lt;-- UPDATE QUARTERLY</span>
+
+<span class="kw">- name:</span> <span class="st">Verify signed image</span>
+  <span class="kw">run:</span> |
+    cosign verify \
+      --certificate-identity-regexp="https://github.com/your-org/.*" \
+      --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+      $IMAGE_REF</code></pre>
+</section>
+
+<!-- PATH: INCIDENT RESPONSE -->
+<section id="path-incident" class="content-section section-anchor">
+  <div class="section-label">Golden Path</div>
+  <h1>Incident Response</h1>
+  <p>Structured triage through mitigation and postmortem. Always start with ownership lookup from the service catalog.</p>
+
+  <div class="callout danger">
+    <span class="callout-icon">&#9888;</span>
+    <div class="callout-content"><strong>Phase 1 — Triage:</strong> Confirm ownership from the service catalog entry (<code>catalog/services/&lt;service-name&gt;.yaml</code>) before escalating. The on-call field determines who to page.</div>
+  </div>
+
+  <h2>Phase Checklist</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Phase</th><th>Actions</th><th>Tools</th></tr>
+    <tr><td>1. Triage</td><td>Identify service, confirm catalog owner, check SLO burn rate</td><td><code>catalog/services/</code>, Grafana SLO dashboard</td></tr>
+    <tr><td>2. Diagnose</td><td>Check pod/node health, review recent deploys, inspect logs</td><td><code>kubectl</code>, <code>k9s</code>, <code>stern</code>, Loki</td></tr>
+    <tr><td>3. Mitigate</td><td>Rollback deployment, scale, reroute traffic</td><td><code>kubectl rollout undo</code>, ArgoCD UI</td></tr>
+    <tr><td>4. Postmortem</td><td>Root cause, error budget impact, 5 whys</td><td><code>docs/runbooks/template.md</code></td></tr>
+  </table>
+  </div>
+
+  <p>Full runbook: <code>docs/golden-paths/incident-response.md</code> | SLO breach runbook: <code>docs/runbooks/slo-breach-response.md</code></p>
+</section>
+
+<!-- CI / CD SECTION -->
+<section id="ci-github" class="content-section section-anchor">
+  <div class="section-label">CI / CD</div>
+  <h1>CI Templates</h1>
+
+  <div class="tabs">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab(event,'gh-actions')">GitHub Actions</button>
+      <button class="tab-btn" onclick="switchTab(event,'az-pipelines')">Azure Pipelines</button>
+      <button class="tab-btn" onclick="switchTab(event,'gitlab-ci')">GitLab CI</button>
+      <button class="tab-btn" onclick="switchTab(event,'jenkins')">Jenkins</button>
+    </div>
+
+    <div id="tab-gh-actions" class="tab-panel active">
+      <p>Located in <code>ci/github-actions/</code>. A shared workflow library provides reusable jobs.</p>
+      <h3>Available workflows</h3>
+      <div class="table-wrap">
+      <table>
+        <tr><th>File</th><th>Purpose</th></tr>
+        <tr><td><code>_shared/build-push.yml</code></td><td>Multi-arch Docker build and push to registry</td></tr>
+        <tr><td><code>_shared/security-scan.yml</code></td><td>SAST, container scan, secret detection, IaC scan</td></tr>
+        <tr><td><code>_shared/deploy-k8s.yml</code></td><td>Kustomize apply with rollout verification</td></tr>
+        <tr><td><code>_shared/deploy-helm.yml</code></td><td>Helm upgrade with values override</td></tr>
+        <tr><td><code>_shared/terraform-plan.yml</code></td><td>Terraform init/validate/plan with OIDC auth</td></tr>
+        <tr><td><code>_shared/terraform-apply.yml</code></td><td>Terraform apply on merge to main</td></tr>
+        <tr><td><code>validate-catalog.yml</code></td><td>Service catalog validation gate</td></tr>
+      </table>
+      </div>
+      <div class="pre-header">.github/workflows/ci.yml (example)</div>
+      <pre><code><span class="kw">name:</span> <span class="st">CI</span>
+<span class="kw">on:</span>
+  <span class="kw">push:</span>
+    <span class="kw">branches:</span> [<span class="st">main</span>]
+  <span class="kw">pull_request:</span>
+
+<span class="kw">jobs:</span>
+  <span class="kw">build:</span>
+    <span class="kw">uses:</span> <span class="st">./.github/workflows/_shared/build-push.yml</span>
+    <span class="kw">with:</span>
+      <span class="kw">image-name:</span> <span class="st">your-org/your-service</span>
+      <span class="kw">dockerfile:</span> <span class="st">docker/node/Dockerfile.api</span>
+
+  <span class="kw">security:</span>
+    <span class="kw">needs:</span> <span class="st">build</span>
+    <span class="kw">uses:</span> <span class="st">./.github/workflows/_shared/security-scan.yml</span>
+
+  <span class="kw">deploy-staging:</span>
+    <span class="kw">needs:</span> <span class="st">security</span>
+    <span class="kw">if:</span> <span class="st">github.ref == 'refs/heads/main'</span>
+    <span class="kw">uses:</span> <span class="st">./.github/workflows/_shared/deploy-k8s.yml</span>
+    <span class="kw">with:</span>
+      <span class="kw">overlay:</span> <span class="st">cd/kubernetes/_overlays/staging</span></code></pre>
+    </div>
+
+    <div id="tab-az-pipelines" class="tab-panel">
+      <p>Located in <code>ci/azure-pipelines/</code>. Uses YAML pipeline templates with variable groups for environment config.</p>
+      <div class="pre-header">azure-pipelines.yml (example)</div>
+      <pre><code><span class="kw">trigger:</span>
+  <span class="kw">branches:</span>
+    <span class="kw">include:</span> [<span class="st">main</span>]
+
+<span class="kw">resources:</span>
+  <span class="kw">repositories:</span>
+    <span class="kw">- repository:</span> <span class="st">templates</span>
+      <span class="kw">type:</span> <span class="st">git</span>
+      <span class="kw">name:</span> <span class="st">cicd-reference</span>
+      <span class="kw">ref:</span> <span class="st">refs/heads/main</span>
+
+<span class="kw">stages:</span>
+  <span class="kw">- template:</span> <span class="st">ci/azure-pipelines/build-and-scan.yml</span>
+    <span class="kw">parameters:</span>
+      <span class="kw">imageName:</span> <span class="st">$(IMAGE_NAME)</span>
+  <span class="kw">- template:</span> <span class="st">ci/azure-pipelines/deploy-aks.yml</span>
+    <span class="kw">parameters:</span>
+      <span class="kw">environment:</span> <span class="st">staging</span></code></pre>
+    </div>
+
+    <div id="tab-gitlab-ci" class="tab-panel">
+      <p>Located in <code>ci/gitlab-ci/</code>. Uses <code>include:</code> to compose pipeline stages from shared component files.</p>
+      <div class="pre-header">.gitlab-ci.yml (example)</div>
+      <pre><code><span class="kw">include:</span>
+  <span class="kw">- local:</span> <span class="st">ci/gitlab-ci/build.yml</span>
+  <span class="kw">- local:</span> <span class="st">ci/gitlab-ci/security-scan.yml</span>
+  <span class="kw">- local:</span> <span class="st">ci/gitlab-ci/deploy-k8s.yml</span>
+
+<span class="kw">variables:</span>
+  <span class="kw">IMAGE_NAME:</span> <span class="st">$CI_REGISTRY_IMAGE</span>
+  <span class="kw">OVERLAY:</span> <span class="st">cd/kubernetes/_overlays/staging</span></code></pre>
+    </div>
+
+    <div id="tab-jenkins" class="tab-panel">
+      <p>Located in <code>ci/jenkins/</code>. Declarative Jenkinsfile referencing a shared library.</p>
+      <div class="pre-header">Jenkinsfile (example)</div>
+      <pre><code><span class="kw">@Library</span>(<span class="st">'devops-shared-lib'</span>) _
+
+pipeline {
+  <span class="kw">agent</span> { docker { <span class="kw">image</span> <span class="st">'docker:dind'</span> } }
+  <span class="kw">stages</span> {
+    <span class="kw">stage</span>(<span class="st">'Build'</span>)    { <span class="kw">steps</span> { dockerBuild(<span class="kw">imageName</span>: <span class="st">env.IMAGE_NAME</span>) } }
+    <span class="kw">stage</span>(<span class="st">'Scan'</span>)     { <span class="kw">steps</span> { securityScan() } }
+    <span class="kw">stage</span>(<span class="st">'Deploy'</span>)   { <span class="kw">steps</span> { k8sDeploy(<span class="kw">overlay</span>: <span class="st">'staging'</span>) } }
+  }
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<section id="cd-targets" class="content-section section-anchor">
+  <h2>Deployment Targets</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Target</th><th>Path</th><th>Auth Method</th></tr>
+    <tr><td>AWS EKS</td><td><code>cd/targets/aws-eks/</code></td><td>OIDC + IAM role</td></tr>
+    <tr><td>AWS ECS</td><td><code>cd/targets/aws-ecs/</code></td><td>OIDC + ECS task role</td></tr>
+    <tr><td>AWS Lambda</td><td><code>cd/targets/aws-lambda/</code></td><td>OIDC + Lambda execution role</td></tr>
+    <tr><td>Azure AKS</td><td><code>cd/targets/azure-aks/</code></td><td>Workload Identity</td></tr>
+    <tr><td>Azure App Service</td><td><code>cd/targets/azure-app-service/</code></td><td>Managed Identity</td></tr>
+    <tr><td>GCP GKE</td><td><code>cd/targets/gcp-gke/</code></td><td>Workload Identity Federation</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- KUBERNETES SECTION -->
+<section id="k8s-base" class="content-section section-anchor">
+  <div class="section-label">Kubernetes</div>
+  <h1>Kubernetes Deployment Patterns</h1>
+
+  <h2>Base Manifests</h2>
+  <p>Located in <code>cd/kubernetes/_base/</code>. Every base manifest includes:</p>
+  <ul>
+    <li>CPU and memory <code>requests</code> and <code>limits</code> — required, not optional</li>
+    <li><code>readinessProbe</code> and <code>livenessProbe</code></li>
+    <li><code>securityContext.runAsNonRoot: true</code></li>
+    <li><code>securityContext.readOnlyRootFilesystem: true</code></li>
+    <li><code>terminationGracePeriodSeconds</code> set explicitly</li>
+  </ul>
+
+  <h2 id="k8s-overlays">Kustomize Overlays</h2>
+  <p>Located in <code>cd/kubernetes/_overlays/</code>. Overlay structure:</p>
+  <div class="pre-header">directory structure</div>
+  <pre><code>cd/kubernetes/_overlays/
+├── dev/          <span class="cm"># replicas: 1, debug logging, no HPA</span>
+├── staging/      <span class="cm"># replicas: 2, staging ingress, HPA enabled</span>
+└── production/   <span class="cm"># replicas: 3+, PDB, strict network policies, HPA + KEDA</span></code></pre>
+
+  <h2 id="k8s-helm">Helm Charts</h2>
+  <p>Generic service chart at <code>cd/helm/microservice/</code>. Webapp chart at <code>cd/helm/webapp/</code>. Override defaults via <code>values.yaml</code> per environment.</p>
+
+  <h2 id="k8s-gitops">GitOps</h2>
+  <p>Two supported controllers:</p>
+  <ul>
+    <li><strong>ArgoCD</strong> — <code>cd/gitops/argocd/</code>. Application and AppProject resources. Use <code>syncPolicy.automated</code> with <code>prune: true</code> and <code>selfHeal: true</code>.</li>
+    <li><strong>Flux</strong> — <code>cd/gitops/flux/</code>. Kustomization and GitRepository resources. Use <code>retryInterval</code> and <code>healthChecks</code>.</li>
+  </ul>
+
+  <h2 id="k8s-fleet">Fleet Management</h2>
+  <p>Multi-cluster topology driven by <code>cd/fleet-overlays/</code> and ArgoCD fleet ApplicationSets.</p>
+  <div class="callout warning">
+    <span class="callout-icon">&#9888;</span>
+    <div class="callout-content">Fleet policies must use <strong>Audit mode only</strong>. Enforce mode on a workload cluster is a production outage. The cluster registry ConfigMap is human-maintained — never automate writes to it. Scale limit: 20 clusters per fleet ApplicationSet.</div>
+  </div>
+</section>
+
+<!-- IaC SECTION -->
+<section id="tf-overview" class="content-section section-anchor">
+  <div class="section-label">Infrastructure as Code</div>
+  <h1>Terraform</h1>
+  <p>All Terraform modules live in <code>terraform/</code> organized by cloud target. Bootstrap state backends in <code>terraform/_bootstrap/</code>.</p>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Module</th><th>Path</th><th>What it provisions</th></tr>
+    <tr><td id="tf-aws">AWS EKS</td><td><code>terraform/aws-eks/</code></td><td>EKS cluster, managed node groups, VPC, ALB, IRSA</td></tr>
+    <tr><td>AWS ECS</td><td><code>terraform/aws-ecs/</code></td><td>ECS Fargate cluster, ALB, service discovery</td></tr>
+    <tr><td>AWS Lambda</td><td><code>terraform/aws-lambda/</code></td><td>Lambda function, API Gateway, IAM, CloudWatch</td></tr>
+    <tr><td id="tf-azure">Azure AKS</td><td><code>terraform/azure-aks/</code></td><td>AKS cluster, node pools, ACR, Key Vault, workload identity</td></tr>
+    <tr><td>Azure App Service</td><td><code>terraform/azure-app-service/</code></td><td>App Service Plan, Web App, Application Insights</td></tr>
+    <tr><td id="tf-gcp">GCP GKE</td><td><code>terraform/gcp-gke/</code></td><td>GKE Autopilot, Artifact Registry, Workload Identity</td></tr>
+  </table>
+  </div>
+
+  <h2 id="pulumi">Pulumi</h2>
+  <p>Node.js Pulumi projects in <code>cd/pulumi/</code> for teams preferring TypeScript-based IaC. Shares the same deployment targets as Terraform.</p>
+</section>
+
+<!-- SECURITY SECTION -->
+<section id="sec-shift-left" class="content-section section-anchor">
+  <div class="section-label">Security</div>
+  <h1>Shift-Left Security</h1>
+  <p>All scanning runs in CI before merge. Located in <code>ci-security/</code>.</p>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Domain</th><th>Tool</th><th>Path</th><th>Stage</th></tr>
+    <tr><td>SAST</td><td>Semgrep, CodeQL</td><td><code>ci-security/sast/</code></td><td>PR check</td></tr>
+    <tr><td>Container scanning</td><td>Trivy, Grype</td><td><code>ci-security/container-scanning/</code></td><td>Post-build</td></tr>
+    <tr><td>Secret detection</td><td>Gitleaks, TruffleHog</td><td><code>ci-security/secret-detection/</code></td><td>Pre-commit + CI</td></tr>
+    <tr><td>Dependency audit</td><td>Snyk, OWASP Dependency-Check</td><td><code>ci-security/dependency-audit/</code></td><td>PR check</td></tr>
+    <tr><td>IaC scanning</td><td>Checkov, tfsec</td><td><code>ci-security/iac-scanning/</code></td><td>PR check</td></tr>
+    <tr><td>Secret rotation</td><td>Terraform + ESO</td><td><code>ci-security/secret-rotation/</code></td><td>Scheduled</td></tr>
+  </table>
+  </div>
+
+  <h2 id="sec-runtime">Runtime Security</h2>
+  <p>Located in <code>secops/</code>.</p>
+  <ul>
+    <li><strong>Falco</strong> — real-time syscall detection, rules in <code>secops/runtime/</code></li>
+    <li><strong>Audit logging</strong> — Kubernetes API server audit policies</li>
+    <li><strong>Compliance</strong> — SOC 2 / CIS / ISO 27001 control library in <code>secops/compliance/control-library/</code></li>
+    <li><strong>Runbooks</strong> — incident response procedures in <code>secops/runbooks/</code></li>
+  </ul>
+
+  <h2 id="sec-supply-chain">Supply Chain Security</h2>
+  <p>Files in <code>secops/supply-chain/</code>. See the <a href="#path-supply">Supply Chain golden path</a> for the complete workflow.</p>
+
+  <h2 id="sec-secrets">Secrets Management</h2>
+  <p>Canonical location: <code>secrets/</code>. Uses External Secrets Operator to sync from AWS Secrets Manager, Azure Key Vault, or GCP Secret Manager into Kubernetes Secrets.</p>
+
+  <div class="callout danger">
+    <span class="callout-icon">&#128274;</span>
+    <div class="callout-content"><strong>Never</strong> commit secret values to the repository — not even in examples. Use <code>&lt;SECRET-VALUE&gt;</code> placeholders. Secret naming convention: <code>/service-name/environment/secret-name</code>.</div>
+  </div>
+
+  <h3>refreshInterval guidelines</h3>
+  <ul>
+    <li><code>1h</code> — default for most secrets</li>
+    <li><code>15m</code> — high-rotation secrets (API keys, tokens)</li>
+    <li><code>24h</code> — stable infrastructure credentials</li>
+  </ul>
+
+  <h2 id="sec-policy">Policy Engine</h2>
+  <p>Two policy engines in <code>policy/</code>:</p>
+  <ul>
+    <li><strong>Kyverno</strong> (<code>policy/kyverno/</code>) — admission controller policies, mutation, and generation</li>
+    <li><strong>Conftest</strong> (<code>policy/conftest/</code>) — OPA-based static checks run in CI before deployment</li>
+  </ul>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Policy</th><th>File</th><th>Controls</th></tr>
+    <tr><td>Require labels</td><td><code>policy/kyverno/require-labels.yaml</code></td><td>CIS K8s 5.2</td></tr>
+    <tr><td>Require resource limits</td><td><code>policy/kyverno/require-resource-limits.yaml</code></td><td>CIS K8s 5.2</td></tr>
+    <tr><td>Disallow privileged</td><td><code>policy/kyverno/disallow-privileged.yaml</code></td><td>CIS K8s 5.2, SOC2 CC6</td></tr>
+    <tr><td>Require catalog registration</td><td><code>policy/kyverno/require-catalog-registration.yaml</code></td><td>SOC2 CC1.2, CC2.1</td></tr>
+    <tr><td>Cosign image verification</td><td><code>secops/supply-chain/cosign-verify-policy.yaml</code></td><td>SOC2 CC7.2</td></tr>
+  </table>
+  </div>
+
+  <div class="callout warning">
+    <span class="callout-icon">&#9888;</span>
+    <div class="callout-content">All Kyverno policies must include the <code>secops.requirements</code> annotation mapping to framework control IDs. Fleet policies must use <strong>Audit mode</strong> — never Enforce mode at fleet scope.</div>
+  </div>
+</section>
+
+<!-- OBSERVABILITY SECTION -->
+<section id="obs-prometheus" class="content-section section-anchor">
+  <div class="section-label">Observability</div>
+  <h1>Observability Stack</h1>
+  <p>Full LGTM stack (Loki, Grafana, Tempo, Mimir/Prometheus) plus OpenTelemetry Collector. Assets in <code>observability/</code>.</p>
+
+  <h2>Prometheus &amp; Grafana</h2>
+  <p>Deployed via <code>kube-prometheus-stack</code> Helm chart. Custom dashboards in <code>observability/prometheus/dashboards/</code>. Alert rules in <code>observability/prometheus/alerts/</code>. Recording rules in <code>observability/prometheus/recording-rules/</code>.</p>
+
+  <h2 id="obs-loki">Loki (Logs)</h2>
+  <p>Structured log aggregation. Configuration in <code>observability/loki/</code>. Integrated with Grafana for unified log and metric exploration.</p>
+
+  <h2 id="obs-tempo">Tempo (Traces)</h2>
+  <p>Distributed tracing backend. Configuration in <code>observability/tempo/</code>. Traces from OpenTelemetry SDK → OTel Collector → Tempo → Grafana.</p>
+
+  <h2 id="obs-otel">OpenTelemetry</h2>
+  <p>Collector configuration in <code>observability/opentelemetry/</code> and <code>observability/otel/</code>. The collector receives OTLP (gRPC and HTTP), exports metrics to Prometheus, logs to Loki, and traces to Tempo.</p>
+
+  <h2 id="obs-slo">SLOs &amp; Burn-Rate Alerting</h2>
+  <p>SLO definitions: <code>observability/prometheus/slos/</code>. Recording rules: <code>observability/prometheus/recording-rules/</code>. Alerts: <code>observability/prometheus/alerts/</code>.</p>
+  <p>See the <a href="#path-slo">SLO-Driven Development golden path</a> for the complete workflow and alert tier table.</p>
+
+  <h2 id="obs-alerts">Alert Routing</h2>
+  <p>Notification channel templates in <code>notifications/</code>:</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Channel</th><th>File</th></tr>
+    <tr><td>Slack</td><td><code>notifications/slack-notify.yml</code></td></tr>
+    <tr><td>PagerDuty</td><td><code>notifications/pagerduty-notify.yml</code></td></tr>
+    <tr><td>Grafana OnCall</td><td><code>notifications/grafana-notify.yml</code></td></tr>
+    <tr><td>Microsoft Teams</td><td><code>notifications/teams-notify.yml</code></td></tr>
+    <tr><td>Datadog</td><td><code>notifications/datadog-notify.yml</code></td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- FINOPS SECTION -->
+<section id="finops-arch" class="content-section section-anchor">
+  <div class="section-label">FinOps</div>
+  <h1>FinOps — Cost Governance and Optimization</h1>
+
+  <h2>Architecture</h2>
+  <p>Cost data flows: Cloud billing → Kubecost → Prometheus → Grafana dashboards. Infracost runs in CI to estimate IaC cost changes before merge. Optimization scripts query Kubecost API.</p>
+
+  <div class="pre-header">data flow</div>
+  <pre><code>Cloud APIs ──► Kubecost ──► Prometheus ──► Grafana dashboards
+                   │
+                   ▼
+          Optimization scripts ──► GitHub PRs (rightsizing changes)</code></pre>
+
+  <h2 id="finops-loop">Optimization Loop</h2>
+  <p>See the <a href="#path-finops">FinOps Optimization Loop golden path</a> for the complete workflow.</p>
+
+  <h2 id="finops-scripts">Scripts Reference</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Script</th><th>Purpose</th><th>Make Target</th></tr>
+    <tr><td><code>analyze-rightsizing.py</code></td><td>Identify over/under-provisioned workloads</td><td><code>make finops-rightsizing</code></td></tr>
+    <tr><td><code>generate-optimization-pr.py</code></td><td>Create draft PRs with resource changes</td><td><code>make finops-optimize-pr</code></td></tr>
+    <tr><td><code>normalize-cloud-costs.py</code></td><td>Cross-cloud cost normalization</td><td><code>make finops-normalize-costs</code></td></tr>
+    <tr><td><code>reserved-capacity-advisor.py</code></td><td>RI/savings plan recommendations with risk scoring</td><td><code>make finops-reserved-capacity</code></td></tr>
+  </table>
+  </div>
+
+  <h2 id="finops-dashboards">Dashboards</h2>
+  <p>Grafana dashboards in <code>finops/dashboards/</code>:</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>#</th><th>Dashboard</th><th>Focus</th></tr>
+    <tr><td>1</td><td>Cost Overview</td><td>Total cloud spend by team, namespace, workload</td></tr>
+    <tr><td>2</td><td>Rightsizing Opportunities</td><td>CPU/memory waste by deployment</td></tr>
+    <tr><td>3</td><td>Reserved Capacity</td><td>RI coverage, savings potential</td></tr>
+    <tr><td>4</td><td>Cost Anomaly Detection</td><td>Spend spikes and trend deviations</td></tr>
+    <tr><td>5</td><td>Label Compliance</td><td>Resources missing cost allocation labels</td></tr>
+    <tr><td>6</td><td>Multi-Cloud Comparison</td><td>Normalized cost comparison across providers</td></tr>
+    <tr><td>7</td><td>Namespace Cost Trends</td><td>30/60/90-day spend trends by namespace</td></tr>
+    <tr><td>8</td><td>FinOps KPIs</td><td>Cost efficiency ratio, optimization loop metrics</td></tr>
+    <tr><td>9</td><td>Infracost Delta</td><td>IaC change cost impact over time</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- SERVICE CATALOG SECTION -->
+<section id="catalog-overview" class="content-section section-anchor">
+  <div class="section-label">Service Catalog</div>
+  <h1>Service Catalog</h1>
+  <p>Git-native service and team registry. No database, no API server — just YAML files validated by Python and enforced by Kyverno.</p>
+
+  <div class="callout info">
+    <span class="callout-icon">&#8505;</span>
+    <div class="callout-content">The Backstage migration path is available at <code>catalog/scripts/migrate-to-backstage.py</code>. Only consider it when you reach 50+ services.</div>
+  </div>
+
+  <h2 id="catalog-schema">Service Schema</h2>
+  <div class="pre-header">catalog/services/example.yaml</div>
+  <pre><code><span class="kw">apiVersion:</span> <span class="st">catalog.io/v1</span>
+<span class="kw">kind:</span> <span class="st">Service</span>
+<span class="kw">metadata:</span>
+  <span class="kw">name:</span> <span class="st">api-gateway</span>        <span class="cm"># must match Deployment app label exactly</span>
+  <span class="kw">owner:</span> <span class="st">platform-team</span>      <span class="cm"># must match a file in catalog/teams/</span>
+  <span class="kw">display_name:</span> <span class="st">API Gateway</span>
+  <span class="kw">lifecycle:</span> <span class="st">stable</span>         <span class="cm"># alpha | beta | stable</span>
+<span class="kw">spec:</span>
+  <span class="kw">contact:</span>
+    <span class="kw">slack:</span> <span class="st">'#platform-alerts'</span>
+    <span class="kw">email:</span> <span class="st">platform@example.com</span>
+  <span class="kw">oncall:</span>
+    <span class="kw">schedule:</span> <span class="st">https://your-oncall-tool/schedule</span>
+  <span class="kw">slo:</span>
+    <span class="kw">definition_file:</span> <span class="st">observability/prometheus/slos/api-gateway-slo.yaml</span>
+  <span class="kw">runbook_url:</span> <span class="st">https://your-runbooks/api-gateway</span>  <span class="cm"># required for stable</span>
+  <span class="kw">cost_center:</span> <span class="st">platform-001</span>                         <span class="cm"># required for stable</span>
+  <span class="kw">data_classification:</span> <span class="st">internal</span>
+  <span class="kw">compliance_frameworks:</span> [<span class="st">soc2</span>, <span class="st">iso27001</span>]</code></pre>
+
+  <h2 id="catalog-validate">Validation</h2>
+  <div class="pre-header">bash</div>
+  <pre><code><span class="cm"># Validate all entries (CI-equivalent)</span>
+python catalog/scripts/validate-catalog.py --strict --skip-url-check
+
+<span class="cm"># Validate a single service</span>
+python catalog/scripts/validate-catalog.py --service api-gateway --strict
+
+<span class="cm"># Make target</span>
+make catalog-validate</code></pre>
+
+  <h2 id="catalog-codeowners">CODEOWNERS</h2>
+  <div class="pre-header">bash</div>
+  <pre><code><span class="cm"># Regenerate after any team membership change</span>
+python catalog/scripts/generate-codeowners.py --output .github/CODEOWNERS
+
+<span class="cm"># Make target</span>
+make catalog-codeowners</code></pre>
+
+  <h2 id="catalog-backstage">Backstage Migration</h2>
+  <div class="pre-header">bash</div>
+  <pre><code><span class="cm"># Convert all catalog entries to Backstage component YAML format</span>
+<span class="cm"># Use only when you have 50+ services -- see catalog/README.md</span>
+python catalog/scripts/migrate-to-backstage.py \
+  --catalog-dir catalog/services \
+  --output-dir backstage/catalog</code></pre>
+
+  <h2>Ownership Discovery</h2>
+  <div class="pre-header">bash</div>
+  <pre><code><span class="cm"># Who owns the api-gateway service?</span>
+yq '.metadata.owner' catalog/services/api-gateway.yaml
+
+<span class="cm"># What does platform-team own?</span>
+grep -r "owner: platform-team" catalog/services/ | awk -F: '{print $1}'
+
+<span class="cm"># Find on-call schedule for a service</span>
+yq '.spec.oncall.schedule' catalog/services/api-gateway.yaml</code></pre>
+</section>
+
+<!-- GUIDES REFERENCE -->
+<section id="guides" class="content-section section-anchor">
+  <div class="section-label">Reference</div>
+  <h1>Guides</h1>
+  <p>Located in <code>docs/guides/</code>.</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Guide</th><th>File</th></tr>
+    <tr><td>Branching strategy</td><td><code>docs/guides/branching-strategy.md</code></td></tr>
+    <tr><td>Conventional commits</td><td><code>docs/guides/conventional-commits.md</code></td></tr>
+    <tr><td>Database migrations</td><td><code>docs/guides/database-migrations.md</code></td></tr>
+    <tr><td>Disaster recovery</td><td><code>docs/guides/disaster-recovery.md</code></td></tr>
+    <tr><td>Environment strategy</td><td><code>docs/guides/environment-strategy.md</code></td></tr>
+    <tr><td>GitHub Actions OIDC federation</td><td><code>docs/guides/github-actions-oidc.md</code></td></tr>
+    <tr><td>Developer onboarding</td><td><code>docs/guides/onboarding.md</code></td></tr>
+    <tr><td>Pre-commit setup</td><td><code>docs/guides/pre-commit-setup.md</code></td></tr>
+    <tr><td>Secrets management</td><td><code>docs/guides/secrets-management.md</code></td></tr>
+    <tr><td>Versioning strategy</td><td><code>docs/guides/versioning-strategy.md</code></td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- RUNBOOKS REFERENCE -->
+<section id="runbooks" class="content-section section-anchor">
+  <h1>Runbooks</h1>
+  <p>Located in <code>docs/runbooks/</code> and <code>secops/runbooks/</code>.</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Runbook</th><th>File</th></tr>
+    <tr><td>Pod CrashLoopBackOff</td><td><code>docs/runbooks/podcrashloobackoff.md</code></td></tr>
+    <tr><td>SLO breach response</td><td><code>docs/runbooks/slo-breach-response.md</code></td></tr>
+    <tr><td>SLO quarterly review</td><td><code>docs/runbooks/slo-quarterly-review.md</code></td></tr>
+    <tr><td>Runbook template</td><td><code>docs/runbooks/template.md</code></td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ARCHITECTURE DECISIONS -->
+<section id="adrs" class="content-section section-anchor">
+  <h1>Architecture Decisions</h1>
+  <p>Located in <code>docs/decisions/</code>. For the decision process, see <code>docs/ARCHITECTURE_DECISION_GUIDE.md</code>.</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>ADR</th><th>Decision</th><th>File</th></tr>
+    <tr><td>ADR-001</td><td>Folder structure rationale</td><td><code>docs/decisions/ADR-001-folder-structure.md</code></td></tr>
+    <tr><td>ADR-002</td><td>Helm vs Kustomize</td><td><code>docs/decisions/ADR-002-helm-vs-kustomize.md</code></td></tr>
+    <tr><td>ADR-003</td><td>GitOps strategy</td><td><code>docs/decisions/ADR-003-gitops-strategy.md</code></td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- MAKEFILE REFERENCE -->
+<section id="makefile" class="content-section section-anchor">
+  <h1>Makefile Targets</h1>
+  <p>Run <code>make help</code> for the live list. Key targets:</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Target</th><th>Description</th></tr>
+    <tr><td><code>make check-prereqs</code></td><td>Verify all required tools are installed</td></tr>
+    <tr><td><code>make dev</code></td><td>Start local kind cluster + registry + ingress</td></tr>
+    <tr><td><code>make dev-compose</code></td><td>Start local stack via Docker Compose</td></tr>
+    <tr><td><code>make build</code></td><td>Build Docker image</td></tr>
+    <tr><td><code>make build-push</code></td><td>Build and push to local kind registry</td></tr>
+    <tr><td><code>make lint</code></td><td>Run all pre-commit hooks against all files</td></tr>
+    <tr><td><code>make test</code></td><td>Run unit tests (override in your project)</td></tr>
+    <tr><td><code>make deploy-dev</code></td><td>Build, push, and apply dev kustomize overlay</td></tr>
+    <tr><td><code>make deploy-staging</code></td><td>Apply staging overlay</td></tr>
+    <tr><td><code>make k8s-status</code></td><td>Show pods/services/ingress across all namespaces</td></tr>
+    <tr><td><code>make catalog-validate</code></td><td>Validate all service catalog entries</td></tr>
+    <tr><td><code>make catalog-codeowners</code></td><td>Regenerate .github/CODEOWNERS from catalog</td></tr>
+    <tr><td><code>make finops-rightsizing</code></td><td>Analyze CPU/memory rightsizing</td></tr>
+    <tr><td><code>make finops-optimize-pr</code></td><td>Generate draft optimization PR</td></tr>
+    <tr><td><code>make finops-normalize-costs</code></td><td>Normalize cross-cloud costs</td></tr>
+    <tr><td><code>make finops-reserved-capacity</code></td><td>Reserved capacity recommendations</td></tr>
+    <tr><td><code>make policy-report</code></td><td>Show Kyverno policy violations</td></tr>
+    <tr><td><code>make compliance-report</code></td><td>Generate compliance evidence report</td></tr>
+    <tr><td><code>make slo-validate</code></td><td>Lint SLO YAML and check naming convention</td></tr>
+    <tr><td><code>make tag-release</code></td><td>Create and push signed semver git tag</td></tr>
+    <tr><td><code>make clean</code></td><td>Remove build artefacts and prune Docker</td></tr>
+    <tr><td><code>make teardown</code></td><td>Destroy local kind cluster</td></tr>
+  </table>
+  </div>
+</section>
+
+</main>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+/* Hamburger */
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const sidebar = document.getElementById('sidebar');
+hamburgerBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+document.addEventListener('click', (e) => {
+  if (!sidebar.contains(e.target) && e.target !== hamburgerBtn) {
+    sidebar.classList.remove('open');
+  }
+});
+
+/* Sidebar group toggle */
+function toggleGroup(header) {
+  const group = header.closest('.sidebar-group');
+  group.classList.toggle('open');
+}
+
+/* Tab switching */
+function switchTab(event, panelId) {
+  const nav = event.target.closest('.tab-nav');
+  const tabsEl = event.target.closest('.tabs');
+  nav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  tabsEl.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('tab-' + panelId);
+  if (panel) panel.classList.add('active');
+}
+
+/* Active sidebar link tracking */
+const sections = document.querySelectorAll('.section-anchor');
+const sidebarLinks = document.querySelectorAll('.sidebar-link');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      sidebarLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + id) {
+          link.classList.add('active');
+          // Auto-open parent group
+          const group = link.closest('.sidebar-group');
+          if (group) group.classList.add('open');
+        }
+      });
+    }
+  });
+}, { rootMargin: '-56px 0px -70% 0px', threshold: 0 });
+
+sections.forEach(s => observer.observe(s));
+
+/* Search functionality */
+const searchInput = document.getElementById('searchInput');
+searchInput.addEventListener('input', debounce(handleSearch, 200));
+
+function handleSearch() {
+  const query = searchInput.value.trim().toLowerCase();
+  if (!query) {
+    clearHighlights();
+    return;
+  }
+  clearHighlights();
+  const walker = document.createTreeWalker(
+    document.getElementById('mainContent'),
+    NodeFilter.SHOW_TEXT,
+    null
+  );
+  let node;
+  const matches = [];
+  while ((node = walker.nextNode())) {
+    const parent = node.parentElement;
+    const tag = parent.tagName.toLowerCase();
+    if (['script', 'style'].includes(tag)) continue;
+    if (node.textContent.toLowerCase().includes(query)) {
+      matches.push(node);
+    }
+  }
+  matches.slice(0, 50).forEach(n => {
+    const parent = n.parentElement;
+    const regex = new RegExp('(' + escapeRegex(query) + ')', 'gi');
+    const html = n.textContent.replace(regex, '<mark class="search-highlight">$1</mark>');
+    const span = document.createElement('span');
+    span.innerHTML = html;
+    parent.replaceChild(span, n);
+  });
+  if (matches.length > 0) {
+    const first = document.querySelector('.search-highlight');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.search-highlight').forEach(m => {
+    const parent = m.parentNode;
+    parent.replaceChild(document.createTextNode(m.textContent), m);
+    parent.normalize();
+  });
+  // Remove search wrapper spans
+  document.querySelectorAll('span').forEach(s => {
+    if (s.childElementCount === 0 && !s.className) {
+      const parent = s.parentNode;
+      if (parent) {
+        while (s.firstChild) parent.insertBefore(s.firstChild, s);
+        parent.removeChild(s);
+        parent.normalize();
+      }
+    }
+  });
+}
+
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function debounce(fn, delay) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
+</script>
+<script src="../scripts/handbook-ui.js"></script>
+</body>
+</html>
