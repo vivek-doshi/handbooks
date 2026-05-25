@@ -151,6 +151,16 @@ Each handbook page includes:
 - a floating back button to return to index.html
 - a shared theme toggle and SVG icon treatment that should stay consistent across handbook pages
 
+Handbook metadata convention (required for all handbook HTML files):
+
+- Add these non-visible meta tags in the <head> (right after viewport is recommended):
+	- <meta name="handbook-version" content="v1">
+	- <meta name="last-updated" content="YYYY-MM-DD">
+- Add this hidden signature immediately after the opening <body> tag:
+	- <div hidden data-handbook-signature="v1|YYYY-MM-DD"></div>
+- Keep these values aligned on every handbook update.
+- This signature is intentionally not visible in rendered UI and is for maintenance/version tracking.
+
 The shared UI behavior and styling are organized through the shared assets in styles/ and scripts/.
 
 ## How To Contribute
