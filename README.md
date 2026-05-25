@@ -25,8 +25,6 @@ Each handbook is designed to be easy to open and scan when you need a concise su
 
 The repository now includes a central entry page and shared assets in addition to the handbook files.
 
-The current handbook workflow also relies on shared UI behavior for handbook pages, a small `.github/` support layer for PR review, and a curated `.ai/` context set for Copilot-assisted edits.
-
 Main entry point:
 
 - index.html
@@ -59,7 +57,6 @@ Main entry point:
 - python-201-handbook.html — Python 201 Handbook
 - python301_handbook.html — Python 301 Handbook
 - python-fastapi-handbook.html — Python and FastAPI Handbook
-- jupyter-handbook.html — Jupyter Notebook Field Handbook
 
 ### Data Engineering
 - data-engineering-core-concepts-python-handbook.html — Data Engineering Core Concepts
@@ -83,8 +80,6 @@ Main entry point:
 - github-actions-handbook.html — GitHub Actions Handbook
 - kubernetes_handbook.html — Kubernetes Handbook
 - docker-k8s-command-reference-handbook.html — Docker & Kubernetes Command Reference Handbook
-- devops-playbook-handbook.html — DevOps Playbook Handbook
-- platform-engineering-concepts-handbook.html — Platform Engineering Concepts Handbook
 - minikube-local-kubernetes-iac-handbook.html — Minikube: Local Kubernetes and IaC Handbook
 - terraform-handbook.html — Terraform Handbook
 
@@ -149,7 +144,6 @@ Each handbook page includes:
 - a direct page layout for quick reading
 - light mode and dark mode support
 - a floating back button to return to index.html
-- a shared theme toggle and SVG icon treatment that should stay consistent across handbook pages
 
 The shared UI behavior and styling are organized through the shared assets in styles/ and scripts/.
 
