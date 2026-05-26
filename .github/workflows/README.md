@@ -14,6 +14,16 @@ This repository is a static handbook site, so the most useful workflows are ligh
 - Purpose: guard handbook style and metadata quality.
 - Checks to include: title/description presence, working internal links, and shared UI usage on new handbook pages.
 
+### `handbook-review-check.yml`
+- Trigger: weekly schedule, `pull_request`, `push`, and manual dispatch.
+- Purpose: keep handbook review tracking current and flag overdue reviews.
+- Checks to include: registry sync (`scripts/handbook_review_audit.py --sync`), committed-registry enforcement, and overdue audit (`--audit`).
+
+### `handbook-overdue-issue.yml`
+- Trigger: weekly schedule (Monday) and manual dispatch.
+- Purpose: open or update a GitHub issue when handbook reviews are overdue.
+- Behavior: creates/updates a single rolling issue with the overdue table; auto-closes it when no overdue entries remain.
+
 ### `deploy-pages.yml`
 - Trigger: `push` to `main`
 - Purpose: publish the static site to GitHub Pages.

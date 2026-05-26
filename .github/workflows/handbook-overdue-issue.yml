@@ -1,0 +1,183 @@
+name: Handbook Overdue Issue
+
+on:
+  schedule:
+    - cron: '15 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-or-update-overdue-issue:
+    name: Create or update overdue handbook issue
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Sync handbook registry
+        run: python scripts/handbook_review_audit.py --sync
+
+      - name: Build overdue report
+        id: report
+        shell: bash
+        run: |
+          python - <<'PY'
+          import csv
+          import datetime as dt
+          import os
+          from pathlib import Path
+
+          marker = "<!-- handbook-overdue-report -->"
+          title = "Handbook review overdue report"
+          today = dt.date.today()
+          registry = Path("handbook-tracking/handbook-registry.csv")
+          report_path = Path("handbook-tracking/overdue-report.md")
+
+          overdue = []
+          invalid = []
+
+          if not registry.exists():
+              invalid.append(("handbook-tracking/handbook-registry.csv", "missing"))
+          else:
+              with registry.open("r", encoding="utf-8", newline="") as fh:
+                  reader = csv.DictReader(fh)
+                  for row in reader:
+                      handbook_path = (row.get("handbook_path") or "").strip()
+                      owner = (row.get("owner") or "unassigned").strip() or "unassigned"
+                      due_raw = (row.get("next_review_due") or "").strip()
+                      try:
+                          due = dt.date.fromisoformat(due_raw)
+                      except ValueError:
+                          invalid.append((handbook_path or "(unknown)", due_raw or "invalid"))
+                          continue
+
+                      delta = (today - due).days
+                      if delta > 0:
+                          overdue.append((delta, handbook_path, owner, due_raw))
+
+          overdue.sort(key=lambda item: (-item[0], item[1]))
+          invalid.sort(key=lambda item: item[0])
+
+          lines = []
+          lines.append(marker)
+          lines.append(f"# {title}")
+          lines.append("")
+          lines.append(f"Date: {today.isoformat()}")
+          lines.append("")
+
+          if overdue:
+              lines.append(f"Found {len(overdue)} overdue handbook review entries.")
+              lines.append("")
+              lines.append("| Handbook | Owner | Due Date | Overdue By |")
+              lines.append("|---|---|---|---|")
+              for days, path, owner, due_raw in overdue:
+                  lines.append(f"| {path} | {owner} | {due_raw} | {days} day(s) |")
+              lines.append("")
+          else:
+              lines.append("No overdue handbook review entries found.")
+              lines.append("")
+
+          if invalid:
+              lines.append(f"Found {len(invalid)} invalid next_review_due value(s).")
+              lines.append("")
+              lines.append("| Handbook | Value |")
+              lines.append("|---|---|")
+              for path, value in invalid:
+                  lines.append(f"| {path} | {value} |")
+              lines.append("")
+
+          lines.append("Action:")
+          lines.append("- Update handbook-tracking/handbook-registry.csv with valid next_review_due values.")
+          lines.append("- Review and refresh overdue handbooks, then move due dates forward.")
+
+          report_path.parent.mkdir(parents=True, exist_ok=True)
+          report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"overdue_count={len(overdue)}\n")
+              out.write(f"invalid_count={len(invalid)}\n")
+              out.write(f"report_path={report_path.as_posix()}\n")
+          PY
+
+      - name: Create, update, or close overdue issue
+        uses: actions/github-script@v7
+        env:
+          OVERDUE_COUNT: ${{ steps.report.outputs.overdue_count }}
+          INVALID_COUNT: ${{ steps.report.outputs.invalid_count }}
+          REPORT_PATH: ${{ steps.report.outputs.report_path }}
+        with:
+          script: |
+            const fs = require('fs');
+
+            const overdueCount = Number(process.env.OVERDUE_COUNT || '0');
+            const invalidCount = Number(process.env.INVALID_COUNT || '0');
+            const reportPath = process.env.REPORT_PATH;
+            const title = 'Handbook review overdue report';
+            const marker = '<!-- handbook-overdue-report -->';
+            const needsOpenIssue = (overdueCount + invalidCount) > 0;
+
+            const reportBody = fs.readFileSync(reportPath, 'utf8');
+            const { owner, repo } = context.repo;
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const existingOpen = openIssues.find(issue =>
+              issue.title === title || (issue.body || '').includes(marker)
+            );
+
+            if (needsOpenIssue) {
+              if (existingOpen) {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: existingOpen.number,
+                  title,
+                  body: reportBody
+                });
+                core.info(`Updated existing issue #${existingOpen.number}`);
+              } else {
+                const created = await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title,
+                  body: reportBody
+                });
+                core.info(`Created issue #${created.data.number}`);
+              }
+              return;
+            }
+
+            if (!existingOpen) {
+              core.info('No overdue data and no open report issue. Nothing to do.');
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: existingOpen.number,
+              body: `Auto-close: no overdue handbook reviews found on ${new Date().toISOString().slice(0, 10)}.`
+            });
+
+            await github.rest.issues.update({
+              owner,
+              repo,
+              issue_number: existingOpen.number,
+              state: 'closed'
+            });
+
+            core.info(`Closed issue #${existingOpen.number} because no overdue entries remain.`);
