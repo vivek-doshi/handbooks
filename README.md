@@ -157,6 +157,30 @@ Handbook metadata convention (required for all handbook HTML files):
 
 The shared UI behavior and styling are organized through the shared assets in styles/ and scripts/.
 
+## Handbook Review Tracking
+
+Handbook freshness is tracked with a central registry and an automated weekly audit.
+
+Tracking files:
+
+- handbook-tracking/handbook-registry.csv
+- handbook-tracking/handbook-update-log-template.md
+- scripts/handbook_review_audit.py
+- .github/workflows/handbook-review-check.yml
+
+Run tracking commands from repo root:
+
+1. python scripts/handbook_review_audit.py --sync
+2. python scripts/handbook_review_audit.py --audit
+
+Expected workflow:
+
+1. Update handbook content.
+2. Update handbook metadata (handbook-version and last-updated).
+3. Run sync to refresh registry entries.
+4. Add an update-log entry using the template.
+5. Run audit and fix any overdue/invalid registry items before merge.
+
 ## How To Contribute
 
 Contributions should keep the repo focused on concise, useful handbook-style reference material.

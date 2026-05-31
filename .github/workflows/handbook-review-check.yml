@@ -1,0 +1,52 @@
+name: Handbook Review Check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '**/*handbook*.html'
+      - 'handbook-tracking/**'
+      - 'scripts/handbook_review_audit.py'
+      - '.github/workflows/handbook-review-check.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*handbook*.html'
+      - 'handbook-tracking/**'
+      - 'scripts/handbook_review_audit.py'
+      - '.github/workflows/handbook-review-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  review-freshness:
+    name: Sync and audit handbook review registry
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Sync registry from handbook files
+        run: python scripts/handbook_review_audit.py --sync
+
+      - name: Ensure registry is committed
+        shell: bash
+        run: |
+          if ! git diff --quiet -- handbook-tracking/handbook-registry.csv; then
+            echo "Registry is out of date. Run: python scripts/handbook_review_audit.py --sync"
+            git --no-pager diff -- handbook-tracking/handbook-registry.csv
+            exit 1
+          fi
+
+      - name: Audit overdue handbook reviews
+        run: python scripts/handbook_review_audit.py --audit
