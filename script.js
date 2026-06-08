@@ -71,6 +71,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const collator = new Intl.Collator(undefined, {
+      numeric: true,
+      sensitivity: 'base'
+    });
+    const getCardTitle = (card) => {
+      const title = card.querySelector('h3');
+      return (title ? title.textContent : '').trim();
+    };
     const cardsByTopic = new Map();
 
     cards.forEach((card) => {
@@ -82,7 +90,11 @@ document.addEventListener('DOMContentLoaded', () => {
       cardsByTopic.get(topic).push(card);
     });
 
-    const topics = Array.from(cardsByTopic.keys());
+    cardsByTopic.forEach((topicCards) => {
+      topicCards.sort((leftCard, rightCard) => collator.compare(getCardTitle(leftCard), getCardTitle(rightCard)));
+    });
+
+    const topics = Array.from(cardsByTopic.keys()).sort((leftTopic, rightTopic) => collator.compare(leftTopic, rightTopic));
     const groupsByTopic = new Map();
     const activeTopics = new Set(topics);
 
@@ -214,14 +226,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     topicButtons.forEach((button, topic) => {
       button.addEventListener('click', () => {
+        const allTopicsSelected = activeTopics.size === topics.length;
+
+        if (allTopicsSelected) {
+          activeTopics.clear();
+          activeTopics.add(topic);
+          updateUI();
+          return;
+        }
+
         if (activeTopics.has(topic)) {
           if (activeTopics.size === 1) {
-            return;
+            activeTopics.clear();
+            topics.forEach((topicName) => activeTopics.add(topicName));
+          } else {
+            activeTopics.delete(topic);
           }
-          activeTopics.delete(topic);
         } else {
           activeTopics.add(topic);
         }
+
         updateUI();
       });
     });
