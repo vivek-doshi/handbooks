@@ -1,0 +1,2491 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Networking for Kubernetes & Docker — Field Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   THEME TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --transition: all 0.22s ease;
+}
+
+[data-theme="dark"] {
+  --bg:          #050608;
+  --bg2:         #0a0c0f;
+  --bg3:         #0f1216;
+  --bg4:         #161a20;
+  --bg5:         #1e242d;
+  --border:      rgba(255,255,255,0.06);
+  --border2:     rgba(255,255,255,0.11);
+  --text:        #d8e0ec;
+  --text2:       #8fa3be;
+  --muted:       #4a5a70;
+  --green:       #00e87a;
+  --green-dim:   #00b85e;
+  --green-glow:  rgba(0,232,122,0.12);
+  --blue:        #2979ff;
+  --blue-dim:    rgba(41,121,255,0.12);
+  --amber:       #ffb300;
+  --amber-dim:   rgba(255,179,0,0.1);
+  --red:         #ff4757;
+  --red-dim:     rgba(255,71,87,0.12);
+  --teal:        #00e5cc;
+  --teal-dim:    rgba(0,229,204,0.1);
+  --purple:      #b47cff;
+  --purple-dim:  rgba(180,124,255,0.1);
+  --code-bg:     #040507;
+  --topbar-bg:   rgba(5,6,8,0.97);
+  --sidebar-bg:  #0a0c0f;
+  --card-bg:     #0f1216;
+  --shadow:      0 4px 24px rgba(0,0,0,0.4);
+}
+
+[data-theme="light"] {
+  --bg:          #f4f6fb;
+  --bg2:         #edf0f7;
+  --bg3:         #ffffff;
+  --bg4:         #e6eaf4;
+  --bg5:         #dce1ee;
+  --border:      rgba(0,0,0,0.07);
+  --border2:     rgba(0,0,0,0.14);
+  --text:        #0f1826;
+  --text2:       #3a4f6a;
+  --muted:       #7a8fa8;
+  --green:       #00a855;
+  --green-dim:   #007a3d;
+  --green-glow:  rgba(0,168,85,0.10);
+  --blue:        #1a5fd4;
+  --blue-dim:    rgba(26,95,212,0.10);
+  --amber:       #b57700;
+  --amber-dim:   rgba(181,119,0,0.10);
+  --red:         #d42b3a;
+  --red-dim:     rgba(212,43,58,0.10);
+  --teal:        #008c7e;
+  --teal-dim:    rgba(0,140,126,0.10);
+  --purple:      #7c3dbf;
+  --purple-dim:  rgba(124,61,191,0.10);
+  --code-bg:     #1a1f2e;
+  --topbar-bg:   rgba(244,246,251,0.97);
+  --sidebar-bg:  #edf0f7;
+  --card-bg:     #ffffff;
+  --shadow:      0 4px 24px rgba(0,0,0,0.10);
+}
+
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  min-height: 100vh;
+  transition: background 0.25s, color 0.25s;
+}
+
+[data-theme="dark"] body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════════ */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  height: 52px;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--green);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  backdrop-filter: blur(12px);
+}
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-badge {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 3px; color: var(--bg);
+  background: var(--green); padding: 3px 10px;
+  text-transform: uppercase; white-space: nowrap;
+}
+.topbar-title {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--text);
+}
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+
+/* Back button */
+.btn-back {
+  display: flex; align-items: center; gap: 7px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text2); text-decoration: none;
+  border: 1px solid var(--border2); padding: 5px 12px;
+  background: transparent; cursor: pointer;
+  transition: var(--transition);
+}
+.btn-back:hover { color: var(--green); border-color: var(--green); background: var(--green-glow); }
+.btn-back svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.5; }
+
+/* Theme toggle */
+.btn-theme {
+  display: flex; align-items: center; gap: 7px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text2);
+  border: 1px solid var(--border2); padding: 5px 12px;
+  background: transparent; cursor: pointer;
+  transition: var(--transition);
+}
+.btn-theme:hover { color: var(--amber); border-color: var(--amber); }
+.btn-theme-icon { font-size: 13px; line-height: 1; }
+
+.topbar-meta {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted);
+  letter-spacing: 1px; display: flex; align-items: center; gap: 6px;
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); box-shadow: 0 0 6px var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+/* ═══════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════ */
+.layout {
+  display: flex; margin-top: 52px;
+  min-height: calc(100vh - 52px);
+  position: relative; z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════ */
+.sidebar {
+  width: 264px; flex-shrink: 0;
+  position: sticky; top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border2);
+  padding-bottom: 60px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+  transition: background 0.25s;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sb-header {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--green-glow) 0%, transparent 100%);
+}
+.sb-docnum { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--green); letter-spacing: 2px; margin-bottom: 3px; }
+.sb-subtitle { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+
+.nav-group {
+  padding: 14px 18px 4px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+}
+.nav-link {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 6px 18px;
+  text-decoration: none; font-size: 12px;
+  color: var(--text2);
+  border-left: 2px solid transparent;
+  transition: var(--transition);
+}
+.nav-link::before {
+  content: attr(data-num);
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--muted);
+  width: 20px; flex-shrink: 0; text-align: right; margin-top: 2px;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); border-left-color: var(--border2); }
+.nav-link.active { color: var(--green); border-left-color: var(--green); background: var(--green-glow); }
+.nav-link.active::before { color: var(--green-dim); }
+
+/* ═══════════════════════════════════════════════
+   MAIN
+═══════════════════════════════════════════════ */
+.main { flex: 1; min-width: 0; padding: 48px 56px 100px; max-width: 960px; }
+
+/* ═══════════════════════════════════════════════
+   HERO
+═══════════════════════════════════════════════ */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--green);
+  background: var(--card-bg);
+  padding: 48px 52px;
+  margin-bottom: 60px;
+  box-shadow: var(--shadow);
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%, var(--green-glow) 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, var(--blue-dim) 0%, transparent 50%);
+  pointer-events: none;
+}
+.hero-corner { position: absolute; top: 0; right: 0; width: 0; height: 0; border-style: solid; border-width: 0 58px 58px 0; border-color: transparent var(--green) transparent transparent; }
+.hero-corner-label { position: absolute; top: 7px; right: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 8px; color: var(--bg); transform: rotate(45deg); letter-spacing: 0.5px; font-weight: 700; }
+.hero-eyebrow {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 4px;
+  color: var(--green); text-transform: uppercase; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::before { content: '['; opacity: 0.4; }
+.hero-eyebrow::after { content: ']'; opacity: 0.4; }
+.hero h1 {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 58px; font-weight: 900;
+  line-height: 0.92; letter-spacing: -1px; text-transform: uppercase; color: var(--text);
+  margin-bottom: 22px;
+}
+.hero h1 span { color: var(--green); }
+.hero-desc { color: var(--text2); font-size: 15px; max-width: 540px; line-height: 1.75; margin-bottom: 26px; }
+.hero-axiom {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  color: var(--green); border-left: 3px solid var(--green);
+  padding: 10px 16px; background: var(--green-glow);
+  display: inline-block; margin-bottom: 26px;
+}
+.hero-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 4px 12px; border: 1px solid; border-radius: 2px;
+}
+.chip-green  { color: var(--green);  border-color: rgba(0,232,122,0.4);  background: var(--green-glow); }
+.chip-blue   { color: var(--blue);   border-color: rgba(41,121,255,0.35); background: var(--blue-dim); }
+.chip-amber  { color: var(--amber);  border-color: rgba(255,179,0,0.35);  background: var(--amber-dim); }
+.chip-red    { color: var(--red);    border-color: rgba(255,71,87,0.35);  background: var(--red-dim); }
+.chip-teal   { color: var(--teal);   border-color: rgba(0,229,204,0.35);  background: var(--teal-dim); }
+.chip-purple { color: var(--purple); border-color: rgba(180,124,255,0.35); background: var(--purple-dim); }
+
+/* ═══════════════════════════════════════════════
+   SECTIONS
+═══════════════════════════════════════════════ */
+section { margin-bottom: 68px; scroll-margin-top: calc(52px + 18px); }
+
+.section-header {
+  display: flex; align-items: flex-start; gap: 14px;
+  margin-bottom: 22px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 72px; height: 1px; background: var(--green);
+}
+.section-num {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  color: var(--green); margin-top: 3px; flex-shrink: 0; width: 36px;
+}
+.section-title-block h2 {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text); line-height: 1;
+}
+.section-sub {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted);
+  letter-spacing: 1px; margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════════
+   PROSE
+═══════════════════════════════════════════════ */
+.prose { color: var(--text2); font-size: 14px; line-height: 1.8; margin-bottom: 14px; }
+.prose strong { color: var(--text); font-weight: 600; }
+
+h3 {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  margin: 26px 0 10px; display: flex; align-items: center; gap: 8px;
+}
+h3::before { content: '//'; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--green); }
+
+h4 {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px; color: var(--muted);
+  margin: 18px 0 7px;
+}
+
+/* ═══════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════ */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 20px 22px; margin-bottom: 12px;
+  transition: border-color 0.2s, background 0.25s;
+}
+.card:hover { border-color: var(--border2); }
+.card-accent-green  { border-left: 3px solid var(--green); }
+.card-accent-blue   { border-left: 3px solid var(--blue); }
+.card-accent-amber  { border-left: 3px solid var(--amber); }
+.card-accent-red    { border-left: 3px solid var(--red); }
+.card-accent-teal   { border-left: 3px solid var(--teal); }
+.card-accent-purple { border-left: 3px solid var(--purple); }
+
+.card-title {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+}
+.card-tag {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 2px;
+}
+.tag-green  { color: var(--green);  background: var(--green-glow);  border: 1px solid rgba(0,232,122,0.3); }
+.tag-blue   { color: var(--blue);   background: var(--blue-dim);    border: 1px solid rgba(41,121,255,0.3); }
+.tag-amber  { color: var(--amber);  background: var(--amber-dim);   border: 1px solid rgba(255,179,0,0.3); }
+.tag-red    { color: var(--red);    background: var(--red-dim);     border: 1px solid rgba(255,71,87,0.3); }
+.tag-teal   { color: var(--teal);   background: var(--teal-dim);    border: 1px solid rgba(0,229,204,0.3); }
+.tag-purple { color: var(--purple); background: var(--purple-dim);  border: 1px solid rgba(180,124,255,0.3); }
+
+.card p, .card li { color: var(--text2); font-size: 13.5px; }
+.card ul { padding-left: 16px; }
+.card ul li { margin-bottom: 5px; line-height: 1.6; }
+
+/* ═══════════════════════════════════════════════
+   GRIDS
+═══════════════════════════════════════════════ */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+
+/* ═══════════════════════════════════════════════
+   CODE BLOCKS
+═══════════════════════════════════════════════ */
+.code-wrap {
+  background: var(--code-bg);
+  border: 1px solid var(--border2);
+  margin: 14px 0;
+  position: relative;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 16px;
+  background: rgba(0,232,122,0.04);
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="light"] .code-header { background: rgba(0,168,85,0.06); }
+.code-lang {
+  font-size: 10px; font-weight: 600; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--green);
+}
+.copy-btn {
+  font-size: 10px; color: var(--muted); background: none;
+  border: 1px solid var(--border); padding: 2px 9px;
+  cursor: pointer; font-family: 'IBM Plex Mono', monospace;
+  transition: var(--transition); letter-spacing: 1px; text-transform: uppercase;
+}
+.copy-btn:hover { color: var(--green); border-color: var(--green); }
+.code-block {
+  padding: 16px 18px; overflow-x: auto; font-size: 12px;
+  line-height: 1.75; white-space: pre; tab-size: 2; color: #8fa3be;
+}
+[data-theme="light"] .code-block { color: #c5d2e8; }
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* syntax */
+.kw  { color: #81a1c1; }
+.st  { color: #a3be8c; }
+.cm  { color: #3d4f63; font-style: italic; }
+.fn  { color: #88c0d0; }
+.nu  { color: #d08770; }
+.at  { color: #00e87a; }
+.hl  { background: rgba(0,232,122,0.05); display: block; margin: 0 -18px; padding: 0 18px; border-left: 2px solid var(--green); }
+
+code {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  background: var(--green-glow); color: var(--green);
+  padding: 1px 6px; border: 1px solid rgba(0,232,122,0.2);
+}
+
+/* ═══════════════════════════════════════════════
+   CALLOUTS
+═══════════════════════════════════════════════ */
+.callout {
+  display: flex; gap: 12px;
+  padding: 13px 16px; margin: 14px 0;
+  border-left: 3px solid; font-size: 13.5px;
+}
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.callout.tip    { background: var(--green-glow);  border-color: var(--green); }
+.callout.note   { background: var(--blue-dim);    border-color: var(--blue); }
+.callout.warn   { background: var(--amber-dim);   border-color: var(--amber); }
+.callout.danger { background: var(--red-dim);     border-color: var(--red); }
+
+/* ═══════════════════════════════════════════════
+   TABLES
+═══════════════════════════════════════════════ */
+.table-wrap { border: 1px solid var(--border); margin: 14px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 9px 14px;
+  background: var(--green-glow);
+  color: var(--green); font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 9px 14px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+[data-theme="light"] tr:hover td { background: rgba(0,0,0,0.02); }
+.ok      { color: var(--green); font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+.no      { color: var(--red);   font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+.partial { color: var(--amber); font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+
+/* ═══════════════════════════════════════════════
+   FLOW DIAGRAM
+═══════════════════════════════════════════════ */
+.flow {
+  display: flex; align-items: center;
+  overflow-x: auto; margin: 16px 0;
+  padding: 20px; background: var(--card-bg); border: 1px solid var(--border);
+  gap: 0; flex-wrap: nowrap;
+}
+.flow-step {
+  flex-shrink: 0; text-align: center; padding: 12px 16px;
+  background: var(--bg4); border: 1px solid var(--border2); min-width: 100px;
+}
+.flow-step-label { font-family: 'IBM Plex Mono', monospace; font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 4px; }
+.flow-step-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text); letter-spacing: 0.5px; line-height: 1.2; }
+.flow-arrow      { color: var(--green); font-size: 18px; margin: 0 6px; flex-shrink: 0; }
+.flow-arrow.deny { color: var(--red); }
+
+/* ═══════════════════════════════════════════════
+   LAYER DIAGRAM
+═══════════════════════════════════════════════ */
+.osi-layers { display: flex; flex-direction: column; gap: 3px; margin: 14px 0; }
+.osi-row {
+  display: flex; align-items: stretch; gap: 3px;
+}
+.osi-num {
+  width: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; color: var(--bg);
+}
+.osi-cell {
+  flex: 1; padding: 10px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.osi-name { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; min-width: 100px; }
+.osi-proto { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+.osi-example { font-size: 12px; color: var(--text2); margin-left: auto; font-style: italic; }
+
+.l7  { background: rgba(0,232,122,0.18); } .l7  .osi-num { background: var(--green); }
+.l6  { background: rgba(0,232,122,0.13); } .l6  .osi-num { background: var(--green-dim); }
+.l5  { background: rgba(0,229,204,0.13); } .l5  .osi-num { background: var(--teal); }
+.l4  { background: rgba(41,121,255,0.13); } .l4  .osi-num { background: var(--blue); }
+.l3  { background: rgba(180,124,255,0.13); } .l3  .osi-num { background: var(--purple); }
+.l2  { background: rgba(255,179,0,0.12); } .l2  .osi-num { background: var(--amber); }
+.l1  { background: rgba(255,71,87,0.12); }  .l1  .osi-num { background: var(--red); }
+
+/* ═══════════════════════════════════════════════
+   COMPARE GRID
+═══════════════════════════════════════════════ */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+.compare-block { border: 1px solid var(--border); }
+.compare-header { padding: 9px 16px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+.compare-old .compare-header { background: var(--red-dim); color: var(--red); border-bottom: 1px solid rgba(255,71,87,0.2); }
+.compare-new .compare-header { background: var(--green-glow); color: var(--green); border-bottom: 1px solid rgba(0,232,122,0.2); }
+.compare-body { padding: 12px 16px; }
+.compare-body li { font-size: 13px; color: var(--text2); margin-bottom: 5px; }
+.compare-body ul { padding-left: 14px; }
+
+/* ═══════════════════════════════════════════════
+   FLOATING BACK BUTTON
+═══════════════════════════════════════════════ */
+.fab-back {
+  position: fixed; bottom: 32px; right: 32px; z-index: 400;
+  display: flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px;
+  background: var(--bg2); border: 1px solid var(--green);
+  color: var(--green); text-decoration: none;
+  box-shadow: 0 4px 20px rgba(0,232,122,0.2);
+  transition: var(--transition); cursor: pointer;
+}
+.fab-back:hover {
+  background: var(--green); color: var(--bg);
+  box-shadow: 0 6px 28px rgba(0,232,122,0.4);
+}
+.fab-back svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; }
+
+/* ═══════════════════════════════════════════════
+   NETWORK TOPOLOGY VISUAL
+═══════════════════════════════════════════════ */
+.topology {
+  background: var(--card-bg); border: 1px solid var(--border);
+  padding: 24px; margin: 16px 0; position: relative;
+}
+.topo-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.topo-node {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 14px; border: 1px solid var(--border2);
+  background: var(--bg4); min-width: 80px; text-align: center;
+}
+.topo-node-icon { font-size: 20px; margin-bottom: 4px; }
+.topo-node-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+.topo-node-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text); }
+.topo-node.green-node { border-color: rgba(0,232,122,0.5); background: var(--green-glow); }
+.topo-node.blue-node  { border-color: rgba(41,121,255,0.5); background: var(--blue-dim); }
+.topo-node.amber-node { border-color: rgba(255,179,0,0.5);  background: var(--amber-dim); }
+.topo-node.red-node   { border-color: rgba(255,71,87,0.5);  background: var(--red-dim); }
+.topo-line { color: var(--muted); font-size: 13px; flex-shrink: 0; }
+.topo-line.green-line { color: var(--green); }
+.topo-section-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); text-align: center; margin: 6px 0 2px; }
+.topo-divider { border: none; border-top: 1px dashed var(--border2); margin: 8px 0; }
+
+/* ═══════════════════════════════════════════════
+   PORT REFERENCE
+═══════════════════════════════════════════════ */
+.port-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 12px 0; }
+.port-card {
+  background: var(--bg4); border: 1px solid var(--border);
+  padding: 10px 14px;
+}
+.port-num  { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 700; color: var(--green); }
+.port-proto { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+.port-desc { font-size: 12px; color: var(--text2); margin-top: 3px; }
+
+/* ═══════════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════ */
+@media (max-width: 960px) {
+  .sidebar { display: none; }
+  .main { padding: 28px 20px 70px; }
+  .grid-2, .grid-3, .compare-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 40px; }
+  .hero { padding: 32px 28px; }
+  .flow { flex-direction: column; align-items: flex-start; }
+  .flow-arrow { transform: rotate(90deg); }
+  .topbar-meta { display: none; }
+  .topbar-title { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-badge">Field Manual</div>
+    <div class="topbar-title">K8s & Docker Networking</div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-meta"><span class="status-dot"></span>NET-K8S-001</div>
+    <button class="btn-theme" onclick="toggleTheme()">
+      <span class="btn-theme-icon" id="theme-icon">☀️</span>
+      <span id="theme-label">LIGHT</span>
+    </button>
+    <a class="btn-back" href="../index.html">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      INDEX
+    </a>
+  </div>
+</header>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sb-header">
+    <div class="sb-docnum">// NET-K8S-001</div>
+    <div class="sb-subtitle">Beginner → Intermediate</div>
+  </div>
+
+  <div class="nav-group">Foundations</div>
+  <a class="nav-link active" href="#basics"      data-num="01">Basic Networking Concepts</a>
+  <a class="nav-link"        href="#osi"          data-num="02">OSI & TCP/IP Models</a>
+  <a class="nav-link"        href="#dns"          data-num="03">IP, Subnets & DNS</a>
+
+  <div class="nav-group">Docker Networking</div>
+  <a class="nav-link" href="#docker-overview"    data-num="04">Docker Network Overview</a>
+  <a class="nav-link" href="#docker-drivers"     data-num="05">Network Drivers</a>
+  <a class="nav-link" href="#docker-compose-net" data-num="06">Compose & Service Comms</a>
+  <a class="nav-link" href="#docker-ports"       data-num="07">Port Mapping & Expose</a>
+
+  <div class="nav-group">Kubernetes Networking</div>
+  <a class="nav-link" href="#k8s-model"          data-num="08">K8s Network Model</a>
+  <a class="nav-link" href="#k8s-pods"           data-num="09">Pod Networking</a>
+  <a class="nav-link" href="#k8s-services"       data-num="10">Services (ClusterIP / NodePort / LB)</a>
+  <a class="nav-link" href="#k8s-dns"            data-num="11">CoreDNS & Service Discovery</a>
+  <a class="nav-link" href="#cni"                data-num="12">CNI Plugins</a>
+
+  <div class="nav-group">Traffic Flows</div>
+  <a class="nav-link" href="#ingress"            data-num="13">Ingress Controllers</a>
+  <a class="nav-link" href="#egress"             data-num="14">Egress & Network Policy</a>
+  <a class="nav-link" href="#fe-be"              data-num="15">Frontend ↔ Backend Comms</a>
+  <a class="nav-link" href="#microservices"      data-num="16">Microservices Communication</a>
+
+  <div class="nav-group">Advanced Patterns</div>
+  <a class="nav-link" href="#service-mesh"       data-num="17">Service Mesh (Istio/Linkerd)</a>
+  <a class="nav-link" href="#load-balancing"     data-num="18">Load Balancing Strategies</a>
+  <a class="nav-link" href="#network-policy"     data-num="19">Network Policies (Zero Trust)</a>
+
+  <div class="nav-group">Operations</div>
+  <a class="nav-link" href="#monitoring"         data-num="20">Monitoring & Troubleshooting</a>
+  <a class="nav-link" href="#security"           data-num="21">Network Security</a>
+  <a class="nav-link" href="#cheatsheet"         data-num="22">Quick Reference</a>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-corner"></div>
+    <div class="hero-corner-label">NET</div>
+    <div class="hero-eyebrow">Container Networking Handbook</div>
+    <h1>Networking<br>for <span>K8s</span><br>& Docker</h1>
+    <div class="hero-axiom">// "Every pod gets an IP. Every service gets a name. Nothing talks without a policy."</div>
+    <p class="hero-desc">From subnets and OSI layers to Ingress controllers, CoreDNS, service meshes, and zero-trust network policies. A complete field guide for DevOps engineers, beginner to intermediate.</p>
+    <div class="hero-chips">
+      <span class="chip chip-green">Docker</span>
+      <span class="chip chip-blue">Kubernetes</span>
+      <span class="chip chip-teal">CNI</span>
+      <span class="chip chip-amber">Ingress / Egress</span>
+      <span class="chip chip-purple">Service Mesh</span>
+      <span class="chip chip-red">Zero Trust</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       01 BASIC NETWORKING CONCEPTS
+  ══════════════════════════════════════ -->
+  <section id="basics">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title-block">
+        <h2>Basic Networking Concepts</h2>
+        <div class="section-sub">// THE VOCABULARY YOU NEED BEFORE ANYTHING ELSE</div>
+      </div>
+    </div>
+
+    <p class="prose">Before diving into Docker or Kubernetes, you need a firm grip on the building blocks. Container networking is just regular networking under a layer of abstraction — understanding the fundamentals prevents mystery when things break.</p>
+
+    <div class="grid-3">
+      <div class="card card-accent-green">
+        <div class="card-title">IP Address</div>
+        <p>A unique numerical label assigned to every device (or container) on a network. IPv4 uses 32-bit addresses (e.g. <code>192.168.1.10</code>). IPv6 uses 128-bit addresses (e.g. <code>fd00::1</code>). Every pod in Kubernetes gets its own IP.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Port</div>
+        <p>A number (1–65535) that identifies a specific process on a host. Think of the IP as the building address and the port as the apartment number. <code>80</code> = HTTP, <code>443</code> = HTTPS, <code>8080</code> = common app port.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Protocol</div>
+        <p>Rules for how data is formatted and transmitted. <strong>TCP</strong> — reliable, ordered, connection-based (web, APIs). <strong>UDP</strong> — fast, connectionless, no delivery guarantee (DNS queries, video streaming).</p>
+      </div>
+    </div>
+
+    <h3>Subnetting & CIDR</h3>
+    <p class="prose">A subnet divides a larger network into smaller segments. CIDR (Classless Inter-Domain Routing) notation expresses an IP range compactly. This is the notation Kubernetes uses everywhere for pod and service CIDRs.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>CIDR Notation</th><th>Subnet Mask</th><th>Total IPs</th><th>Usable Hosts</th><th>Typical Use</th></tr>
+        <tr><td><code>/8</code></td><td>255.0.0.0</td><td>16,777,216</td><td>16,777,214</td><td>Large cloud VPCs</td></tr>
+        <tr><td><code>/16</code></td><td>255.255.0.0</td><td>65,536</td><td>65,534</td><td>Kubernetes cluster CIDR</td></tr>
+        <tr><td><code>/24</code></td><td>255.255.255.0</td><td>256</td><td>254</td><td>Single node subnet, Docker bridge</td></tr>
+        <tr><td><code>/28</code></td><td>255.255.255.240</td><td>16</td><td>14</td><td>Small service subnet</td></tr>
+        <tr><td><code>/32</code></td><td>255.255.255.255</td><td>1</td><td>1</td><td>Single host / pod IP</td></tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span>▸</span>
+      <div class="callout-body"><strong>K8s defaults you'll see constantly:</strong> Pod CIDR <code>10.244.0.0/16</code> (Flannel), Service CIDR <code>10.96.0.0/12</code> (default kubeadm). These are private RFC 1918 ranges — they never appear on the public internet.</div>
+    </div>
+
+    <h3>Ports & Common Protocols</h3>
+    <div class="port-grid">
+      <div class="port-card"><div class="port-num">22</div><div class="port-proto">TCP</div><div class="port-desc">SSH — remote shell access</div></div>
+      <div class="port-card"><div class="port-num">80</div><div class="port-proto">TCP</div><div class="port-desc">HTTP — plain web traffic</div></div>
+      <div class="port-card"><div class="port-num">443</div><div class="port-proto">TCP</div><div class="port-desc">HTTPS — encrypted web traffic</div></div>
+      <div class="port-card"><div class="port-num">53</div><div class="port-proto">UDP/TCP</div><div class="port-desc">DNS — name resolution</div></div>
+      <div class="port-card"><div class="port-num">6443</div><div class="port-proto">TCP</div><div class="port-desc">Kubernetes API server</div></div>
+      <div class="port-card"><div class="port-num">2379-80</div><div class="port-proto">TCP</div><div class="port-desc">etcd — K8s state store</div></div>
+      <div class="port-card"><div class="port-num">10250</div><div class="port-proto">TCP</div><div class="port-desc">kubelet API</div></div>
+      <div class="port-card"><div class="port-num">30000-32767</div><div class="port-proto">TCP</div><div class="port-desc">K8s NodePort range</div></div>
+      <div class="port-card"><div class="port-num">8080</div><div class="port-proto">TCP</div><div class="port-desc">Common app / API port</div></div>
+      <div class="port-card"><div class="port-num">5432</div><div class="port-proto">TCP</div><div class="port-desc">PostgreSQL</div></div>
+      <div class="port-card"><div class="port-num">6379</div><div class="port-proto">TCP</div><div class="port-desc">Redis cache</div></div>
+      <div class="port-card"><div class="port-num">9092</div><div class="port-proto">TCP</div><div class="port-desc">Kafka broker</div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       02 OSI & TCP/IP MODELS
+  ══════════════════════════════════════ -->
+  <section id="osi">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title-block">
+        <h2>OSI & TCP/IP Models</h2>
+        <div class="section-sub">// WHERE IN THE STACK DOES IT LIVE?</div>
+      </div>
+    </div>
+
+    <p class="prose">The OSI model is a conceptual framework that describes how data travels across a network in 7 layers. When someone says "Layer 4 load balancer" or "Layer 7 routing" — this is what they mean. Kubernetes Ingress operates at Layer 7. Services operate at Layer 4.</p>
+
+    <div class="osi-layers">
+      <div class="osi-row l7"><div class="osi-num">7</div><div class="osi-cell"><div class="osi-name">Application</div><div class="osi-proto">HTTP, HTTPS, gRPC, WebSocket</div><div class="osi-example">Ingress rules, API routing</div></div></div>
+      <div class="osi-row l6"><div class="osi-num">6</div><div class="osi-cell"><div class="osi-name">Presentation</div><div class="osi-proto">TLS/SSL encryption, encoding</div><div class="osi-example">TLS termination at Ingress</div></div></div>
+      <div class="osi-row l5"><div class="osi-num">5</div><div class="osi-cell"><div class="osi-name">Session</div><div class="osi-proto">Session management, auth tokens</div><div class="osi-example">Connection pooling</div></div></div>
+      <div class="osi-row l4"><div class="osi-num">4</div><div class="osi-cell"><div class="osi-name">Transport</div><div class="osi-proto">TCP, UDP — ports & connections</div><div class="osi-example">K8s Services, NodePort, LB</div></div></div>
+      <div class="osi-row l3"><div class="osi-num">3</div><div class="osi-cell"><div class="osi-name">Network</div><div class="osi-proto">IP, ICMP — routing & addressing</div><div class="osi-example">Pod IPs, CNI plugins, iptables</div></div></div>
+      <div class="osi-row l2"><div class="osi-num">2</div><div class="osi-cell"><div class="osi-name">Data Link</div><div class="osi-proto">MAC addresses, Ethernet frames</div><div class="osi-example">Docker bridge (veth pairs)</div></div></div>
+      <div class="osi-row l1"><div class="osi-num">1</div><div class="osi-cell"><div class="osi-name">Physical</div><div class="osi-proto">Cables, NIC, signal transmission</div><div class="osi-example">The actual host network</div></div></div>
+    </div>
+
+    <div class="callout note">
+      <span>ℹ</span>
+      <div class="callout-body"><strong>Practical tip:</strong> When Kubernetes creates a pod, it assigns a virtual ethernet pair (veth) — one end inside the pod's network namespace, one end on the host. This operates at Layer 2 (Data Link). The CNI plugin then configures Layer 3 routing so pods on different nodes can reach each other.</div>
+    </div>
+
+    <h3>TCP vs UDP — When to Use What</h3>
+    <div class="compare-grid">
+      <div class="compare-block compare-new">
+        <div class="compare-header">TCP — Reliable</div>
+        <div class="compare-body"><ul>
+          <li>Connection-oriented (3-way handshake)</li>
+          <li>Guaranteed delivery, ordered packets</li>
+          <li>Error detection and retransmission</li>
+          <li>Slower due to overhead</li>
+          <li>Use for: HTTP/S, gRPC, databases, APIs</li>
+        </ul></div>
+      </div>
+      <div class="compare-block compare-old">
+        <div class="compare-header">UDP — Fast</div>
+        <div class="compare-body"><ul>
+          <li>Connectionless — fire and forget</li>
+          <li>No delivery guarantee, no order</li>
+          <li>Minimal overhead, very fast</li>
+          <li>Lost packets are NOT retransmitted</li>
+          <li>Use for: DNS, video streams, game data</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       03 IP, SUBNETS & DNS
+  ══════════════════════════════════════ -->
+  <section id="dns">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title-block">
+        <h2>IP Addressing, Subnets & DNS</h2>
+        <div class="section-sub">// THE PHONE BOOK OF THE INTERNET</div>
+      </div>
+    </div>
+
+    <p class="prose">DNS (Domain Name System) translates human-readable names like <code>api.myapp.com</code> into IP addresses. In Kubernetes, CoreDNS does this for every service — so instead of remembering <code>10.96.45.12</code>, you write <code>user-service.production.svc.cluster.local</code>.</p>
+
+    <div class="grid-2">
+      <div class="card card-accent-blue">
+        <div class="card-title">DNS Resolution Flow</div>
+        <ul>
+          <li>App calls <code>db.default.svc.cluster.local</code></li>
+          <li>Query goes to CoreDNS (ClusterIP: <code>10.96.0.10</code>)</li>
+          <li>CoreDNS returns the Service ClusterIP</li>
+          <li>Traffic routes to one of the pods behind the Service</li>
+          <li>kube-proxy handles the final NAT/iptables routing</li>
+        </ul>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">Private IP Ranges (RFC 1918)</div>
+        <ul>
+          <li><code>10.0.0.0/8</code> — largest private block (Kubernetes pods)</li>
+          <li><code>172.16.0.0/12</code> — Docker's default bridge range</li>
+          <li><code>192.168.0.0/16</code> — home/office routers</li>
+          <li>These never route on the public internet</li>
+          <li>All container networks use these ranges</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>NAT — Network Address Translation</h3>
+    <p class="prose">NAT allows many private IP addresses to share one public IP. Docker uses NAT to let containers reach the internet via the host's public IP. Kubernetes uses SNAT (Source NAT) when pods reach external services. iptables rules handle this transparently.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — View iptables NAT rules (what K8s manages)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># View K8s service NAT chains</span>
+sudo iptables -t nat -L KUBE-SERVICES --line-numbers
+
+<span class="cm"># See how a ClusterIP maps to pod IPs</span>
+sudo iptables -t nat -L KUBE-SVC-XXXXXXXXXXX -n -v
+
+<span class="cm"># Docker's NAT masquerade rule (containers → internet)</span>
+sudo iptables -t nat -L POSTROUTING -v | grep masquerade</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       04 DOCKER NETWORK OVERVIEW
+  ══════════════════════════════════════ -->
+  <section id="docker-overview">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div class="section-title-block">
+        <h2>Docker Network Overview</h2>
+        <div class="section-sub">// HOW CONTAINERS GET CONNECTIVITY</div>
+      </div>
+    </div>
+
+    <p class="prose">When Docker starts, it creates a virtual network called <strong>docker0</strong> on the host — a software bridge operating at Layer 2. Every container gets a virtual ethernet (veth) pair: one end inside the container's private network namespace, the other attached to <code>docker0</code>. Containers on the same bridge can talk to each other; traffic to the host or internet is NAT'd.</p>
+
+    <div class="topology">
+      <div class="topo-section-label">HOST MACHINE</div>
+      <hr class="topo-divider">
+      <div class="topo-row">
+        <div class="topo-node green-node">
+          <div class="topo-node-icon">🌐</div>
+          <div class="topo-node-label">Public</div>
+          <div class="topo-node-name">eth0 / NIC</div>
+        </div>
+      </div>
+      <div class="topo-row"><div class="topo-line">│ NAT / iptables</div></div>
+      <div class="topo-row">
+        <div class="topo-node amber-node">
+          <div class="topo-node-icon">🌉</div>
+          <div class="topo-node-label">Bridge</div>
+          <div class="topo-node-name">docker0</div>
+        </div>
+      </div>
+      <div class="topo-row">
+        <div class="topo-line">│ veth0</div>
+        <div class="topo-line">│ veth1</div>
+        <div class="topo-line">│ veth2</div>
+      </div>
+      <div class="topo-row">
+        <div class="topo-node blue-node">
+          <div class="topo-node-icon">📦</div>
+          <div class="topo-node-label">Container</div>
+          <div class="topo-node-name">frontend<br><small>172.17.0.2</small></div>
+        </div>
+        <div class="topo-line green-line">⟷</div>
+        <div class="topo-node blue-node">
+          <div class="topo-node-icon">📦</div>
+          <div class="topo-node-label">Container</div>
+          <div class="topo-node-name">api<br><small>172.17.0.3</small></div>
+        </div>
+        <div class="topo-line green-line">⟷</div>
+        <div class="topo-node blue-node">
+          <div class="topo-node-icon">📦</div>
+          <div class="topo-node-label">Container</div>
+          <div class="topo-node-name">postgres<br><small>172.17.0.4</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span>⚠</span>
+      <div class="callout-body"><strong>Default bridge network limitation:</strong> Containers on the default <code>bridge</code> network can only communicate via IP address — no DNS name resolution between them. Always create a user-defined bridge network (or use Docker Compose) to get automatic DNS by container name.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       05 NETWORK DRIVERS
+  ══════════════════════════════════════ -->
+  <section id="docker-drivers">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div class="section-title-block">
+        <h2>Docker Network Drivers</h2>
+        <div class="section-sub">// PICKING THE RIGHT DRIVER FOR THE JOB</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">bridge <span class="card-tag tag-green">DEFAULT</span></div>
+        <p>Software bridge on the host. Containers on the same bridge can communicate. Requires port mapping to reach from outside. <strong>Use for:</strong> local dev, single-host setups. DNS by container name works on user-defined bridges.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">host <span class="card-tag tag-blue">PERFORMANCE</span></div>
+        <p>Container shares the host's network stack directly — no isolation. The container binds ports on the host directly. <strong>Use for:</strong> performance-critical apps where network overhead matters. No port mapping needed.</p>
+      </div>
+      <div class="card card-accent-teal">
+        <div class="card-title">overlay <span class="card-tag tag-teal">MULTI-HOST</span></div>
+        <p>Spans multiple Docker hosts (Docker Swarm mode). Encapsulates packets using VXLAN to create a virtual L2 network across hosts. <strong>Use for:</strong> Swarm multi-node deployments. Not commonly used with Kubernetes.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">macvlan <span class="card-tag tag-amber">LEGACY</span></div>
+        <p>Gives each container its own MAC address, making it appear as a physical device on the network. <strong>Use for:</strong> legacy apps that require a real NIC. Complex to configure.</p>
+      </div>
+      <div class="card card-accent-red">
+        <div class="card-title">none <span class="card-tag tag-red">ISOLATED</span></div>
+        <p>No network interface configured. Container is completely network-isolated. <strong>Use for:</strong> batch jobs, security-sensitive workloads, or when networking is handled externally.</p>
+      </div>
+      <div class="card card-accent-purple">
+        <div class="card-title">ipvlan <span class="card-tag tag-purple">ADVANCED</span></div>
+        <p>Similar to macvlan but shares the parent MAC address. Useful when the switch limits MAC address counts. <strong>Use for:</strong> data center environments with strict MAC policies.</p>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — Docker network commands</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># List all networks</span>
+docker network ls
+
+<span class="cm"># Create a user-defined bridge (enables DNS by container name)</span>
+docker network create --driver bridge my-app-net
+
+<span class="cm"># Run containers on the same network (they can ping each other by name)</span>
+docker run -d --name api    --network my-app-net myapi:latest
+docker run -d --name frontend --network my-app-net myfrontend:latest
+
+<span class="cm"># From 'frontend' container, reach 'api' by name:</span>
+<span class="cm"># curl http://api:8080/health   ← works! DNS resolves 'api' to its container IP</span>
+
+<span class="cm"># Inspect a network (see connected containers, IPs)</span>
+docker network inspect my-app-net
+
+<span class="cm"># Connect a running container to a network</span>
+docker network connect my-app-net my-existing-container
+
+<span class="cm"># Host network mode — container uses host's network stack</span>
+docker run --network host nginx</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       06 DOCKER COMPOSE NETWORKING
+  ══════════════════════════════════════ -->
+  <section id="docker-compose-net">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div class="section-title-block">
+        <h2>Docker Compose & Service Communication</h2>
+        <div class="section-sub">// MULTI-CONTAINER APPS MADE EASY</div>
+      </div>
+    </div>
+
+    <p class="prose">Docker Compose automatically creates a user-defined bridge network for your project and connects all services to it. Services can reach each other using their <strong>service name as the hostname</strong>. This is the foundation of multi-container communication on a single host.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — docker-compose.yml (full stack example)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">version</span>: <span class="st">'3.9'</span>
+
+<span class="at">services</span>:
+
+  <span class="at">frontend</span>:
+    image: nginx:alpine
+    ports:
+      - <span class="st">"80:80"</span>     <span class="cm"># host:container — expose to outside world</span>
+    networks:
+      - frontend-net
+    depends_on:
+      - api
+
+  <span class="at">api</span>:
+    build: ./api
+    ports:
+      - <span class="st">"8080:8080"</span> <span class="cm"># optional: expose for local dev debugging</span>
+    environment:
+      - DB_HOST=postgres   <span class="cm"># ← use service name, not IP!</span>
+      - DB_PORT=5432
+      - REDIS_URL=redis://cache:6379
+    networks:
+      - frontend-net   <span class="cm"># reachable by frontend</span>
+      - backend-net    <span class="cm"># reachable by backend services</span>
+    depends_on:
+      - postgres
+      - cache
+
+  <span class="at">worker</span>:
+    build: ./worker
+    environment:
+      - DB_HOST=postgres
+      - KAFKA_BROKERS=kafka:9092
+    networks:
+      - backend-net    <span class="cm"># isolated — NOT on frontend-net</span>
+
+  <span class="at">postgres</span>:
+    image: postgres:15
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: secret
+    networks:
+      - backend-net
+    <span class="cm"># No 'ports' here = NOT accessible from host (security best practice)</span>
+
+  <span class="at">cache</span>:
+    image: redis:7-alpine
+    networks:
+      - backend-net
+
+<span class="at">networks</span>:
+  frontend-net:
+    driver: bridge   <span class="cm"># frontend + api can talk</span>
+  backend-net:
+    driver: bridge   <span class="cm"># api + worker + postgres + redis can talk</span>
+    <span class="cm"># postgres is isolated from frontend — good security!</span>
+
+<span class="at">volumes</span>:
+  pg-data:</div>
+    </div>
+
+    <div class="callout tip">
+      <span>▸</span>
+      <div class="callout-body"><strong>Security pattern above:</strong> The database (<code>postgres</code>) is only on <code>backend-net</code> — not on <code>frontend-net</code>. This means even if the frontend is compromised, it cannot directly reach the database. The API bridges both networks and acts as the only authorized caller.</div>
+    </div>
+
+    <h3>How Service Name DNS Works in Compose</h3>
+    <div class="flow">
+      <div class="flow-step"><div class="flow-step-label">Service</div><div class="flow-step-name">api container</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">Calls</div><div class="flow-step-name">postgres:5432</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">Docker DNS</div><div class="flow-step-name">Resolves "postgres"</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">Returns IP</div><div class="flow-step-name">172.20.0.3</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">TCP</div><div class="flow-step-name">Connect to DB</div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       07 PORT MAPPING & EXPOSE
+  ══════════════════════════════════════ -->
+  <section id="docker-ports">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div class="section-title-block">
+        <h2>Port Mapping & EXPOSE</h2>
+        <div class="section-sub">// CONTROLLING WHAT'S REACHABLE FROM OUTSIDE</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">EXPOSE (Dockerfile)</div>
+        <p><code>EXPOSE 8080</code> in a Dockerfile is <strong>documentation only</strong>. It tells other developers which port the app listens on, but does NOT actually publish it. Think of it as a label, not a firewall rule.</p>
+        <div class="code-wrap" style="margin-top:10px"><div class="code-header"><span class="code-lang">Dockerfile</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div><div class="code-block">FROM node:20-alpine
+EXPOSE 3000   <span class="cm"># documentation only</span>
+CMD ["node", "server.js"]</div></div>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">-p / ports (Runtime)</div>
+        <p><code>-p 8080:3000</code> actually publishes the port. Format: <code>HOST_PORT:CONTAINER_PORT</code>. Traffic hitting the host on port 8080 is forwarded to port 3000 inside the container via iptables DNAT rules.</p>
+        <div class="code-wrap" style="margin-top:10px"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div><div class="code-block"><span class="cm"># Publish port: host 8080 → container 3000</span>
+docker run -p 8080:3000 myapp
+
+<span class="cm"># Bind only to localhost (secure)</span>
+docker run -p 127.0.0.1:8080:3000 myapp
+
+<span class="cm"># Random host port (Docker assigns)</span>
+docker run -p 3000 myapp</div></div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span>⚠</span>
+      <div class="callout-body"><strong>Docker bypasses UFW/firewalld:</strong> Docker modifies iptables directly. Even if you block a port in UFW, if Docker published it, it may still be accessible. Always bind to <code>127.0.0.1</code> for local-only services: <code>-p 127.0.0.1:5432:5432</code>.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       08 K8S NETWORK MODEL
+  ══════════════════════════════════════ -->
+  <section id="k8s-model">
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <div class="section-title-block">
+        <h2>Kubernetes Network Model</h2>
+        <div class="section-sub">// THE FOUR FUNDAMENTAL RULES</div>
+      </div>
+    </div>
+
+    <p class="prose">Kubernetes networking is built on a set of fundamental requirements that every CNI plugin must implement. Understanding these rules is key to reasoning about why things work the way they do.</p>
+
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">Rule 1 — Every Pod Gets a Unique IP</div>
+        <p>Every pod in the cluster gets its own IP address from the pod CIDR range. You never need to map ports between containers in the same pod — they share a network namespace and communicate via <code>localhost</code>.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Rule 2 — Pods Can Reach Any Pod Directly</div>
+        <p>Any pod can communicate with any other pod in the cluster using its pod IP — no NAT, no port mappings. This flat network model is enforced by the CNI plugin across nodes.</p>
+      </div>
+      <div class="card card-accent-teal">
+        <div class="card-title">Rule 3 — No IP Masquerading Between Pods</div>
+        <p>When pod A talks to pod B, the source IP seen by pod B is the actual IP of pod A — not NAT'd. This matters for logging, security, and network policies that match on source IP.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Rule 4 — Agents Can Reach All Pods</div>
+        <p>Node-level agents (kubelet, kube-proxy, monitoring daemons) can reach all pods on all nodes. This enables health checks, metrics scraping, and log collection.</p>
+      </div>
+    </div>
+
+    <h3>Pod-to-Pod Communication Across Nodes</h3>
+    <div class="flow">
+      <div class="flow-step"><div class="flow-step-label">Node 1</div><div class="flow-step-name">Pod A<br><small>10.244.0.5</small></div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">veth pair</div><div class="flow-step-name">eth0 → cbr0</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">CNI</div><div class="flow-step-name">Routing / Encap</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">Node 2</div><div class="flow-step-name">Decap + Route</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">Node 2</div><div class="flow-step-name">Pod B<br><small>10.244.1.7</small></div></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       09 POD NETWORKING
+  ══════════════════════════════════════ -->
+  <section id="k8s-pods">
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <div class="section-title-block">
+        <h2>Pod Networking</h2>
+        <div class="section-sub">// CONTAINERS THAT SHARE A NETWORK NAMESPACE</div>
+      </div>
+    </div>
+
+    <p class="prose">A Kubernetes Pod is a group of one or more containers that share a network namespace — meaning they share the same IP address, the same set of ports, and the same <code>localhost</code>. They communicate with each other via localhost, just like processes on the same machine.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — Multi-container Pod (sidecar pattern)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Pod
+<span class="at">metadata</span>:
+  name: app-with-sidecar
+<span class="at">spec</span>:
+  containers:
+  - name: api
+    image: myapi:v1.2
+    ports:
+    - containerPort: 8080
+    <span class="cm"># This container listens on :8080</span>
+
+  - name: log-collector
+    image: fluentd:v1.16
+    <span class="cm"># This container can call localhost:8080 to scrape metrics</span>
+    <span class="cm"># They share the same network namespace — no service needed!</span>
+    env:
+    - name: API_ENDPOINT
+      value: <span class="st">"http://localhost:8080/metrics"</span>
+
+  - name: envoy-proxy
+    image: envoyproxy/envoy:v1.28
+    ports:
+    - containerPort: 9901   <span class="cm"># admin port</span>
+    - containerPort: 15090  <span class="cm"># Prometheus metrics</span>
+    <span class="cm"># Intercepts all traffic via iptables before it reaches 'api'</span></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">pause / infra container</div>
+        <p>Every pod starts an invisible "pause" container (also called infra or sandbox container). Its job is to hold the network namespace open. Even if app containers restart, the pod IP stays the same because the pause container never stops.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Container Port ≠ Published Port</div>
+        <p><code>containerPort</code> in a Pod spec is also documentation-only, like Docker's EXPOSE. Traffic is only routed to a pod when a <strong>Service</strong> selects it and routes to the specified port. The containerPort field helps humans and tooling understand what's running.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       10 KUBERNETES SERVICES
+  ══════════════════════════════════════ -->
+  <section id="k8s-services">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title-block">
+        <h2>Kubernetes Services</h2>
+        <div class="section-sub">// STABLE ENDPOINTS FOR UNSTABLE PODS</div>
+      </div>
+    </div>
+
+    <p class="prose">Pods are ephemeral — they die and are replaced with new IPs constantly. A <strong>Service</strong> gives you a stable virtual IP (ClusterIP) and a DNS name that always points to the healthy pods behind it, regardless of pod restarts or scaling events. kube-proxy maintains iptables/IPVS rules to route traffic to the right pods.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Service Type</th><th>Accessible From</th><th>How it Works</th><th>Use Case</th></tr>
+        <tr>
+          <td><strong>ClusterIP</strong></td>
+          <td><span class="ok">Inside cluster only</span></td>
+          <td>Virtual IP only routable within the cluster. Default type.</td>
+          <td>Internal microservice comms (API → DB)</td>
+        </tr>
+        <tr>
+          <td><strong>NodePort</strong></td>
+          <td><span class="partial">Outside + Inside</span></td>
+          <td>Opens a static port (30000–32767) on every node. Traffic on <code>NodeIP:30080</code> → pods.</td>
+          <td>Dev/test, no cloud LB available</td>
+        </tr>
+        <tr>
+          <td><strong>LoadBalancer</strong></td>
+          <td><span class="ok">External internet</span></td>
+          <td>Cloud provider provisions an external LB with a public IP. Routes to NodePort → pods.</td>
+          <td>Production external access</td>
+        </tr>
+        <tr>
+          <td><strong>ExternalName</strong></td>
+          <td><span class="ok">Inside cluster only</span></td>
+          <td>DNS CNAME alias to an external hostname. No proxy, no pods.</td>
+          <td>Map external service into cluster DNS</td>
+        </tr>
+        <tr>
+          <td><strong>Headless</strong></td>
+          <td><span class="ok">Inside cluster only</span></td>
+          <td>ClusterIP: None. DNS returns individual pod IPs (not a VIP). Used with StatefulSets.</td>
+          <td>Stateful apps: Cassandra, Kafka, MySQL</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — All Service Types</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## 1. ClusterIP — internal only (most common)</span>
+<span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Service
+<span class="at">metadata</span>:
+  name: api-service
+  namespace: production
+<span class="at">spec</span>:
+  selector:
+    app: api          <span class="cm"># routes to pods with this label</span>
+  ports:
+  - protocol: TCP
+    port: 80          <span class="cm"># port OTHER services call</span>
+    targetPort: 8080  <span class="cm"># port the pod actually listens on</span>
+  type: ClusterIP     <span class="cm"># default — omit this line and you get ClusterIP</span>
+
+<span class="cm">---</span>
+<span class="cm">## 2. NodePort — exposed on every node</span>
+<span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Service
+<span class="at">metadata</span>:
+  name: api-nodeport
+<span class="at">spec</span>:
+  selector:
+    app: api
+  ports:
+  - port: 80
+    targetPort: 8080
+    nodePort: 30080   <span class="cm"># access via NodeIP:30080 from outside</span>
+  type: NodePort
+
+<span class="cm">---</span>
+<span class="cm">## 3. LoadBalancer — cloud-provisioned external IP</span>
+<span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Service
+<span class="at">metadata</span>:
+  name: api-lb
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: <span class="st">"nlb"</span>
+<span class="at">spec</span>:
+  selector:
+    app: api
+  ports:
+  - port: 443
+    targetPort: 8080
+  type: LoadBalancer
+
+<span class="cm">---</span>
+<span class="cm">## 4. Headless — for StatefulSets (DNS returns pod IPs)</span>
+<span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Service
+<span class="at">metadata</span>:
+  name: postgres-headless
+<span class="at">spec</span>:
+  clusterIP: None   <span class="cm"># headless!</span>
+  selector:
+    app: postgres
+  ports:
+  - port: 5432</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       11 COREDNS & SERVICE DISCOVERY
+  ══════════════════════════════════════ -->
+  <section id="k8s-dns">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div class="section-title-block">
+        <h2>CoreDNS & Service Discovery</h2>
+        <div class="section-sub">// HOW PODS FIND EACH OTHER BY NAME</div>
+      </div>
+    </div>
+
+    <p class="prose">CoreDNS runs as a Deployment inside Kubernetes and acts as the cluster's DNS server. Every pod is configured (via <code>/etc/resolv.conf</code>) to send DNS queries to the CoreDNS ClusterIP. CoreDNS resolves Service names and returns their ClusterIP addresses.</p>
+
+    <h3>DNS Name Formats</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>What you're querying</th><th>Short form (same namespace)</th><th>Full FQDN</th></tr>
+        <tr>
+          <td>Service in same namespace</td>
+          <td><code>api-service</code></td>
+          <td><code>api-service.production.svc.cluster.local</code></td>
+        </tr>
+        <tr>
+          <td>Service in different namespace</td>
+          <td><code>api-service.production</code></td>
+          <td><code>api-service.production.svc.cluster.local</code></td>
+        </tr>
+        <tr>
+          <td>Headless pod (StatefulSet)</td>
+          <td>N/A</td>
+          <td><code>pod-0.postgres.production.svc.cluster.local</code></td>
+        </tr>
+        <tr>
+          <td>External domain (forwarded)</td>
+          <td><code>google.com</code></td>
+          <td>Forwarded to upstream DNS resolver</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — DNS debugging inside pods</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Run a debug pod with DNS tools</span>
+kubectl run dns-debug --image=busybox:1.35 --rm -it -- sh
+
+<span class="cm"># Inside pod: check what DNS server is configured</span>
+cat /etc/resolv.conf
+<span class="cm"># nameserver 10.96.0.10   ← CoreDNS ClusterIP</span>
+<span class="cm"># search production.svc.cluster.local svc.cluster.local cluster.local</span>
+
+<span class="cm"># Resolve a service — short form works because of search domains</span>
+nslookup api-service
+nslookup api-service.production.svc.cluster.local
+
+<span class="cm"># Full DNS lookup with dig</span>
+kubectl run debug --image=dnsutils --rm -it -- dig api-service.production.svc.cluster.local
+
+<span class="cm"># Check CoreDNS logs</span>
+kubectl logs -n kube-system -l k8s-app=kube-dns --tail=50
+
+<span class="cm"># Verify CoreDNS ConfigMap (forward rules, custom zones)</span>
+kubectl get configmap coredns -n kube-system -o yaml</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       12 CNI PLUGINS
+  ══════════════════════════════════════ -->
+  <section id="cni">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div class="section-title-block">
+        <h2>CNI Plugins</h2>
+        <div class="section-sub">// THE NETWORK PLUMBERS OF KUBERNETES</div>
+      </div>
+    </div>
+
+    <p class="prose">CNI (Container Network Interface) is the plugin standard that Kubernetes uses to set up pod networking. When a pod is created, Kubernetes calls the CNI plugin to assign an IP, configure the veth pair, and set up routing. Without a CNI plugin, pods cannot communicate.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>CNI Plugin</th><th>Model</th><th>Network Policy</th><th>Performance</th><th>Best For</th></tr>
+        <tr>
+          <td><strong>Flannel</strong></td>
+          <td>VXLAN overlay</td>
+          <td><span class="no">No</span></td>
+          <td><span class="partial">Medium</span></td>
+          <td>Simplest setup, dev/test clusters</td>
+        </tr>
+        <tr>
+          <td><strong>Calico</strong></td>
+          <td>BGP routing or overlay</td>
+          <td><span class="ok">Yes</span></td>
+          <td><span class="ok">High</span></td>
+          <td>Production, large clusters, network policies</td>
+        </tr>
+        <tr>
+          <td><strong>Cilium</strong></td>
+          <td>eBPF-based</td>
+          <td><span class="ok">Yes (L7)</span></td>
+          <td><span class="ok">Highest</span></td>
+          <td>Security-focused, observability, service mesh lite</td>
+        </tr>
+        <tr>
+          <td><strong>Weave</strong></td>
+          <td>Overlay mesh</td>
+          <td><span class="ok">Yes</span></td>
+          <td><span class="partial">Medium</span></td>
+          <td>Simple multi-cloud / multi-host</td>
+        </tr>
+        <tr>
+          <td><strong>AWS VPC CNI</strong></td>
+          <td>Native VPC IPs</td>
+          <td><span class="ok">Via SGs</span></td>
+          <td><span class="ok">High</span></td>
+          <td>EKS — pods get real VPC IPs</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span>▸</span>
+      <div class="callout-body"><strong>Cilium with eBPF</strong> replaces iptables with eBPF programs loaded directly into the Linux kernel. This eliminates the O(n) cost of iptables rule evaluation (critical at scale) and enables HTTP/gRPC-aware network policies — e.g., "only allow GET /api/v1/users, deny all other HTTP paths."</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       13 INGRESS CONTROLLERS
+  ══════════════════════════════════════ -->
+  <section id="ingress">
+    <div class="section-header">
+      <div class="section-num">13</div>
+      <div class="section-title-block">
+        <h2>Ingress Controllers</h2>
+        <div class="section-sub">// THE FRONT DOOR OF YOUR CLUSTER</div>
+      </div>
+    </div>
+
+    <p class="prose">An <strong>Ingress</strong> is a Kubernetes resource that defines HTTP/HTTPS routing rules — which hostnames and URL paths map to which internal Services. An <strong>Ingress Controller</strong> (nginx, Traefik, HAProxy, or a cloud-native one) is the actual reverse proxy that reads those rules and routes traffic. Think of Ingress as the config and the controller as the engine.</p>
+
+    <div class="topology">
+      <div class="topo-section-label">External Traffic Flow</div>
+      <hr class="topo-divider">
+      <div class="topo-row">
+        <div class="topo-node red-node"><div class="topo-node-icon">🌍</div><div class="topo-node-label">Internet</div><div class="topo-node-name">User Browser</div></div>
+        <div class="topo-line">→</div>
+        <div class="topo-node amber-node"><div class="topo-node-icon">⚖️</div><div class="topo-node-label">Cloud LB</div><div class="topo-node-name">External IP<br>:443</div></div>
+        <div class="topo-line">→</div>
+        <div class="topo-node green-node"><div class="topo-node-icon">🚪</div><div class="topo-node-label">Ingress</div><div class="topo-node-name">nginx controller<br>TLS termination</div></div>
+      </div>
+      <div class="topo-row"><div class="topo-line">↓ route by host/path</div></div>
+      <div class="topo-row">
+        <div class="topo-node blue-node"><div class="topo-node-icon">🎨</div><div class="topo-node-label">ClusterIP</div><div class="topo-node-name">frontend-svc<br>:80</div></div>
+        <div class="topo-line green-line">|</div>
+        <div class="topo-node blue-node"><div class="topo-node-icon">⚙️</div><div class="topo-node-label">ClusterIP</div><div class="topo-node-name">api-svc<br>:8080</div></div>
+        <div class="topo-line green-line">|</div>
+        <div class="topo-node blue-node"><div class="topo-node-icon">📊</div><div class="topo-node-label">ClusterIP</div><div class="topo-node-name">admin-svc<br>:3000</div></div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — Ingress resource (nginx)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: Ingress
+<span class="at">metadata</span>:
+  name: app-ingress
+  namespace: production
+  annotations:
+    kubernetes.io/ingress.class: <span class="st">"nginx"</span>
+    nginx.ingress.kubernetes.io/ssl-redirect: <span class="st">"true"</span>
+    nginx.ingress.kubernetes.io/rate-limit-rpm: <span class="st">"100"</span>
+    cert-manager.io/cluster-issuer: <span class="st">"letsencrypt-prod"</span>
+<span class="at">spec</span>:
+  tls:
+  - hosts:
+    - myapp.com
+    - api.myapp.com
+    secretName: myapp-tls-secret   <span class="cm"># cert-manager auto-fills this</span>
+
+  rules:
+  <span class="cm"># Route 1: main website</span>
+  - host: myapp.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-svc
+            port:
+              number: 80
+
+  <span class="cm"># Route 2: API subdomain</span>
+  - host: api.myapp.com
+    http:
+      paths:
+      - path: /v1          <span class="cm"># /v1/* → api-service</span>
+        pathType: Prefix
+        backend:
+          service:
+            name: api-svc
+            port:
+              number: 8080
+      - path: /health      <span class="cm"># exact match</span>
+        pathType: Exact
+        backend:
+          service:
+            name: api-svc
+            port:
+              number: 8080</div>
+    </div>
+
+    <h3>Popular Ingress Controllers</h3>
+    <div class="grid-3">
+      <div class="card card-accent-green">
+        <div class="card-title">NGINX Ingress <span class="card-tag tag-green">MOST COMMON</span></div>
+        <p>Community + official Kubernetes version. Extensive annotation-based configuration. Handles SSL termination, rate limiting, auth, rewrites. Best for teams familiar with nginx config.</p>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Traefik <span class="card-tag tag-blue">CLOUD NATIVE</span></div>
+        <p>Automatic service discovery — reads K8s resources and auto-configures routes. Native Let's Encrypt integration. Built-in dashboard. Popular in homelab and smaller production setups.</p>
+      </div>
+      <div class="card card-accent-teal">
+        <div class="card-title">AWS ALB / GCP GLB <span class="card-tag tag-teal">MANAGED</span></div>
+        <p>Cloud provider manages the load balancer. <code>aws-load-balancer-controller</code> provisions ALBs automatically from Ingress resources. Best for EKS/GKE — no nginx to manage.</p>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span>ℹ</span>
+      <div class="callout-body"><strong>Ingress vs Gateway API:</strong> The Gateway API is the next-generation replacement for Ingress, with richer routing primitives (HTTPRoute, GRPCRoute, TCPRoute). It's now GA in Kubernetes 1.28+. Ingress still works perfectly and is widely supported, but new projects should evaluate Gateway API for its expressiveness and role-based access model.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       14 EGRESS & NETWORK POLICY
+  ══════════════════════════════════════ -->
+  <section id="egress">
+    <div class="section-header">
+      <div class="section-num">14</div>
+      <div class="section-title-block">
+        <h2>Egress & Network Policy</h2>
+        <div class="section-sub">// CONTROLLING WHAT TRAFFIC LEAVES YOUR PODS</div>
+      </div>
+    </div>
+
+    <p class="prose"><strong>Egress</strong> refers to outbound traffic from pods — pods talking to the internet, to external databases, or to other services. By default, Kubernetes allows all egress. Network Policies let you restrict which pods can talk to what, in both directions.</p>
+
+    <h3>Default Behaviour (No Policies Applied)</h3>
+    <div class="grid-2">
+      <div class="card card-accent-red">
+        <div class="card-title">No NetworkPolicy = No Isolation</div>
+        <ul>
+          <li>Any pod can reach any other pod in the cluster</li>
+          <li>Any pod can reach external internet endpoints</li>
+          <li>Any pod can reach the Kubernetes API server</li>
+          <li>This is a <strong>significant security risk</strong> in production</li>
+          <li>A compromised pod can pivot to reach all other services</li>
+        </ul>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">With NetworkPolicy = Explicit Allow</div>
+        <ul>
+          <li>Default deny-all once ANY policy selects a pod</li>
+          <li>Only explicitly listed sources/destinations allowed</li>
+          <li>Ingress rules: who can send traffic TO this pod</li>
+          <li>Egress rules: where this pod can SEND traffic TO</li>
+          <li>CNI plugin must support NetworkPolicy (Calico, Cilium)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — Network Policies (Ingress + Egress)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## 1. Default deny-all (apply to every namespace as baseline)</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: default-deny-all
+  namespace: production
+<span class="at">spec</span>:
+  podSelector: {}   <span class="cm"># selects ALL pods in this namespace</span>
+  policyTypes:
+  - Ingress
+  - Egress
+  <span class="cm"># No rules = deny everything</span>
+
+<span class="cm">---</span>
+<span class="cm">## 2. Allow API pods to receive from frontend + send to DB</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: api-policy
+  namespace: production
+<span class="at">spec</span>:
+  podSelector:
+    matchLabels:
+      app: api       <span class="cm"># applies to pods labelled app=api</span>
+
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend    <span class="cm"># only frontend can call api</span>
+    - podSelector:
+        matchLabels:
+          app: ingress-nginx  <span class="cm"># and the ingress controller</span>
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres      <span class="cm"># api → postgres only</span>
+    ports:
+    - protocol: TCP
+      port: 5432
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  - to:                      <span class="cm"># allow DNS (required!)</span>
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+
+<span class="cm">---</span>
+<span class="cm">## 3. Allow egress to specific external IP (e.g., external API)</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: payment-external-egress
+<span class="at">spec</span>:
+  podSelector:
+    matchLabels:
+      app: payment-service
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 52.94.76.0/24   <span class="cm"># Stripe API IP range</span>
+    ports:
+    - protocol: TCP
+      port: 443</div>
+    </div>
+
+    <div class="callout danger">
+      <span>⚠</span>
+      <div class="callout-body"><strong>DNS egress is easy to forget!</strong> When you apply a NetworkPolicy with egress rules, DNS queries (port 53 to CoreDNS) are also blocked by default. Your pod will fail to resolve <em>any</em> name. Always explicitly allow egress to <code>kube-system</code> namespace on port 53/UDP as shown above.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       15 FRONTEND ↔ BACKEND COMMUNICATION
+  ══════════════════════════════════════ -->
+  <section id="fe-be">
+    <div class="section-header">
+      <div class="section-num">15</div>
+      <div class="section-title-block">
+        <h2>Frontend ↔ Backend Communication</h2>
+        <div class="section-sub">// THE COMPLETE PICTURE OF A WEB REQUEST</div>
+      </div>
+    </div>
+
+    <p class="prose">Let's trace a full request from a user's browser through the cluster to the database and back. This is the pattern you'll implement in almost every production application.</p>
+
+    <div class="flow">
+      <div class="flow-step"><div class="flow-step-label">Browser</div><div class="flow-step-name">GET /api/products</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">DNS</div><div class="flow-step-name">api.myapp.com → 1.2.3.4</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">Cloud LB</div><div class="flow-step-name">TCP :443</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">Ingress</div><div class="flow-step-name">TLS term + route</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">api-svc</div><div class="flow-step-name">ClusterIP:8080</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">api pod</div><div class="flow-step-name">Process request</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="flow-step-label">db-svc</div><div class="flow-step-name">postgres:5432</div></div>
+    </div>
+
+    <h3>Frontend Served from K8s vs CDN</h3>
+    <div class="grid-2">
+      <div class="card card-accent-blue">
+        <div class="card-title">Pattern A: API-First SPA <span class="card-tag tag-blue">COMMON</span></div>
+        <ul>
+          <li>React/Vue/Angular built to static files</li>
+          <li>Served from CDN (Cloudflare, CloudFront) or nginx pod</li>
+          <li>App makes API calls to <code>api.myapp.com</code></li>
+          <li>CORS must be configured on the backend</li>
+          <li>Ingress routes <code>/api/*</code> to backend, <code>/*</code> to frontend</li>
+        </ul>
+      </div>
+      <div class="card card-accent-teal">
+        <div class="card-title">Pattern B: Backend-for-Frontend <span class="card-tag tag-teal">RECOMMENDED</span></div>
+        <ul>
+          <li>Dedicated BFF service per client type (web, mobile)</li>
+          <li>BFF aggregates calls to multiple microservices</li>
+          <li>Browser only talks to BFF (single origin — no CORS)</li>
+          <li>BFF handles auth session, token exchange</li>
+          <li>Each BFF is a ClusterIP service + Ingress rule</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>CORS in Kubernetes Context</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — nginx Ingress CORS annotation</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: Ingress
+<span class="at">metadata</span>:
+  name: api-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/enable-cors: <span class="st">"true"</span>
+    nginx.ingress.kubernetes.io/cors-allow-origin: <span class="st">"https://myapp.com"</span>
+    nginx.ingress.kubernetes.io/cors-allow-methods: <span class="st">"GET, POST, PUT, DELETE, OPTIONS"</span>
+    nginx.ingress.kubernetes.io/cors-allow-headers: <span class="st">"Authorization, Content-Type"</span>
+    nginx.ingress.kubernetes.io/cors-allow-credentials: <span class="st">"true"</span>
+<span class="at">spec</span>:
+  rules:
+  - host: api.myapp.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-svc
+            port:
+              number: 8080</div>
+    </div>
+
+    <h3>WebSocket Support</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — Ingress with WebSocket (sticky sessions)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: Ingress
+<span class="at">metadata</span>:
+  name: ws-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: <span class="st">"3600"</span>
+    nginx.ingress.kubernetes.io/proxy-send-timeout: <span class="st">"3600"</span>
+    <span class="cm"># WebSocket requires long-lived connections — increase timeouts</span>
+    nginx.ingress.kubernetes.io/upstream-hash-by: <span class="st">"$request_uri"</span>
+    <span class="cm"># Sticky sessions by URI — WebSocket must reach same pod</span>
+<span class="at">spec</span>:
+  rules:
+  - host: ws.myapp.com
+    http:
+      paths:
+      - path: /ws
+        pathType: Prefix
+        backend:
+          service:
+            name: realtime-svc
+            port:
+              number: 3001</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       16 MICROSERVICES COMMUNICATION
+  ══════════════════════════════════════ -->
+  <section id="microservices">
+    <div class="section-header">
+      <div class="section-num">16</div>
+      <div class="section-title-block">
+        <h2>Microservices Communication</h2>
+        <div class="section-sub">// SYNC, ASYNC, AND EVERYTHING IN BETWEEN</div>
+      </div>
+    </div>
+
+    <p class="prose">In a microservices architecture, services need to talk to each other. There are two broad categories: <strong>synchronous</strong> (the caller waits for the response) and <strong>asynchronous</strong> (the caller publishes an event and continues). The right choice depends on your latency, reliability, and coupling requirements.</p>
+
+    <h3>Synchronous Communication (REST / gRPC)</h3>
+    <div class="grid-2">
+      <div class="card card-accent-blue">
+        <div class="card-title">REST over HTTP <span class="card-tag tag-blue">STANDARD</span></div>
+        <ul>
+          <li>Service calls <code>http://order-svc:8080/v1/orders/123</code></li>
+          <li>K8s Service DNS resolves <code>order-svc</code> to ClusterIP</li>
+          <li>Simple, universally understood, easy to debug</li>
+          <li>Drawback: tight coupling — if <code>order-svc</code> is down, caller fails</li>
+          <li>Implement circuit breakers and retries</li>
+        </ul>
+      </div>
+      <div class="card card-accent-teal">
+        <div class="card-title">gRPC <span class="card-tag tag-teal">HIGH PERFORMANCE</span></div>
+        <ul>
+          <li>Binary protocol (Protocol Buffers) — 3-5× smaller payload than JSON</li>
+          <li>HTTP/2 multiplexing — multiple streams per connection</li>
+          <li>Strongly typed contracts via <code>.proto</code> files</li>
+          <li>Requires L7 load balancing for proper round-robin</li>
+          <li>Best for: internal service-to-service high-throughput calls</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — Headless Service for gRPC (enables client-side LB)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># gRPC with a regular ClusterIP won't distribute connections well</span>
+<span class="cm"># because HTTP/2 uses a single long-lived connection.</span>
+<span class="cm"># Use a headless Service so clients get ALL pod IPs and do their own LB:</span>
+<span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Service
+<span class="at">metadata</span>:
+  name: grpc-order-svc
+<span class="at">spec</span>:
+  clusterIP: None   <span class="cm"># headless — DNS returns all pod IPs</span>
+  selector:
+    app: order-service
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+
+<span class="cm"># gRPC client resolves DNS and gets: [10.244.1.5, 10.244.2.8, 10.244.3.2]</span>
+<span class="cm"># Client-side load balancer (e.g., grpc.Dial with round_robin) distributes calls</span></div>
+    </div>
+
+    <h3>Asynchronous Communication (Event-Driven)</h3>
+    <div class="grid-2">
+      <div class="card card-accent-amber">
+        <div class="card-title">Message Queues (RabbitMQ / SQS) <span class="card-tag tag-amber">DECOUPLED</span></div>
+        <ul>
+          <li>Producer puts message in queue, continues immediately</li>
+          <li>Consumer processes at its own pace</li>
+          <li>If consumer is down, messages queue up (not lost)</li>
+          <li>One-to-one: each message consumed by exactly one consumer</li>
+          <li>Use for: order processing, email sending, file uploads</li>
+        </ul>
+      </div>
+      <div class="card card-accent-purple">
+        <div class="card-title">Event Streaming (Kafka) <span class="card-tag tag-purple">SCALABLE</span></div>
+        <ul>
+          <li>Events stored durably on topics (like a distributed log)</li>
+          <li>Multiple consumers can read the same event independently</li>
+          <li>Replay past events (not possible with queues)</li>
+          <li>Consumer groups enable horizontal scaling</li>
+          <li>Use for: audit logs, analytics, event sourcing</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — Kafka in K8s (service discovery pattern)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Kafka StatefulSet needs a headless service for pod-to-pod comms</span>
+<span class="cm"># and a regular service for external client access</span>
+
+<span class="cm">## Headless service — brokers discover each other via DNS</span>
+<span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Service
+<span class="at">metadata</span>:
+  name: kafka-headless
+<span class="at">spec</span>:
+  clusterIP: None
+  selector:
+    app: kafka
+  ports:
+  - name: broker
+    port: 9092
+
+<span class="cm">## Client-facing service — apps connect to this</span>
+<span class="at">apiVersion</span>: v1
+<span class="at">kind</span>: Service
+<span class="at">metadata</span>:
+  name: kafka
+<span class="at">spec</span>:
+  selector:
+    app: kafka
+  ports:
+  - port: 9092
+
+<span class="cm"># App config: KAFKA_BROKERS=kafka.production.svc.cluster.local:9092</span>
+<span class="cm"># Kafka broker DNS: kafka-0.kafka-headless.production.svc.cluster.local</span>
+<span class="cm">#                   kafka-1.kafka-headless.production.svc.cluster.local</span></div>
+    </div>
+
+    <h3>Microservice Communication Patterns</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Pattern</th><th>Protocol</th><th>Coupling</th><th>Latency</th><th>When to Use</th></tr>
+        <tr><td><strong>Direct REST</strong></td><td>HTTP/1.1</td><td>Tight</td><td>Low</td><td>Simple CRUD, reads, user-facing actions</td></tr>
+        <tr><td><strong>gRPC</strong></td><td>HTTP/2 + Protobuf</td><td>Tight</td><td>Very Low</td><td>High-throughput internal calls, streaming</td></tr>
+        <tr><td><strong>Message Queue</strong></td><td>AMQP / SQS</td><td>Loose</td><td>Medium</td><td>Background jobs, notifications, reliability needed</td></tr>
+        <tr><td><strong>Event Stream</strong></td><td>Kafka / Kinesis</td><td>Very Loose</td><td>Medium</td><td>Audit, analytics, fan-out, event sourcing</td></tr>
+        <tr><td><strong>GraphQL</strong></td><td>HTTP</td><td>Tight</td><td>Low</td><td>BFF pattern, flexible client queries</td></tr>
+        <tr><td><strong>Service Mesh</strong></td><td>mTLS / Envoy</td><td>Managed</td><td>+~1ms overhead</td><td>Security, observability, traffic management</td></tr>
+      </table>
+    </div>
+
+    <div class="callout note">
+      <span>ℹ</span>
+      <div class="callout-body"><strong>Saga Pattern for distributed transactions:</strong> When an action spans multiple services (e.g., place order → reserve inventory → charge payment → send email), use the Saga pattern. Each service performs its local transaction and publishes an event. If any step fails, compensating transactions roll back previous steps. This avoids distributed ACID transactions across services.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       17 SERVICE MESH
+  ══════════════════════════════════════ -->
+  <section id="service-mesh">
+    <div class="section-header">
+      <div class="section-num">17</div>
+      <div class="section-title-block">
+        <h2>Service Mesh</h2>
+        <div class="section-sub">// NETWORK INTELLIGENCE WITHOUT CODE CHANGES</div>
+      </div>
+    </div>
+
+    <p class="prose">A service mesh injects a lightweight proxy sidecar (Envoy) into every pod. All traffic passes through the sidecar — giving you mTLS encryption, retries, circuit breaking, distributed tracing, and traffic splitting <strong>without changing a single line of application code</strong>.</p>
+
+    <div class="compare-grid">
+      <div class="compare-block compare-old">
+        <div class="compare-header">Without Service Mesh</div>
+        <div class="compare-body"><ul>
+          <li>Plain HTTP between services (unencrypted)</li>
+          <li>No automatic retries on failure</li>
+          <li>No circuit breaker — cascading failures</li>
+          <li>Tracing requires SDK in every service</li>
+          <li>Traffic splitting requires code changes</li>
+          <li>No mutual authentication between services</li>
+        </ul></div>
+      </div>
+      <div class="compare-block compare-new">
+        <div class="compare-header">With Istio / Linkerd</div>
+        <div class="compare-body"><ul>
+          <li>Automatic mTLS on all service-to-service traffic</li>
+          <li>Configurable retry policies (3 retries, 100ms backoff)</li>
+          <li>Circuit breaker built into Envoy proxy</li>
+          <li>Traces injected at proxy level — zero SDK needed</li>
+          <li>Canary: 90% traffic v1, 10% traffic v2 via config</li>
+          <li>Service identity via SPIFFE/SVID certificates</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — Istio Traffic Management (Canary Deploy)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## VirtualService — traffic routing rules</span>
+<span class="at">apiVersion</span>: networking.istio.io/v1beta1
+<span class="at">kind</span>: VirtualService
+<span class="at">metadata</span>:
+  name: api-traffic-split
+<span class="at">spec</span>:
+  hosts:
+  - api-svc
+  http:
+  - match:
+    - headers:
+        x-canary:
+          exact: <span class="st">"true"</span>      <span class="cm"># canary header → always v2</span>
+    route:
+    - destination:
+        host: api-svc
+        subset: v2
+  - route:                   <span class="cm"># default: 90/10 split</span>
+    - destination:
+        host: api-svc
+        subset: v1
+      weight: <span class="nu">90</span>
+    - destination:
+        host: api-svc
+        subset: v2
+      weight: <span class="nu">10</span>
+
+<span class="cm">---</span>
+<span class="cm">## DestinationRule — defines subsets (v1 / v2)</span>
+<span class="at">apiVersion</span>: networking.istio.io/v1beta1
+<span class="at">kind</span>: DestinationRule
+<span class="at">metadata</span>:
+  name: api-destination
+<span class="at">spec</span>:
+  host: api-svc
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: <span class="nu">100</span>
+    outlierDetection:
+      consecutive5xxErrors: <span class="nu">5</span>    <span class="cm"># circuit breaker: eject after 5 errors</span>
+      interval: 30s
+      baseEjectionTime: 30s
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       18 LOAD BALANCING
+  ══════════════════════════════════════ -->
+  <section id="load-balancing">
+    <div class="section-header">
+      <div class="section-num">18</div>
+      <div class="section-title-block">
+        <h2>Load Balancing Strategies</h2>
+        <div class="section-sub">// SPREADING TRAFFIC INTELLIGENTLY</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Strategy</th><th>How it Works</th><th>Where it Applies in K8s</th></tr>
+        <tr>
+          <td><strong>Round Robin</strong></td>
+          <td>Each request goes to the next server in rotation</td>
+          <td>kube-proxy default (iptables), gRPC headless services</td>
+        </tr>
+        <tr>
+          <td><strong>Least Connections</strong></td>
+          <td>Route to the server with fewest active connections</td>
+          <td>IPVS mode kube-proxy, nginx upstream</td>
+        </tr>
+        <tr>
+          <td><strong>IP Hash / Sticky</strong></td>
+          <td>Hash client IP → always route to same server</td>
+          <td>Ingress session affinity, stateful WebSockets</td>
+        </tr>
+        <tr>
+          <td><strong>Weighted</strong></td>
+          <td>Send X% traffic to v1, Y% to v2</td>
+          <td>Istio VirtualService weights, Argo Rollouts</td>
+        </tr>
+        <tr>
+          <td><strong>Random</strong></td>
+          <td>Random selection from healthy pods</td>
+          <td>Envoy/Linkerd proxy default</td>
+        </tr>
+        <tr>
+          <td><strong>Health-aware</strong></td>
+          <td>Only route to pods passing readiness probes</td>
+          <td>K8s Endpoints controller (automatic)</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span>▸</span>
+      <div class="callout-body"><strong>kube-proxy IPVS vs iptables:</strong> The default kube-proxy mode is iptables, which does random selection among Endpoints. At large scale (1000+ services), iptables O(n) rule matching becomes a bottleneck. Enable IPVS mode for O(1) lookup using kernel-level load balancing with more algorithm choices (rr, lc, dh, sh, sed, nq).</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       19 NETWORK POLICIES (ZERO TRUST)
+  ══════════════════════════════════════ -->
+  <section id="network-policy">
+    <div class="section-header">
+      <div class="section-num">19</div>
+      <div class="section-title-block">
+        <h2>Network Policies — Zero Trust in K8s</h2>
+        <div class="section-sub">// DENY BY DEFAULT, ALLOW EXPLICITLY</div>
+      </div>
+    </div>
+
+    <p class="prose">Zero Trust networking in Kubernetes means: <em>no pod is implicitly trusted, every communication is explicitly authorized</em>. Start with a default-deny policy on every namespace, then carve out the minimum required paths.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — Production Zero Trust NetworkPolicy Template</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## Step 1: Apply to every namespace — deny everything</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: <span class="at">00-default-deny</span>
+  namespace: production
+<span class="at">spec</span>:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+
+<span class="cm">---</span>
+<span class="cm">## Step 2: Allow DNS (required for name resolution)</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: <span class="at">01-allow-dns</span>
+  namespace: production
+<span class="at">spec</span>:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+<span class="cm">---</span>
+<span class="cm">## Step 3: Allow ingress controller → frontend pods</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: <span class="at">02-allow-ingress-to-frontend</span>
+  namespace: production
+<span class="at">spec</span>:
+  podSelector:
+    matchLabels:
+      tier: frontend
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+    ports:
+    - port: 3000
+
+<span class="cm">---</span>
+<span class="cm">## Step 4: Frontend → API only</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: <span class="at">03-frontend-to-api</span>
+  namespace: production
+<span class="at">spec</span>:
+  podSelector:
+    matchLabels:
+      tier: api
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          tier: frontend
+    ports:
+    - port: 8080
+
+<span class="cm">---</span>
+<span class="cm">## Step 5: API → database only</span>
+<span class="at">apiVersion</span>: networking.k8s.io/v1
+<span class="at">kind</span>: NetworkPolicy
+<span class="at">metadata</span>:
+  name: <span class="at">04-api-to-database</span>
+  namespace: production
+<span class="at">spec</span>:
+  podSelector:
+    matchLabels:
+      tier: database
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          tier: api
+    ports:
+    - port: 5432</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       20 MONITORING & TROUBLESHOOTING
+  ══════════════════════════════════════ -->
+  <section id="monitoring">
+    <div class="section-header">
+      <div class="section-num">20</div>
+      <div class="section-title-block">
+        <h2>Monitoring & Troubleshooting</h2>
+        <div class="section-sub">// DEBUGGING THE INVISIBLE NETWORK</div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — Network Troubleshooting Toolkit</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm">## ─── SERVICE CONNECTIVITY ───────────────────────────────</span>
+
+<span class="cm"># Can a pod reach a service?</span>
+kubectl exec -it my-pod -- curl -v http://api-svc:8080/health
+
+<span class="cm"># Test DNS resolution from inside pod</span>
+kubectl exec -it my-pod -- nslookup api-svc
+kubectl exec -it my-pod -- cat /etc/resolv.conf
+
+<span class="cm"># Run a debug pod with network tools (busybox / netshoot)</span>
+kubectl run netdebug --image=nicolaka/netshoot --rm -it -- bash
+<span class="cm"># Then inside: curl, nslookup, dig, tcpdump, ss, nmap, mtr</span>
+
+<span class="cm">## ─── ENDPOINTS & SERVICES ───────────────────────────────</span>
+
+<span class="cm"># Check if Service has any Endpoints (are pods selected?)</span>
+kubectl get endpoints api-svc -n production
+<span class="cm"># Empty ENDPOINTS = pods not matching label selector → check labels</span>
+
+<span class="cm"># Verify pod labels match Service selector</span>
+kubectl get pods -l app=api -n production
+kubectl describe svc api-svc -n production | grep Selector
+
+<span class="cm">## ─── INGRESS DEBUGGING ──────────────────────────────────</span>
+
+<span class="cm"># Check Ingress resource</span>
+kubectl describe ingress app-ingress -n production
+
+<span class="cm"># Check nginx controller logs</span>
+kubectl logs -n ingress-nginx deploy/ingress-nginx-controller --tail=50
+
+<span class="cm"># Check if TLS cert is provisioned</span>
+kubectl describe certificate myapp-tls -n production
+kubectl get secret myapp-tls-secret -n production
+
+<span class="cm">## ─── POD NETWORK ────────────────────────────────────────</span>
+
+<span class="cm"># Get pod IP</span>
+kubectl get pod my-pod -o jsonpath='{.status.podIP}'
+
+<span class="cm"># Can node ping pod directly?</span>
+ping $(kubectl get pod my-pod -o jsonpath='{.status.podIP}')
+
+<span class="cm"># View network interfaces inside pod</span>
+kubectl exec -it my-pod -- ip addr
+
+<span class="cm"># Capture traffic on pod (requires netshoot or debug container)</span>
+kubectl exec -it my-pod -- tcpdump -i eth0 -n port 8080
+
+<span class="cm">## ─── NETWORK POLICY DEBUGGING ───────────────────────────</span>
+
+<span class="cm"># List all NetworkPolicies in namespace</span>
+kubectl get networkpolicies -n production
+
+<span class="cm"># Check if Cilium is enforcing (Cilium CLI)</span>
+cilium connectivity test
+cilium endpoint list</div>
+    </div>
+
+    <h3>Common Networking Problems & Solutions</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Symptom</th><th>Likely Cause</th><th>Fix</th></tr>
+        <tr><td><code>connection refused</code> on service</td><td>No pods selected by service (empty Endpoints)</td><td>Check pod labels match service selector</td></tr>
+        <tr><td><code>no such host</code> DNS failure</td><td>CoreDNS not running, or DNS egress blocked</td><td>Check CoreDNS pods; add DNS egress NetworkPolicy</td></tr>
+        <tr><td>Intermittent <code>timeout</code></td><td>NetworkPolicy blocking some pods; one healthy pod, others blocked</td><td>Audit NetworkPolicies with <code>kubectl describe</code></td></tr>
+        <tr><td>Ingress returns 502</td><td>Backend pods not ready; wrong targetPort</td><td>Check pod readinessProbe; verify port mapping</td></tr>
+        <tr><td>TLS cert not working</td><td>cert-manager not provisioning; wrong secret name</td><td>Check cert-manager logs; <code>kubectl describe certificate</code></td></tr>
+        <tr><td>gRPC load balancing broken</td><td>Single long-lived HTTP/2 connection hits one pod</td><td>Use headless service + client-side LB or service mesh</td></tr>
+        <tr><td>External IP pending forever</td><td>Cloud LB controller not installed / configured</td><td>Check cloud-controller-manager; verify IAM permissions</td></tr>
+        <tr><td>Pod can't reach internet</td><td>Egress NetworkPolicy blocking all external traffic</td><td>Add explicit egress rule for external IP ranges</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       21 NETWORK SECURITY
+  ══════════════════════════════════════ -->
+  <section id="security">
+    <div class="section-header">
+      <div class="section-num">21</div>
+      <div class="section-title-block">
+        <h2>Network Security</h2>
+        <div class="section-sub">// HARDENING YOUR CLUSTER NETWORK</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">TLS Everywhere</div>
+        <ul>
+          <li>Use cert-manager + Let's Encrypt for automatic TLS on Ingress</li>
+          <li>Enable mTLS between services (via service mesh or manual)</li>
+          <li>Never expose internal services without TLS in production</li>
+          <li>Rotate certificates automatically (cert-manager handles this)</li>
+          <li>Enforce TLS 1.2+ minimum; disable TLS 1.0/1.1</li>
+        </ul>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">API Server Protection</div>
+        <ul>
+          <li>Never expose kube-apiserver (port 6443) to the internet</li>
+          <li>Use a VPN or bastion host for cluster access</li>
+          <li>Enable audit logging on the API server</li>
+          <li>Use RBAC — no wildcards in production ClusterRoles</li>
+          <li>Restrict access with <code>--anonymous-auth=false</code></li>
+        </ul>
+      </div>
+      <div class="card card-accent-red">
+        <div class="card-title">Pod Security</div>
+        <ul>
+          <li>Set <code>automountServiceAccountToken: false</code> if not needed</li>
+          <li>Use read-only root filesystem where possible</li>
+          <li>Don't run containers as root (<code>runAsNonRoot: true</code>)</li>
+          <li>Drop all Linux capabilities, add back only required ones</li>
+          <li>Use seccomp and AppArmor profiles</li>
+        </ul>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Ingress Security</div>
+        <ul>
+          <li>Rate limiting on all public-facing Ingress resources</li>
+          <li>WAF (Web Application Firewall) in front of Ingress</li>
+          <li>Use <code>allowPrivilegeEscalation: false</code> on ingress pods</li>
+          <li>Block access to internal metadata endpoints (<code>169.254.169.254</code>)</li>
+          <li>Implement CORS headers — never use wildcard <code>*</code> in production</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       22 QUICK REFERENCE
+  ══════════════════════════════════════ -->
+  <section id="cheatsheet">
+    <div class="section-header">
+      <div class="section-num">22</div>
+      <div class="section-title-block">
+        <h2>Quick Reference</h2>
+        <div class="section-sub">// COMMANDS YOU'LL USE EVERY DAY</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">Docker Networking Commands</div>
+        <div class="code-wrap" style="margin:10px 0 0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div><div class="code-block"><span class="cm"># List networks</span>
+docker network ls
+
+<span class="cm"># Create user-defined bridge</span>
+docker network create mynet
+
+<span class="cm"># Run with port mapping</span>
+docker run -p 8080:80 nginx
+
+<span class="cm"># Inspect network</span>
+docker network inspect mynet
+
+<span class="cm"># Connect to network</span>
+docker network connect mynet mycontainer
+
+<span class="cm"># Compose: restart service</span>
+docker compose restart api</div></div>
+      </div>
+      <div class="card card-accent-blue">
+        <div class="card-title">Kubernetes Service Commands</div>
+        <div class="code-wrap" style="margin:10px 0 0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div><div class="code-block"><span class="cm"># List all services</span>
+kubectl get svc -A
+
+<span class="cm"># Expose a deployment</span>
+kubectl expose deploy myapp --port 80 --target-port 8080
+
+<span class="cm"># Port-forward for local access</span>
+kubectl port-forward svc/api-svc 8080:80
+
+<span class="cm"># Get endpoints</span>
+kubectl get endpoints api-svc
+
+<span class="cm"># Describe ingress</span>
+kubectl describe ingress app-ingress -n prod
+
+<span class="cm"># Get network policies</span>
+kubectl get netpol -n prod</div></div>
+      </div>
+    </div>
+
+    <h3>K8s DNS Cheat Sheet</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">DNS Patterns</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Service DNS format:</span>
+<span class="at">&lt;service-name&gt;.&lt;namespace&gt;.svc.cluster.local</span>
+
+<span class="cm"># Same namespace shorthand (works due to search domains):</span>
+<span class="at">api-svc</span>                               <span class="cm"># resolves to api-svc.default.svc.cluster.local</span>
+
+<span class="cm"># Cross-namespace:</span>
+<span class="at">api-svc.production</span>                    <span class="cm"># resolves to api-svc.production.svc.cluster.local</span>
+
+<span class="cm"># StatefulSet pod DNS:</span>
+<span class="at">kafka-0.kafka-headless.production.svc.cluster.local</span>
+<span class="at">kafka-1.kafka-headless.production.svc.cluster.local</span>
+
+<span class="cm"># CoreDNS ClusterIP (always):</span>
+<span class="at">10.96.0.10</span>
+
+<span class="cm"># Common service CIDRs:</span>
+<span class="at">10.96.0.0/12</span>    <span class="cm"># K8s service CIDR (default kubeadm)</span>
+<span class="at">10.244.0.0/16</span>   <span class="cm"># pod CIDR (Flannel default)</span>
+<span class="at">10.217.0.0/16</span>   <span class="cm"># pod CIDR (Cilium default)</span>
+<span class="at">192.168.0.0/16</span>  <span class="cm"># pod CIDR (Calico default)</span></div>
+    </div>
+
+    <div class="callout tip">
+      <span>▸</span>
+      <div class="callout-body"><strong>Essential reads:</strong> Kubernetes Networking Book (Calico docs) · <code>kubernetes.io/docs/concepts/services-networking/</code> · Cilium Network Policy Editor (editor.cilium.io) · Cloudflare Learning — How Does DNS Work.</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<!-- ═══ FLOATING BACK BUTTON ═══ -->
+<a class="fab-back" href="../index.html" title="Back to handbooks index">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+</a>
+
+<script>
+/* ─── THEME TOGGLE ─── */
+const html = document.documentElement;
+const themeIcon  = document.getElementById('theme-icon');
+const themeLabel = document.getElementById('theme-label');
+
+function toggleTheme() {
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  themeIcon.textContent  = isDark ? '🌙' : '☀️';
+  themeLabel.textContent = isDark ? 'DARK'  : 'LIGHT';
+  localStorage.setItem('handbook-theme', isDark ? 'light' : 'dark');
+}
+
+(function initTheme() {
+  const saved = localStorage.getItem('handbook-theme');
+  if (saved === 'light') {
+    html.setAttribute('data-theme', 'light');
+    themeIcon.textContent  = '🌙';
+    themeLabel.textContent = 'DARK';
+  }
+})();
+
+/* ─── COPY CODE ─── */
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(() => { btn.textContent = 'copy'; btn.style.color = ''; btn.style.borderColor = ''; }, 2000);
+  });
+}
+
+/* ─── ACTIVE NAV ─── */
+const sections = document.querySelectorAll('section');
+const navLinks  = document.querySelectorAll('.nav-link');
+const observer  = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-52px 0px -70% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
