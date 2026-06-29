@@ -1,0 +1,2394 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="handbook-version" content="v1">
+<meta name="last-updated" content="2026-06-29">
+<title>DevContainer Handbook</title>
+<meta name="description" content="Comprehensive handbook on Dev Containers. Covers what they are, when to use them, how to configure them, Python and React examples, advanced patterns, and best practices.">
+<meta name="keywords" content="devcontainer, dev container, docker, vscode, remote development, python, react, typescript, dockerfile, devcontainer.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─── THEME TOKENS ─── */
+:root[data-theme="dark"] {
+  --bg:           #070810;
+  --bg2:          #0c0e1a;
+  --bg3:          #111424;
+  --bg4:          #181c2e;
+  --bg5:          #1e2338;
+  --border:       rgba(120,140,255,0.08);
+  --border2:      rgba(120,140,255,0.16);
+  --text:         #dde3f8;
+  --text2:        #8892b8;
+  --muted:        #434d72;
+  --accent:       #7c6dfa;
+  --accent2:      #5b4de8;
+  --accent-glow:  rgba(124,109,250,0.15);
+  --accent-dim:   rgba(124,109,250,0.08);
+  --green:        #2de28a;
+  --green-dim:    rgba(45,226,138,0.10);
+  --red:          #ff5470;
+  --red-dim:      rgba(255,84,112,0.10);
+  --amber:        #f5a623;
+  --amber-dim:    rgba(245,166,35,0.10);
+  --cyan:         #22d4f0;
+  --cyan-dim:     rgba(34,212,240,0.10);
+  --pink:         #f472b6;
+  --pink-dim:     rgba(244,114,182,0.10);
+  --teal:         #2dd4bf;
+  --teal-dim:     rgba(45,212,191,0.10);
+  --code-bg:      #050710;
+  --sidebar-bg:   #090b15;
+  --topbar-bg:    rgba(7,8,16,0.97);
+  --card-bg:      #111424;
+  --shadow:       0 4px 32px rgba(0,0,0,0.5);
+}
+:root[data-theme="light"] {
+  --bg:           #f4f6ff;
+  --bg2:          #eceffe;
+  --bg3:          #ffffff;
+  --bg4:          #f0f2ff;
+  --bg5:          #e8ebfc;
+  --border:       rgba(90,80,200,0.10);
+  --border2:      rgba(90,80,200,0.20);
+  --text:         #1a1c35;
+  --text2:        #4a4e72;
+  --muted:        #9096bb;
+  --accent:       #5b4de8;
+  --accent2:      #4033cc;
+  --accent-glow:  rgba(91,77,232,0.12);
+  --accent-dim:   rgba(91,77,232,0.07);
+  --green:        #0fa854;
+  --green-dim:    rgba(15,168,84,0.10);
+  --red:          #e02444;
+  --red-dim:      rgba(224,36,68,0.08);
+  --amber:        #c47d00;
+  --amber-dim:    rgba(196,125,0,0.10);
+  --cyan:         #0898b0;
+  --cyan-dim:     rgba(8,152,176,0.10);
+  --pink:         #be185d;
+  --pink-dim:     rgba(190,24,93,0.08);
+  --teal:         #0f766e;
+  --teal-dim:     rgba(15,118,110,0.10);
+  --code-bg:      #1a1c35;
+  --sidebar-bg:   #eceffe;
+  --topbar-bg:    rgba(244,246,255,0.97);
+  --card-bg:      #ffffff;
+  --shadow:       0 4px 24px rgba(60,60,120,0.10);
+}
+
+/* ─── GLOBALS ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.75;
+  min-height: 100vh;
+  transition: background 0.25s, color 0.25s;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  height: 52px;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--border2);
+  backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+}
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-badge {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 2.5px; color: var(--bg);
+  background: var(--accent); padding: 3px 11px;
+  text-transform: uppercase; border-radius: 3px;
+}
+.topbar-title {
+  font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700;
+  letter-spacing: 0.5px; color: var(--text);
+}
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topbar-meta {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  color: var(--muted); letter-spacing: 1px;
+}
+.theme-toggle {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--bg4); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 4px 12px; cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  color: var(--text2); transition: all 0.2s; user-select: none;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.theme-icon { font-size: 13px; }
+
+/* ─── LAYOUT ─── */
+.layout { display: flex; margin-top: 52px; min-height: calc(100vh - 52px); }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: 256px; flex-shrink: 0;
+  position: sticky; top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border2);
+  padding-bottom: 48px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+  transition: background 0.25s;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+.sb-brand {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-dim);
+}
+.sb-num { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 2px; margin-bottom: 3px; }
+.sb-title { font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 700; color: var(--text); }
+.sb-sub { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
+.nav-section {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+  padding: 16px 20px 5px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 20px; text-decoration: none;
+  font-size: 12.5px; color: var(--text2);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-link .nl-num {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+  color: var(--muted); width: 20px; flex-shrink: 0; text-align: right;
+}
+.nav-link:hover { color: var(--text); background: var(--accent-dim); border-left-color: var(--border2); }
+.nav-link.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-glow); font-weight: 500; }
+.nav-link.active .nl-num { color: var(--accent); }
+
+/* ─── MAIN ─── */
+.main { flex: 1; min-width: 0; padding: 52px 64px 120px; max-width: 980px; }
+
+/* ─── HERO ─── */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--border2); border-radius: 8px;
+  background: var(--bg3); padding: 56px 60px; margin-bottom: 72px;
+  box-shadow: var(--shadow);
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 5%   0%,  var(--accent-glow) 0%, transparent 55%),
+    radial-gradient(ellipse at 90% 90%,  var(--cyan-dim)    0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%,  var(--teal-dim)    0%, transparent 70%);
+  pointer-events: none; border-radius: inherit;
+}
+.hero-eyebrow {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 4px;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::before { content: '//'; opacity: 0.45; }
+.hero h1 {
+  font-family: 'Sora', sans-serif; font-size: 52px; font-weight: 800;
+  line-height: 1.05; letter-spacing: -2px; color: var(--text); margin-bottom: 10px;
+}
+.hero h1 span { color: var(--accent); }
+.hero-axiom {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  color: var(--cyan); border-left: 3px solid var(--cyan);
+  padding: 9px 16px; background: var(--cyan-dim);
+  display: inline-block; margin: 18px 0 22px; border-radius: 0 4px 4px 0;
+  line-height: 1.5;
+}
+.hero-desc { color: var(--text2); font-size: 15px; max-width: 580px; line-height: 1.8; margin-bottom: 28px; }
+.hero-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 4px 13px; border: 1px solid; border-radius: 20px;
+}
+.chip-purple { color: var(--accent);  border-color: rgba(124,109,250,0.45); background: var(--accent-dim); }
+.chip-green  { color: var(--green);   border-color: rgba(45,226,138,0.35);  background: var(--green-dim); }
+.chip-amber  { color: var(--amber);   border-color: rgba(245,166,35,0.35);  background: var(--amber-dim); }
+.chip-cyan   { color: var(--cyan);    border-color: rgba(34,212,240,0.35);  background: var(--cyan-dim); }
+.chip-pink   { color: var(--pink);    border-color: rgba(244,114,182,0.35); background: var(--pink-dim); }
+.chip-teal   { color: var(--teal);    border-color: rgba(45,212,191,0.35);  background: var(--teal-dim); }
+
+/* ─── SECTIONS ─── */
+section { margin-bottom: 76px; scroll-margin-top: 72px; }
+.section-header {
+  display: flex; align-items: flex-start; gap: 14px;
+  margin-bottom: 24px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 60px; height: 1px; background: var(--accent);
+}
+.section-num {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  color: var(--accent); margin-top: 4px; flex-shrink: 0; width: 36px;
+}
+.section-title-block h2 {
+  font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 800;
+  letter-spacing: -0.5px; color: var(--text); line-height: 1.1;
+}
+.section-sub {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  color: var(--muted); letter-spacing: 1.5px; margin-top: 5px;
+}
+
+/* ─── PROSE ─── */
+.prose { color: var(--text2); font-size: 14px; line-height: 1.8; margin-bottom: 16px; }
+.prose strong { color: var(--text); font-weight: 600; }
+
+h3 {
+  font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700;
+  color: var(--text); margin: 28px 0 12px;
+  display: flex; align-items: center; gap: 9px;
+}
+h3::before { content: '//'; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); }
+h4 { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin: 20px 0 8px; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 20px 22px; margin-bottom: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.card:hover { border-color: var(--border2); box-shadow: 0 2px 16px rgba(0,0,0,0.15); }
+.card-accent-purple { border-left: 3px solid var(--accent); }
+.card-accent-green  { border-left: 3px solid var(--green); }
+.card-accent-red    { border-left: 3px solid var(--red); }
+.card-accent-amber  { border-left: 3px solid var(--amber); }
+.card-accent-cyan   { border-left: 3px solid var(--cyan); }
+.card-accent-pink   { border-left: 3px solid var(--pink); }
+.card-accent-teal   { border-left: 3px solid var(--teal); }
+.card-title {
+  font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 700;
+  color: var(--text); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-tag {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase; padding: 1px 8px; border-radius: 10px;
+}
+.tag-purple { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(124,109,250,0.3); }
+.tag-green  { color: var(--green);  background: var(--green-dim);  border: 1px solid rgba(45,226,138,0.3); }
+.tag-red    { color: var(--red);    background: var(--red-dim);    border: 1px solid rgba(255,84,112,0.3); }
+.tag-amber  { color: var(--amber);  background: var(--amber-dim);  border: 1px solid rgba(245,166,35,0.3); }
+.tag-cyan   { color: var(--cyan);   background: var(--cyan-dim);   border: 1px solid rgba(34,212,240,0.3); }
+.tag-teal   { color: var(--teal);   background: var(--teal-dim);   border: 1px solid rgba(45,212,191,0.3); }
+.card p, .card li { color: var(--text2); font-size: 13.5px; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 5px; line-height: 1.65; }
+
+/* ─── GRIDS ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+
+/* ─── CODE BLOCKS ─── */
+.code-wrap {
+  background: var(--code-bg); border: 1px solid var(--border2);
+  border-radius: 6px; margin: 16px 0;
+  font-family: 'IBM Plex Mono', monospace; overflow: hidden;
+}
+[data-theme="light"] .code-wrap { background: #1a1c35; border-color: rgba(120,140,255,0.2); }
+.code-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 16px;
+  background: rgba(124,109,250,0.07);
+  border-bottom: 1px solid rgba(124,109,250,0.12);
+}
+.code-lang { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
+.copy-btn {
+  font-size: 10px; color: #6b7298; background: none;
+  border: 1px solid rgba(120,140,255,0.2); padding: 2px 10px;
+  cursor: pointer; font-family: 'IBM Plex Mono', monospace;
+  transition: all 0.2s; letter-spacing: 1px; text-transform: uppercase; border-radius: 3px;
+}
+.copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+.code-block {
+  padding: 18px 20px; overflow-x: auto; font-size: 12.5px;
+  line-height: 1.8; white-space: pre; tab-size: 2; color: #9ba8cc;
+}
+.code-block::-webkit-scrollbar { height: 3px; }
+.code-block::-webkit-scrollbar-thumb { background: rgba(120,140,255,0.2); }
+.kw  { color: #c792ea; }
+.st  { color: #c3e88d; }
+.cm  { color: #485070; font-style: italic; }
+.fn  { color: #82aaff; }
+.nu  { color: #f78c6c; }
+.at  { color: #7c6dfa; }
+.hl  { background: rgba(124,109,250,0.06); display: block; margin: 0 -20px; padding: 0 20px; border-left: 2px solid var(--accent); }
+code {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  background: var(--accent-dim); color: var(--accent);
+  padding: 1px 7px; border: 1px solid rgba(124,109,250,0.25); border-radius: 3px;
+}
+[data-theme="light"] code { background: rgba(91,77,232,0.08); }
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 12px; padding: 14px 18px; margin: 16px 0;
+  border-left: 3px solid; border-radius: 0 6px 6px 0; font-size: 13.5px;
+}
+.callout-icon { flex-shrink: 0; font-size: 14px; margin-top: 2px; }
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.callout.tip    { background: var(--green-dim);  border-color: var(--green); }
+.callout.note   { background: var(--accent-dim); border-color: var(--accent); }
+.callout.warn   { background: var(--amber-dim);  border-color: var(--amber); }
+.callout.danger { background: var(--red-dim);    border-color: var(--red); }
+.callout.info   { background: var(--cyan-dim);   border-color: var(--cyan); }
+
+/* ─── TABLES ─── */
+.table-wrap { border: 1px solid var(--border); border-radius: 6px; margin: 16px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: var(--accent-dim);
+  color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--accent-dim); }
+td code { font-size: 11px; }
+
+/* ─── PIPELINE / FLOW ─── */
+.flow {
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 0; margin: 24px 0; padding: 24px 20px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 8px; flex-wrap: wrap; overflow-x: auto;
+}
+.flow-step {
+  flex-shrink: 0; text-align: center; padding: 14px 16px; min-width: 90px;
+  background: var(--bg4); border: 1px solid var(--border2);
+  border-radius: 6px;
+}
+.flow-step-icon { font-size: 22px; margin-bottom: 6px; }
+.flow-step-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 3px; }
+.flow-step-name { font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.flow-arrow { color: var(--accent); font-size: 18px; margin: 0 6px; flex-shrink: 0; }
+
+/* ─── FILE TREE ─── */
+.file-tree {
+  background: var(--code-bg); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 20px 24px; margin: 16px 0;
+  font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+  line-height: 1.9; color: #9ba8cc;
+}
+[data-theme="light"] .file-tree { background: #1a1c35; }
+.ft-dir  { color: var(--accent); font-weight: 600; }
+.ft-file { color: #9ba8cc; }
+.ft-comm { color: #485070; font-style: italic; }
+
+/* ─── COMPARE ─── */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.compare-block { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.compare-header {
+  padding: 10px 18px; font-family: 'Sora', sans-serif;
+  font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 7px;
+}
+.compare-old .compare-header { background: var(--red-dim);   color: var(--red);   border-bottom: 1px solid rgba(255,84,112,0.2); }
+.compare-new .compare-header { background: var(--green-dim); color: var(--green); border-bottom: 1px solid rgba(45,226,138,0.2); }
+.compare-body { padding: 14px 18px; }
+.compare-body li { font-size: 13px; color: var(--text2); margin-bottom: 6px; list-style: none; }
+.compare-body li::before { content: '→ '; color: var(--muted); }
+
+/* ─── BACK BUTTON (floating) ─── */
+.back-btn {
+  position: fixed; bottom: 28px; right: 28px; z-index: 400;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--accent); color: white;
+  border: none; border-radius: 28px; padding: 10px 20px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  cursor: pointer; text-decoration: none;
+  box-shadow: 0 4px 20px rgba(124,109,250,0.45);
+  transition: all 0.2s;
+}
+.back-btn:hover {
+  background: var(--accent2);
+  box-shadow: 0 6px 28px rgba(124,109,250,0.6);
+  transform: translateY(-1px);
+}
+.back-btn svg { width: 14px; height: 14px; stroke: white; stroke-width: 2.5; fill: none; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 24px 80px; }
+  .grid-2, .grid-3, .grid-4, .compare-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 38px; }
+  .flow { flex-direction: column; align-items: flex-start; }
+  .back-btn { bottom: 16px; right: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-badge">Field Guide</div>
+    <div class="topbar-title">Dev Containers</div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-meta">DOC-DEVC-2026 · v1</span>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
+      <span class="theme-icon" id="themeIcon">☀️</span>
+      <span id="themeLabel">Light</span>
+    </button>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-num">// DEVC-FIELD-001</div>
+    <div class="sb-title">Dev Containers</div>
+    <div class="sb-sub">Reproducible · Isolated · Portable</div>
+  </div>
+
+  <div class="nav-section">Foundations</div>
+  <a class="nav-link active" href="#overview">  <span class="nl-num">01</span>What Are Dev Containers</a>
+  <a class="nav-link"        href="#why">        <span class="nl-num">02</span>Why Use Them</a>
+  <a class="nav-link"        href="#how">        <span class="nl-num">03</span>How They Work</a>
+  <a class="nav-link"        href="#when">       <span class="nl-num">04</span>When to Use</a>
+
+  <div class="nav-section">Setup</div>
+  <a class="nav-link" href="#prerequisites">    <span class="nl-num">05</span>Prerequisites</a>
+  <a class="nav-link" href="#structure">        <span class="nl-num">06</span>Folder Structure</a>
+  <a class="nav-link" href="#devcontainerjson"><span class="nl-num">07</span>devcontainer.json</a>
+
+  <div class="nav-section">Examples</div>
+  <a class="nav-link" href="#python">           <span class="nl-num">08</span>Python Container</a>
+  <a class="nav-link" href="#react">            <span class="nl-num">09</span>React / TypeScript</a>
+  <a class="nav-link" href="#fullstack">        <span class="nl-num">10</span>Full-Stack Compose</a>
+  <a class="nav-link" href="#datascience">      <span class="nl-num">11</span>Data Science</a>
+  <a class="nav-link" href="#nodeapi">          <span class="nl-num">12</span>Node.js API</a>
+
+  <div class="nav-section">Advanced</div>
+  <a class="nav-link" href="#features">         <span class="nl-num">13</span>Dev Container Features</a>
+  <a class="nav-link" href="#lifecycle">        <span class="nl-num">14</span>Lifecycle Scripts</a>
+  <a class="nav-link" href="#envvars">          <span class="nl-num">15</span>Environment Variables</a>
+  <a class="nav-link" href="#mounts">           <span class="nl-num">16</span>Mounts & Volumes</a>
+  <a class="nav-link" href="#nonroot">          <span class="nl-num">17</span>Non-Root Users</a>
+  <a class="nav-link" href="#codespaces">       <span class="nl-num">18</span>GitHub Codespaces</a>
+
+  <div class="nav-section">Reference</div>
+  <a class="nav-link" href="#troubleshooting">  <span class="nl-num">19</span>Troubleshooting</a>
+  <a class="nav-link" href="#cheatsheet">       <span class="nl-num">20</span>Cheat Sheet</a>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Developer Environment Handbook · June 2026</div>
+    <h1>Dev<br><span>Containers</span></h1>
+    <div class="hero-axiom">// "Works on my machine" — solved. Ship the machine.</div>
+    <p class="hero-desc">The complete guide to Dev Containers: how they eliminate environment drift, how to configure them for Python, React, full-stack apps, and data science workflows, and how to make them production-grade with lifecycle scripts, secrets, and non-root users.</p>
+    <div class="hero-chips">
+      <span class="chip chip-purple">VS Code</span>
+      <span class="chip chip-cyan">Docker</span>
+      <span class="chip chip-green">Python</span>
+      <span class="chip chip-amber">React / TypeScript</span>
+      <span class="chip chip-teal">Docker Compose</span>
+      <span class="chip chip-pink">GitHub Codespaces</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 01 OVERVIEW                           -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="overview">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title-block">
+        <h2>What Are Dev Containers</h2>
+        <div class="section-sub">// DEVELOPMENT ENVIRONMENT AS CODE</div>
+      </div>
+    </div>
+
+    <p class="prose">A <strong>Dev Container</strong> is a Docker container configured specifically for development — not production. It packages the runtime, dependencies, tools, compilers, linters, debuggers, and VS Code extensions your project needs into a reproducible, version-controlled environment defined entirely in code.</p>
+
+    <p class="prose">The VS Code Dev Containers extension (part of the Remote Development Pack) reads a <code>.devcontainer/devcontainer.json</code> file in your repository, builds or pulls the specified container, mounts your workspace into it, and connects VS Code to the container over a local socket — so you get full IntelliSense, debugging, and terminal access as if everything were installed locally.</p>
+
+    <div class="grid-3">
+      <div class="card card-accent-purple">
+        <div class="card-title">Reproducible</div>
+        <p>Every developer, CI runner, and GitHub Codespace gets an identical environment. No more "works on my machine" — you define the machine.</p>
+      </div>
+      <div class="card card-accent-cyan">
+        <div class="card-title">Isolated</div>
+        <p>Your Python 3.11 FastAPI project and your Python 3.9 legacy service live in separate containers. Zero conflicts, no virtual-env juggling, no nvm headaches.</p>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">Version-Controlled</div>
+        <p>The entire dev environment is defined in <code>.devcontainer/devcontainer.json</code> — committed to the repo, reviewed in PRs, and evolved with the codebase.</p>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Dev Containers ≠ Production Containers.</strong> A dev container is optimised for the development experience — it includes development tools, bind-mounts your source code, and may run as root. Your production Dockerfile is separate, optimised for minimal size and security.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 02 WHY                                -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="why">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title-block">
+        <h2>Why Use Dev Containers</h2>
+        <div class="section-sub">// THE PROBLEMS THEY SOLVE</div>
+      </div>
+    </div>
+
+    <div class="compare-grid">
+      <div class="compare-block compare-old">
+        <div class="compare-header">✕ Without Dev Containers</div>
+        <div class="compare-body">
+          <ul>
+            <li>"Works on my machine" — broken onboarding</li>
+            <li>3-hour setup docs that go stale in a week</li>
+            <li>Conflicting Python / Node / Ruby versions across projects</li>
+            <li>System-level dependencies installed globally and forgotten</li>
+            <li>New team member writes their first PR on day 3, not day 1</li>
+            <li>CI fails because CI has a different Node version</li>
+            <li>Windows vs macOS vs Linux path differences</li>
+          </ul>
+        </div>
+      </div>
+      <div class="compare-block compare-new">
+        <div class="compare-header">✓ With Dev Containers</div>
+        <div class="compare-body">
+          <ul>
+            <li><code>git clone</code> → <code>Reopen in Container</code> → start coding</li>
+            <li>Environment definition is the setup doc — always current</li>
+            <li>Each repo carries its exact runtime version</li>
+            <li>All tools installed automatically on container build</li>
+            <li>Productive on day 1 — same experience as the team lead</li>
+            <li>CI uses the same devcontainer image — parity guaranteed</li>
+            <li>Linux container, same everywhere</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Key Use Cases</h3>
+    <div class="grid-2">
+      <div class="card card-accent-purple">
+        <div class="card-title">Team Onboarding <span class="card-tag tag-purple">High Value</span></div>
+        <p>New engineer clones the repo, VS Code prompts "Reopen in Container", and within 2 minutes they have a fully working dev environment. No install docs to follow, no dependency conflicts to debug.</p>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">Multiple Projects <span class="card-tag tag-green">Isolation</span></div>
+        <p>Python 3.9 Django app, Python 3.12 ML pipeline, and a Node 22 API — all on the same laptop, all in separate containers, zero version manager gymnastics.</p>
+      </div>
+      <div class="card card-accent-cyan">
+        <div class="card-title">Consistent CI <span class="card-tag tag-cyan">Parity</span></div>
+        <p>Run <code>devcontainer build</code> in CI to produce the exact same environment your developers use. Tests that fail locally fail in CI. Tests that pass locally pass in CI.</p>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Open Source Contributions <span class="card-tag tag-amber">Accessibility</span></div>
+        <p>Contributors fork and get a working environment instantly — no risk of their local setup conflicting with the project. Lower barrier to contribution.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 03 HOW THEY WORK                      -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="how">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title-block">
+        <h2>How Dev Containers Work</h2>
+        <div class="section-sub">// THE LIFECYCLE FROM FILE TO RUNNING ENVIRONMENT</div>
+      </div>
+    </div>
+
+    <p class="prose">When you open a folder in VS Code and select "Reopen in Container", the Dev Containers extension reads <code>.devcontainer/devcontainer.json</code>, builds or pulls the container image, runs lifecycle scripts, and connects VS Code to the running container. Your source code is bind-mounted from your host into the container at <code>/workspaces/&lt;repo-name&gt;</code>.</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-step-icon">📂</div>
+        <div class="flow-step-label">Read</div>
+        <div class="flow-step-name">devcontainer .json</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-icon">🏗️</div>
+        <div class="flow-step-label">Build</div>
+        <div class="flow-step-name">Docker Image</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-icon">🚀</div>
+        <div class="flow-step-label">Start</div>
+        <div class="flow-step-name">Container</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-icon">⚙️</div>
+        <div class="flow-step-label">Run</div>
+        <div class="flow-step-name">Lifecycle Hooks</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-icon">🔌</div>
+        <div class="flow-step-label">Connect</div>
+        <div class="flow-step-name">VS Code Server</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-icon">💻</div>
+        <div class="flow-step-label">Code</div>
+        <div class="flow-step-name">Full IntelliSense</div>
+      </div>
+    </div>
+
+    <h3>Three Ways to Define a Container</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Approach</th><th>Config</th><th>Best For</th><th>Trade-off</th></tr>
+        <tr>
+          <td><strong>Pre-built image</strong></td>
+          <td><code>"image": "mcr.microsoft.com/devcontainers/python:3.12"</code></td>
+          <td>Quick start, standard stacks</td>
+          <td>Less control over exact environment</td>
+        </tr>
+        <tr>
+          <td><strong>Custom Dockerfile</strong></td>
+          <td><code>"build": { "dockerfile": "Dockerfile" }</code></td>
+          <td>Full control, custom tools</td>
+          <td>Longer initial build, maintain Dockerfile</td>
+        </tr>
+        <tr>
+          <td><strong>Docker Compose</strong></td>
+          <td><code>"dockerComposeFile": "docker-compose.yml"</code></td>
+          <td>Multiple services (DB, Redis, API)</td>
+          <td>More config, more power</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Source code is bind-mounted, not copied.</strong> When you edit a file in VS Code, you are editing the file on your host. The container sees it immediately via the bind mount. This means your changes persist even if you rebuild the container, and you can use your host Git credentials and SSH keys normally.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 04 WHEN TO USE                        -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="when">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div class="section-title-block">
+        <h2>When to Use Dev Containers</h2>
+        <div class="section-sub">// DECISION GUIDE</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Situation</th><th>Use Dev Container?</th><th>Reason</th></tr>
+        <tr>
+          <td>Team project with shared toolchain</td>
+          <td><span style="color:var(--green);font-weight:700;">✓ Yes</span></td>
+          <td>Every dev gets identical tools — eliminates "works on my machine"</td>
+        </tr>
+        <tr>
+          <td>Open-source project with contributors</td>
+          <td><span style="color:var(--green);font-weight:700;">✓ Yes</span></td>
+          <td>Zero-setup contributor experience; works with GitHub Codespaces</td>
+        </tr>
+        <tr>
+          <td>Project with system-level dependencies (libpq, ffmpeg, etc.)</td>
+          <td><span style="color:var(--green);font-weight:700;">✓ Yes</span></td>
+          <td>Install in Dockerfile once; no per-developer setup required</td>
+        </tr>
+        <tr>
+          <td>Multiple projects needing conflicting runtimes</td>
+          <td><span style="color:var(--green);font-weight:700;">✓ Yes</span></td>
+          <td>Container-level isolation eliminates conflicts entirely</td>
+        </tr>
+        <tr>
+          <td>Quick personal script in a familiar language</td>
+          <td><span style="color:var(--amber);font-weight:700;">⚠ Maybe</span></td>
+          <td>Overhead may not be worth it for a 50-line script you won't share</td>
+        </tr>
+        <tr>
+          <td>Project already using nix or mise for env management</td>
+          <td><span style="color:var(--amber);font-weight:700;">⚠ Maybe</span></td>
+          <td>Consider whether you need both; dev containers work alongside these tools</td>
+        </tr>
+        <tr>
+          <td>Performance-critical local work on Apple Silicon (M-series)</td>
+          <td><span style="color:var(--amber);font-weight:700;">⚠ Consider</span></td>
+          <td>Docker on macOS has I/O overhead; use <code>cached</code> mounts; often fine for code</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 05 PREREQUISITES                      -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="prerequisites">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div class="section-title-block">
+        <h2>Prerequisites & Installation</h2>
+        <div class="section-sub">// WHAT YOU NEED BEFORE YOU START</div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card card-accent-cyan">
+        <div class="card-title">1 · Docker <span class="card-tag tag-cyan">Required</span></div>
+        <ul>
+          <li><strong>macOS / Windows:</strong> Docker Desktop (includes Docker Engine + CLI)</li>
+          <li><strong>Linux:</strong> Docker Engine + Docker CLI (no Docker Desktop needed)</li>
+          <li>Ensure Docker daemon is running before opening VS Code</li>
+          <li>Minimum: Docker 20.10+</li>
+        </ul>
+      </div>
+      <div class="card card-accent-purple">
+        <div class="card-title">2 · VS Code <span class="card-tag tag-purple">Required</span></div>
+        <ul>
+          <li>VS Code 1.75+ (any recent version works)</li>
+          <li>Install the <strong>Dev Containers extension</strong> (<code>ms-vscode-remote.remote-containers</code>)</li>
+          <li>Or install the <strong>Remote Development extension pack</strong> which includes it</li>
+        </ul>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">3 · Dev Container CLI <span class="card-tag tag-green">Optional</span></div>
+        <ul>
+          <li>For CI usage and testing without VS Code</li>
+          <li><code>npm install -g @devcontainers/cli</code></li>
+          <li>Enables <code>devcontainer build</code>, <code>devcontainer up</code>, <code>devcontainer exec</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — install CLI and verify</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Install the Dev Containers CLI (optional, for CI usage)</span>
+npm install -g @devcontainers/cli
+
+<span class="cm"># Verify Docker is running</span>
+docker info
+
+<span class="cm"># Build a dev container image from the CLI (no VS Code needed)</span>
+devcontainer build --workspace-folder .
+
+<span class="cm"># Start the container and run a command inside it</span>
+devcontainer up --workspace-folder .
+devcontainer exec --workspace-folder . npm test</div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>macOS performance tip:</strong> In Docker Desktop → Settings → Resources → Advanced, enable <strong>VirtioFS</strong> (macOS 12.5+) as the file sharing implementation. It is significantly faster than the legacy gRPC FUSE implementation for bind mounts.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 06 FOLDER STRUCTURE                   -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="structure">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div class="section-title-block">
+        <h2>Folder Structure</h2>
+        <div class="section-sub">// WHERE FILES LIVE IN YOUR REPO</div>
+      </div>
+    </div>
+
+    <p class="prose">The Dev Containers extension looks for configuration in the <code>.devcontainer/</code> directory at the root of your workspace. A minimal setup requires only <code>devcontainer.json</code>. As complexity grows, you add a <code>Dockerfile</code>, scripts, and optional Docker Compose files.</p>
+
+    <div class="file-tree"><span class="ft-dir">my-project/</span>
+├── <span class="ft-dir">.devcontainer/</span>               <span class="ft-comm"># all devcontainer config lives here</span>
+│   ├── <span class="ft-file">devcontainer.json</span>           <span class="ft-comm"># main config — required</span>
+│   ├── <span class="ft-file">Dockerfile</span>                  <span class="ft-comm"># custom image — optional</span>
+│   ├── <span class="ft-file">docker-compose.yml</span>          <span class="ft-comm"># multi-service — optional</span>
+│   └── <span class="ft-dir">scripts/</span>                    <span class="ft-comm"># lifecycle scripts — optional</span>
+│       ├── <span class="ft-file">postCreate.sh</span>           <span class="ft-comm"># runs after container creation</span>
+│       └── <span class="ft-file">onStartCommand.sh</span>       <span class="ft-comm"># runs every container start</span>
+├── <span class="ft-dir">src/</span>
+├── <span class="ft-file">.gitignore</span>
+└── <span class="ft-file">README.md</span></div>
+
+    <div class="callout note">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Multiple dev containers in one repo:</strong> Place configurations in <code>.devcontainer/&lt;name&gt;/devcontainer.json</code>. VS Code lets you choose which one to open when you run "Reopen in Container". Useful for repos that have both a backend and a frontend with different runtimes.</div>
+    </div>
+
+    <div class="file-tree"><span class="ft-dir">monorepo/</span>
+└── <span class="ft-dir">.devcontainer/</span>
+    ├── <span class="ft-dir">backend/</span>
+    │   └── <span class="ft-file">devcontainer.json</span>       <span class="ft-comm"># Python 3.12 + FastAPI tools</span>
+    └── <span class="ft-dir">frontend/</span>
+        └── <span class="ft-file">devcontainer.json</span>       <span class="ft-comm"># Node 22 + React tools</span></div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 07 devcontainer.json                  -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="devcontainerjson">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div class="section-title-block">
+        <h2>devcontainer.json Anatomy</h2>
+        <div class="section-sub">// EVERY IMPORTANT FIELD EXPLAINED</div>
+      </div>
+    </div>
+
+    <p class="prose">The <code>devcontainer.json</code> file is the contract between your repository and the development environment. It controls the image or Dockerfile used, what features are installed, VS Code extensions, port forwarding, lifecycle hooks, and environment variables.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — annotated devcontainer.json (all options)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="cm">// ─── Identity ───────────────────────────────────────────────</span>
+  <span class="st">"name"</span>: <span class="st">"My Project Dev Container"</span>,
+
+  <span class="cm">// ─── Image source (pick ONE of: image, build, dockerComposeFile)</span>
+  <span class="st">"image"</span>: <span class="st">"mcr.microsoft.com/devcontainers/python:3.12"</span>,
+
+  <span class="cm">// OR build from a local Dockerfile:</span>
+  <span class="st">"build"</span>: {
+    <span class="st">"dockerfile"</span>: <span class="st">"Dockerfile"</span>,
+    <span class="st">"context"</span>:    <span class="st">"."</span>,
+    <span class="st">"args"</span>: { <span class="st">"VARIANT"</span>: <span class="st">"3.12"</span> }
+  },
+
+  <span class="cm">// OR use Docker Compose for multi-service setups:</span>
+  <span class="st">"dockerComposeFile"</span>: <span class="st">"docker-compose.yml"</span>,
+  <span class="st">"service"</span>:            <span class="st">"app"</span>,
+  <span class="st">"workspaceFolder"</span>:    <span class="st">"/workspaces/my-project"</span>,
+
+  <span class="cm">// ─── Dev Container Features ─────────────────────────────────</span>
+  <span class="cm">// Features install tools ON TOP of the base image</span>
+  <span class="st">"features"</span>: {
+    <span class="st">"ghcr.io/devcontainers/features/git:1"</span>:        {},
+    <span class="st">"ghcr.io/devcontainers/features/github-cli:1"</span>:  {},
+    <span class="st">"ghcr.io/devcontainers/features/node:1"</span>:        { <span class="st">"version"</span>: <span class="st">"22"</span> },
+    <span class="st">"ghcr.io/devcontainers/features/docker-in-docker:2"</span>: {}
+  },
+
+  <span class="cm">// ─── Port Forwarding ────────────────────────────────────────</span>
+  <span class="st">"forwardPorts"</span>: [<span class="nu">3000</span>, <span class="nu">8000</span>, <span class="nu">5432</span>],
+  <span class="st">"portsAttributes"</span>: {
+    <span class="st">"3000"</span>: { <span class="st">"label"</span>: <span class="st">"Frontend"</span>,  <span class="st">"onAutoForward"</span>: <span class="st">"notify"</span> },
+    <span class="st">"8000"</span>: { <span class="st">"label"</span>: <span class="st">"API Server"</span>, <span class="st">"onAutoForward"</span>: <span class="st">"openPreview"</span> }
+  },
+
+  <span class="cm">// ─── VS Code Customisation ──────────────────────────────────</span>
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [
+        <span class="st">"ms-python.python"</span>,
+        <span class="st">"ms-python.vscode-pylance"</span>,
+        <span class="st">"charliermarsh.ruff"</span>,
+        <span class="st">"ms-python.debugpy"</span>
+      ],
+      <span class="st">"settings"</span>: {
+        <span class="st">"python.defaultInterpreterPath"</span>: <span class="st">"/usr/local/bin/python"</span>,
+        <span class="st">"editor.formatOnSave"</span>: <span class="nu">true</span>,
+        <span class="st">"editor.defaultFormatter"</span>: <span class="st">"charliermarsh.ruff"</span>
+      }
+    }
+  },
+
+  <span class="cm">// ─── Lifecycle Scripts ──────────────────────────────────────</span>
+  <span class="st">"initializeCommand"</span>:    <span class="st">"echo 'Runs on HOST before container starts'"</span>,
+  <span class="st">"onCreateCommand"</span>:      <span class="st">"pip install -r requirements.txt"</span>,
+  <span class="st">"updateContentCommand"</span>: <span class="st">"pip install -r requirements.txt"</span>,
+  <span class="st">"postCreateCommand"</span>:    <span class="st">"bash .devcontainer/scripts/postCreate.sh"</span>,
+  <span class="st">"postStartCommand"</span>:     <span class="st">"echo 'Container started at $(date)'"</span>,
+  <span class="st">"postAttachCommand"</span>:    <span class="st">"echo 'VS Code attached'"</span>,
+
+  <span class="cm">// ─── Container Configuration ────────────────────────────────</span>
+  <span class="st">"remoteUser"</span>:  <span class="st">"vscode"</span>,
+  <span class="st">"remoteEnv"</span>: {
+    <span class="st">"PYTHONPATH"</span>: <span class="st">"${containerWorkspaceFolder}/src"</span>,
+    <span class="st">"DATABASE_URL"</span>: <span class="st">"postgresql://user:pass@db:5432/devdb"</span>
+  },
+
+  <span class="cm">// ─── Mounts ─────────────────────────────────────────────────</span>
+  <span class="st">"mounts"</span>: [
+    <span class="st">"source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly"</span>,
+    <span class="st">"source=project-venv,target=/workspaces/my-project/.venv,type=volume"</span>
+  ],
+
+  <span class="cm">// ─── Run Arguments ──────────────────────────────────────────</span>
+  <span class="st">"runArgs"</span>: [<span class="st">"--cap-add=SYS_PTRACE"</span>, <span class="st">"--security-opt"</span>, <span class="st">"seccomp=unconfined"</span>],
+  <span class="st">"overrideCommand"</span>: <span class="nu">false</span>,
+
+  <span class="cm">// ─── Shut down behaviour ────────────────────────────────────</span>
+  <span class="st">"shutdownAction"</span>: <span class="st">"stopContainer"</span>
+}</div>
+    </div>
+
+    <h3>Core Fields Quick Reference</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Field</th><th>Type</th><th>What it does</th></tr>
+        <tr><td><code>name</code></td><td>string</td><td>Display name shown in VS Code status bar</td></tr>
+        <tr><td><code>image</code></td><td>string</td><td>Docker image to use directly (no Dockerfile needed)</td></tr>
+        <tr><td><code>build</code></td><td>object</td><td>Build from a local Dockerfile; supports <code>args</code> and <code>target</code></td></tr>
+        <tr><td><code>dockerComposeFile</code></td><td>string/array</td><td>Path to Docker Compose file(s); requires <code>service</code></td></tr>
+        <tr><td><code>features</code></td><td>object</td><td>Install Dev Container Features (tools) on top of any base image</td></tr>
+        <tr><td><code>forwardPorts</code></td><td>array</td><td>Ports to forward from container to host automatically</td></tr>
+        <tr><td><code>customizations.vscode.extensions</code></td><td>array</td><td>VS Code extension IDs installed inside the container</td></tr>
+        <tr><td><code>customizations.vscode.settings</code></td><td>object</td><td>VS Code settings applied inside the container</td></tr>
+        <tr><td><code>postCreateCommand</code></td><td>string/array</td><td>Runs once after container is created (install deps, seed db, etc.)</td></tr>
+        <tr><td><code>remoteUser</code></td><td>string</td><td>User VS Code runs as inside the container (use non-root for security)</td></tr>
+        <tr><td><code>remoteEnv</code></td><td>object</td><td>Environment variables set for VS Code and terminal sessions</td></tr>
+        <tr><td><code>mounts</code></td><td>array</td><td>Additional bind mounts or named volumes</td></tr>
+        <tr><td><code>runArgs</code></td><td>array</td><td>Extra docker run arguments (capabilities, security opts)</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 08 PYTHON                             -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="python">
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <div class="section-title-block">
+        <h2>Python Dev Container</h2>
+        <div class="section-sub">// FASTAPI / DJANGO / FLASK WITH FULL TOOLCHAIN</div>
+      </div>
+    </div>
+
+    <p class="prose">A Python dev container should provide the correct Python version, a virtual environment inside a named volume (so rebuilding the container doesn't reinstall packages), linting with Ruff, formatting, debugging with debugpy, and database access if needed.</p>
+
+    <h3>Minimal Python Container (Image-Based)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — .devcontainer/devcontainer.json</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"name"</span>: <span class="st">"Python 3.12"</span>,
+
+  <span class="cm">// Microsoft's official Python devcontainer image</span>
+  <span class="st">"image"</span>: <span class="st">"mcr.microsoft.com/devcontainers/python:3.12-bullseye"</span>,
+
+  <span class="st">"features"</span>: {
+    <span class="st">"ghcr.io/devcontainers/features/git:1"</span>:       {},
+    <span class="st">"ghcr.io/devcontainers/features/github-cli:1"</span>: {}
+  },
+
+  <span class="st">"forwardPorts"</span>: [<span class="nu">8000</span>],
+  <span class="st">"portsAttributes"</span>: {
+    <span class="st">"8000"</span>: { <span class="st">"label"</span>: <span class="st">"FastAPI / Django"</span>, <span class="st">"onAutoForward"</span>: <span class="st">"openPreview"</span> }
+  },
+
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [
+        <span class="st">"ms-python.python"</span>,
+        <span class="st">"ms-python.vscode-pylance"</span>,
+        <span class="st">"ms-python.debugpy"</span>,
+        <span class="st">"charliermarsh.ruff"</span>,
+        <span class="st">"ms-python.mypy-type-checker"</span>,
+        <span class="st">"tamasfe.even-better-toml"</span>,
+        <span class="st">"redhat.vscode-yaml"</span>
+      ],
+      <span class="st">"settings"</span>: {
+        <span class="st">"python.defaultInterpreterPath"</span>: <span class="st">"/workspaces/my-project/.venv/bin/python"</span>,
+        <span class="st">"editor.formatOnSave"</span>: <span class="nu">true</span>,
+        <span class="st">"editor.defaultFormatter"</span>: <span class="st">"charliermarsh.ruff"</span>,
+        <span class="st">"[python]"</span>: {
+          <span class="st">"editor.codeActionsOnSave"</span>: { <span class="st">"source.fixAll"</span>: <span class="st">"explicit"</span> }
+        }
+      }
+    }
+  },
+
+  <span class="cm">// Install dependencies after container creation</span>
+  <span class="st">"postCreateCommand"</span>: <span class="st">"pip install uv && uv venv .venv && uv pip install -r requirements.txt"</span>,
+
+  <span class="st">"remoteEnv"</span>: {
+    <span class="st">"PYTHONPATH"</span>: <span class="st">"${containerWorkspaceFolder}/src"</span>
+  },
+
+  <span class="cm">// Keep .venv in a named volume — survives container rebuilds</span>
+  <span class="st">"mounts"</span>: [
+    <span class="st">"source=python-venv,target=/workspaces/my-project/.venv,type=volume"</span>
+  ],
+
+  <span class="st">"remoteUser"</span>: <span class="st">"vscode"</span>
+}</div>
+    </div>
+
+    <h3>Production-Grade Python Container (Custom Dockerfile)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">dockerfile — .devcontainer/Dockerfile</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">FROM</span> mcr.microsoft.com/devcontainers/python:<span class="nu">3.12-bullseye</span>
+
+<span class="cm"># Install system dependencies your project needs</span>
+<span class="kw">RUN</span> apt-get update <span class="at">&amp;&amp;</span> apt-get install -y --no-install-recommends \
+    libpq-dev \          <span class="cm"># PostgreSQL client headers (for psycopg2)</span>
+    libssl-dev \
+    curl \
+    jq \
+    <span class="at">&amp;&amp;</span> rm -rf /var/lib/apt/lists/*
+
+<span class="cm"># Install uv — the fast Python package manager</span>
+<span class="kw">RUN</span> pip install --no-cache-dir uv
+
+<span class="cm"># Install global dev tools</span>
+<span class="kw">RUN</span> pip install --no-cache-dir \
+    ruff \
+    mypy \
+    pytest \
+    pre-commit
+
+<span class="cm"># Switch to non-root user (already exists in the base image)</span>
+<span class="kw">USER</span> vscode</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — .devcontainer/devcontainer.json (with Dockerfile)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"name"</span>: <span class="st">"Python 3.12 — FastAPI"</span>,
+
+  <span class="st">"build"</span>: {
+    <span class="st">"dockerfile"</span>: <span class="st">"Dockerfile"</span>,
+    <span class="st">"context"</span>: <span class="st">"."</span>
+  },
+
+  <span class="st">"forwardPorts"</span>: [<span class="nu">8000</span>],
+
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [
+        <span class="st">"ms-python.python"</span>,
+        <span class="st">"ms-python.vscode-pylance"</span>,
+        <span class="st">"ms-python.debugpy"</span>,
+        <span class="st">"charliermarsh.ruff"</span>,
+        <span class="st">"ms-python.mypy-type-checker"</span>
+      ],
+      <span class="st">"settings"</span>: {
+        <span class="st">"python.defaultInterpreterPath"</span>: <span class="st">"/workspaces/${localWorkspaceFolderBasename}/.venv/bin/python"</span>,
+        <span class="st">"python.terminal.activateEnvironment"</span>: <span class="nu">true</span>,
+        <span class="st">"editor.formatOnSave"</span>: <span class="nu">true</span>
+      }
+    }
+  },
+
+  <span class="st">"postCreateCommand"</span>: <span class="st">"bash .devcontainer/scripts/postCreate.sh"</span>,
+
+  <span class="st">"mounts"</span>: [
+    <span class="st">"source=fastapi-venv,target=/workspaces/${localWorkspaceFolderBasename}/.venv,type=volume"</span>
+  ],
+
+  <span class="st">"remoteUser"</span>: <span class="st">"vscode"</span>
+}</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — .devcontainer/scripts/postCreate.sh</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">#!/bin/bash
+set -e
+
+echo "==> Setting up Python virtual environment..."
+uv venv .venv
+
+echo "==> Installing dependencies..."
+uv pip install -r requirements.txt
+
+<span class="kw">if</span> [ -f requirements-dev.txt ]; then
+  uv pip install -r requirements-dev.txt
+fi
+
+echo "==> Installing pre-commit hooks..."
+pre-commit install
+
+echo "==> Dev container ready!"</div>
+    </div>
+
+    <h3>VS Code launch.json for FastAPI Debugging</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — .vscode/launch.json</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"version"</span>: <span class="st">"0.2.0"</span>,
+  <span class="st">"configurations"</span>: [
+    {
+      <span class="st">"name"</span>: <span class="st">"FastAPI: Debug"</span>,
+      <span class="st">"type"</span>: <span class="st">"debugpy"</span>,
+      <span class="st">"request"</span>: <span class="st">"launch"</span>,
+      <span class="st">"module"</span>: <span class="st">"uvicorn"</span>,
+      <span class="st">"args"</span>: [<span class="st">"src.main:app"</span>, <span class="st">"--reload"</span>, <span class="st">"--port"</span>, <span class="st">"8000"</span>],
+      <span class="st">"jinja"</span>: <span class="nu">true</span>,
+      <span class="st">"justMyCode"</span>: <span class="nu">true</span>
+    },
+    {
+      <span class="st">"name"</span>: <span class="st">"Django: Run Server"</span>,
+      <span class="st">"type"</span>: <span class="st">"debugpy"</span>,
+      <span class="st">"request"</span>: <span class="st">"launch"</span>,
+      <span class="st">"program"</span>: <span class="st">"${workspaceFolder}/manage.py"</span>,
+      <span class="st">"args"</span>: [<span class="st">"runserver"</span>, <span class="st">"0.0.0.0:8000"</span>],
+      <span class="st">"django"</span>: <span class="nu">true</span>,
+      <span class="st">"justMyCode"</span>: <span class="nu">true</span>
+    }
+  ]
+}</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 09 REACT / TYPESCRIPT                 -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="react">
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <div class="section-title-block">
+        <h2>React / TypeScript Dev Container</h2>
+        <div class="section-sub">// VITE · NEXT.JS · CREATE REACT APP</div>
+      </div>
+    </div>
+
+    <p class="prose">A React / TypeScript dev container needs the right Node.js version, a fast package manager, hot-reload port forwarding, ESLint, Prettier, and optionally a browser preview. Node modules go in a named volume so rebuilding the container doesn't wipe <code>node_modules</code>.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — .devcontainer/devcontainer.json (React / Vite)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"name"</span>: <span class="st">"React TypeScript — Vite"</span>,
+
+  <span class="cm">// Official Node devcontainer image — pin to a specific LTS</span>
+  <span class="st">"image"</span>: <span class="st">"mcr.microsoft.com/devcontainers/typescript-node:22-bookworm"</span>,
+
+  <span class="st">"features"</span>: {
+    <span class="st">"ghcr.io/devcontainers/features/git:1"</span>:       {},
+    <span class="st">"ghcr.io/devcontainers/features/github-cli:1"</span>: {}
+  },
+
+  <span class="cm">// Vite dev server (5173) + Storybook (6006) + test UI (51204)</span>
+  <span class="st">"forwardPorts"</span>: [<span class="nu">5173</span>, <span class="nu">3000</span>, <span class="nu">6006</span>],
+  <span class="st">"portsAttributes"</span>: {
+    <span class="st">"5173"</span>: { <span class="st">"label"</span>: <span class="st">"Vite Dev Server"</span>,  <span class="st">"onAutoForward"</span>: <span class="st">"openPreview"</span> },
+    <span class="st">"3000"</span>: { <span class="st">"label"</span>: <span class="st">"Next.js / CRA"</span>,    <span class="st">"onAutoForward"</span>: <span class="st">"openPreview"</span> },
+    <span class="st">"6006"</span>: { <span class="st">"label"</span>: <span class="st">"Storybook"</span>,         <span class="st">"onAutoForward"</span>: <span class="st">"notify"</span> }
+  },
+
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [
+        <span class="st">"dbaeumer.vscode-eslint"</span>,
+        <span class="st">"esbenp.prettier-vscode"</span>,
+        <span class="st">"bradlc.vscode-tailwindcss"</span>,
+        <span class="st">"dsznajder.es7-react-js-snippets"</span>,
+        <span class="st">"styled-components.vscode-styled-components"</span>,
+        <span class="st">"ms-vscode.vscode-typescript-next"</span>,
+        <span class="st">"orta.vscode-jest"</span>,
+        <span class="st">"vitest.explorer"</span>
+      ],
+      <span class="st">"settings"</span>: {
+        <span class="st">"editor.formatOnSave"</span>: <span class="nu">true</span>,
+        <span class="st">"editor.defaultFormatter"</span>: <span class="st">"esbenp.prettier-vscode"</span>,
+        <span class="st">"editor.codeActionsOnSave"</span>: {
+          <span class="st">"source.fixAll.eslint"</span>: <span class="st">"explicit"</span>
+        },
+        <span class="st">"typescript.tsdk"</span>: <span class="st">"node_modules/typescript/lib"</span>,
+        <span class="st">"typescript.enablePromptUseWorkspaceTsdk"</span>: <span class="nu">true</span>
+      }
+    }
+  },
+
+  <span class="cm">// Install dependencies after container creation</span>
+  <span class="st">"postCreateCommand"</span>: <span class="st">"npm ci"</span>,
+
+  <span class="cm">// node_modules in a named volume — rebuilds don't wipe dependencies</span>
+  <span class="st">"mounts"</span>: [
+    <span class="st">"source=react-node-modules,target=${containerWorkspaceFolder}/node_modules,type=volume"</span>
+  ],
+
+  <span class="st">"remoteUser"</span>: <span class="st">"node"</span>
+}</div>
+    </div>
+
+    <h3>Custom Dockerfile for React (with pnpm and extra tools)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">dockerfile — .devcontainer/Dockerfile (React + pnpm)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">FROM</span> mcr.microsoft.com/devcontainers/typescript-node:<span class="nu">22-bookworm</span>
+
+<span class="cm"># Install pnpm globally</span>
+<span class="kw">RUN</span> npm install -g pnpm@9
+
+<span class="cm"># Install Playwright system dependencies for E2E testing</span>
+<span class="kw">RUN</span> apt-get update <span class="at">&amp;&amp;</span> apt-get install -y --no-install-recommends \
+    libgbm-dev libasound2 \
+    <span class="at">&amp;&amp;</span> rm -rf /var/lib/apt/lists/*
+
+<span class="cm"># Install useful global tools</span>
+<span class="kw">RUN</span> npm install -g \
+    vite@latest \
+    @playwright/test \
+    serve
+
+<span class="kw">USER</span> node</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — .devcontainer/devcontainer.json (Next.js)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"name"</span>: <span class="st">"Next.js 15 TypeScript"</span>,
+
+  <span class="st">"build"</span>: { <span class="st">"dockerfile"</span>: <span class="st">"Dockerfile"</span> },
+
+  <span class="st">"forwardPorts"</span>: [<span class="nu">3000</span>],
+  <span class="st">"portsAttributes"</span>: {
+    <span class="st">"3000"</span>: { <span class="st">"label"</span>: <span class="st">"Next.js"</span>, <span class="st">"onAutoForward"</span>: <span class="st">"openPreview"</span> }
+  },
+
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [
+        <span class="st">"dbaeumer.vscode-eslint"</span>,
+        <span class="st">"esbenp.prettier-vscode"</span>,
+        <span class="st">"bradlc.vscode-tailwindcss"</span>,
+        <span class="st">"ms-vscode.vscode-typescript-next"</span>,
+        <span class="st">"ms-playwright.playwright"</span>
+      ],
+      <span class="st">"settings"</span>: {
+        <span class="st">"editor.formatOnSave"</span>: <span class="nu">true</span>,
+        <span class="st">"editor.defaultFormatter"</span>: <span class="st">"esbenp.prettier-vscode"</span>
+      }
+    }
+  },
+
+  <span class="st">"postCreateCommand"</span>: <span class="st">"pnpm install"</span>,
+
+  <span class="st">"mounts"</span>: [
+    <span class="st">"source=nextjs-node-modules,target=${containerWorkspaceFolder}/node_modules,type=volume"</span>,
+    <span class="st">"source=nextjs-next-cache,target=${containerWorkspaceFolder}/.next,type=volume"</span>
+  ],
+
+  <span class="st">"remoteUser"</span>: <span class="st">"node"</span>
+}</div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Hot reload inside a container:</strong> Vite requires <code>server.host: '0.0.0.0'</code> in <code>vite.config.ts</code> to be reachable through the forwarded port. Next.js requires <code>--hostname 0.0.0.0</code> in the dev script. Without this, the server binds to <code>localhost</code> inside the container and port forwarding cannot reach it.</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">typescript — vite.config.ts (required for port forwarding)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">import</span> { <span class="fn">defineConfig</span> } <span class="kw">from</span> <span class="st">'vite'</span>
+<span class="kw">import</span> react <span class="kw">from</span> <span class="st">'@vitejs/plugin-react'</span>
+
+<span class="kw">export default</span> <span class="fn">defineConfig</span>({
+  plugins: [<span class="fn">react</span>()],
+  server: {
+    <span class="hl">host: <span class="st">'0.0.0.0'</span>,    <span class="cm">// ← required — bind to all interfaces</span></span>
+    port: <span class="nu">5173</span>,
+    watch: {
+      usePolling: <span class="nu">true</span>,   <span class="cm">// ← may be needed for hot reload in Docker on macOS</span>
+    }
+  }
+})</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 10 FULL-STACK COMPOSE                 -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="fullstack">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title-block">
+        <h2>Full-Stack with Docker Compose</h2>
+        <div class="section-sub">// API + POSTGRES + REDIS + FRONTEND</div>
+      </div>
+    </div>
+
+    <p class="prose">When your project needs multiple services — a database, a cache, a background worker — Docker Compose is the right tool. The Dev Containers extension can start the full Compose stack and connect VS Code to one specific service (your app container) while the others run alongside it.</p>
+
+    <div class="file-tree"><span class="ft-dir">fullstack-app/</span>
+├── <span class="ft-dir">.devcontainer/</span>
+│   ├── <span class="ft-file">devcontainer.json</span>
+│   ├── <span class="ft-file">docker-compose.yml</span>
+│   └── <span class="ft-file">Dockerfile</span>              <span class="ft-comm"># dev Dockerfile for the app service</span>
+├── <span class="ft-dir">backend/</span>                     <span class="ft-comm"># FastAPI or Django code</span>
+├── <span class="ft-dir">frontend/</span>                    <span class="ft-comm"># React / Next.js code</span>
+└── <span class="ft-file">Makefile</span></div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — .devcontainer/docker-compose.yml</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">version</span>: <span class="st">"3.9"</span>
+
+<span class="at">services</span>:
+
+  <span class="cm"># ── App (VS Code connects to this service) ─────────────────</span>
+  <span class="at">app</span>:
+    <span class="at">build</span>:
+      <span class="at">context</span>: <span class="st">.</span>
+      <span class="at">dockerfile</span>: <span class="st">Dockerfile</span>
+    <span class="at">volumes</span>:
+      <span class="cm"># Bind-mount source code</span>
+      - <span class="st">..:/workspaces/fullstack-app:cached</span>
+      <span class="cm"># Named volume for Python venv (survives rebuilds)</span>
+      - <span class="st">app-venv:/workspaces/fullstack-app/.venv</span>
+    <span class="at">environment</span>:
+      - <span class="st">DATABASE_URL=postgresql://devuser:devpass@db:5432/devdb</span>
+      - <span class="st">REDIS_URL=redis://redis:6379/0</span>
+      - <span class="st">SECRET_KEY=not-a-secret-in-dev</span>
+    <span class="at">ports</span>:
+      - <span class="st">"8000:8000"</span>
+    <span class="at">depends_on</span>:
+      - <span class="st">db</span>
+      - <span class="st">redis</span>
+    <span class="cm"># Keep container running — VS Code dev containers need this</span>
+    <span class="at">command</span>: <span class="st">sleep infinity</span>
+    <span class="at">networks</span>:
+      - <span class="st">devnet</span>
+
+  <span class="cm"># ── PostgreSQL ──────────────────────────────────────────────</span>
+  <span class="at">db</span>:
+    <span class="at">image</span>: <span class="st">postgres:16-alpine</span>
+    <span class="at">restart</span>: <span class="st">unless-stopped</span>
+    <span class="at">volumes</span>:
+      - <span class="st">postgres-data:/var/lib/postgresql/data</span>
+    <span class="at">environment</span>:
+      - <span class="st">POSTGRES_USER=devuser</span>
+      - <span class="st">POSTGRES_PASSWORD=devpass</span>
+      - <span class="st">POSTGRES_DB=devdb</span>
+    <span class="at">ports</span>:
+      - <span class="st">"5432:5432"</span>   <span class="cm"># forward so you can connect from host with pgAdmin</span>
+    <span class="at">networks</span>:
+      - <span class="st">devnet</span>
+
+  <span class="cm"># ── Redis ───────────────────────────────────────────────────</span>
+  <span class="at">redis</span>:
+    <span class="at">image</span>: <span class="st">redis:7-alpine</span>
+    <span class="at">restart</span>: <span class="st">unless-stopped</span>
+    <span class="at">ports</span>:
+      - <span class="st">"6379:6379"</span>
+    <span class="at">networks</span>:
+      - <span class="st">devnet</span>
+
+  <span class="cm"># ── Mailpit (local email catcher) ───────────────────────────</span>
+  <span class="at">mailpit</span>:
+    <span class="at">image</span>: <span class="st">axllent/mailpit:latest</span>
+    <span class="at">ports</span>:
+      - <span class="st">"8025:8025"</span>   <span class="cm"># web UI</span>
+      - <span class="st">"1025:1025"</span>   <span class="cm"># SMTP</span>
+    <span class="at">networks</span>:
+      - <span class="st">devnet</span>
+
+<span class="at">volumes</span>:
+  <span class="at">postgres-data</span>:
+  <span class="at">app-venv</span>:
+
+<span class="at">networks</span>:
+  <span class="at">devnet</span>:</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — .devcontainer/devcontainer.json (Compose)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"name"</span>: <span class="st">"Full Stack — FastAPI + React + Postgres"</span>,
+
+  <span class="st">"dockerComposeFile"</span>: <span class="st">"docker-compose.yml"</span>,
+  <span class="st">"service"</span>:            <span class="st">"app"</span>,           <span class="cm">// VS Code attaches to this service</span>
+  <span class="st">"workspaceFolder"</span>:    <span class="st">"/workspaces/fullstack-app"</span>,
+
+  <span class="cm">// These ports are forwarded from the compose network to your host</span>
+  <span class="st">"forwardPorts"</span>: [<span class="nu">8000</span>, <span class="nu">3000</span>, <span class="nu">5432</span>, <span class="nu">6379</span>, <span class="nu">8025</span>],
+  <span class="st">"portsAttributes"</span>: {
+    <span class="st">"8000"</span>: { <span class="st">"label"</span>: <span class="st">"FastAPI"</span>   },
+    <span class="st">"3000"</span>: { <span class="st">"label"</span>: <span class="st">"React"</span>     },
+    <span class="st">"5432"</span>: { <span class="st">"label"</span>: <span class="st">"Postgres"</span>  },
+    <span class="st">"8025"</span>: { <span class="st">"label"</span>: <span class="st">"Mailpit UI"</span>}
+  },
+
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [
+        <span class="st">"ms-python.python"</span>,
+        <span class="st">"ms-python.debugpy"</span>,
+        <span class="st">"charliermarsh.ruff"</span>,
+        <span class="st">"mtxr.sqltools"</span>,
+        <span class="st">"mtxr.sqltools-driver-pg"</span>,
+        <span class="st">"cweijan.vscode-redis-client"</span>
+      ]
+    }
+  },
+
+  <span class="st">"postCreateCommand"</span>: <span class="st">"bash .devcontainer/scripts/postCreate.sh"</span>,
+
+  <span class="cm">// Shut down the entire Compose stack when VS Code closes</span>
+  <span class="st">"shutdownAction"</span>: <span class="st">"stopCompose"</span>,
+
+  <span class="st">"remoteUser"</span>: <span class="st">"vscode"</span>
+}</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — .devcontainer/scripts/postCreate.sh (Full Stack)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">#!/bin/bash
+set -e
+WORKDIR=/workspaces/fullstack-app
+
+echo "==> Installing backend Python dependencies..."
+cd $WORKDIR/backend
+uv venv ../.venv
+uv pip install -r requirements.txt -r requirements-dev.txt
+
+echo "==> Waiting for Postgres to be ready..."
+until pg_isready -h db -U devuser -d devdb; do
+  echo "  postgres is not ready yet..."
+  sleep 2
+done
+echo "  postgres ready!"
+
+echo "==> Running DB migrations..."
+cd $WORKDIR/backend
+.venv/bin/alembic upgrade head  <span class="cm"># or: python manage.py migrate</span>
+
+echo "==> Installing frontend Node dependencies..."
+cd $WORKDIR/frontend
+npm ci
+
+echo "==> All done — happy coding!"</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 11 DATA SCIENCE                       -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="datascience">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div class="section-title-block">
+        <h2>Data Science Dev Container</h2>
+        <div class="section-sub">// JUPYTER · PANDAS · SCIKIT-LEARN · PYTORCH</div>
+      </div>
+    </div>
+
+    <p class="prose">Data science containers need Jupyter, the scientific Python stack, proper kernel registration, and often GPU access. The Microsoft universal image is the easiest starting point — it bundles conda, common data science libraries, and Jupyter support out of the box.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">dockerfile — .devcontainer/Dockerfile (Data Science)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">FROM</span> mcr.microsoft.com/devcontainers/python:<span class="nu">3.12-bullseye</span>
+
+<span class="cm"># Install system packages needed for data science</span>
+<span class="kw">RUN</span> apt-get update <span class="at">&amp;&amp;</span> apt-get install -y --no-install-recommends \
+    libgomp1 \          <span class="cm"># OpenMP for parallel processing</span>
+    libhdf5-dev \       <span class="cm"># HDF5 for h5py / large datasets</span>
+    libgeos-dev \       <span class="cm"># for geospatial libraries (shapely)</span>
+    graphviz \          <span class="cm"># for graph visualisation</span>
+    <span class="at">&amp;&amp;</span> rm -rf /var/lib/apt/lists/*
+
+<span class="cm"># Install uv for fast dependency management</span>
+<span class="kw">RUN</span> pip install --no-cache-dir uv
+
+<span class="cm"># Install core scientific stack globally (for Jupyter kernel)</span>
+<span class="kw">RUN</span> pip install --no-cache-dir \
+    jupyterlab==4.* \
+    ipywidgets \
+    notebook
+
+<span class="kw">USER</span> vscode</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — .devcontainer/devcontainer.json (Data Science)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"name"</span>: <span class="st">"Data Science — Python 3.12"</span>,
+
+  <span class="st">"build"</span>: { <span class="st">"dockerfile"</span>: <span class="st">"Dockerfile"</span> },
+
+  <span class="cm">// Jupyter Lab (8888) and optional Tensorboard (6006)</span>
+  <span class="st">"forwardPorts"</span>: [<span class="nu">8888</span>, <span class="nu">6006</span>],
+  <span class="st">"portsAttributes"</span>: {
+    <span class="st">"8888"</span>: { <span class="st">"label"</span>: <span class="st">"Jupyter Lab"</span>,   <span class="st">"onAutoForward"</span>: <span class="st">"openPreview"</span> },
+    <span class="st">"6006"</span>: { <span class="st">"label"</span>: <span class="st">"TensorBoard"</span>,   <span class="st">"onAutoForward"</span>: <span class="st">"notify"</span>      }
+  },
+
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [
+        <span class="st">"ms-toolsai.jupyter"</span>,              <span class="cm">// Jupyter notebook support</span>
+        <span class="st">"ms-toolsai.jupyter-keymap"</span>,
+        <span class="st">"ms-toolsai.vscode-jupyter-slideshow"</span>,
+        <span class="st">"ms-python.python"</span>,
+        <span class="st">"ms-python.vscode-pylance"</span>,
+        <span class="st">"ms-python.debugpy"</span>,
+        <span class="st">"charliermarsh.ruff"</span>,
+        <span class="st">"randomfractalsinc.vscode-data-preview"</span>
+      ],
+      <span class="st">"settings"</span>: {
+        <span class="st">"python.defaultInterpreterPath"</span>: <span class="st">"/workspaces/${localWorkspaceFolderBasename}/.venv/bin/python"</span>,
+        <span class="st">"jupyter.kernels.trusted"</span>: [<span class="st">"*"</span>],
+        <span class="st">"notebook.formatOnSave.enabled"</span>: <span class="nu">true</span>
+      }
+    }
+  },
+
+  <span class="st">"postCreateCommand"</span>: <span class="st">"bash .devcontainer/scripts/postCreate.sh"</span>,
+
+  <span class="st">"mounts"</span>: [
+    <span class="st">"source=ds-venv,target=/workspaces/${localWorkspaceFolderBasename}/.venv,type=volume"</span>
+  ],
+
+  <span class="st">"remoteUser"</span>: <span class="st">"vscode"</span>
+}</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — .devcontainer/scripts/postCreate.sh (Data Science)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">#!/bin/bash
+set -e
+
+echo "==> Creating virtual environment..."
+uv venv .venv
+
+echo "==> Installing data science packages..."
+uv pip install \
+  numpy pandas scipy matplotlib seaborn \
+  scikit-learn xgboost lightgbm \
+  torch torchvision \           <span class="cm"># or: tensorflow</span>
+  plotly ipykernel ipywidgets \
+  jupyter jupyterlab \
+  dask[dataframe] \
+  mlflow optuna
+
+echo "==> Registering Jupyter kernel..."
+.venv/bin/python -m ipykernel install --user --name=project-venv --display-name="Project (.venv)"
+
+echo "==> Setup complete. Open a .ipynb file or run 'jupyter lab' in the terminal."</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 12 NODE API                           -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="nodeapi">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div class="section-title-block">
+        <h2>Node.js API Dev Container</h2>
+        <div class="section-sub">// EXPRESS · FASTIFY · NestJS WITH MONGODB OR POSTGRES</div>
+      </div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — .devcontainer/devcontainer.json (NestJS + MongoDB)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"name"</span>: <span class="st">"NestJS API"</span>,
+
+  <span class="st">"image"</span>: <span class="st">"mcr.microsoft.com/devcontainers/typescript-node:22-bookworm"</span>,
+
+  <span class="st">"features"</span>: {
+    <span class="st">"ghcr.io/devcontainers/features/git:1"</span>:       {},
+    <span class="st">"ghcr.io/devcontainers/features/github-cli:1"</span>: {}
+  },
+
+  <span class="st">"forwardPorts"</span>: [<span class="nu">3000</span>, <span class="nu">27017</span>, <span class="nu">8081</span>],
+  <span class="st">"portsAttributes"</span>: {
+    <span class="st">"3000"</span>:  { <span class="st">"label"</span>: <span class="st">"NestJS API"</span>       },
+    <span class="st">"27017"</span>: { <span class="st">"label"</span>: <span class="st">"MongoDB"</span>          },
+    <span class="st">"8081"</span>:  { <span class="st">"label"</span>: <span class="st">"Mongo Express UI"</span> }
+  },
+
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [
+        <span class="st">"dbaeumer.vscode-eslint"</span>,
+        <span class="st">"esbenp.prettier-vscode"</span>,
+        <span class="st">"ms-vscode.vscode-typescript-next"</span>,
+        <span class="st">"mongodb.mongodb-vscode"</span>,
+        <span class="st">"hbenl.vscode-test-explorer"</span>,
+        <span class="st">"pkief.material-icon-theme"</span>
+      ],
+      <span class="st">"settings"</span>: {
+        <span class="st">"editor.formatOnSave"</span>: <span class="nu">true</span>,
+        <span class="st">"editor.defaultFormatter"</span>: <span class="st">"esbenp.prettier-vscode"</span>
+      }
+    }
+  },
+
+  <span class="st">"postCreateCommand"</span>: <span class="st">"npm ci && npm run build"</span>,
+
+  <span class="st">"mounts"</span>: [
+    <span class="st">"source=nestjs-modules,target=${containerWorkspaceFolder}/node_modules,type=volume"</span>
+  ],
+
+  <span class="st">"remoteUser"</span>: <span class="st">"node"</span>
+}</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">yaml — docker-compose.yml (NestJS + MongoDB)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="at">services</span>:
+  <span class="at">app</span>:
+    <span class="at">image</span>: <span class="st">mcr.microsoft.com/devcontainers/typescript-node:22-bookworm</span>
+    <span class="at">volumes</span>:
+      - <span class="st">..:/workspaces/nestjs-api:cached</span>
+      - <span class="st">nestjs-modules:/workspaces/nestjs-api/node_modules</span>
+    <span class="at">environment</span>:
+      - <span class="st">MONGODB_URI=mongodb://mongo:27017/devdb</span>
+    <span class="at">command</span>: <span class="st">sleep infinity</span>
+    <span class="at">depends_on</span>: [<span class="st">mongo</span>]
+
+  <span class="at">mongo</span>:
+    <span class="at">image</span>: <span class="st">mongo:7</span>
+    <span class="at">volumes</span>: [<span class="st">mongo-data:/data/db</span>]
+    <span class="at">ports</span>:  [<span class="st">"27017:27017"</span>]
+
+  <span class="at">mongo-express</span>:
+    <span class="at">image</span>: <span class="st">mongo-express:1.0</span>
+    <span class="at">environment</span>:
+      - <span class="st">ME_CONFIG_MONGODB_SERVER=mongo</span>
+      - <span class="st">ME_CONFIG_BASICAUTH=false</span>
+    <span class="at">ports</span>: [<span class="st">"8081:8081"</span>]
+    <span class="at">depends_on</span>: [<span class="st">mongo</span>]
+
+<span class="at">volumes</span>:
+  <span class="at">mongo-data</span>:
+  <span class="at">nestjs-modules</span>:</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 13 FEATURES                           -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="features">
+    <div class="section-header">
+      <div class="section-num">13</div>
+      <div class="section-title-block">
+        <h2>Dev Container Features</h2>
+        <div class="section-sub">// COMPOSABLE TOOL INSTALLERS — NO DOCKERFILE NEEDED</div>
+      </div>
+    </div>
+
+    <p class="prose">Dev Container Features are self-contained units that install tools into any base image. They run before <code>postCreateCommand</code> and work with any image — you don't need to maintain a Dockerfile just to add git, Node.js, or the AWS CLI to a Python container.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — common features in devcontainer.json</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"features"</span>: {
+    <span class="cm">// ── Languages & Runtimes ──────────────────────────────────</span>
+    <span class="st">"ghcr.io/devcontainers/features/node:1"</span>:         { <span class="st">"version"</span>: <span class="st">"22"</span> },
+    <span class="st">"ghcr.io/devcontainers/features/python:1"</span>:       { <span class="st">"version"</span>: <span class="st">"3.12"</span> },
+    <span class="st">"ghcr.io/devcontainers/features/go:1"</span>:           { <span class="st">"version"</span>: <span class="st">"1.22"</span> },
+    <span class="st">"ghcr.io/devcontainers/features/rust:1"</span>:         { <span class="st">"version"</span>: <span class="st">"latest"</span> },
+
+    <span class="cm">// ── Version Control ──────────────────────────────────────</span>
+    <span class="st">"ghcr.io/devcontainers/features/git:1"</span>:          {},
+    <span class="st">"ghcr.io/devcontainers/features/git-lfs:1"</span>:      {},
+    <span class="st">"ghcr.io/devcontainers/features/github-cli:1"</span>:   {},
+    <span class="st">"ghcr.io/devcontainers/features/gitlab-cli:1"</span>:   {},
+
+    <span class="cm">// ── Cloud & Infrastructure ───────────────────────────────</span>
+    <span class="st">"ghcr.io/devcontainers/features/kubectl-helm-minikube:1"</span>: {
+      <span class="st">"version"</span>: <span class="st">"1.30"</span>, <span class="st">"helm"</span>: <span class="st">"3.14"</span>
+    },
+    <span class="st">"ghcr.io/devcontainers/features/aws-cli:1"</span>:      {},
+    <span class="st">"ghcr.io/devcontainers/features/terraform:1"</span>:    { <span class="st">"version"</span>: <span class="st">"latest"</span> },
+    <span class="st">"ghcr.io/devcontainers/features/azure-cli:1"</span>:    {},
+
+    <span class="cm">// ── Databases & CLI Tools ────────────────────────────────</span>
+    <span class="st">"ghcr.io/devcontainers/features/sshd:1"</span>:         {},
+    <span class="st">"ghcr.io/devcontainers/features/common-utils:2"</span>: { <span class="st">"zsh"</span>: <span class="nu">true</span> },
+
+    <span class="cm">// ── Docker-in-Docker (build containers inside a container)</span>
+    <span class="st">"ghcr.io/devcontainers/features/docker-in-docker:2"</span>: {
+      <span class="st">"version"</span>: <span class="st">"latest"</span>, <span class="st">"dockerDashComposeVersion"</span>: <span class="st">"v2"</span>
+    }
+  }
+}</div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Browse all available features</strong> at <code>containers.dev/features</code> — the official registry maintained by Microsoft and the community. Features are versioned, open-source, and composable: add as many as your project needs without modifying a Dockerfile.</div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Feature</th><th>OCI Reference</th><th>Use Case</th></tr>
+        <tr><td>Git</td><td><code>ghcr.io/devcontainers/features/git:1</code></td><td>Latest git, always</td></tr>
+        <tr><td>GitHub CLI</td><td><code>ghcr.io/devcontainers/features/github-cli:1</code></td><td>PR, release management in terminal</td></tr>
+        <tr><td>Node.js</td><td><code>ghcr.io/devcontainers/features/node:1</code></td><td>Add Node to any non-Node image</td></tr>
+        <tr><td>Docker-in-Docker</td><td><code>ghcr.io/devcontainers/features/docker-in-docker:2</code></td><td>Build images, run Compose inside the container</td></tr>
+        <tr><td>kubectl + Helm</td><td><code>ghcr.io/devcontainers/features/kubectl-helm-minikube:1</code></td><td>Kubernetes development</td></tr>
+        <tr><td>AWS CLI</td><td><code>ghcr.io/devcontainers/features/aws-cli:1</code></td><td>AWS deployments from the container</td></tr>
+        <tr><td>Terraform</td><td><code>ghcr.io/devcontainers/features/terraform:1</code></td><td>IaC work alongside your app</td></tr>
+        <tr><td>common-utils</td><td><code>ghcr.io/devcontainers/features/common-utils:2</code></td><td>zsh, oh-my-zsh, useful CLI tools</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 14 LIFECYCLE SCRIPTS                  -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="lifecycle">
+    <div class="section-header">
+      <div class="section-num">14</div>
+      <div class="section-title-block">
+        <h2>Lifecycle Scripts</h2>
+        <div class="section-sub">// HOOKS THAT RUN AT EACH STAGE OF THE CONTAINER LIFECYCLE</div>
+      </div>
+    </div>
+
+    <p class="prose">Dev Containers defines six lifecycle hooks. Each runs at a different phase — some only once (when the image is first created), some every time VS Code starts the container. Knowing which to use prevents you from running slow dependency installs on every restart.</p>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Hook</th><th>Runs When</th><th>Where</th><th>Best For</th></tr>
+        <tr>
+          <td><code>initializeCommand</code></td>
+          <td>Before container starts</td>
+          <td><strong>Host machine</strong></td>
+          <td>Validate Docker is running, pull secrets from host keychain</td>
+        </tr>
+        <tr>
+          <td><code>onCreateCommand</code></td>
+          <td>Once — when container is first created</td>
+          <td>Container</td>
+          <td>First-time setup that should never repeat (initial clone, etc.)</td>
+        </tr>
+        <tr>
+          <td><code>updateContentCommand</code></td>
+          <td>After clone/update; when content changes</td>
+          <td>Container</td>
+          <td>Install/update dependencies when repo content changes</td>
+        </tr>
+        <tr>
+          <td><code>postCreateCommand</code></td>
+          <td>Once — after all of the above</td>
+          <td>Container</td>
+          <td><strong>Install dependencies, seed DB, generate files</strong> — the main setup hook</td>
+        </tr>
+        <tr>
+          <td><code>postStartCommand</code></td>
+          <td>Every container start</td>
+          <td>Container</td>
+          <td>Start background services, print a welcome message</td>
+        </tr>
+        <tr>
+          <td><code>postAttachCommand</code></td>
+          <td>Every VS Code attach</td>
+          <td>Container</td>
+          <td>Show status, run quick checks that help the developer</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — combining multiple lifecycle hooks</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="cm">// Runs on host — validate environment before container starts</span>
+  <span class="st">"initializeCommand"</span>: {
+    <span class="st">"check-docker"</span>: <span class="st">"docker info &gt; /dev/null 2&gt;&amp;1 || (echo 'Docker not running' &amp;&amp; exit 1)"</span>
+  },
+
+  <span class="cm">// Runs ONCE in container — install project deps on first create</span>
+  <span class="st">"postCreateCommand"</span>: <span class="st">"bash .devcontainer/scripts/postCreate.sh"</span>,
+
+  <span class="cm">// Runs on EVERY container start — fast, idempotent operations only</span>
+  <span class="st">"postStartCommand"</span>: {
+    <span class="st">"git-status"</span>:   <span class="st">"git status --short"</span>,
+    <span class="st">"greet"</span>:        <span class="st">"echo '\\n🚀 Dev container ready. Happy coding!\\n'"</span>
+  },
+
+  <span class="cm">// Runs every time VS Code attaches — useful for quick health checks</span>
+  <span class="st">"postAttachCommand"</span>: <span class="st">"python --version &amp;&amp; echo 'Python OK'"</span>
+}</div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong><code>postStartCommand</code> runs every time the container starts</strong> — including every time you open VS Code on an already-built container. Never put slow operations (package installs, database migrations) here. Put those in <code>postCreateCommand</code> which only runs once. <code>postStartCommand</code> should be near-instant.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 15 ENVIRONMENT VARIABLES              -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="envvars">
+    <div class="section-header">
+      <div class="section-num">15</div>
+      <div class="section-title-block">
+        <h2>Environment Variables & Secrets</h2>
+        <div class="section-sub">// KEEPING SECRETS OUT OF devcontainer.json</div>
+      </div>
+    </div>
+
+    <p class="prose">Never hardcode secrets in <code>devcontainer.json</code> — it's committed to source control. The correct pattern is to store secrets in a <code>.env</code> file (git-ignored), pass them from the host environment, or use a secrets manager.</p>
+
+    <h3>Pattern 1 — .env File (Simple, Recommended)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — devcontainer.json — reference .env file</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="cm">// Reference a local .env file — values go into the container</span>
+  <span class="st">"runArgs"</span>: [<span class="st">"--env-file"</span>, <span class="st">"${localWorkspaceFolder}/.devcontainer/.env"</span>],
+
+  <span class="cm">// OR use remoteEnv for non-secret config that's OK in source control</span>
+  <span class="st">"remoteEnv"</span>: {
+    <span class="st">"DATABASE_URL"</span>:  <span class="st">"postgresql://devuser:devpass@db:5432/devdb"</span>,
+    <span class="st">"ENVIRONMENT"</span>:   <span class="st">"development"</span>,
+    <span class="st">"LOG_LEVEL"</span>:     <span class="st">"DEBUG"</span>,
+    <span class="st">"PYTHONPATH"</span>:    <span class="st">"${containerWorkspaceFolder}/src"</span>
+  }
+}</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — .devcontainer/.env (git-ignored, per-developer)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># .devcontainer/.env — add this path to .gitignore</span>
+<span class="cm"># Copy from .devcontainer/.env.example and fill in your values</span>
+
+OPENAI_API_KEY=sk-...your-key-here...
+STRIPE_SECRET_KEY=sk_test_...
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+GITHUB_TOKEN=ghp_...</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — .devcontainer/.env.example (committed to source control)</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Copy to .env and fill in your values</span>
+<span class="cm"># Never commit .env — it is in .gitignore</span>
+
+OPENAI_API_KEY=
+STRIPE_SECRET_KEY=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+GITHUB_TOKEN=</div>
+    </div>
+
+    <h3>Pattern 2 — Forward Host Environment Variables</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — devcontainer.json — pass host env vars into container</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"remoteEnv"</span>: {
+    <span class="cm">// ${localEnv:VAR_NAME} reads from your host shell environment</span>
+    <span class="st">"OPENAI_API_KEY"</span>:      <span class="st">"${localEnv:OPENAI_API_KEY}"</span>,
+    <span class="st">"STRIPE_SECRET_KEY"</span>:   <span class="st">"${localEnv:STRIPE_SECRET_KEY}"</span>,
+    <span class="st">"AWS_PROFILE"</span>:         <span class="st">"${localEnv:AWS_PROFILE}"</span>,
+
+    <span class="cm">// containerEnv uses variables already in the container</span>
+    <span class="st">"PYTHONPATH"</span>:  <span class="st">"${containerWorkspaceFolder}/src:${containerEnv:PYTHONPATH}"</span>
+  }
+}</div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Variable interpolation reference:</strong> <code>${localEnv:X}</code> reads from your host shell. <code>${containerEnv:X}</code> reads from the container environment. <code>${localWorkspaceFolder}</code> is the project path on the host. <code>${containerWorkspaceFolder}</code> is the project path inside the container (usually <code>/workspaces/repo-name</code>). <code>${localWorkspaceFolderBasename}</code> is just the folder name.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 16 MOUNTS                             -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="mounts">
+    <div class="section-header">
+      <div class="section-num">16</div>
+      <div class="section-title-block">
+        <h2>Mounts & Volumes</h2>
+        <div class="section-sub">// SSH KEYS · NODE_MODULES · .VENV · GIT CONFIG</div>
+      </div>
+    </div>
+
+    <p class="prose">The workspace bind mount is automatic. Everything else you need from your host — SSH keys, Git config, GPG keys, AWS credentials — must be explicitly mounted. Named volumes are used for package caches (like <code>node_modules</code> or <code>.venv</code>) so they survive container rebuilds.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — common mounts in devcontainer.json</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"mounts"</span>: [
+    <span class="cm">// ── SSH Keys — so you can push to GitHub from inside the container ─</span>
+    <span class="st">"source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,readonly"</span>,
+
+    <span class="cm">// ── Git config — so commits use your name and email ────────────────</span>
+    <span class="st">"source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"</span>,
+
+    <span class="cm">// ── AWS credentials ────────────────────────────────────────────────</span>
+    <span class="st">"source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,readonly"</span>,
+
+    <span class="cm">// ── Named volume for Python .venv — fast reinstall if image rebuilds</span>
+    <span class="st">"source=my-project-venv,target=/workspaces/my-project/.venv,type=volume"</span>,
+
+    <span class="cm">// ── Named volume for node_modules ──────────────────────────────────</span>
+    <span class="st">"source=my-project-node-modules,target=/workspaces/my-project/node_modules,type=volume"</span>,
+
+    <span class="cm">// ── Bind a specific host directory (e.g. shared data files) ────────</span>
+    <span class="st">"source=${localEnv:HOME}/datasets,target=/home/vscode/datasets,type=bind"</span>
+  ]
+}</div>
+    </div>
+
+    <h3>SSH Key Forwarding (Alternative: SSH Agent)</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — devcontainer.json — SSH agent forwarding</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="cm">// Instead of copying SSH keys into the container,</span>
+  <span class="cm">// forward your host SSH agent — more secure, key never leaves host</span>
+  <span class="st">"remoteEnv"</span>: {
+    <span class="st">"SSH_AUTH_SOCK"</span>: <span class="st">"/run/host-services/ssh-auth.sock"</span>
+  },
+  <span class="st">"mounts"</span>: [
+    <span class="st">"source=/run/host-services/ssh-auth.sock,target=/run/host-services/ssh-auth.sock,type=bind"</span>
+  ]
+}</div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body"><strong>Named volumes and macOS performance:</strong> Named volumes (type=volume) live inside the Docker VM on macOS and have no I/O overhead. Use them for <code>node_modules</code>, <code>.venv</code>, and any directory with many small files. Bind mounts (type=bind) for your source code are slower on macOS but Docker Desktop's VirtioFS minimises this significantly.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 17 NON-ROOT USERS                     -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="nonroot">
+    <div class="section-header">
+      <div class="section-num">17</div>
+      <div class="section-title-block">
+        <h2>Non-Root Users</h2>
+        <div class="section-sub">// SECURITY BEST PRACTICE FOR DEV CONTAINERS</div>
+      </div>
+    </div>
+
+    <p class="prose">Microsoft's official devcontainer images include a pre-built non-root user: <code>vscode</code> (for most images) or <code>node</code> (for Node images). Running as a non-root user is a security best practice — it limits the blast radius if a dependency is compromised, and it's required for some corporate security policies.</p>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">dockerfile — adding a non-root user to a custom image</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="kw">FROM</span> ubuntu:<span class="nu">24.04</span>
+
+<span class="kw">ARG</span> USERNAME=devuser
+<span class="kw">ARG</span> USER_UID=<span class="nu">1000</span>
+<span class="kw">ARG</span> USER_GID=$USER_UID
+
+<span class="cm"># Install basic tools</span>
+<span class="kw">RUN</span> apt-get update <span class="at">&amp;&amp;</span> apt-get install -y \
+    sudo curl git bash-completion \
+    <span class="at">&amp;&amp;</span> rm -rf /var/lib/apt/lists/*
+
+<span class="cm"># Create the non-root user</span>
+<span class="kw">RUN</span> groupadd --gid $USER_GID $USERNAME \
+    <span class="at">&amp;&amp;</span> useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    <span class="cm"># Allow the user to use sudo without a password (development only!)</span>
+    <span class="at">&amp;&amp;</span> echo "$USERNAME ALL=(root) NOPASSWD:ALL" &gt; /etc/sudoers.d/$USERNAME \
+    <span class="at">&amp;&amp;</span> chmod 0440 /etc/sudoers.d/$USERNAME
+
+<span class="cm"># Install Python as root, then switch to the user</span>
+<span class="kw">RUN</span> apt-get update <span class="at">&amp;&amp;</span> apt-get install -y python3.12 python3-pip \
+    <span class="at">&amp;&amp;</span> rm -rf /var/lib/apt/lists/*
+
+<span class="kw">USER</span> $USERNAME
+<span class="kw">WORKDIR</span> /home/$USERNAME</div>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — devcontainer.json with non-root user</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"name"</span>: <span class="st">"Secure Python"</span>,
+
+  <span class="st">"build"</span>: {
+    <span class="st">"dockerfile"</span>: <span class="st">"Dockerfile"</span>,
+    <span class="st">"args"</span>: {
+      <span class="st">"USERNAME"</span>:  <span class="st">"devuser"</span>,
+      <span class="st">"USER_UID"</span>: <span class="st">"1000"</span>,
+      <span class="st">"USER_GID"</span>: <span class="st">"1000"</span>
+    }
+  },
+
+  <span class="cm">// Tell VS Code to run as this user</span>
+  <span class="st">"remoteUser"</span>: <span class="st">"devuser"</span>,
+
+  <span class="cm">// The container process itself can still run as root if needed (for Docker commands)</span>
+  <span class="cm">// but VS Code connects as remoteUser</span>
+  <span class="st">"containerUser"</span>: <span class="st">"root"</span>
+}</div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>remoteUser vs containerUser:</strong> <code>remoteUser</code> is the user VS Code connects as — your terminal, extensions, and git operations run as this user. <code>containerUser</code> is the user the Docker container process starts as. For most projects, set both to the same non-root user. Only set <code>containerUser</code> to <code>root</code> if you need to run Docker-in-Docker.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 18 GITHUB CODESPACES                  -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="codespaces">
+    <div class="section-header">
+      <div class="section-num">18</div>
+      <div class="section-title-block">
+        <h2>GitHub Codespaces Compatibility</h2>
+        <div class="section-sub">// SAME CONFIG, CLOUD-HOSTED ENVIRONMENT</div>
+      </div>
+    </div>
+
+    <p class="prose">GitHub Codespaces reads the same <code>.devcontainer/devcontainer.json</code> your local Dev Containers extension uses. If your dev container works locally, it works in Codespaces — with no additional configuration. This makes it trivially easy to give contributors (or your own team) a browser-based or SSH-based cloud development environment.</p>
+
+    <div class="grid-2">
+      <div class="card card-accent-purple">
+        <div class="card-title">What Works Identically</div>
+        <ul>
+          <li>All <code>devcontainer.json</code> fields</li>
+          <li>Features, lifecycle scripts, extensions</li>
+          <li>Port forwarding (via HTTPS tunnel)</li>
+          <li>Environment variables from repo secrets</li>
+          <li>Docker Compose multi-service setups</li>
+        </ul>
+      </div>
+      <div class="card card-accent-amber">
+        <div class="card-title">Codespaces-Specific Considerations</div>
+        <ul>
+          <li>Prebuilds: build the image once, reuse on new Codespace create</li>
+          <li>Machine type: choose 2-core / 4-core / 8-core / etc.</li>
+          <li>Secrets: set via GitHub repo settings → Codespaces secrets</li>
+          <li>Dotfiles: Codespaces applies your personal dotfiles repo</li>
+          <li>Cost: billed per compute-hour; stop when not in use</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Codespaces-Specific devcontainer.json Fields</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">json — devcontainer.json with Codespaces config</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block">{
+  <span class="st">"name"</span>: <span class="st">"My Project"</span>,
+  <span class="st">"image"</span>: <span class="st">"mcr.microsoft.com/devcontainers/python:3.12"</span>,
+
+  <span class="cm">// Codespaces-specific: configure the default machine type</span>
+  <span class="st">"hostRequirements"</span>: {
+    <span class="st">"cpus"</span>: <span class="nu">4</span>,
+    <span class="st">"memory"</span>: <span class="st">"8gb"</span>,
+    <span class="st">"storage"</span>: <span class="st">"32gb"</span>
+  },
+
+  <span class="cm">// Codespaces-specific: which ports to show in VS Code / browser</span>
+  <span class="st">"forwardPorts"</span>: [<span class="nu">8000</span>],
+  <span class="st">"portsAttributes"</span>: {
+    <span class="st">"8000"</span>: {
+      <span class="st">"label"</span>: <span class="st">"API"</span>,
+      <span class="st">"onAutoForward"</span>: <span class="st">"openPreview"</span>,
+      <span class="cm">// In Codespaces, make ports public for sharing with reviewers</span>
+      <span class="st">"visibility"</span>: <span class="st">"public"</span>
+    }
+  },
+
+  <span class="cm">// Codespaces-specific: environment variables (non-secret)</span>
+  <span class="st">"remoteEnv"</span>: {
+    <span class="st">"ENVIRONMENT"</span>: <span class="st">"codespaces"</span>
+  },
+
+  <span class="cm">// Secret env vars → GitHub → Settings → Secrets → Codespaces secrets</span>
+  <span class="cm">// (they appear as env vars automatically — no devcontainer.json needed)</span>
+
+  <span class="st">"postCreateCommand"</span>: <span class="st">"pip install -r requirements.txt"</span>,
+
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [<span class="st">"ms-python.python"</span>, <span class="st">"charliermarsh.ruff"</span>]
+    },
+    <span class="cm">// Codespaces web editor (github.dev) extensions</span>
+    <span class="st">"codespaces"</span>: {
+      <span class="st">"openFiles"</span>: [<span class="st">"README.md"</span>]  <span class="cm">// open this file when the Codespace starts</span>
+    }
+  }
+}</div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Prebuilds dramatically speed up Codespace creation.</strong> Without prebuilds, every new Codespace builds the image from scratch. With prebuilds (configured in GitHub repo settings), GitHub runs the container build periodically, and new Codespaces start from the cached image in seconds. Essential for repos with large <code>postCreateCommand</code> steps.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 19 TROUBLESHOOTING                    -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="troubleshooting">
+    <div class="section-header">
+      <div class="section-num">19</div>
+      <div class="section-title-block">
+        <h2>Troubleshooting</h2>
+        <div class="section-sub">// COMMON ISSUES AND HOW TO FIX THEM</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+        <tr>
+          <td>Container fails to build</td>
+          <td>Dockerfile error or network issue pulling base image</td>
+          <td>Check output in VS Code terminal. Run <code>docker build .devcontainer</code> manually to see full error. Check Docker Hub / GHCR connectivity.</td>
+        </tr>
+        <tr>
+          <td>Hot reload not working (React/Vite)</td>
+          <td>Dev server bound to <code>localhost</code> instead of <code>0.0.0.0</code></td>
+          <td>Add <code>server.host: '0.0.0.0'</code> to <code>vite.config.ts</code>. Add <code>--hostname 0.0.0.0</code> for Next.js. Enable <code>usePolling: true</code> in Vite if still broken on macOS.</td>
+        </tr>
+        <tr>
+          <td>Port forwarding not working</td>
+          <td>App not bound to all interfaces or port not in <code>forwardPorts</code></td>
+          <td>Ensure the app binds to <code>0.0.0.0</code>, not <code>127.0.0.1</code>. Add the port to <code>forwardPorts</code> in devcontainer.json.</td>
+        </tr>
+        <tr>
+          <td>Slow file I/O on macOS</td>
+          <td>Docker Desktop using old file sharing implementation</td>
+          <td>Enable VirtioFS in Docker Desktop → Settings → General. Also add <code>:cached</code> to bind mounts in docker-compose.yml.</td>
+        </tr>
+        <tr>
+          <td>Python extensions not finding interpreter</td>
+          <td>Interpreter path in settings doesn't match where venv was created</td>
+          <td>Set <code>python.defaultInterpreterPath</code> to the exact path: <code>/workspaces/repo/.venv/bin/python</code>. Run <code>which python</code> in the container terminal to verify.</td>
+        </tr>
+        <tr>
+          <td>node_modules empty after rebuild</td>
+          <td>Named volume wasn't used — modules lived in container layer</td>
+          <td>Add a named volume mount targeting <code>node_modules</code>. On first open after adding it, run <code>npm ci</code> manually.</td>
+        </tr>
+        <tr>
+          <td>Can't push to GitHub (auth error)</td>
+          <td>SSH keys not mounted or SSH agent not forwarded</td>
+          <td>Mount <code>~/.ssh</code> read-only, or set up SSH agent forwarding. Check with <code>ssh -T git@github.com</code> inside the container.</td>
+        </tr>
+        <tr>
+          <td>postCreateCommand failing silently</td>
+          <td>Script exits with error but devcontainer doesn't stop</td>
+          <td>Add <code>set -e</code> to the top of your shell script so any error aborts the script. Check "Dev Containers: Show Container Log" in VS Code command palette.</td>
+        </tr>
+        <tr>
+          <td>Extension not installing in container</td>
+          <td>Extension ID typo or extension not compatible with remote</td>
+          <td>Verify the ID from the VS Code marketplace URL. Some extensions must be installed locally (UI extensions) rather than remotely.</td>
+        </tr>
+        <tr>
+          <td>"Docker daemon not running"</td>
+          <td>Docker Desktop not started</td>
+          <td>Start Docker Desktop. On Linux, run <code>sudo systemctl start docker</code>.</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>Useful Debug Commands</h3>
+    <div class="code-wrap">
+      <div class="code-header"><span class="code-lang">bash — debugging inside the container</span><button class="copy-btn" onclick="copyCode(this)">copy</button></div>
+      <div class="code-block"><span class="cm"># Check which user you're running as</span>
+whoami
+
+<span class="cm"># Check Python path and version</span>
+which python && python --version
+
+<span class="cm"># Check Node version</span>
+node --version && npm --version
+
+<span class="cm"># See all environment variables</span>
+env | sort
+
+<span class="cm"># Test database connectivity (for Compose setups)</span>
+pg_isready -h db -U devuser -d devdb
+
+<span class="cm"># Check what's listening on a port</span>
+ss -tlnp | grep 8000
+
+<span class="cm"># View the devcontainer configuration VS Code is using</span>
+<span class="cm"># → VS Code command palette: "Dev Containers: Show Container Log"</span>
+
+<span class="cm"># Rebuild the container without cache</span>
+<span class="cm"># → VS Code command palette: "Dev Containers: Rebuild Container Without Cache"</span>
+
+<span class="cm"># CLI: test build locally</span>
+devcontainer build --workspace-folder . --no-cache</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 20 CHEAT SHEET                        -->
+  <!-- ══════════════════════════════════════ -->
+  <section id="cheatsheet">
+    <div class="section-header">
+      <div class="section-num">20</div>
+      <div class="section-title-block">
+        <h2>Cheat Sheet</h2>
+        <div class="section-sub">// QUICK REFERENCE FOR DAILY USE</div>
+      </div>
+    </div>
+
+    <h3>VS Code Command Palette Actions</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Command</th><th>What it does</th></tr>
+        <tr><td><code>Dev Containers: Reopen in Container</code></td><td>Start the dev container (or switch to it)</td></tr>
+        <tr><td><code>Dev Containers: Rebuild Container</code></td><td>Rebuild the image and restart (uses cache)</td></tr>
+        <tr><td><code>Dev Containers: Rebuild Container Without Cache</code></td><td>Full clean rebuild — use after changing Dockerfile</td></tr>
+        <tr><td><code>Dev Containers: Reopen Folder Locally</code></td><td>Exit the container, return to local workspace</td></tr>
+        <tr><td><code>Dev Containers: Open Container Configuration File</code></td><td>Jump to devcontainer.json</td></tr>
+        <tr><td><code>Dev Containers: Show Container Log</code></td><td>See build output, lifecycle script output</td></tr>
+        <tr><td><code>Dev Containers: Clone Repository in Container Volume</code></td><td>Clone a repo into a Docker volume (maximum performance)</td></tr>
+        <tr><td><code>Dev Containers: Add Dev Container Configuration Files</code></td><td>Scaffold a devcontainer.json from a template</td></tr>
+      </table>
+    </div>
+
+    <h3>devcontainer.json Quick-Start Templates</h3>
+    <div class="grid-2">
+      <div class="card card-accent-green">
+        <div class="card-title">Minimal — Image Only</div>
+        <div class="code-wrap" style="margin: 10px 0 0">
+          <div class="code-block" style="font-size:11.5px; padding:12px 14px">{
+  <span class="st">"name"</span>: <span class="st">"My Project"</span>,
+  <span class="st">"image"</span>: <span class="st">"mcr.microsoft.com/devcontainers/python:3.12"</span>,
+  <span class="st">"postCreateCommand"</span>: <span class="st">"pip install -r requirements.txt"</span>,
+  <span class="st">"remoteUser"</span>: <span class="st">"vscode"</span>
+}</div>
+        </div>
+      </div>
+      <div class="card card-accent-cyan">
+        <div class="card-title">Standard — Dockerfile + Extensions</div>
+        <div class="code-wrap" style="margin: 10px 0 0">
+          <div class="code-block" style="font-size:11.5px; padding:12px 14px">{
+  <span class="st">"name"</span>: <span class="st">"My Project"</span>,
+  <span class="st">"build"</span>: { <span class="st">"dockerfile"</span>: <span class="st">"Dockerfile"</span> },
+  <span class="st">"forwardPorts"</span>: [<span class="nu">8000</span>],
+  <span class="st">"customizations"</span>: {
+    <span class="st">"vscode"</span>: {
+      <span class="st">"extensions"</span>: [<span class="st">"ms-python.python"</span>]
+    }
+  },
+  <span class="st">"postCreateCommand"</span>: <span class="st">"bash .devcontainer/scripts/postCreate.sh"</span>,
+  <span class="st">"remoteUser"</span>: <span class="st">"vscode"</span>
+}</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Microsoft Official Base Images</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Stack</th><th>Image</th></tr>
+        <tr><td>Python 3.12</td><td><code>mcr.microsoft.com/devcontainers/python:3.12</code></td></tr>
+        <tr><td>Python 3.11</td><td><code>mcr.microsoft.com/devcontainers/python:3.11</code></td></tr>
+        <tr><td>Node 22 + TypeScript</td><td><code>mcr.microsoft.com/devcontainers/typescript-node:22</code></td></tr>
+        <tr><td>Node 20</td><td><code>mcr.microsoft.com/devcontainers/javascript-node:20</code></td></tr>
+        <tr><td>Go 1.22</td><td><code>mcr.microsoft.com/devcontainers/go:1.22</code></td></tr>
+        <tr><td>Rust</td><td><code>mcr.microsoft.com/devcontainers/rust:latest</code></td></tr>
+        <tr><td>Java 21</td><td><code>mcr.microsoft.com/devcontainers/java:21</code></td></tr>
+        <tr><td>Ubuntu 24.04</td><td><code>mcr.microsoft.com/devcontainers/base:ubuntu-24.04</code></td></tr>
+        <tr><td>Debian Bookworm</td><td><code>mcr.microsoft.com/devcontainers/base:bookworm</code></td></tr>
+        <tr><td>Universal (all languages)</td><td><code>mcr.microsoft.com/devcontainers/universal:2</code></td></tr>
+      </table>
+    </div>
+
+    <h3>Reference Links</h3>
+    <div class="grid-3">
+      <div class="card card-accent-purple">
+        <div class="card-title">Official Spec</div>
+        <p><strong>containers.dev</strong> — the open specification for Dev Containers, maintained by Microsoft, with schema reference and feature registry.</p>
+      </div>
+      <div class="card card-accent-cyan">
+        <div class="card-title">VS Code Docs</div>
+        <p><strong>code.visualstudio.com/docs/devcontainers</strong> — full documentation on Dev Containers, advanced configuration, and troubleshooting guides.</p>
+      </div>
+      <div class="card card-accent-green">
+        <div class="card-title">Template Gallery</div>
+        <p><strong>github.com/devcontainers/templates</strong> — official templates for Python, Node, Go, Rust, Java, and more. A great starting point for any project.</p>
+      </div>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Commit your devcontainer config on day one.</strong> The best time to add a <code>.devcontainer</code> folder to a project is when you start it. The second best time is today. Every day without one means one more engineer with a subtly different local environment, one more "it works locally" bug, and one more onboarding doc that's already out of date.</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<!-- FLOATING BACK BUTTON -->
+<a class="back-btn" href="../index.html" title="Back to handbooks index">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  Back to Handbooks
+</a>
+
+<script>
+/* ─── Theme toggle ─── */
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeIcon').textContent  = isDark ? '🌙' : '☀️';
+  document.getElementById('themeLabel').textContent = isDark ? 'Dark' : 'Light';
+  localStorage.setItem('devc-theme', isDark ? 'light' : 'dark');
+}
+(function() {
+  const saved = localStorage.getItem('devc-theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.getElementById('themeIcon').textContent  = '🌙';
+    document.getElementById('themeLabel').textContent = 'Dark';
+  }
+})();
+
+/* ─── Copy code ─── */
+function copyCode(btn) {
+  const block = btn.closest('.code-wrap').querySelector('.code-block');
+  navigator.clipboard.writeText(block.innerText).then(() => {
+    btn.textContent = 'COPIED';
+    btn.style.color = '#2de28a';
+    btn.style.borderColor = '#2de28a';
+    setTimeout(() => { btn.textContent = 'copy'; btn.style.color = ''; btn.style.borderColor = ''; }, 2000);
+  });
+}
+
+/* ─── Active nav tracking via IntersectionObserver ─── */
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+  });
+}, { rootMargin: '-52px 0px -68% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
