@@ -241,3 +241,8 @@ This repository is a collection of quick handbooks and reference documents that 
 - grpc-and-protocol-buffers-handbook.html — High-performance RPC. Crucial for inter-microservice communication. - done 
 - graphql-enterprise-handbook.html — When to use it, when not to use it (a common ARB pushback point). - done 
 - api-gateway-patterns-handbook.html — Kong, Apigee. Rate limiting, throttling, and exposing AI tools safely to the outside world. - done
+
+### AI Governance
+- ai-guardrails-handbook.html — AI Guardrails & Safety Handbook
+- ai-harner-engineering-handbook.html — AI Harness Engineering Handbook
+- llm-evaluation-and-testing-handbook.html — LLM Evaluation and Testing Handbook
