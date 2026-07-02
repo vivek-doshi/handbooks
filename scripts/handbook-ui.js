@@ -744,8 +744,12 @@
 
     setupTextNormalization();
     setupSectionNavigation();
-    setupGroupedCardSections();
-    setupTopicFilters();
+
+    // Do not run grouping and filtering on the index page, which has its own script.js
+    if (!document.querySelector('.index-shell')) {
+      setupGroupedCardSections();
+      setupTopicFilters();
+    }
   });
 
   if (typeof media.addEventListener === 'function') {
