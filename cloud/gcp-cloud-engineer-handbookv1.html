@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="handbook-version" content="v2">
-<meta name="last-updated" content="2026-07-13">
+<meta name="handbook-version" content="v1">
+<meta name="last-updated" content="2026-05-25">
 <title>GCP Cloud Engineer Handbook</title>
 <meta name="description" content="Comprehensive handbook on GCP Cloud Engineer. Covers core concepts, architecture, implementation patterns, best practices, and practical examples.">
 <meta name="keywords" content="handbook, guide, tutorial, best practices, reference, developer, gcp, cloud, engineer">
@@ -35,7 +35,7 @@
 <link rel="stylesheet" href="../styles/content-utilities.css">
 </head>
 <body>
-<div hidden data-handbook-signature="v2|2026-07-13"></div>
+<div hidden data-handbook-signature="v1|2026-05-25"></div>
 
 <div class="floating-actions">
   <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
@@ -73,7 +73,7 @@
   <div class="nav-section">
     <div class="nav-label">Module 1 — Compute</div>
     <a class="nav-link" href="#compute-engine">Compute Engine</a>
-    <a class="nav-link" href="#cloud-functions">Cloud Run functions</a>
+    <a class="nav-link" href="#cloud-functions">Cloud Functions</a>
     <a class="nav-link" href="#gke">GKE</a>
   </div>
 
@@ -118,19 +118,13 @@
       <span class="badge badge-blue">Google Cloud Platform</span>
       <span class="badge badge-green">Terraform &middot; Python SDKs</span>
       <span class="badge badge-yellow">Data &amp; Analytics Focus</span>
-      <span class="badge badge-purple">Gemini Enterprise Agent Platform</span>
-      <span class="badge badge-teal">Updated July 2026 &middot; v2</span>
+      <span class="badge badge-teal">March 2026</span>
     </div>
   </div>
 
   <div class="callout info">
     <span class="callout-icon">ℹ</span>
     <div class="callout-body"><strong>Data-first platform:</strong> GCP is the industry leader in data and analytics. BigQuery, Cloud Storage, and Pub/Sub form the backbone of most GCP architectures. This handbook reflects that bias — the data sections are intentionally the most detailed. Every service section includes <strong>primary cost drivers</strong>.</div>
-  </div>
-
-  <div class="callout tip">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>July 2026 refresh:</strong> Cloud Functions is now <strong>Cloud Run functions</strong>; Vertex AI's agent tooling has been folded into the new <strong>Gemini Enterprise Agent Platform</strong> (Agent Builder → Agent Runtime, deployable to GKE Autopilot or Cloud Run); Compute Engine's general-purpose lineup now spans <strong>C4, C4A, C4N, N4, N4D, and N4A</strong>; and BigQuery's autoscaling model gained <strong>fluid scaling</strong> for true per-second billing. These changes are woven into the relevant sections below.</div>
   </div>
 
   <!-- ========== TABLE OF CONTENTS ========== -->
@@ -140,7 +134,7 @@
     <div class="card-grid card-grid-2">
       <div class="card">
         <div class="card-title">Module 1: Compute &amp; Containers</div>
-        <div class="card-body">Compute Engine VM families, sustained use discounts, Cloud Run functions serverless triggers, and GKE Autopilot vs Standard.</div>
+        <div class="card-body">Compute Engine VM families, sustained use discounts, Cloud Functions serverless triggers, and GKE Autopilot vs Standard.</div>
       </div>
       <div class="card">
         <div class="card-title">Module 2: Data, Storage &amp; Analytics</div>
@@ -167,7 +161,7 @@
   <!-- ================================================================== -->
   <section id="module-1">
     <h2>Module 1: Compute &amp; Containers</h2>
-    <p>GCP offers compute across the full abstraction spectrum — from Compute Engine VMs you fully control, to Cloud Run functions (formerly Cloud Functions) where you write a single handler and GCP manages everything else. GKE sits in the middle as the premier managed Kubernetes offering in any cloud.</p>
+    <p>GCP offers compute across the full abstraction spectrum — from Compute Engine VMs you fully control, to Cloud Functions where you write a single handler and GCP manages everything else. GKE sits in the middle as the premier managed Kubernetes offering in any cloud.</p>
   </section>
 
   <!-- ===== COMPUTE ENGINE ===== -->
@@ -175,22 +169,15 @@
     <h2>Compute Engine</h2>
     <p>Compute Engine provides virtual machines running on Google's infrastructure. You select a <strong>Machine Family</strong> (general-purpose, compute-optimized, memory-optimized, accelerator-optimized), choose an <strong>OS image</strong>, and pick a <strong>zone</strong>. Unlike AWS, GCP automatically applies <strong>Sustained Use Discounts</strong> — no upfront commitment needed.</p>
 
-    <h3>Machine Families (2026 Lineup)</h3>
-    <p>The general-purpose family has grown considerably since 2024. <strong>N4</strong> (Intel Emerald Rapids) and <strong>C4</strong> (Intel Granite Rapids, expanded to all shapes at Next '26) are now the default current-gen picks over N2/C2. <strong>C4A</strong> and <strong>N4A</strong> run on Google's own Arm-based <strong>Axion</strong> processor — N4A reached GA on January 26, 2026, and is the recommended base for agentic/GKE workloads on price-performance. <strong>C4N</strong> and <strong>M4N</strong>, announced at Cloud Next '26, add network-optimized compute and higher-memory tiers respectively.</p>
-
+    <h3>Machine Families</h3>
     <div class="table-wrap">
       <table>
         <tr><th>Family</th><th>Series</th><th>Use Case</th><th>Example</th></tr>
-        <tr><td><strong>General Purpose</strong></td><td>E2, N2, N2D, N4, N4D, N4A, T2D, C3, C3D, C4, C4A, C4D, C4N</td><td>Web servers, dev/test, databases, microservices, agent runtimes</td><td><code>n4-standard-4</code> (4 vCPU / 16 GB, DDR5)</td></tr>
-        <tr><td><strong>Compute-Optimized</strong></td><td>C2, C2D, H3, H4D</td><td>Batch processing, gaming servers, HPC, CI/CD</td><td><code>c2-standard-8</code> (8 vCPU / 32 GB)</td></tr>
-        <tr><td><strong>Memory-Optimized</strong></td><td>M1, M2, M3, M4, M4N</td><td>SAP HANA, large in-memory databases, real-time analytics</td><td><code>m2-ultramem-208</code> (208 vCPU / 5.8 TB)</td></tr>
-        <tr><td><strong>Accelerator-Optimized</strong></td><td>A2, A3, A4, A4X, G2, G4</td><td>ML training/inference, video transcoding, GPU workloads</td><td><code>a2-highgpu-1g</code> (12 vCPU / 85 GB + A100)</td></tr>
+        <tr><td><strong>General Purpose</strong></td><td>E2, N2, N2D, T2D, C3</td><td>Web servers, dev/test, small databases, microservices</td><td><code>e2-medium</code> (2 vCPU / 4 GB)</td></tr>
+        <tr><td><strong>Compute-Optimized</strong></td><td>C2, C2D, H3</td><td>Batch processing, gaming servers, HPC, CI/CD</td><td><code>c2-standard-8</code> (8 vCPU / 32 GB)</td></tr>
+        <tr><td><strong>Memory-Optimized</strong></td><td>M1, M2, M3</td><td>SAP HANA, large in-memory databases, real-time analytics</td><td><code>m2-ultramem-208</code> (208 vCPU / 5.8 TB)</td></tr>
+        <tr><td><strong>Accelerator-Optimized</strong></td><td>A2, A3, G2</td><td>ML training/inference, video transcoding, GPU workloads</td><td><code>a2-highgpu-1g</code> (12 vCPU / 85 GB + A100)</td></tr>
       </table>
-    </div>
-
-    <div class="callout note">
-      <span class="callout-icon">ℹ</span>
-      <div class="callout-body"><strong>Axion (Arm) is now mainstream, not experimental.</strong> N4A (general-purpose, up to 64 vCPU / 512 GB) and C4A (compute-optimized, up to 72 vCPU, with a bare-metal <code>c4a-highmem-96-metal</code> shape in preview) both run on Google's custom Arm Neoverse cores. GKE Agent Sandbox on Axion N4A is GA and reports up to 30% better price-performance than comparable x86 agent workloads on other hyperscalers — worth benchmarking before your next CUD purchase.</div>
     </div>
 
     <h3>Pricing Models</h3>
@@ -201,7 +188,7 @@
       </div>
       <div class="card">
         <div class="card-title">Committed Use Discounts (CUDs)</div>
-        <div class="card-body">1 or 3-year commitment for specific vCPU/memory amounts, or flexible spend-based commitments spanning Compute Engine, GKE, and Cloud Run. Up to <strong>~55–57% savings</strong> (3-year) vs on-demand.</div>
+        <div class="card-body">1 or 3-year commitment for specific vCPU/memory amounts. Up to <strong>57% savings</strong> (3-year) vs on-demand. Applied at the billing account level, not per-VM.</div>
       </div>
       <div class="card">
         <div class="card-title">Spot VMs (Preemptible)</div>
@@ -224,11 +211,6 @@
     <div class="callout tip">
       <span class="callout-icon">💡</span>
       <div class="callout-body"><strong>SUD advantage over AWS:</strong> AWS requires you to purchase Reserved Instances upfront. GCP applies SUD automatically. For workloads that run most of the month but you're unsure about committing, GCP's automatic discounts are a significant advantage.</div>
-    </div>
-
-    <div class="callout warn">
-      <span class="callout-icon">⚠</span>
-      <div class="callout-body"><strong>CUD sharing scope changed on June 16, 2026.</strong> New billing accounts — and existing accounts with no active commitments — now default to <strong>billing-account scope</strong> with CUD sharing enabled, so a single resource-based commitment covers eligible usage across every linked project. Accounts with active commitments were left unchanged. Flexible (spend-based) CUDs also expanded to cover memory-optimized M1–M4 VMs and Cloud Run. <strong>Before migrating workloads onto C4N or M4N</strong>, check whether your existing resource-based CUDs cover the new series — they typically do not inherit automatically.</div>
     </div>
 
     <div class="callout billing">
@@ -319,21 +301,20 @@
     </div>
   </section>
 
-  <!-- ===== CLOUD RUN FUNCTIONS (FORMERLY CLOUD FUNCTIONS) ===== -->
+  <!-- ===== CLOUD FUNCTIONS ===== -->
   <section id="cloud-functions">
-    <h2>Cloud Run functions <span style="font-size:12px;font-weight:500;color:var(--muted,#888);">(formerly Cloud Functions)</span></h2>
-    <p>Google renamed <strong>Cloud Functions to Cloud Run functions</strong> in 2025–2026 to reflect that it's built on the same underlying platform as Cloud Run. Cloud Functions (1st gen) is now called <strong>Cloud Run functions (1st gen)</strong>; Cloud Functions (2nd gen) is simply <strong>Cloud Run functions</strong>. The programming model, triggers (HTTP, Cloud Storage, Pub/Sub, Firestore, Cloud Scheduler), and pricing are unchanged — only the name and console surface moved. Functions deployed with the v2 API can now be edited and customized directly as Cloud Run services.</p>
+    <h2>Cloud Functions</h2>
+    <p>Cloud Functions is Google's serverless compute platform for event-driven code. You write a function, attach it to a <strong>trigger</strong> (HTTP, Cloud Storage, Pub/Sub, Firestore, Cloud Scheduler), and GCP handles provisioning, scaling, and patching. Cloud Functions (2nd gen) is built on Cloud Run, giving you longer timeouts (up to 60 minutes) and concurrency support.</p>
 
-    <h3>Gen 1 vs Gen 2 (Cloud Run functions)</h3>
+    <h3>Gen 1 vs Gen 2</h3>
     <div class="table-wrap">
       <table>
-        <tr><th>Feature</th><th>Gen 1</th><th>Gen 2 / Cloud Run functions (Recommended)</th></tr>
+        <tr><th>Feature</th><th>Gen 1</th><th>Gen 2 (Recommended)</th></tr>
         <tr><td><strong>Max timeout</strong></td><td>9 minutes</td><td>60 minutes (HTTP) / 9 min (event)</td></tr>
         <tr><td><strong>Concurrency</strong></td><td>1 request per instance</td><td>Up to 1,000 concurrent requests per instance</td></tr>
         <tr><td><strong>Min instances</strong></td><td>Supported</td><td>Supported — eliminates cold starts</td></tr>
         <tr><td><strong>Traffic splitting</strong></td><td>Not available</td><td>Supported via Cloud Run revisions</td></tr>
         <tr><td><strong>Built on</strong></td><td>Custom runtime</td><td>Cloud Run + Eventarc</td></tr>
-        <tr><td><strong>Editable as Cloud Run service</strong></td><td>No</td><td>Yes — customize like any other Cloud Run service</td></tr>
       </table>
     </div>
 
@@ -378,8 +359,7 @@
         print(<span class="str">f"Skipping non-CSV file: </span>{file_name}<span class="str">"</span>)</pre>
 
     <h3>Deploy with gcloud CLI</h3>
-    <p class="u-muted-small">The <code>gcloud functions</code> command group and the <code>google_cloudfunctions2_function</code> Terraform resource still work unchanged after the Cloud Run functions rebrand — only the Console UI and product name changed. Deployed functions also now show up alongside Cloud Run services in <code>gcloud run services list</code>.</p>
-    <pre><span class="comment"># Deploy the Cloud Run functions (2nd gen) with a GCS trigger</span>
+    <pre><span class="comment"># Deploy the Gen 2 Cloud Function with a GCS trigger</span>
 gcloud functions deploy process-gcs-upload \
   --gen2 \
   --runtime python312 \
@@ -471,15 +451,7 @@ gcloud functions deploy process-gcs-upload \
         <span class="mode-name">Why GKE Leads the Market</span>
         <span class="mode-shortcut">Industry Context</span>
       </div>
-      <p class="u-muted-small"><strong>Fastest K8s upgrades:</strong> GKE supports new Kubernetes versions weeks before EKS/AKS. <strong>Release channels:</strong> Rapid, Regular, and Stable channels with automatic upgrades. <strong>GKE Enterprise:</strong> Multi-cluster management, service mesh, and fleet-level policy enforcement. <strong>Binary Authorization:</strong> Only deploy signed container images — built-in supply chain security.</p>
-    </div>
-
-    <div class="mode-card purple">
-      <div class="mode-header">
-        <span class="mode-name">2026: GKE for the Agentic Era</span>
-        <span class="mode-shortcut">New Since Next '26</span>
-      </div>
-      <p class="u-muted-small"><strong>GKE Agent Sandbox (GA):</strong> a hardened, low-latency sandbox for running untrusted agent-generated code and tool calls, running on Axion N4A for up to 30% better price-performance than comparable offerings elsewhere. <strong>Ambient networking (GA)</strong> for GKE and Cloud Run adds service discovery, zero-trust access, and traffic management without sidecar proxies — removing the ~15–20% CPU overhead sidecar-based mesh used to add per pod. <strong>Autopilot</strong> now supports confidential nodes (SEV, SEV-SNP, TDX) and privileged workload allowlists for tightly-scoped exceptions.</p>
+      <p class="u-muted-small"><strong>Fastest K8s upgrades:</strong> GKE supports new Kubernetes versions weeks before EKS/AKS. <strong>Release channels:</strong> Rapid, Regular, and Stable channels with automatic upgrades. <strong>GKE Enterprise:</strong> Multi-cluster management, service mesh (Anthos Service Mesh), and fleet-level policy enforcement. <strong>Binary Authorization:</strong> Only deploy signed container images — built-in supply chain security.</p>
     </div>
 
     <div class="callout billing">
@@ -689,14 +661,6 @@ blobs = client.list_blobs(<span class="str">"my-data-bucket"</span>, prefix=<spa
       <p class="u-muted-small">BigQuery processes over <strong>110 TB of data per second</strong> across Google. It can scan a 1 PB table in under 30 seconds. No other cloud service at any price point matches this throughput for ad-hoc analytics. AWS Redshift Serverless and Azure Synapse are the closest competitors, but both require more tuning and have steeper cost curves at scale.</p>
     </div>
 
-    <div class="mode-card purple">
-      <div class="mode-header">
-        <span class="mode-name">2026: Fluid Scaling &amp; the Agentic Data Platform</span>
-        <span class="mode-shortcut">GA at Next '26</span>
-      </div>
-      <p class="u-muted-small"><strong>Fluid scaling (GA)</strong> removes the one-minute minimum billing duration from slot autoscaling and bills per second instead, reported to cut costs up to <strong>34%</strong> for spiky, unpredictable workloads — opt in at the reservation level, no query changes required. <strong>Reservation groups (GA)</strong> and <strong>project-level slot/concurrency controls (Preview)</strong> give finer-grained cost attribution. <strong>Gemini Cloud Assist</strong> and <strong>Gemini Code Assist</strong> are now built into the SQL editor and Capacity management pages for query optimization suggestions and troubleshooting. <strong>BigQuery Graph (Preview)</strong> adds native graph modeling for multi-hop reasoning on top of governed data — aimed squarely at AI agents that need structured business context, not just raw tables.</p>
-    </div>
-
     <h3>Pricing Models</h3>
     <div class="card-grid card-grid-2">
       <div class="card">
@@ -706,9 +670,9 @@ blobs = client.list_blobs(<span class="str">"my-data-bucket"</span>, prefix=<spa
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Capacity Pricing (Slots / Editions)</div>
+        <div class="card-title">Capacity Pricing (Slots)</div>
         <div class="card-body">
-          Reserve <strong>BigQuery Editions</strong> (Standard, Enterprise, Enterprise Plus) with a baseline and max slot count; the autoscaler moves between them. Billed per slot-hour, per-second by default (one-minute minimum) — or opt in to <strong>fluid scaling</strong> at the reservation level for true per-second billing with no minimum, worth up to 34% savings on bursty workloads. 1-year and 3-year commitments cut the per-slot rate roughly 20% and 40%. Flat-rate/Flex Slots were retired in 2023 — Editions is the only capacity model now.
+          Purchase <strong>BigQuery Editions</strong> (Standard, Enterprise, Enterprise Plus). You buy "slots" (units of compute) on a per-second, autoscaling basis. Best for: production pipelines with predictable, high-volume queries. You pay for compute time, not data scanned. Starting at 100 slots (~$0.04/slot-hour for Standard edition).
         </div>
       </div>
     </div>
@@ -1111,7 +1075,7 @@ Organization (example.com)
     </div>
 
     <h3>Service Accounts — The GCP Way</h3>
-    <p>In GCP, <strong>Service Accounts</strong> are the primary way applications authenticate. Unlike AWS IAM Users (with Access Keys), GCP Service Accounts use short-lived tokens automatically rotated by the platform. Never download service account key files — use attached service accounts on Compute Engine, GKE (Workload Identity), or Cloud Run functions.</p>
+    <p>In GCP, <strong>Service Accounts</strong> are the primary way applications authenticate. Unlike AWS IAM Users (with Access Keys), GCP Service Accounts use short-lived tokens automatically rotated by the platform. Never download service account key files — use attached service accounts on Compute Engine, GKE (Workload Identity), or Cloud Functions.</p>
 
     <div class="callout danger">
       <span class="callout-icon">🚨</span>
@@ -1371,7 +1335,7 @@ print(<span class="str">f"\nDatasets accessible as </span>{target_sa}<span class
         <tr><td><strong>CPUs per region</strong></td><td>24 (new projects)</td><td>Cannot create VMs — API returns <code>QUOTA_EXCEEDED</code></td></tr>
         <tr><td><strong>GKE nodes per zone</strong></td><td>1,000</td><td>Node pool can't scale</td></tr>
         <tr><td><strong>BigQuery concurrent slots</strong></td><td>2,000 (on-demand)</td><td>Queries queue and slow down</td></tr>
-        <tr><td><strong>Cloud Run functions per region</strong></td><td>1,000</td><td>Deployment fails</td></tr>
+        <tr><td><strong>Cloud Functions per region</strong></td><td>1,000</td><td>Deployment fails</td></tr>
         <tr><td><strong>External IP addresses</strong></td><td>8 per region</td><td>Cannot attach public IPs</td></tr>
       </table>
     </div>

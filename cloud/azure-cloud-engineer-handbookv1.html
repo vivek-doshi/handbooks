@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="handbook-version" content="v2">
-<meta name="last-updated" content="2026-07-12">
+<meta name="handbook-version" content="v1">
+<meta name="last-updated" content="2026-05-25">
 <title>Azure Cloud Engineer Handbook</title>
 <meta name="description" content="Comprehensive handbook on Azure Cloud Engineer. Covers core concepts, architecture, implementation patterns, best practices, and practical examples.">
 <meta name="keywords" content="handbook, guide, tutorial, best practices, reference, developer, azure, cloud, engineer">
@@ -35,8 +35,8 @@
 <link rel="stylesheet" href="../styles/content-utilities.css">
 </head>
 <body>
-<div hidden data-handbook-signature="v2|2026-07-12"></div>
-<div class="handbook-version-chip">V2</div>
+<div hidden data-handbook-signature="v1|2026-05-25"></div>
+<div class="handbook-version-chip">V1</div>
 
 <div class="floating-actions">
   <a class="floating-link" href="../index.html" aria-label="Back to handbooks index" title="Back to handbooks index">
@@ -99,7 +99,7 @@
     <div class="nav-label">Module 4</div>
     <a class="nav-link" href="#module-4">Pricing &amp; Cost Management</a>
     <a class="nav-link" href="#pricing-calculator">Pricing Calculator</a>
-    <a class="nav-link" href="#cost-optimization">Cost Optimization &amp; Savings Plans</a>
+    <a class="nav-link" href="#cost-optimization">Cost Optimization</a>
     <a class="nav-link" href="#budgets">Budgets &amp; Alerts</a>
   </div>
 
@@ -128,18 +128,13 @@
       <span class="badge badge-blue">Azure Resource Manager</span>
       <span class="badge badge-green">Bicep + Python SDK</span>
       <span class="badge badge-amber">Cost-Aware Architecture</span>
-      <span class="badge badge-purple">Updated July 2026</span>
+      <span class="badge badge-purple">March 2026</span>
     </div>
   </div>
 
   <div class="callout info">
     <span class="callout-icon">i</span>
     <div class="callout-body"><strong>This handbook now includes all six modules.</strong> It is organized around the decisions Azure engineers make most often in production: what to deploy, how Azure bills it, where to inspect it, and how to standardize delivery with Azure Resource Manager and Bicep.</div>
-  </div>
-
-  <div class="callout tip">
-    <span class="callout-icon">i</span>
-    <div class="callout-body"><strong>What's new in this v2 update (July 2026):</strong> Azure Functions Flex Consumption is now the recommended serverless plan — the legacy Consumption plan on Linux is retiring for the v3 runtime (Sept 30, 2026) and for new apps entirely (Sept 30, 2028). AKS now ships three cluster management tiers (Free / Standard / Premium) plus <strong>AKS Automatic</strong>, which uses Karpenter-based node auto-provisioning to pick VM SKUs for you. Cosmos DB vector search on DiskANN is generally available, and Cosmos DB Mirroring plus Azure SQL Database Mirroring into Microsoft Fabric are GA with private endpoint support, alongside the new Fabric SQL Database (GA at Build 2026). Bicep examples below have been checked against current API versions.</div>
   </div>
 
   <section id="toc">
@@ -180,7 +175,7 @@
           <span class="toc-status">Included</span>
         </div>
         <div class="card-title">Pricing &amp; Cost Management</div>
-        <div class="card-body">Calculator methodology, Reserved Instances, Savings Plans, PAYG, Hybrid Benefit, budgets, and alerting.</div>
+        <div class="card-body">Calculator methodology, Reserved Instances, PAYG, Hybrid Benefit, budgets, and alerting.</div>
       </article>
 
       <article class="card toc-card">
@@ -266,7 +261,7 @@
         <tr><th>Tier</th><th>Best Use Case</th><th>How It Is Billed</th><th>Operational Impact</th></tr>
         <tr><td><strong>Free (F1)</strong></td><td>Learning, demos, proof-of-concept apps</td><td>Shared compute with strict limits and no production-grade capacity guarantees</td><td>No SLA, constrained CPU minutes, not appropriate for real production traffic</td></tr>
         <tr><td><strong>Basic (B1-B3)</strong></td><td>Small steady-state web apps and internal APIs</td><td>Fixed price per dedicated App Service Plan instance-hour</td><td>You reserve compute even when traffic is idle, so predictable but always-on cost</td></tr>
-        <tr><td><strong>Premium (P0v4-P3v4 / P1mv4-P5mv4)</strong></td><td>Production APIs, secure apps, autoscale workloads</td><td>Higher fixed price per dedicated instance-hour, plus related networking and outbound bandwidth costs</td><td>Premium v4 (GA) replaces v3 as the current generation — CPU-optimized P0v4-P3v4 and memory-optimized P1mv4-P5mv4, up to 32 vCPUs / 256 GB RAM, on newer AMD-based hardware with meaningfully better throughput than v3</td></tr>
+        <tr><td><strong>Premium (P1v3+ / P1v4+)</strong></td><td>Production APIs, secure apps, autoscale workloads</td><td>Higher fixed price per dedicated instance-hour, plus related networking and outbound bandwidth costs</td><td>Supports autoscale, private networking scenarios, more memory and CPU, and stronger enterprise fit</td></tr>
       </table>
     </div>
 
@@ -313,12 +308,11 @@ param appServicePlanName string = 'asp-azure-handbook'
   'F1'
   'B1'
   'P1v3'
-  'P1v4'
 ])
-@description('Choose Free for labs, Basic for fixed low-volume apps, Premium v3/v4 for production. Prefer v4 in regions where it is available.')
+@description('Choose Free for labs, Basic for fixed low-volume apps, Premium for production.')
 param skuName string = 'B1'
 
-var skuTier = skuName == 'F1' ? 'Free' : skuName == 'B1' ? 'Basic' : skuName == 'P1v3' ? 'PremiumV3' : 'PremiumV4'
+var skuTier = skuName == 'F1' ? 'Free' : skuName == 'B1' ? 'Basic' : 'PremiumV3'
 
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: appServicePlanName
@@ -366,16 +360,10 @@ output hostname string = site.properties.defaultHostName</code></pre>
     <h2>Azure Functions</h2>
     <p>Azure Functions is Azure's event-driven serverless runtime. Use it when code should run in response to HTTP requests, storage events, timers, queue messages, Service Bus triggers, or Event Grid notifications without reserving a full web tier all day.</p>
 
-    <div class="callout warn">
-      <span class="callout-icon">!</span>
-      <div class="callout-body"><strong>Default to Flex Consumption for new apps.</strong> The classic Consumption plan is now the legacy serverless option. Function apps on the v3 runtime in Linux Consumption stop running after September 30, 2026, and Linux Consumption itself is retiring on September 30, 2028. Flex Consumption adds VNet integration, scale-to-zero, and meaningfully faster cold starts, and it is where new language versions land first.</div>
-    </div>
-
     <div class="table-wrap">
       <table>
         <tr><th>Plan</th><th>Billing Model</th><th>Best Fit</th><th>What To Watch</th></tr>
-        <tr><td><strong>Flex Consumption</strong></td><td>Two meters: memory provisioned while an instance executes, plus total execution count. Optional "Always Ready" instances bill idle baseline memory too.</td><td>Default choice for new serverless apps — bursty or steady traffic, VNet-integrated APIs, event pipelines</td><td>Pick an instance memory size (512 MB / 2,048 MB / 4,096 MB) up front; Always Ready instances remove cold starts but add baseline cost</td></tr>
-        <tr><td><strong>Consumption (legacy)</strong></td><td>Pay per execution count and execution duration based on memory used</td><td>Existing apps not yet migrated; new apps should not start here</td><td>Cold starts, execution limits, and Linux Consumption retirement in 2028</td></tr>
+        <tr><td><strong>Consumption</strong></td><td>Pay per execution count and execution duration based on memory used</td><td>Spiky event workloads, low or unpredictable traffic</td><td>Cold starts, execution limits, and network constraints matter</td></tr>
         <tr><td><strong>Premium</strong></td><td>Pay for pre-warmed and active instances by allocated compute</td><td>Latency-sensitive functions, VNet integration, steady enterprise traffic</td><td>Higher baseline cost because capacity is reserved</td></tr>
         <tr><td><strong>Dedicated</strong></td><td>Runs on an App Service Plan that you already pay for</td><td>Functions that should share reserved web compute with other apps</td><td>Cheap only if that plan already exists for a good reason</td></tr>
       </table>
@@ -398,14 +386,13 @@ output hostname string = site.properties.defaultHostName</code></pre>
 
     <div class="callout info">
       <span class="callout-icon">i</span>
-      <div class="callout-body"><strong>Billing shortcut:</strong> if your team says “serverless is always cheaper,” push back. Premium, Dedicated, and Always Ready Flex Consumption instances can all cost more than a small web tier if the workload is always hot. Flex Consumption's on-demand meter includes a monthly free grant per subscription (currently 250,000 executions and 100,000 GB-s), which is easy to exceed with chatty triggers.</div>
+      <div class="callout-body"><strong>Billing shortcut:</strong> if your team says “serverless is always cheaper,” push back. Premium and Dedicated plans can cost more than a small web tier if the workload is always hot.</div>
     </div>
 
     <h3>Portal and CLI Navigation</h3>
     <ul class="bullet">
       <li><strong>Portal:</strong> search the function app name or <code>Function App</code>, then inspect <code>Functions</code>, <code>Monitor</code>, <code>Deployment Center</code>, and linked <code>Application Insights</code>.</li>
       <li><strong>CLI:</strong> use <code>az functionapp list</code> for discovery, <code>az functionapp show</code> for configuration, and deployment commands after confirming the plan and storage account.</li>
-      <li><strong>Flex Consumption specific:</strong> create with <code>az functionapp create --flexconsumption-location &lt;region&gt; --instance-memory 2048 ...</code> — Flex Consumption apps are provisioned differently from classic Consumption apps and require a supported region and runtime combination.</li>
     </ul>
 
     <pre><code># function_app.py
@@ -458,15 +445,7 @@ def hello(req: func.HttpRequest) -&gt; func.HttpResponse:
         <span class="mode-name">Billing Model To Remember</span>
         <span class="mode-shortcut">Nodes Drive Spend</span>
       </div>
-      <p class="u-muted-small">AKS cluster management now has three tiers — <strong>Free</strong> (no SLA, dev/test, under ~10 nodes), <strong>Standard</strong> (financially backed API server SLA, required for production), and <strong>Premium</strong> (adds AKS Long Term Support for extended Kubernetes version support). Whichever tier you pick, the control plane fee is a small fraction of the bill: you still pay for worker node VMs, managed disks, load balancers, public IPs, monitoring, and outbound bandwidth.</p>
-    </div>
-
-    <div class="mode-card blue">
-      <div class="mode-header">
-        <span class="mode-name">AKS Automatic</span>
-        <span class="mode-shortcut">Managed-By-Default Option</span>
-      </div>
-      <p class="u-muted-small">AKS Automatic is the current recommended default for teams without dedicated platform engineering. It runs on the Standard tier and enables node auto-provisioning (NAP) — built on the Karpenter Azure provider — which selects and right-sizes VM SKUs per workload automatically, plus KEDA event-driven autoscaling out of the box. Use the base AKS SKU with manual node pools only when you need fine-grained control that Automatic does not expose yet.</p>
+      <p class="u-muted-small">At a high level, the AKS control plane is free and Microsoft-managed, but you still pay for worker nodes, node pool VM sizes, managed disks, load balancers, public IPs, monitoring, and outbound bandwidth. Optional SLA or premium add-ons should still be checked against current pricing.</p>
     </div>
 
     <div class="card-grid card-grid-3 u-mt-12">
@@ -487,11 +466,6 @@ def hello(req: func.HttpRequest) -&gt; func.HttpResponse:
     <div class="callout danger">
       <span class="callout-icon">!</span>
       <div class="callout-body"><strong>Architecture warning:</strong> AKS adds meaningful operational overhead. If your workload is a single HTTP service with straightforward scaling needs, App Service or Container Apps is usually the better default.</div>
-    </div>
-
-    <div class="callout warn">
-      <span class="callout-icon">!</span>
-      <div class="callout-body"><strong>Two operational changes to plan for in 2026:</strong> node pool upgrades can now be done blue-green (a parallel pool with the new configuration is created and validated before traffic shifts, giving a clean rollback path — public preview), and the community Ingress NGINX project's maintenance ended in March 2026. If your cluster uses the AKS application routing add-on, migrate to its Gateway API-based ingress implementation; production workloads on the legacy path remain supported only through November 2026.</div>
     </div>
 
     <h3>Portal and CLI Navigation</h3>
@@ -716,11 +690,6 @@ if __name__ == "__main__":
     <h2>Azure Cosmos DB</h2>
     <p>Azure Cosmos DB is Azure's globally distributed NoSQL database for low-latency document, key-value, graph, and related models. It is powerful when you genuinely need global distribution, elastic scale, or predictable low latency, but it is also one of the easiest Azure services to overspend on when partition design is poor.</p>
 
-    <div class="callout tip">
-      <span class="callout-icon">i</span>
-      <div class="callout-body"><strong>New capability worth knowing:</strong> DiskANN-based vector search on Cosmos DB for NoSQL is now generally available, letting you store embeddings alongside operational data and skip standing up a separate vector database for most RAG and agent-memory workloads. DiskANN is the recommended index once a container holds more than roughly 50,000 vectors; smaller sets can use the simpler flat or quantizedFlat index types. Cosmos DB Mirroring into Microsoft Fabric — with private endpoint support — is also GA, giving you zero-ETL analytics on OneLake without a custom pipeline.</div>
-    </div>
-
     <div class="table-wrap">
       <table>
         <tr><th>Throughput Model</th><th>How It Is Billed</th><th>Best Fit</th><th>Watchouts</th></tr>
@@ -851,11 +820,6 @@ output cosmosEndpoint string = cosmos.properties.documentEndpoint</code></pre>
   <section id="azure-sql">
     <h2>Azure SQL Database</h2>
     <p>Azure SQL Database is Azure's PaaS relational database for transactional systems that need SQL Server compatibility without managing Windows hosts, patching, backups, or cluster operations. It is usually the default for line-of-business apps, reporting stores, and APIs that rely on relational constraints and mature SQL tooling.</p>
-
-    <div class="callout tip">
-      <span class="callout-icon">i</span>
-      <div class="callout-body"><strong>Fabric integration matured in 2026.</strong> Mirroring Azure SQL Database into Microsoft Fabric — continuous, low-latency replication into OneLake as Delta Parquet, with private endpoint support — is now GA, so you can get zero-ETL analytics without a separate pipeline. Microsoft also shipped <strong>Fabric SQL Database</strong> (GA at Build 2026), a Fabric-workspace-native flavor of the same SQL engine that auto-mirrors every table to OneLake and provisions in under a minute. Choose Fabric SQL Database only when the app is Fabric-first; it still lacks some long-tail Azure SQL features (SQL Server Agent, Service Broker, native replication) and FedRAMP High authorization, so regulated or feature-dependent workloads should stay on Azure SQL Database.</div>
-    </div>
 
     <div class="table-wrap">
       <table>
@@ -1234,28 +1198,22 @@ if __name__ == "__main__":
   </section>
 
   <section id="cost-optimization">
-    <h2>Cost Optimization: Reserved Instances, Savings Plans, PAYG, and Azure Hybrid Benefit</h2>
-    <p><strong>Pay-As-You-Go (PAYG)</strong> is the baseline model: you pay standard rates with maximum flexibility and no long-term commitment. <strong>Reserved Instances or reserved capacity</strong> trade commitment for lower unit pricing on eligible services. <strong>Azure Savings Plans</strong> commit to an hourly spend amount instead of a specific SKU, trading some discount depth for flexibility across VM families, regions, and services. <strong>Azure Hybrid Benefit</strong> lets you apply qualifying existing Windows Server or SQL Server licenses to reduce Azure software charges.</p>
+    <h2>Cost Optimization: Reserved Instances, PAYG, and Azure Hybrid Benefit</h2>
+    <p><strong>Pay-As-You-Go (PAYG)</strong> is the baseline model: you pay standard rates with maximum flexibility and no long-term commitment. <strong>Reserved Instances or reserved capacity</strong> trade commitment for lower unit pricing on eligible services. <strong>Azure Hybrid Benefit</strong> lets you apply qualifying existing Windows Server or SQL Server licenses to reduce Azure software charges.</p>
 
     <div class="table-wrap">
       <table>
         <tr><th>Option</th><th>Best Fit</th><th>How It Changes The Bill</th><th>Risk</th></tr>
         <tr><td><strong>PAYG</strong></td><td>New workloads, uncertain demand, short-lived environments</td><td>Highest flexibility, usually highest unit cost</td><td>Teams forget to revisit it after usage stabilizes</td></tr>
-        <tr><td><strong>Reserved Instances / Reserved Capacity</strong></td><td>Steady-state production locked to a known VM family, size, and region</td><td>Deepest discount — commonly 40-72% off PAYG for 1- or 3-year terms</td><td>Wrong sizing or wrong region commitment limits savings; some VM series retire from new RI purchase starting July 1, 2026</td></tr>
-        <tr><td><strong>Azure Savings Plan for Compute / Databases</strong></td><td>Workloads that shift across VM families, regions, or services over the commitment term</td><td>Commit to a fixed hourly spend; discount (roughly 11-65%) applies automatically to eligible usage anywhere it occurs</td><td>Cannot be cancelled or modified once purchased; commitment set too high pays for idle headroom</td></tr>
-        <tr><td><strong>Azure Hybrid Benefit</strong></td><td>Organizations with eligible Microsoft licenses under Software Assurance</td><td>Reduces the software/licensing portion of Azure compute or database cost, stacks on top of RIs or Savings Plans</td><td>License eligibility and assignment must be governed carefully; audited under Microsoft Software Asset Management</td></tr>
+        <tr><td><strong>Reserved Instances / Reserved Capacity</strong></td><td>Steady-state production with predictable baseline usage</td><td>Lower hourly cost in exchange for 1-year or 3-year commitment</td><td>Wrong sizing or wrong region commitment limits savings</td></tr>
+        <tr><td><strong>Azure Hybrid Benefit</strong></td><td>Organizations with eligible Microsoft licenses</td><td>Reduces software portion of Azure compute or database cost</td><td>License eligibility and assignment must be governed carefully</td></tr>
       </table>
-    </div>
-
-    <div class="callout warn">
-      <span class="callout-icon">!</span>
-      <div class="callout-body"><strong>Reservation transition to plan for:</strong> Azure Reserved VM Instances for a set of VM series stop accepting new purchases and renewals starting July 1, 2026. Existing reservations remain honored through their term, but if you hold RIs on an affected series, evaluate trading in for an Azure Savings Plan for Compute (which is not tied to a VM family or region) well before the reservation expires rather than waiting for the renewal prompt.</div>
     </div>
 
     <div class="card-grid card-grid-2 u-mt-12">
       <div class="card">
         <div class="card-title">Real-World Use Case</div>
-        <div class="card-body">A production SQL estate running predictable business hours moves from PAYG vCore pricing to reserved capacity and applies Azure Hybrid Benefit, cutting monthly run cost without changing application code. A separate team with compute spread across shifting VM families layers a Savings Plan for Compute on top: reservations apply first against the stable baseline, then the Savings Plan discount covers whatever eligible usage is left.</div>
+        <div class="card-body">A production SQL estate running predictable business hours moves from PAYG vCore pricing to reserved capacity and applies Azure Hybrid Benefit, cutting monthly run cost without changing application code.</div>
       </div>
       <div class="card">
         <div class="card-title">Portal and CLI Navigation</div>
@@ -1399,12 +1357,11 @@ param appServicePlanName string = 'asp-standard-linux'
 @allowed([
   'B1'
   'P1v3'
-  'P1v4'
 ])
-@description('Choose B1 for smaller steady-state workloads, P1v3/P1v4 for production autoscale scenarios. Prefer P1v4 where the region supports it.')
+@description('Choose B1 for smaller steady-state workloads and P1v3 for production autoscale scenarios.')
 param appServiceSku string = 'B1'
 
-var appServiceTier = appServiceSku == 'B1' ? 'Basic' : appServiceSku == 'P1v3' ? 'PremiumV3' : 'PremiumV4'
+var appServiceTier = appServiceSku == 'B1' ? 'Basic' : 'PremiumV3'
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
