@@ -523,19 +523,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const topicFiltersHost = document.querySelector('[data-topic-filters]');
     const filterCount = document.querySelector('[data-topic-filter-count]');
     const clearFiltersButton = document.querySelector('[data-topic-filter-clear]');
-    const filterMeta = document.querySelector('.topic-filter-meta');
+    const randomButton = document.querySelector('[data-lookup-random]');
+    const topicMoreButton = document.querySelector('[data-topic-more]');
+    const sidebarTotal = document.querySelector('[data-sidebar-total]');
+    const lookupInput = document.querySelector('[data-lookup-input]');
+    const lookupStatus = document.querySelector('[data-lookup-status]');
+    const lookupResult = document.querySelector('[data-lookup-result]');
+    const lookupTopics = document.querySelector('[data-lookup-topics]');
+    const lookupShortcut = document.querySelector('[data-lookup-shortcut]');
+    const lookupClearButton = document.querySelector('[data-lookup-clear]');
 
     if (!cardGrid || !topicFiltersHost || !filterCount || !clearFiltersButton) {
       return;
     }
 
     const cards = Array.from(cardGrid.querySelectorAll('.handbook-card'));
+    const normalize = (value) => String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
     if (!cards.length) {
       filterCount.textContent = 'No handbooks available';
       clearFiltersButton.disabled = true;
+      if (lookupStatus) {
+        lookupStatus.textContent = 'No handbooks available';
+      }
+      if (lookupResult) {
+        lookupResult.textContent = '0';
+      }
+      if (lookupTopics) {
+        lookupTopics.textContent = '0';
+      }
       return;
     }
+
+    if (sidebarTotal) {
+      sidebarTotal.textContent = `${cards.length} handbooks`;
+    }
+
+    cards.forEach((card, index) => {
+      card.style.setProperty('--card-stagger', String(index % 16));
+    });
 
     const collator = new Intl.Collator(undefined, {
       numeric: true,
@@ -546,218 +572,303 @@ document.addEventListener('DOMContentLoaded', () => {
       return (title ? title.textContent : '').trim();
     };
     const cardsByTopic = new Map();
+    const cardSearchIndex = new Map();
 
     cards.forEach((card) => {
       const cardTag = card.querySelector('.card-tag');
+      const cardTitle = card.querySelector('h3');
+      const cardFile = card.querySelector('.card-file');
+      const cardDesc = card.querySelector('.handbook-copy p');
       const topic = (cardTag ? cardTag.textContent : '').trim() || 'Other';
       if (!cardsByTopic.has(topic)) {
         cardsByTopic.set(topic, []);
       }
       cardsByTopic.get(topic).push(card);
+
+      const lookupText = [
+        cardTitle ? cardTitle.textContent : '',
+        cardTag ? cardTag.textContent : '',
+        cardFile ? cardFile.textContent : '',
+        cardDesc ? cardDesc.textContent : ''
+      ].join(' ');
+      cardSearchIndex.set(card, normalize(lookupText));
     });
 
     cardsByTopic.forEach((topicCards) => {
       topicCards.sort((leftCard, rightCard) => collator.compare(getCardTitle(leftCard), getCardTitle(rightCard)));
     });
 
-    const topics = Array.from(cardsByTopic.keys()).sort((leftTopic, rightTopic) => collator.compare(leftTopic, rightTopic));
-    const groupsByTopic = new Map();
-    const activeTopics = new Set(topics);
-
-    cardGrid.classList.add('is-grouped');
+    cards.sort((leftCard, rightCard) => collator.compare(getCardTitle(leftCard), getCardTitle(rightCard)));
     cardGrid.textContent = '';
+    cards.forEach((card) => cardGrid.append(card));
 
-    topics.forEach((topic) => {
-      const topicCards = cardsByTopic.get(topic) || [];
-      const topicGroup = document.createElement('section');
-      topicGroup.className = 'topic-group is-collapsed';
-      topicGroup.dataset.topic = topic;
-
-      const topicToggle = document.createElement('button');
-      topicToggle.type = 'button';
-      topicToggle.className = 'topic-group-toggle';
-      topicToggle.setAttribute('aria-expanded', 'false');
-
-      const title = document.createElement('span');
-      title.className = 'topic-group-title';
-      title.textContent = topic;
-
-      const meta = document.createElement('span');
-      meta.className = 'topic-group-meta';
-
-      const count = document.createElement('span');
-      count.className = 'topic-group-count';
-      count.textContent = `${topicCards.length} handbook${topicCards.length === 1 ? '' : 's'}`;
-
-      const chevron = document.createElement('span');
-      chevron.className = 'topic-group-chevron';
-      chevron.setAttribute('aria-hidden', 'true');
-      chevron.textContent = '▸';
-
-      meta.append(count, chevron);
-      topicToggle.append(title, meta);
-
-      const topicGrid = document.createElement('div');
-      topicGrid.className = 'topic-group-grid';
-      topicCards.forEach((card) => topicGrid.append(card));
-
-      topicToggle.addEventListener('click', () => {
-        const isCollapsed = topicGroup.classList.toggle('is-collapsed');
-        topicToggle.setAttribute('aria-expanded', String(!isCollapsed));
+    const topics = Array.from(cardsByTopic.entries())
+      .map(([topic, topicCards]) => ({
+        key: topic,
+        count: topicCards.length
+      }))
+      .sort((leftTopic, rightTopic) => {
+        if (leftTopic.count !== rightTopic.count) {
+          return rightTopic.count - leftTopic.count;
+        }
+        return collator.compare(leftTopic.key, rightTopic.key);
       });
-
-      topicGroup.append(topicToggle, topicGrid);
-      cardGrid.append(topicGroup);
-      groupsByTopic.set(topic, topicGroup);
-    });
-
-    const allTopicsFilter = document.createElement('button');
-    allTopicsFilter.type = 'button';
-    allTopicsFilter.className = 'topic-filter is-active';
-    allTopicsFilter.textContent = 'All Topics';
-    allTopicsFilter.dataset.topic = '__all__';
-
-    topicFiltersHost.textContent = '';
-    topicFiltersHost.append(allTopicsFilter);
 
     const topicButtons = new Map();
+    const topicPreviewSize = 6;
+    let isTopicListExpanded = false;
+    let selectedTopic = '__all__';
 
-    topics.forEach((topic) => {
-      const filter = document.createElement('button');
-      filter.type = 'button';
-      filter.className = 'topic-filter';
-      filter.textContent = topic;
-      filter.dataset.topic = topic;
-      topicButtons.set(topic, filter);
-      topicFiltersHost.append(filter);
-    });
-
-    const topicActions = document.createElement('div');
-    topicActions.className = 'topic-group-actions';
-
-    const expandAllButton = document.createElement('button');
-    expandAllButton.type = 'button';
-    expandAllButton.className = 'topic-filter-clear';
-    expandAllButton.textContent = 'Expand all groups';
-
-    const collapseAllButton = document.createElement('button');
-    collapseAllButton.type = 'button';
-    collapseAllButton.className = 'topic-filter-clear';
-    collapseAllButton.textContent = 'Collapse all groups';
-
-    const randomButton = document.createElement('button');
-    randomButton.type = 'button';
-    randomButton.className = 'topic-filter-clear';
-    randomButton.textContent = 'Read Random book';
-
-    topicActions.append(expandAllButton, collapseAllButton, randomButton);
-    if (filterMeta) {
-      filterMeta.append(topicActions);
-    }
-
-    const syncTopicButtons = () => {
-      const allSelected = activeTopics.size === topics.length;
-      allTopicsFilter.classList.toggle('is-active', allSelected);
-      topicButtons.forEach((button, topic) => {
-        button.classList.toggle('is-active', activeTopics.has(topic));
-      });
+    const allTopicsCount = topics.reduce((sum, topic) => sum + topic.count, 0);
+    const lookupState = {
+      query: ''
     };
 
-    const updateUI = () => {
-      let visibleHandbookCount = 0;
-      groupsByTopic.forEach((group, topic) => {
-        const isVisible = activeTopics.has(topic);
-        group.classList.toggle('is-hidden', !isVisible);
-        if (isVisible) {
-          visibleHandbookCount += (cardsByTopic.get(topic) || []).length;
-        }
-      });
+    const createTopicButton = (topicKey, count, label) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'topic-filter';
+      button.dataset.topic = topicKey;
 
-      const allTopicsSelected = activeTopics.size === topics.length;
-      if (allTopicsSelected) {
-        filterCount.textContent = `Showing all ${visibleHandbookCount} handbooks`;
-      } else {
-        filterCount.textContent = `Showing ${visibleHandbookCount} handbooks across ${activeTopics.size} topic${activeTopics.size === 1 ? '' : 's'}`;
-      }
+      const labelTag = document.createElement('span');
+      labelTag.className = 'topic-filter-label';
+      labelTag.textContent = label;
 
-      clearFiltersButton.disabled = allTopicsSelected;
-      syncTopicButtons();
+      const countTag = document.createElement('span');
+      countTag.className = 'topic-filter-count-tag';
+      countTag.textContent = String(count);
+
+      button.append(labelTag, countTag);
+      return button;
     };
 
-    allTopicsFilter.addEventListener('click', () => {
-      activeTopics.clear();
-      topics.forEach((topic) => activeTopics.add(topic));
-      updateUI();
-    });
+    const renderTopicButtons = () => {
+      topicFiltersHost.textContent = '';
+      topicButtons.clear();
+      topicFiltersHost.classList.toggle('is-expanded', isTopicListExpanded);
 
-    topicButtons.forEach((button, topic) => {
-      button.addEventListener('click', () => {
-        const allTopicsSelected = activeTopics.size === topics.length;
+      const allButton = createTopicButton('__all__', allTopicsCount, 'All topics');
+      topicFiltersHost.append(allButton);
+      topicButtons.set('__all__', allButton);
 
-        if (allTopicsSelected) {
-          activeTopics.clear();
-          activeTopics.add(topic);
-          updateUI();
-          return;
-        }
-
-        if (activeTopics.has(topic)) {
-          if (activeTopics.size === 1) {
-            activeTopics.clear();
-            topics.forEach((topicName) => activeTopics.add(topicName));
-          } else {
-            activeTopics.delete(topic);
-          }
-        } else {
-          activeTopics.add(topic);
-        }
-
-        updateUI();
+      const visibleTopics = isTopicListExpanded ? topics : topics.slice(0, topicPreviewSize);
+      visibleTopics.forEach((topic) => {
+        const button = createTopicButton(topic.key, topic.count, topic.key);
+        topicFiltersHost.append(button);
+        topicButtons.set(topic.key, button);
       });
-    });
 
-    clearFiltersButton.addEventListener('click', () => {
-      activeTopics.clear();
-      topics.forEach((topic) => activeTopics.add(topic));
-      updateUI();
-    });
-
-    const getVisibleGroups = () => Array.from(groupsByTopic.entries())
-      .filter(([topic]) => activeTopics.has(topic))
-      .map(([, group]) => group);
-
-    expandAllButton.addEventListener('click', () => {
-      getVisibleGroups().forEach((group) => {
-        group.classList.remove('is-collapsed');
-        const toggle = group.querySelector('.topic-group-toggle');
-        if (toggle) {
-          toggle.setAttribute('aria-expanded', 'true');
-        }
-      });
-    });
-
-    collapseAllButton.addEventListener('click', () => {
-      getVisibleGroups().forEach((group) => {
-        group.classList.add('is-collapsed');
-        const toggle = group.querySelector('.topic-group-toggle');
-        if (toggle) {
-          toggle.setAttribute('aria-expanded', 'false');
-        }
-      });
-    });
-
-    randomButton.addEventListener('click', () => {
-      const visibleCards = Array.from(activeTopics).flatMap((topic) => cardsByTopic.get(topic) || []);
-      if (!visibleCards.length) {
+      if (!topicMoreButton) {
         return;
       }
 
-      const selectedCard = visibleCards[Math.floor(Math.random() * visibleCards.length)];
-      const link = selectedCard.querySelector('.card-link');
-      const href = link ? link.getAttribute('href') : null;
-      if (href) {
-        window.location.href = href;
+      const hiddenCount = Math.max(topics.length - topicPreviewSize, 0);
+      topicMoreButton.hidden = hiddenCount === 0;
+      topicMoreButton.textContent = isTopicListExpanded ? 'Show fewer topics' : `+ ${hiddenCount} more`;
+    };
+
+    const syncTopicButtons = () => {
+      topicButtons.forEach((button, topicKey) => {
+        button.classList.toggle('is-active', selectedTopic === topicKey);
+      });
+    };
+
+    const setSelectedTopic = (nextTopic) => {
+      selectedTopic = nextTopic;
+      syncTopicButtons();
+    };
+
+    const cardLinkByCard = new Map();
+    cards.forEach((card) => {
+      const link = card.querySelector('.card-link');
+      if (!link) {
+        return;
       }
+
+      cardLinkByCard.set(card, link);
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('role', 'link');
+      card.setAttribute('aria-label', `Open ${getCardTitle(card)}`);
+
+      card.addEventListener('click', (event) => {
+        const target = event.target;
+        if (target instanceof HTMLElement && target.closest('a, button, input, textarea')) {
+          return;
+        }
+        link.click();
+      });
+
+      card.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+          return;
+        }
+        event.preventDefault();
+        link.click();
+      });
+    });
+
+    const updateUI = () => {
+      let visibleHandbookCount = 0;
+      let visibleTopicCount = 0;
+
+      cards.forEach((card) => {
+        const topicTag = card.querySelector('.card-tag');
+        const topic = (topicTag ? topicTag.textContent : '').trim() || 'Other';
+        const topicMatches = selectedTopic === '__all__' || selectedTopic === topic;
+        const queryMatches = !lookupState.query || cardSearchIndex.get(card).includes(lookupState.query);
+        const isVisible = topicMatches && queryMatches;
+
+        card.classList.toggle('is-hidden', !isVisible);
+        if (queryMatches && lookupState.query) {
+          card.setAttribute('data-match', 'true');
+        } else {
+          card.removeAttribute('data-match');
+        }
+
+        if (isVisible) {
+          visibleHandbookCount += 1;
+        }
+      });
+
+      topics.forEach((topicItem) => {
+        const hasVisible = (cardsByTopic.get(topicItem.key) || []).some((card) => !card.classList.contains('is-hidden'));
+        if (hasVisible) {
+          visibleTopicCount += 1;
+        }
+      });
+
+      const allTopicsSelected = selectedTopic === '__all__';
+      const hasLookupQuery = lookupState.query.length > 0;
+
+      if (allTopicsSelected && !hasLookupQuery) {
+        filterCount.textContent = `Showing all ${visibleHandbookCount} handbooks`;
+      } else if (allTopicsSelected && hasLookupQuery) {
+        filterCount.textContent = `Showing ${visibleHandbookCount} matches across ${visibleTopicCount} topic${visibleTopicCount === 1 ? '' : 's'}`;
+      } else {
+        const inTopicLabel = selectedTopic === '__all__' ? 'all topics' : selectedTopic;
+        filterCount.textContent = `Showing ${visibleHandbookCount} in ${inTopicLabel}`;
+      }
+
+      clearFiltersButton.disabled = allTopicsSelected;
+      if (lookupClearButton) {
+        lookupClearButton.disabled = !hasLookupQuery;
+      }
+
+      if (lookupStatus) {
+        if (!allTopicsSelected) {
+          lookupStatus.textContent = `Showing ${visibleHandbookCount} in ${selectedTopic}`;
+        } else if (hasLookupQuery) {
+          lookupStatus.textContent = `Showing ${visibleHandbookCount} matching "${lookupState.query}"`;
+        } else {
+          lookupStatus.textContent = 'Showing all handbooks';
+        }
+      }
+
+      if (lookupResult) {
+        lookupResult.textContent = String(visibleHandbookCount);
+      }
+
+      if (lookupTopics) {
+        lookupTopics.textContent = String(visibleTopicCount);
+      }
+
+      syncTopicButtons();
+    };
+
+    const setLookupQuery = (nextQuery) => {
+      lookupState.query = normalize(nextQuery);
+      updateUI();
+    };
+
+    const wireTopicButtonEvents = () => {
+      topicButtons.forEach((button, topicKey) => {
+        button.addEventListener('click', () => {
+          setSelectedTopic(topicKey);
+          updateUI();
+        });
+      });
+    };
+
+    if (topicMoreButton) {
+      topicMoreButton.addEventListener('click', () => {
+        isTopicListExpanded = !isTopicListExpanded;
+        renderTopicButtons();
+        wireTopicButtonEvents();
+        syncTopicButtons();
+      });
+    }
+
+    clearFiltersButton.addEventListener('click', () => {
+      setSelectedTopic('__all__');
+      updateUI();
+    });
+
+    if (lookupInput) {
+      lookupInput.addEventListener('input', () => {
+        setLookupQuery(lookupInput.value);
+      });
+    }
+
+    if (lookupClearButton) {
+      lookupClearButton.addEventListener('click', () => {
+        if (!lookupInput) {
+          return;
+        }
+        lookupInput.value = '';
+        lookupInput.focus();
+        setLookupQuery('');
+      });
+    }
+
+    document.addEventListener('keydown', (event) => {
+      const target = event.target;
+      const isTypingTarget = target instanceof HTMLElement
+        && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+      if (!isTypingTarget && event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        if (!lookupInput) {
+          return;
+        }
+        event.preventDefault();
+        lookupInput.focus();
+        lookupInput.select();
+      }
+
+      if (lookupInput && event.key === 'Escape' && document.activeElement === lookupInput && lookupInput.value) {
+        event.preventDefault();
+        lookupInput.value = '';
+        setLookupQuery('');
+      }
+    });
+
+    if (lookupShortcut) {
+      const isMac = /Mac|iPhone|iPad|iPod/i.test(window.navigator.platform);
+      lookupShortcut.textContent = isMac ? 'Shortcut: Cmd+/' : 'Shortcut: /';
+    }
+
+    if (randomButton) {
+      randomButton.addEventListener('click', () => {
+        const visibleCards = cards.filter((card) => !card.classList.contains('is-hidden'));
+        if (!visibleCards.length) {
+          return;
+        }
+
+        const selectedCard = visibleCards[Math.floor(Math.random() * visibleCards.length)];
+        const link = cardLinkByCard.get(selectedCard);
+        if (link) {
+          link.click();
+        }
+      });
+    }
+
+    renderTopicButtons();
+    wireTopicButtonEvents();
+    syncTopicButtons();
+
+    cards.forEach((card) => {
+      const topicTag = card.querySelector('.card-tag');
+      const topic = (topicTag ? topicTag.textContent : '').trim() || 'Other';
+      card.dataset.topic = topic;
     });
 
     updateUI();
