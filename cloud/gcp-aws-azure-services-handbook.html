@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="handbook-version" content="v1">
+<meta name="last-updated" content="2026-08-27">
+<title>GCP ↔ AWS ↔ Azure — Cloud Service Equivalents Handbook</title>
+<meta name="description" content="A field reference mapping GCP services (compute, networking, data, messaging, security, and Vertex AI) to their AWS and Azure equivalents, with when-to-use guidance and tabular comparisons.">
+<meta name="keywords" content="handbook, GCP, AWS, Azure, cloud, equivalents, multi-cloud, Vertex AI, Bedrock, Azure AI Foundry, comparison">
+<link rel="canonical" href="https://vivek-doshi.github.io/handbooks/cloud/gcp-aws-azure-services-handbook.html">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta property="og:type" content="article">
+<meta property="og:title" content="GCP ↔ AWS ↔ Azure — Cloud Service Equivalents Handbook">
+<meta property="og:description" content="GCP service catalogue mapped to AWS and Azure equivalents, with when-to-use guidance, covering core cloud services and the Vertex AI platform.">
+<meta property="og:url" content="https://vivek-doshi.github.io/handbooks/cloud/gcp-aws-azure-services-handbook.html">
+<meta property="og:image" content="https://vivek-doshi.github.io/handbooks/favicon.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GCP ↔ AWS ↔ Azure — Cloud Service Equivalents Handbook">
+<meta name="twitter:description" content="GCP service catalogue mapped to AWS and Azure equivalents, with when-to-use guidance, covering core cloud services and the Vertex AI platform.">
+<meta name="twitter:image" content="https://vivek-doshi.github.io/handbooks/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─── THEME TOKENS ─── */
+:root[data-theme="dark"] {
+  --bg:          #070810;
+  --bg2:         #0c0e1a;
+  --bg3:         #111424;
+  --bg4:         #181c2e;
+  --bg5:         #1e2338;
+  --border:      rgba(120,140,255,0.08);
+  --border2:     rgba(120,140,255,0.16);
+  --text:        #dde3f8;
+  --text2:       #8892b8;
+  --muted:       #434d72;
+  --accent:      #7c6dfa;
+  --accent2:     #5b4de8;
+  --accent-glow: rgba(124,109,250,0.15);
+  --accent-dim:  rgba(124,109,250,0.08);
+  --green:       #2de28a;
+  --green-dim:   rgba(45,226,138,0.1);
+  --red:         #ff5470;
+  --red-dim:     rgba(255,84,112,0.1);
+  --amber:       #f5a623;
+  --amber-dim:   rgba(245,166,35,0.1);
+  --cyan:        #22d4f0;
+  --cyan-dim:    rgba(34,212,240,0.1);
+  --pink:        #f472b6;
+  --pink-dim:    rgba(244,114,182,0.1);
+  --gcp-blue:    #4285f4;
+  --aws-orange:  #ff9900;
+  --azure-blue:  #0078d4;
+  --code-bg:     #050710;
+  --sidebar-bg:  #090b15;
+  --topbar-bg:   rgba(7,8,16,0.97);
+  --card-bg:     #111424;
+  --shadow:      0 4px 32px rgba(0,0,0,0.5);
+}
+:root[data-theme="light"] {
+  --bg:          #f4f6ff;
+  --bg2:         #eceffe;
+  --bg3:         #ffffff;
+  --bg4:         #f0f2ff;
+  --bg5:         #e8ebfc;
+  --border:      rgba(90,80,200,0.1);
+  --border2:     rgba(90,80,200,0.2);
+  --text:        #1a1c35;
+  --text2:       #4a4e72;
+  --muted:       #9096bb;
+  --accent:      #5b4de8;
+  --accent2:     #4033cc;
+  --accent-glow: rgba(91,77,232,0.12);
+  --accent-dim:  rgba(91,77,232,0.07);
+  --green:       #0fa854;
+  --green-dim:   rgba(15,168,84,0.1);
+  --red:         #e02444;
+  --red-dim:     rgba(224,36,68,0.08);
+  --amber:       #c47d00;
+  --amber-dim:   rgba(196,125,0,0.1);
+  --cyan:        #0898b0;
+  --cyan-dim:    rgba(8,152,176,0.1);
+  --pink:        #be185d;
+  --pink-dim:    rgba(190,24,93,0.08);
+  --gcp-blue:    #1a56c4;
+  --aws-orange:  #b36b00;
+  --azure-blue:  #0063b1;
+  --code-bg:     #1a1c35;
+  --sidebar-bg:  #eceffe;
+  --topbar-bg:   rgba(244,246,255,0.97);
+  --card-bg:     #ffffff;
+  --shadow:      0 4px 24px rgba(60,60,120,0.1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.75;
+  min-height: 100vh;
+  transition: background 0.25s, color 0.25s;
+}
+
+/* ─── TOPBAR ─── */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 300;
+  height: 52px;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--border2);
+  backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+}
+.topbar-left { display: flex; align-items: center; gap: 14px; }
+.topbar-badge {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 2.5px; color: var(--bg);
+  background: var(--accent); padding: 3px 11px;
+  text-transform: uppercase; border-radius: 3px;
+}
+.topbar-title {
+  font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700;
+  letter-spacing: 0.5px; color: var(--text);
+}
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topbar-meta {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  color: var(--muted); letter-spacing: 1px;
+}
+.theme-toggle {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--bg4); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 4px 12px; cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  color: var(--text2); transition: all 0.2s; user-select: none;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.theme-icon { font-size: 13px; }
+
+/* ─── LAYOUT ─── */
+.layout { display: flex; margin-top: 52px; min-height: calc(100vh - 52px); }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: 258px; flex-shrink: 0;
+  position: sticky; top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border2);
+  padding-bottom: 48px;
+  scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+  transition: background 0.25s;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+.sb-brand {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-dim);
+}
+.sb-num { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 2px; margin-bottom: 3px; }
+.sb-sub { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+.nav-section {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+  padding: 16px 20px 5px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 20px; text-decoration: none;
+  font-size: 12.5px; color: var(--text2);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-link .nl-num {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+  color: var(--muted); width: 20px; flex-shrink: 0; text-align: right;
+}
+.nav-link:hover { color: var(--text); background: var(--accent-dim); border-left-color: var(--border2); }
+.nav-link.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-glow); font-weight: 500; }
+.nav-link.active .nl-num { color: var(--accent); }
+
+/* ─── MAIN ─── */
+.main { flex: 1; min-width: 0; padding: 52px 64px 120px; max-width: 1080px; }
+
+/* ─── HERO ─── */
+.hero {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg3);
+  padding: 56px 60px;
+  margin-bottom: 72px;
+  box-shadow: var(--shadow);
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 5% 0%,  var(--accent-glow) 0%, transparent 55%),
+    radial-gradient(ellipse at 90% 90%, var(--cyan-dim) 0%, transparent 50%);
+  pointer-events: none; border-radius: inherit;
+}
+.hero-eyebrow {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 4px;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.hero-eyebrow::before { content: '//'; opacity: 0.45; }
+.hero h1 {
+  font-family: 'Sora', sans-serif; font-size: 52px; font-weight: 800;
+  line-height: 1.05; letter-spacing: -1.5px;
+  color: var(--text); margin-bottom: 10px;
+}
+.hero h1 span { color: var(--accent); }
+.hero-desc { color: var(--text2); font-size: 15px; max-width: 640px; line-height: 1.8; margin-bottom: 28px; }
+.hero-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 500;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 4px 13px; border: 1px solid; border-radius: 20px;
+}
+.chip-purple { color: var(--accent);  border-color: rgba(124,109,250,0.45); background: var(--accent-dim); }
+.chip-green  { color: var(--green);   border-color: rgba(45,226,138,0.35);  background: var(--green-dim); }
+.chip-red    { color: var(--red);     border-color: rgba(255,84,112,0.35);  background: var(--red-dim); }
+.chip-amber  { color: var(--amber);   border-color: rgba(245,166,35,0.35);  background: var(--amber-dim); }
+.chip-cyan   { color: var(--cyan);    border-color: rgba(34,212,240,0.35);  background: var(--cyan-dim); }
+.chip-pink   { color: var(--pink);    border-color: rgba(244,114,182,0.35); background: var(--pink-dim); }
+
+/* ─── SECTIONS ─── */
+section { margin-bottom: 76px; scroll-margin-top: 72px; }
+.section-header {
+  display: flex; align-items: flex-start; gap: 14px;
+  margin-bottom: 24px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.section-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 60px; height: 1px; background: var(--accent);
+}
+.section-num {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  color: var(--accent); margin-top: 4px; flex-shrink: 0; width: 36px;
+}
+.section-title-block h2 {
+  font-family: 'Sora', sans-serif; font-size: 25px; font-weight: 800;
+  letter-spacing: -0.5px; color: var(--text); line-height: 1.1;
+}
+.section-sub {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  color: var(--muted); letter-spacing: 1.5px; margin-top: 5px;
+}
+
+/* ─── PROSE ─── */
+.prose { color: var(--text2); font-size: 14px; line-height: 1.8; margin-bottom: 16px; }
+.prose strong { color: var(--text); font-weight: 600; }
+
+h3 {
+  font-family: 'Sora', sans-serif; font-size: 16.5px; font-weight: 700;
+  color: var(--text); margin: 28px 0 12px;
+  display: flex; align-items: center; gap: 9px;
+}
+h3::before { content: '//'; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); }
+
+/* ─── SERVICE CARD (per-service block) ─── */
+.svc {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 22px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.svc:hover { border-color: var(--border2); }
+.svc-head {
+  padding: 16px 22px;
+  background: var(--accent-dim);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+.svc-name {
+  font-family: 'Sora', sans-serif; font-size: 15.5px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 9px;
+}
+.svc-gcp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gcp-blue); flex-shrink: 0; box-shadow: 0 0 6px var(--gcp-blue); }
+.svc-tag {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase; padding: 2px 9px; border-radius: 10px;
+  color: var(--accent); background: var(--bg3); border: 1px solid rgba(124,109,250,0.3);
+}
+.svc-body { padding: 18px 22px 20px; }
+.svc-oneline { color: var(--text2); font-size: 13.5px; margin-bottom: 14px; line-height: 1.7; }
+.svc-oneline strong { color: var(--text); }
+
+/* ─── EQUIV GRID (3-way compare inside card) ─── */
+.equiv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.equiv-cell {
+  border-radius: 6px; padding: 12px 14px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+}
+.equiv-provider {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.equiv-provider .pdot { width: 7px; height: 7px; border-radius: 50%; }
+.p-gcp   { color: var(--gcp-blue); }
+.p-gcp .pdot   { background: var(--gcp-blue); }
+.p-aws   { color: var(--aws-orange); }
+.p-aws .pdot   { background: var(--aws-orange); }
+.p-azure { color: var(--azure-blue); }
+.p-azure .pdot { background: var(--azure-blue); }
+.equiv-name { font-family: 'Sora', sans-serif; font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.equiv-note { font-size: 12px; color: var(--text2); line-height: 1.55; }
+
+.svc-when {
+  display: flex; gap: 10px; padding: 11px 14px; margin-top: 10px;
+  border-left: 3px solid var(--green); background: var(--green-dim);
+  border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--text2); line-height: 1.6;
+}
+.svc-when strong { color: var(--text); }
+.svc-diff {
+  display: flex; gap: 10px; padding: 11px 14px; margin-top: 10px;
+  border-left: 3px solid var(--amber); background: var(--amber-dim);
+  border-radius: 0 6px 6px 0; font-size: 12.5px; color: var(--text2); line-height: 1.6;
+}
+.svc-diff strong { color: var(--text); }
+
+/* ─── CALLOUTS ─── */
+.callout {
+  display: flex; gap: 12px; padding: 14px 18px; margin: 16px 0;
+  border-left: 3px solid; border-radius: 0 6px 6px 0; font-size: 13.5px;
+}
+.callout-icon { flex-shrink: 0; font-size: 14px; margin-top: 2px; }
+.callout-body { color: var(--text2); line-height: 1.65; }
+.callout-body strong { color: var(--text); }
+.callout.tip    { background: var(--green-dim);  border-color: var(--green); }
+.callout.note   { background: var(--accent-dim); border-color: var(--accent); }
+.callout.warn   { background: var(--amber-dim);  border-color: var(--amber); }
+.callout.danger { background: var(--red-dim);    border-color: var(--red); }
+
+/* ─── TABLES ─── */
+.table-wrap { border: 1px solid var(--border); border-radius: 6px; margin: 16px 0; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; padding: 10px 16px;
+  background: var(--accent-dim);
+  color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;
+  border-bottom: 1px solid var(--border2);
+  white-space: nowrap;
+}
+td {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text2); vertical-align: top; line-height: 1.6;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--accent-dim); }
+td code { font-size: 11px; }
+.ok      { color: var(--green);  font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+.no      { color: var(--red);    font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+.partial { color: var(--amber);  font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+code {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  background: var(--accent-dim); color: var(--accent);
+  padding: 1px 7px; border: 1px solid rgba(124,109,250,0.25); border-radius: 3px;
+}
+
+/* ─── LEGEND ─── */
+.legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 18px 0 8px; }
+.legend-item { display: flex; align-items: center; gap: 7px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text2); }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+/* ─── BACK BUTTON (floating) ─── */
+.back-btn {
+  position: fixed; bottom: 28px; right: 28px; z-index: 400;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--accent); color: white;
+  border: none; border-radius: 28px; padding: 10px 20px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  cursor: pointer; text-decoration: none;
+  box-shadow: 0 4px 20px rgba(124,109,250,0.45);
+  transition: all 0.2s;
+}
+.back-btn:hover {
+  background: var(--accent2);
+  box-shadow: 0 6px 28px rgba(124,109,250,0.6);
+  transform: translateY(-1px);
+}
+.back-btn svg { width: 14px; height: 14px; stroke: white; stroke-width: 2.5; fill: none; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { padding: 32px 20px 80px; }
+  .hero { padding: 36px 26px; }
+  .hero h1 { font-size: 36px; }
+  .equiv-grid { grid-template-columns: 1fr; }
+  .back-btn { bottom: 16px; right: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-badge">Field Reference</div>
+    <div class="topbar-title">GCP ↔ AWS ↔ Azure</div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-meta">DOC-CLOUD-EQUIV-2026</span>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
+      <span class="theme-icon" id="themeIcon">☀️</span>
+      <span id="themeLabel">Light</span>
+    </button>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-num">// CLOUD-EQUIV-001</div>
+    <div class="sb-sub">GCP · AWS · Azure Mapping</div>
+  </div>
+
+  <div class="nav-section">Foundations</div>
+  <a class="nav-link active" href="#overview"><span class="nl-num">01</span>How to Read This</a>
+  <a class="nav-link" href="#compute"><span class="nl-num">02</span>Compute & Containers</a>
+  <a class="nav-link" href="#networking"><span class="nl-num">03</span>Networking & Delivery</a>
+
+  <div class="nav-section">Integration</div>
+  <a class="nav-link" href="#api-gateway"><span class="nl-num">04</span>API Gateway & Zero Trust</a>
+  <a class="nav-link" href="#messaging"><span class="nl-num">05</span>Messaging & Eventing</a>
+  <a class="nav-link" href="#orchestration"><span class="nl-num">06</span>Scheduling & Orchestration</a>
+  <a class="nav-link" href="#data-processing"><span class="nl-num">07</span>Streaming & IoT</a>
+
+  <div class="nav-section">Data</div>
+  <a class="nav-link" href="#databases"><span class="nl-num">08</span>Databases & Caching</a>
+  <a class="nav-link" href="#storage"><span class="nl-num">09</span>Object Storage Access</a>
+
+  <div class="nav-section">Security & Ops</div>
+  <a class="nav-link" href="#security"><span class="nl-num">10</span>Encryption & DLP</a>
+  <a class="nav-link" href="#observability"><span class="nl-num">11</span>Monitoring & SLIs</a>
+  <a class="nav-link" href="#edge"><span class="nl-num">12</span>Edge & On-Prem</a>
+
+  <div class="nav-section">AI Platform</div>
+  <a class="nav-link" href="#ai-platform"><span class="nl-num">13</span>Vertex AI Services</a>
+
+  <div class="nav-section">Reference</div>
+  <a class="nav-link" href="#master-table"><span class="nl-num">14</span>Master Quick-Reference</a>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">Multi-Cloud Field Handbook · August 2026</div>
+    <h1>GCP <span>↔</span> AWS <span>↔</span> Azure<br>Service Equivalents</h1>
+    <p class="hero-desc">A working reference for engineers who think in GCP but need to speak AWS and Azure fluently — core platform services plus the full Vertex AI stack, mapped side by side with when-to-use guidance and the differences that actually matter.</p>
+    <div class="hero-chips">
+      <span class="chip chip-purple">Compute</span>
+      <span class="chip chip-cyan">Networking</span>
+      <span class="chip chip-green">Data & Messaging</span>
+      <span class="chip chip-amber">Security</span>
+      <span class="chip chip-pink">Vertex AI</span>
+      <span class="chip chip-red">Multi-Cloud Migration</span>
+    </div>
+  </div>
+
+  <!-- 01 OVERVIEW -->
+  <section id="overview">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title-block">
+        <h2>How to Read This Handbook</h2>
+        <div class="section-sub">// EVERY SERVICE, THREE CLOUDS, ONE VERDICT</div>
+      </div>
+    </div>
+
+    <p class="prose">Each entry below starts from a GCP service — the anchor most engineers using this handbook already think in — and maps it to the closest AWS and Azure equivalent. <strong>"Closest" rarely means identical.</strong> Where the products diverge meaningfully in architecture, consistency model, or operating cost, that's called out explicitly in a <strong>Key Difference</strong> block rather than papered over. Where GCP's own docs already recommend one option over another (e.g. Cloud Run over GKE by default), that guidance is preserved and carried into the AWS/Azure columns.</p>
+
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--gcp-blue)"></span>Google Cloud (anchor)</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--aws-orange)"></span>Amazon Web Services</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--azure-blue)"></span>Microsoft Azure</div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Scope:</strong> This is an architecture decision aid, not a pricing calculator or a migration runbook. Service names, GA status, and product boundaries shift constantly across all three vendors — verify current SKUs and regional availability before committing to a design.</div>
+    </div>
+  </section>
+
+  <!-- 02 COMPUTE -->
+  <section id="compute">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title-block">
+        <h2>Compute & Containers</h2>
+        <div class="section-sub">// GKE VS CLOUD RUN AND THEIR CROSS-CLOUD PEERS</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>GKE vs Cloud Run</div>
+        <span class="svc-tag">Compute · Default = Serverless</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline"><strong>Cloud Run is the default choice.</strong> Reach for GKE only when you need stateful workloads, complex networking (custom CNI, service mesh, multi-tenant network policy), GPU/TPU scheduling with fine-grained bin-packing, or you're already running a large fleet where the Kubernetes control plane pays for itself.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Cloud Run / GKE</div>
+            <div class="equiv-note">Cloud Run: fully managed, scale-to-zero containers. GKE: managed Kubernetes control plane, Autopilot or Standard node pools.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">App Runner / Fargate ↔ EKS</div>
+            <div class="equiv-note">App Runner mirrors Cloud Run's simplicity but with a narrower feature set. Fargate-on-ECS is the more common serverless-container default in AWS shops. EKS mirrors GKE.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Container Apps ↔ AKS</div>
+            <div class="equiv-note">Azure Container Apps is the closest Cloud Run analogue (built on KEDA + Dapr under the hood, scale-to-zero). AKS mirrors GKE.</div>
+          </div>
+        </div>
+        <div class="svc-when"><span>✅</span><div><strong>Default rule of thumb:</strong> stateless HTTP services, event-driven jobs, and APIs → Cloud Run / App Runner / Container Apps. Stateful workloads, GPU scheduling, service mesh, or custom networking → GKE / EKS / AKS.</div></div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> AWS has no single 1:1 Cloud Run product — App Runner is closest in developer experience but Fargate is more widely adopted in production AWS estates and has deeper ECS/EKS interoperability.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 NETWORKING -->
+  <section id="networking">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title-block">
+        <h2>Networking & Content Delivery</h2>
+        <div class="section-sub">// GLOBAL EDGE, ANYCAST, AND THE BACKBONE</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Global Cloud Load Balancer (GCLB)</div>
+        <span class="svc-tag">Networking · Anycast</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">A single <strong>anycast IP</strong> announced from every Google edge PoP simultaneously. Traffic enters the nearest PoP and travels the rest of the way to your backend over <strong>Google's private fiber backbone</strong>, not the public internet — this is GCLB's real advantage over regional load balancers.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Global External LB</div>
+            <div class="equiv-note">Single anycast IP, L7 routing, integrates with Cloud Armor and Cloud CDN at the edge.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">Global Accelerator + CloudFront/ALB</div>
+            <div class="equiv-note">Global Accelerator gives anycast IPs and backbone routing; CloudFront is the CDN/edge layer. Two products stitched together where GCP ships one.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Front Door</div>
+            <div class="equiv-note">Anycast entry, global L7 routing, WAF, and CDN in one product — closest single-SKU match to GCLB.</div>
+          </div>
+        </div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> AWS splits "get onto our backbone fast" (Global Accelerator) from "cache and serve at the edge" (CloudFront) into two billed services; GCP and Azure each bundle both concerns into one product.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 API GATEWAY -->
+  <section id="api-gateway">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <div class="section-title-block">
+        <h2>API Gateway & Zero Trust Access</h2>
+        <div class="section-sub">// GOVERNANCE AND IDENTITY BEFORE THE COMPUTE LAYER</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Apigee</div>
+        <span class="svc-tag">API Governance</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Full-lifecycle API management: rate limiting, quota enforcement, monetization, and zero-trust policy checks applied <strong>before</strong> a request ever reaches the compute layer.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Apigee</div>
+            <div class="equiv-note">Enterprise-grade API management platform; heavier than Cloud Endpoints, meant for external/partner-facing APIs at scale.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">API Gateway (+ Verified Permissions)</div>
+            <div class="equiv-note">Native API Gateway covers routing/throttling; Amazon Verified Permissions adds fine-grained authorization policy for zero-trust patterns.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">API Management (APIM)</div>
+            <div class="equiv-note">Closest feature-for-feature match to Apigee — policy XML pipelines, developer portal, monetization, and quota tiers.</div>
+          </div>
+        </div>
+        <div class="svc-when"><span>✅</span><div><strong>When to use:</strong> external/partner APIs needing monetization, versioning, and a developer portal → Apigee/APIM. Simple internal service routing → native API Gateway/Cloud Endpoints is enough and far cheaper.</div></div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud IAP</div>
+        <span class="svc-tag">Zero Trust · Identity</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Verifies user identity <strong>at the edge</strong> and passes a signed OAuth assertion downstream — lets you expose internal apps without a VPN, enforcing zero trust before any request hits your VMs or containers.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Identity-Aware Proxy</div>
+            <div class="equiv-note">Context-aware access, integrates with BeyondCorp Enterprise for device posture checks.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">Verified Access</div>
+            <div class="equiv-note">VPN-less zero-trust access to internal apps, evaluates identity + device trust signals per request.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Entra Private Access / App Proxy</div>
+            <div class="equiv-note">Part of the Entra Suite's Security Service Edge; publishes internal apps through identity-verified tunnels.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 MESSAGING -->
+  <section id="messaging">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <div class="section-title-block">
+        <h2>Messaging & Eventing</h2>
+        <div class="section-sub">// BROADCAST, POINT-TO-POINT, AND INFRA NOTIFICATIONS</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud Pub/Sub</div>
+        <span class="svc-tag">One-to-Many Broadcast</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Fully managed pub/sub messaging for <strong>one-to-many broadcast</strong> patterns — a single publish fans out to every subscribed consumer, each with its own delivery cursor.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Pub/Sub</div>
+            <div class="equiv-note">Single service does both topic fan-out and ordered/keyed delivery.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">SNS + SQS (custom fan-out)</div>
+            <div class="equiv-note">No single equivalent — you wire SNS (topic/broadcast) to fan out into per-consumer SQS queues yourself. EventBridge is the closer analogue for routing-rule-based broadcast.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Service Bus Topics / Event Grid</div>
+            <div class="equiv-note">Service Bus Topics give native topic/subscription fan-out closest to Pub/Sub; Event Grid is the routing-rule equivalent to EventBridge.</div>
+          </div>
+        </div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> Pub/Sub bundles broadcast + queueing in one product; AWS makes you compose SNS and SQS explicitly, which is more moving parts but more granular control per consumer.</div></div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Eventarc</div>
+        <span class="svc-tag">Infra Notifications</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Routes <strong>Google service notifications</strong> (infra-level events like "upload completed" in GCS, or Cloud Audit Log entries) to downstream handlers without you polling anything.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Eventarc</div>
+            <div class="equiv-note">Standardized CloudEvents format across GCP service sources.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">EventBridge (default bus)</div>
+            <div class="equiv-note">Native AWS service events (S3, DynamoDB Streams, etc.) route through the default event bus with rule-based matching.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Event Grid</div>
+            <div class="equiv-note">System topics emit built-in Azure resource events (Blob created, etc.) — direct structural match to Eventarc.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud Tasks</div>
+        <span class="svc-tag">Reliable One-to-One Delivery</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Asynchronous <strong>one-to-one</strong> task execution with guaranteed at-least-once delivery, automatic retry with backoff, and rate-limited dispatch — the pattern to reach for when a downstream API is flaky or intentionally throttled.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Cloud Tasks</div>
+            <div class="equiv-note">Push-based queue; you configure the HTTP target and dispatch rate directly.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">SQS + Lambda (or SQS alone)</div>
+            <div class="equiv-note">Pull-based by default — a consumer (often Lambda) polls the queue. Achieves the same at-least-once guarantee with a different delivery model.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Queue Storage / Service Bus Queues</div>
+            <div class="equiv-note">Queue Storage for simple, cheap at-least-once queues; Service Bus Queues when you need sessions, dead-lettering, and duplicate detection.</div>
+          </div>
+        </div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> Cloud Tasks is push-based (it calls your endpoint on schedule); the AWS/Azure default pattern is pull-based (your worker polls the queue). Functionally equivalent, architecturally inverted.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 ORCHESTRATION -->
+  <section id="orchestration">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <div class="section-title-block">
+        <h2>Scheduling & Orchestration</h2>
+        <div class="section-sub">// CRON JOBS AND STATEFUL WORKFLOW ENGINES</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud Scheduler</div>
+        <span class="svc-tag">Cron</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Fully managed <strong>cron job</strong> service — fires HTTP, Pub/Sub, or App Engine targets on a schedule with retry policy built in.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Cloud Scheduler</div>
+            <div class="equiv-note">Standard unix-cron syntax, minimum 1-minute granularity.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">EventBridge Scheduler</div>
+            <div class="equiv-note">Purpose-built scheduler (replaced CloudWatch Events cron rules as the recommended path); supports one-off and recurring schedules at scale.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Logic Apps (Recurrence trigger) / Functions Timer Trigger</div>
+            <div class="equiv-note">No single standalone "Scheduler" SKU — cron behavior is a trigger type on Logic Apps or Functions rather than its own product.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud Workflows</div>
+        <span class="svc-tag">Stateful Orchestration · Saga</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Executes a <strong>sequence of services together</strong> as a stateful, step-by-step orchestration — supports long-running human-in-the-loop callbacks, retries, and saga-pattern compensation logic.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Workflows</div>
+            <div class="equiv-note">YAML/JSON-defined steps, native connectors to GCP APIs, callback URLs for human-in-the-loop pauses.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">Step Functions</div>
+            <div class="equiv-note">The direct match — Amazon States Language, native saga/compensation patterns, `waitForTaskToken` for human-in-the-loop.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Logic Apps</div>
+            <div class="equiv-note">Low-code visual designer, huge connector catalogue; Durable Functions is the code-first alternative for complex saga logic.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 DATA PROCESSING / IOT -->
+  <section id="data-processing">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <div class="section-title-block">
+        <h2>Streaming, ETL & IoT</h2>
+        <div class="section-sub">// HIGH-THROUGHPUT AGGREGATION AND DEVICE INGESTION</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud Dataflow</div>
+        <span class="svc-tag">Stream & Batch ETL</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Unified batch and streaming data processing built on Apache Beam. Typically sits <strong>downstream of Pub/Sub</strong>, which acts as a shock absorber so bursty producers don't overwhelm the aggregation pipeline.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Dataflow</div>
+            <div class="equiv-note">Apache Beam runner, autoscaling workers, unified batch + streaming API.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">Managed Service for Apache Flink</div>
+            <div class="equiv-note">Formerly Kinesis Data Analytics; the direct streaming-ETL analogue, typically paired with Kinesis Data Streams as the shock absorber.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Stream Analytics / Azure Data Factory</div>
+            <div class="equiv-note">Stream Analytics for real-time SQL-like stream queries; Data Factory for batch ETL orchestration.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>MQTT Broker (IoT)</div>
+        <span class="svc-tag">Device Ingestion</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">A managed MQTT broker collects and routes telemetry from fleets of IoT devices into the cloud data plane.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Partner-managed MQTT (e.g. HiveMQ on GCP Marketplace)</div>
+            <div class="equiv-note">Google retired Cloud IoT Core; the recommended path today is a Marketplace MQTT broker feeding Pub/Sub.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">AWS IoT Core</div>
+            <div class="equiv-note">Native managed MQTT broker with device shadows, rules engine, and fleet provisioning still fully supported.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Azure IoT Hub</div>
+            <div class="equiv-note">Native managed MQTT/AMQP broker, device twins, and IoT Edge runtime for on-device compute.</div>
+          </div>
+        </div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> AWS and Azure both still ship a first-party managed IoT device broker; GCP's native Cloud IoT Core was deprecated, so the GCP path routes through a Marketplace partner broker into Pub/Sub instead.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 DATABASES -->
+  <section id="databases">
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <div class="section-title-block">
+        <h2>Databases & Caching</h2>
+        <div class="section-sub">// REGIONAL SQL, GLOBAL SPANNER, WIDE-COLUMN, AND WAREHOUSES</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Memorystore</div>
+        <span class="svc-tag">Redis Cache</span>
+      </div>
+      <div class="svc-body">
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Memorystore (Redis / Memcached)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">ElastiCache (Redis / Valkey / Memcached)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure Cache for Redis</div></div>
+        </div>
+        <p class="svc-oneline">Near-identical positioning across all three — in-memory cache/session store in front of a primary database.</p>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud SQL</div>
+        <span class="svc-tag">Regional Relational DB</span>
+      </div>
+      <div class="svc-body">
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Cloud SQL (MySQL/Postgres/SQL Server)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon RDS</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure SQL Database / DB for PostgreSQL</div></div>
+        </div>
+        <p class="svc-oneline">Standard managed regional relational database — single-region durability, read replicas, automated backups. Use this before reaching for a globally distributed option.</p>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud Spanner</div>
+        <span class="svc-tag">Global · TrueTime · Multi-Region</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Globally distributed, strongly consistent relational database using <strong>TrueTime</strong> for external consistency across regions. Reach for it only when you genuinely need <strong>multi-regional, globally consistent</strong> transactional writes.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div>
+            <div class="equiv-name">Cloud Spanner</div>
+            <div class="equiv-note">SQL interface with horizontal scale and global strong consistency — a genuinely distinct architecture.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">Aurora Global Database / DynamoDB Global Tables</div>
+            <div class="equiv-note">No true equivalent. Aurora Global Database gives multi-region reads with async replication (not strongly consistent globally); DynamoDB Global Tables gives multi-region NoSQL with eventual consistency.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Cosmos DB (Strong consistency mode)</div>
+            <div class="equiv-note">Closest match — Cosmos DB can run in "Strong" consistency mode across regions, at a latency cost, approximating Spanner's guarantee.</div>
+          </div>
+        </div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> Spanner's TrueTime-based external consistency has no exact analogue on AWS or Azure — both require a deliberate trade-off (looser consistency for lower latency, or Cosmos DB's Strong mode for a rough match at higher write latency).</div></div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Bigtable</div>
+        <span class="svc-tag">Wide-Column · Sub-ms Latency</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Wide-column NoSQL store built for <strong>sub-millisecond latency</strong> at massive scale — the default choice for IoT telemetry and time-series streams needing hot-path reads/writes.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Bigtable</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">DynamoDB / Keyspaces (Cassandra-compatible)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Cosmos DB (Cassandra / Table API)</div></div>
+        </div>
+        <div class="svc-when"><span>✅</span><div><strong>When to use:</strong> IoT telemetry, time-series, ad-tech, or any hot-storage workload with predictable key access patterns and very high write throughput.</div></div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>BigQuery</div>
+        <span class="svc-tag">Cold Storage · Analytical Warehouse</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Serverless data warehouse for large-scale historical/analytical queries — the cold-storage counterpart to Bigtable's hot path.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">BigQuery</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon Redshift</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Synapse Analytics (Dedicated/Serverless SQL Pool)</div></div>
+        </div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> BigQuery is serverless by default (pay-per-query or flat-rate slots, no cluster to size); Redshift historically required provisioned clusters, though Redshift Serverless has closed most of that gap.</div></div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Change Streams</div>
+        <span class="svc-tag">Row-Level Triggers</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Row-level change capture on Cloud Spanner or Cloud SQL — used to trigger downstream tasks whenever a row is inserted, updated, or deleted, without polling.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Spanner Change Streams / Cloud SQL + Datastream CDC</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">DynamoDB Streams / RDS via DMS CDC</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Cosmos DB Change Feed</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 STORAGE -->
+  <section id="storage">
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <div class="section-title-block">
+        <h2>Object Storage Access Patterns</h2>
+        <div class="section-sub">// SIGNED URLS FOR HEAVY, DIRECT UPLOADS</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Signed URLs (GCS)</div>
+        <span class="svc-tag">Payload-Heavy Uploads</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Time-limited, credential-scoped URLs that let a client upload directly to object storage — for large video/photo payloads, this bypasses your application server entirely and avoids proxying gigabytes of traffic through compute you pay for.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">GCS Signed URLs</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">S3 Presigned URLs</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Blob Storage SAS Tokens</div></div>
+        </div>
+        <div class="svc-when"><span>✅</span><div><strong>When to use:</strong> any client-side upload of video, large images, or bulk payloads. Never proxy heavy binary payloads through your own compute layer if a signed/presigned URL can do it directly.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 SECURITY -->
+  <section id="security">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title-block">
+        <h2>Encryption, Key Management & DLP</h2>
+        <div class="section-sub">// CMEK, PII MASKING, AND PERIMETER PROTECTION</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud KMS</div>
+        <span class="svc-tag">CMEK · Key Rotation</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Manages customer-managed encryption keys (<strong>CMEK</strong>) so you — not the provider — control rotation policy, access, and destruction of the keys encrypting your data at rest.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Cloud KMS / Cloud HSM</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">AWS KMS / CloudHSM</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure Key Vault (Managed HSM)</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud DLP API</div>
+        <span class="svc-tag">PII Masking in Logs</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Sensitive Data Protection scans and masks <strong>PII in logs and datasets</strong> — detecting patterns like SSNs, credit cards, and emails before they leak into downstream systems or analyst dashboards.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Sensitive Data Protection (DLP API)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon Macie</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Microsoft Purview / Azure AI Language PII Detection</div></div>
+        </div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> Macie is scoped specifically to S3 data classification; for masking PII inline in application logs (not just data-at-rest scanning), Azure's AI Language PII detection API is the closer functional match to DLP's inline redaction use case.</div></div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>VPC Service Controls</div>
+        <span class="svc-tag">Perimeter · Exfil Protection</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">A security perimeter around managed services that protects against <strong>accidental data exfiltration</strong> — even a correctly-authenticated identity can't move data across the perimeter boundary without explicit allowance.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">VPC Service Controls</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">VPC Endpoints + SCPs (composed)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Private Link + Azure Policy</div></div>
+        </div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> GCP ships VPC-SC as one dedicated perimeter product. AWS and Azure achieve the equivalent posture by composing several primitives (VPC/Private endpoints + org-level policy guardrails) rather than a single named service.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 OBSERVABILITY -->
+  <section id="observability">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div class="section-title-block">
+        <h2>Monitoring, Logging & SLIs</h2>
+        <div class="section-sub">// P99 LATENCY AND ALERT THRESHOLDS</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Cloud Monitoring & Logging</div>
+        <span class="svc-tag">SLI/SLO · P99</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Tracks Service Level Indicators — e.g. <strong>P99 latency</strong> for an AI inference endpoint — and fires alerts when a threshold is breached (a common pattern: trigger at 120ms P99 for a latency-sensitive path).</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Cloud Monitoring + Cloud Logging</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon CloudWatch (Metrics + Logs + Alarms)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure Monitor (Metrics + Log Analytics)</div></div>
+        </div>
+        <div class="svc-when"><span>✅</span><div><strong>When to use:</strong> define SLOs against percentile latency (P95/P99), not averages — averages hide the tail latency that actually degrades user experience on AI/inference workloads.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 EDGE -->
+  <section id="edge">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div class="section-title-block">
+        <h2>Edge Computing & On-Prem</h2>
+        <div class="section-sub">// SUB-MILLISECOND LOCAL COMPUTE AND AI</div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Google Distributed Cloud (GDC) Edge</div>
+        <span class="svc-tag">On-Prem AI/Compute</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Runs cloud-managed compute and AI inference <strong>on-premises</strong> for sub-millisecond latency use cases — factory floors, retail locations, telco edge — where round-tripping to a region isn't an option.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">GDC Edge</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">AWS Outposts / Snowball Edge / Local Zones</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure Stack Edge / Azure Local</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 AI PLATFORM -->
+  <section id="ai-platform">
+    <div class="section-header">
+      <div class="section-num">13</div>
+      <div class="section-title-block">
+        <h2>Vertex AI Services</h2>
+        <div class="section-sub">// THE FULL AI PLATFORM, SERVICE BY SERVICE</div>
+      </div>
+    </div>
+
+    <p class="prose">At the platform level, Vertex AI's closest peers are <strong>Amazon Bedrock</strong> (paired with SageMaker for the ML-ops layer) and <strong>Microsoft Foundry</strong> (formerly Azure AI Studio). All three converged on the same shape in 2025–2026: a foundation-model gateway, a managed agent runtime, and a full ML-ops stack sitting on top of the parent cloud's identity and governance plane. The individual service mappings below assume that platform-level context.</p>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Vertex AI Agent Builder</div>
+        <span class="svc-tag">Grounding · Search & Maps</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Builds grounded agents with native <strong>Google Search and Maps grounding</strong> — reduces hallucination by tying model output to live, citable web and location data. Includes Agent Engine for managed runtime, sessions, and memory.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell">
+            <div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div>
+            <div class="equiv-name">Bedrock AgentCore</div>
+            <div class="equiv-note">Managed agent runtime with vault-backed identity/token management; strongest for zero-trust, multi-tenant agent deployments.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div>
+            <div class="equiv-name">Azure AI Foundry Agent Service</div>
+            <div class="equiv-note">Deepest integration with Microsoft 365 and Teams; the default pick for Microsoft-native enterprises.</div>
+          </div>
+          <div class="equiv-cell">
+            <div class="equiv-provider p-gcp"><span class="pdot"></span>GCP (this row)</div>
+            <div class="equiv-name">Vertex AI Agent Builder / Agent Engine</div>
+            <div class="equiv-note">Unique advantage: native Google Search/Maps grounding no competitor can replicate directly.</div>
+          </div>
+        </div>
+        <div class="svc-when"><span>✅</span><div><strong>When to use:</strong> pick Agent Builder when Search/Maps grounding or deep BigQuery-connected retrieval is core to the use case; pick AgentCore for AWS-native zero-trust multi-tenant needs; pick Foundry Agent Service for Microsoft 365/Teams-embedded agents.</div></div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Document AI</div>
+        <span class="svc-tag">Multimodal Doc Parsing</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Fully managed, multimodal document parsing — extracts structured fields from invoices, forms, and contracts without training a custom model per document type.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Document AI</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon Textract</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure AI Document Intelligence</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Vertex AI Vision Warehouse</div>
+        <span class="svc-tag">Multimodal Vision · Media</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Multimodal vision search and warehousing over video/image archives — built for media houses cataloguing and searching large video libraries by content, not just metadata.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Vertex AI Vision Warehouse</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Rekognition Video + Kinesis Video Streams</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure Video Indexer</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Vertex AI Vector Search</div>
+        <span class="svc-tag">Sub-ms Dense + Sparse Search</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Approximate nearest-neighbor search over dense and sparse embeddings at sub-millisecond latency — the retrieval backbone for large-scale RAG and semantic search.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Vertex AI Vector Search</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon OpenSearch Service (k-NN) / S3 Vectors</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure AI Search (vector mode)</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Vertex AI Feature Store</div>
+        <span class="svc-tag">Fully Managed Feature Store</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Managed feature store with tight integration into Spanner and training pipelines — the system of record for numeric/tabular features feeding classic ML models like XGBoost, not just LLM workloads.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Vertex AI Feature Store</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon SageMaker Feature Store</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure Machine Learning Feature Store</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Vertex Multimodal Embeddings</div>
+        <span class="svc-tag">Text / Image / Video → Vectors</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Turns text, images, and video into a shared embedding space for cross-modal retrieval and similarity search.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Vertex AI Multimodal Embeddings API</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon Titan Multimodal Embeddings (via Bedrock)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure AI Vision multimodal embeddings</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Vertex AI Model Monitoring</div>
+        <span class="svc-tag">Drift Detection</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Samples live inference traffic and triggers alerts when the input/output distribution statistically drifts away from the training baseline.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Vertex AI Model Monitoring</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">SageMaker Model Monitor</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure ML Model Monitoring</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Vertex AI Pipelines</div>
+        <span class="svc-tag">Kubeflow · DAG Orchestration</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Kubeflow-based DAG orchestrator for the clean → train → evaluate ML lifecycle — reproducible, versioned pipeline runs.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Vertex AI Pipelines</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">SageMaker Pipelines</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure ML Pipelines</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Vertex AI Model Registry</div>
+        <span class="svc-tag">Canary Deployment Store</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Central store for versioned models feeding canary and staged rollout deployments.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Vertex AI Model Registry</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">SageMaker Model Registry</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure ML Model Registry</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Vertex AI Search (Enterprise & Retail)</div>
+        <span class="svc-tag">Managed RAG · Ecommerce</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Fully managed RAG with third-party connectors for enterprise knowledge; a dedicated retail variant powers ecommerce search and product recommendations out of the box.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Vertex AI Search (enterprise + retail)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon Kendra (enterprise) + Amazon Personalize (retail)</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure AI Search + Azure Personalizer</div></div>
+        </div>
+        <div class="svc-diff"><span>⚠</span><div><strong>Key difference:</strong> GCP bundles enterprise RAG and retail search/recs under one product family; AWS and Azure split them into separate services (search vs. recommendation engine) that you compose yourself.</div></div>
+      </div>
+    </div>
+
+    <div class="svc">
+      <div class="svc-head">
+        <div class="svc-name"><span class="svc-gcp-dot"></span>Media APIs</div>
+        <span class="svc-tag">Translate · Timestamping · Synthesis</span>
+      </div>
+      <div class="svc-body">
+        <p class="svc-oneline">Off-the-shelf translation, word-level timestamping, and audio synthesis — no custom model training required for common media-localization tasks.</p>
+        <div class="equiv-grid">
+          <div class="equiv-cell"><div class="equiv-provider p-gcp"><span class="pdot"></span>GCP</div><div class="equiv-name">Media Translation / Speech-to-Text / Text-to-Speech APIs</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-aws"><span class="pdot"></span>AWS</div><div class="equiv-name">Amazon Translate / Transcribe / Polly</div></div>
+          <div class="equiv-cell"><div class="equiv-provider p-azure"><span class="pdot"></span>Azure</div><div class="equiv-name">Azure AI Speech + Azure AI Translator</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout note">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body"><strong>Platform-level naming keeps shifting.</strong> Azure AI Studio was rebranded Microsoft Foundry in late 2025; Google increasingly routes model/runtime docs through a "Gemini Enterprise Agent Platform" framing even though the product is still experienced as Vertex AI day to day. Verify current naming before writing it into architecture diagrams that will outlive this handbook.</div>
+    </div>
+  </section>
+
+  <!-- 14 MASTER TABLE -->
+  <section id="master-table">
+    <div class="section-header">
+      <div class="section-num">14</div>
+      <div class="section-title-block">
+        <h2>Master Quick-Reference</h2>
+        <div class="section-sub">// EVERY SERVICE IN THIS HANDBOOK, ONE TABLE</div>
+      </div>
+    </div>
+
+    <h3>Core Platform Services</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>GCP</th><th>AWS</th><th>Azure</th><th>Category</th></tr>
+        <tr><td>Cloud Run</td><td>App Runner / Fargate</td><td>Container Apps</td><td>Serverless compute (default)</td></tr>
+        <tr><td>GKE</td><td>EKS</td><td>AKS</td><td>Managed Kubernetes</td></tr>
+        <tr><td>Global External LB (GCLB)</td><td>Global Accelerator + CloudFront</td><td>Front Door</td><td>Anycast / global delivery</td></tr>
+        <tr><td>Apigee</td><td>API Gateway + Verified Permissions</td><td>API Management</td><td>API governance</td></tr>
+        <tr><td>Cloud IAP</td><td>Verified Access</td><td>Entra Private Access</td><td>Zero-trust access</td></tr>
+        <tr><td>Pub/Sub</td><td>SNS + SQS / EventBridge</td><td>Service Bus Topics / Event Grid</td><td>Broadcast messaging</td></tr>
+        <tr><td>Eventarc</td><td>EventBridge (default bus)</td><td>Event Grid</td><td>Infra event routing</td></tr>
+        <tr><td>Cloud Tasks</td><td>SQS (+ Lambda)</td><td>Queue Storage / Service Bus Queues</td><td>Reliable task delivery</td></tr>
+        <tr><td>Cloud Scheduler</td><td>EventBridge Scheduler</td><td>Logic Apps Recurrence / Functions Timer</td><td>Cron</td></tr>
+        <tr><td>Cloud Workflows</td><td>Step Functions</td><td>Logic Apps / Durable Functions</td><td>Stateful orchestration / saga</td></tr>
+        <tr><td>Dataflow</td><td>Managed Service for Apache Flink</td><td>Stream Analytics / Data Factory</td><td>Stream & batch ETL</td></tr>
+        <tr><td>MQTT (Marketplace, post IoT Core)</td><td>AWS IoT Core</td><td>Azure IoT Hub</td><td>Device ingestion</td></tr>
+        <tr><td>Memorystore</td><td>ElastiCache</td><td>Azure Cache for Redis</td><td>In-memory cache</td></tr>
+        <tr><td>Cloud SQL</td><td>Amazon RDS</td><td>Azure SQL Database</td><td>Regional relational DB</td></tr>
+        <tr><td>Cloud Spanner</td><td>Aurora Global DB / DynamoDB Global Tables</td><td>Cosmos DB (Strong consistency)</td><td>Global distributed DB</td></tr>
+        <tr><td>Bigtable</td><td>DynamoDB / Keyspaces</td><td>Cosmos DB (Cassandra/Table API)</td><td>Wide-column, sub-ms latency</td></tr>
+        <tr><td>BigQuery</td><td>Amazon Redshift</td><td>Synapse Analytics</td><td>Analytical warehouse</td></tr>
+        <tr><td>Change Streams</td><td>DynamoDB Streams / DMS CDC</td><td>Cosmos DB Change Feed</td><td>Row-level CDC triggers</td></tr>
+        <tr><td>GCS Signed URLs</td><td>S3 Presigned URLs</td><td>Blob SAS Tokens</td><td>Direct client uploads</td></tr>
+        <tr><td>Cloud KMS</td><td>AWS KMS / CloudHSM</td><td>Azure Key Vault</td><td>CMEK / key management</td></tr>
+        <tr><td>Sensitive Data Protection (DLP)</td><td>Amazon Macie</td><td>Purview / AI Language PII</td><td>PII detection & masking</td></tr>
+        <tr><td>VPC Service Controls</td><td>VPC Endpoints + SCPs</td><td>Private Link + Azure Policy</td><td>Exfiltration perimeter</td></tr>
+        <tr><td>Cloud Monitoring & Logging</td><td>Amazon CloudWatch</td><td>Azure Monitor</td><td>Metrics, logs, SLO alerting</td></tr>
+        <tr><td>GDC Edge</td><td>Outposts / Snowball Edge / Local Zones</td><td>Azure Stack Edge / Azure Local</td><td>On-prem edge compute</td></tr>
+      </table>
+    </div>
+
+    <h3>Vertex AI Platform</h3>
+    <div class="table-wrap">
+      <table>
+        <tr><th>GCP</th><th>AWS</th><th>Azure</th><th>Category</th></tr>
+        <tr><td>Vertex AI (platform)</td><td>Amazon Bedrock + SageMaker</td><td>Microsoft Foundry (fka Azure AI Studio)</td><td>AI platform umbrella</td></tr>
+        <tr><td>Vertex AI Agent Builder / Agent Engine</td><td>Bedrock AgentCore</td><td>Azure AI Foundry Agent Service</td><td>Managed agent runtime</td></tr>
+        <tr><td>Document AI</td><td>Amazon Textract</td><td>Azure AI Document Intelligence</td><td>Document parsing</td></tr>
+        <tr><td>Vision Warehouse</td><td>Rekognition Video + Kinesis Video</td><td>Azure Video Indexer</td><td>Multimodal video search</td></tr>
+        <tr><td>Vector Search</td><td>OpenSearch (k-NN) / S3 Vectors</td><td>Azure AI Search (vector)</td><td>Embedding retrieval</td></tr>
+        <tr><td>Feature Store</td><td>SageMaker Feature Store</td><td>Azure ML Feature Store</td><td>ML feature management</td></tr>
+        <tr><td>Multimodal Embeddings</td><td>Titan Multimodal Embeddings (Bedrock)</td><td>Azure AI Vision embeddings</td><td>Text/image/video → vectors</td></tr>
+        <tr><td>Model Monitoring</td><td>SageMaker Model Monitor</td><td>Azure ML Model Monitoring</td><td>Drift detection</td></tr>
+        <tr><td>Pipelines (Kubeflow)</td><td>SageMaker Pipelines</td><td>Azure ML Pipelines</td><td>ML DAG orchestration</td></tr>
+        <tr><td>Model Registry</td><td>SageMaker Model Registry</td><td>Azure ML Model Registry</td><td>Canary/versioned deployment</td></tr>
+        <tr><td>Vertex AI Search (Enterprise / Retail)</td><td>Amazon Kendra + Personalize</td><td>Azure AI Search + Personalizer</td><td>Managed RAG / recommendations</td></tr>
+        <tr><td>Media APIs (Translate/STT/TTS)</td><td>Translate / Transcribe / Polly</td><td>Azure AI Speech + Translator</td><td>Media localization</td></tr>
+      </table>
+    </div>
+
+    <div class="callout tip">
+      <span class="callout-icon">▸</span>
+      <div class="callout-body"><strong>Using this table in a design review:</strong> treat every row as a starting hypothesis, not a final answer — confirm consistency guarantees, regional availability, and current pricing model for the specific pair you're evaluating before it goes into an architecture decision record.</div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<!-- FLOATING BACK BUTTON -->
+<a class="back-btn" href="../index.html" title="Back to handbooks index">
+  <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+  Back to Handbooks
+</a>
+
+<script>
+/* ─── Theme toggle ─── */
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeIcon').textContent  = isDark ? '🌙' : '☀️';
+  document.getElementById('themeLabel').textContent = isDark ? 'Dark' : 'Light';
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+(function() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.getElementById('themeIcon').textContent  = '🌙';
+    document.getElementById('themeLabel').textContent = 'Dark';
+  }
+})();
+
+/* ─── Active nav tracking ─── */
+const sections = document.querySelectorAll('section');
+const links    = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const id = e.target.id;
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+  });
+}, { rootMargin: '-52px 0px -68% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
