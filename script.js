@@ -607,15 +607,10 @@ document.addEventListener('DOMContentLoaded', () => {
         key: topic,
         count: topicCards.length
       }))
-      .sort((leftTopic, rightTopic) => {
-        if (leftTopic.count !== rightTopic.count) {
-          return rightTopic.count - leftTopic.count;
-        }
-        return collator.compare(leftTopic.key, rightTopic.key);
-      });
+      .sort((leftTopic, rightTopic) => collator.compare(leftTopic.key, rightTopic.key));
 
     const topicButtons = new Map();
-    const topicPreviewSize = 6;
+    const topicPreviewSize = topics.length;
     let isTopicListExpanded = false;
     let selectedTopic = '__all__';
 
