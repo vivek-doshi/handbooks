@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: batch, online, streaming and edge serving, packaging, KServe and other servers, release strategies (shadow, canary, A/B, bandits), autoscaling and optimisation.">
+  <title>07. Model Serving and Deployment | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">07 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-06-features-data-quality-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-08-monitoring-drift-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 07 &middot; Intermediate &middot; Ship the model</div>
+      <h1>Model Serving and Deployment</h1>
+      <p class="lede">Deployment is choosing the right serving pattern and releasing it safely. The pattern depends on latency, volume and freshness needs.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">KServe</span><span class="badge">Canary and shadow</span></div>
+    </section>
+    <section class="lesson" id="patterns">
+      <h2>Serving patterns</h2><table><thead><tr><th>Pattern</th><th>Latency</th><th>Use for</th><th>Notes</th></tr></thead><tbody><tr><td>Batch scoring</td><td>Minutes to hours</td><td>Recommendations lists, churn scores, forecasts</td><td>Cheapest; write results to a table</td></tr><tr><td>Online (request-response)</td><td>Milliseconds to seconds</td><td>Fraud, ranking, chat</td><td>Autoscaled service, needs online features</td></tr><tr><td>Streaming</td><td>Sub-second on events</td><td>Anomaly detection, IoT</td><td>Flink or Kafka consumers calling the model</td></tr><tr><td>Embedded or edge</td><td>Local</td><td>Mobile, devices, offline</td><td>ONNX, TFLite, quantised models</td></tr><tr><td>Async job</td><td>Seconds to minutes</td><td>Large documents, video</td><td>Queue plus workers</td></tr></tbody></table><div class="callout"><strong>Default</strong>Prefer batch when freshness allows. Online serving multiplies cost, on-call load and skew risk.</div>
+    </section>
+    <section class="lesson" id="api">
+      <h2>A minimal online service</h2><pre><code>from fastapi import FastAPI
+from pydantic import BaseModel
+import mlflow.pyfunc
+
+app = FastAPI()
+model = mlflow.pyfunc.load_model("models:/churn@champion")   # pinned at start, logged
+
+class Req(BaseModel):
+    tenure: float
+    monthly_spend: float
+
+@app.post("/predict")
+def predict(r: Req):
+    p = float(model.predict([[r.tenure, r.monthly_spend]])[0])
+    return {"score": p, "model_version": MODEL_VERSION}
+
+@app.get("/healthz")
+def health(): return {"ok": True}</code></pre><p>Production images run with multiple workers, health and readiness probes, timeouts and request logging of inputs and outputs for monitoring.</p>
+    </section>
+    <section class="lesson" id="servers">
+      <h2>Model servers</h2><table><thead><tr><th>Server</th><th>Use</th></tr></thead><tbody><tr><td>KServe</td><td>Kubernetes InferenceService: autoscale to zero, canary traffic split, multi-framework, LLM runtimes</td></tr><tr><td>Seldon Core, BentoML, Ray Serve</td><td>Composable serving graphs and batching</td></tr><tr><td>NVIDIA Triton</td><td>High-throughput GPU serving, dynamic batching, many frameworks</td></tr><tr><td>TorchServe, TF Serving, ONNX Runtime</td><td>Framework-specific</td></tr><tr><td>vLLM, SGLang, TGI</td><td>LLM and SLM serving</td></tr><tr><td>SageMaker, Vertex AI, Azure ML endpoints</td><td>Managed with built-in autoscaling and traffic splitting</td></tr></tbody></table><pre><code>apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata: {name: churn}
+spec:
+  predictor:
+    canaryTrafficPercent: 10
+    model:
+      modelFormat: {name: sklearn}
+      storageUri: s3://models/churn/v7</code></pre>
+    </section>
+    <section class="lesson" id="release">
+      <h2>Release strategies</h2><table><thead><tr><th>Strategy</th><th>How</th><th>Risk covered</th></tr></thead><tbody><tr><td>Shadow</td><td>Send live traffic to the new model, discard its output, compare</td><td>Behaviour and latency with zero user impact</td></tr><tr><td>Canary</td><td>Route 1 to 10 percent, watch metrics, ramp</td><td>Regression on real traffic</td></tr><tr><td>Blue-green</td><td>Switch all traffic between two stacks</td><td>Fast rollback</td></tr><tr><td>A/B test</td><td>Randomised split measuring a business metric</td><td>Real value, not just offline metrics</td></tr><tr><td>Multi-armed bandit</td><td>Shift traffic to the better variant adaptively</td><td>Cost of exploring</td></tr></tbody></table><ul><li>Define automatic rollback conditions before the rollout.</li><li>Offline gains often do not translate; the A/B test is the arbiter.</li></ul>
+    </section>
+    <section class="lesson" id="opt">
+      <h2>Performance and cost</h2><ul><li>Batching and dynamic batching on GPUs; concurrency tuned with load tests.</li><li>Quantisation (INT8, FP8), distillation, ONNX or TensorRT compilation; verify accuracy afterwards.</li><li>Autoscale on queue depth or latency, scale to zero for rare models, share GPUs (MIG, multi-model serving).</li><li>Cache repeated predictions where inputs repeat.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Containerise the example and load test it to find requests per second at p95 under 100 ms.</li><li>Run a shadow comparison between two model versions.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://kserve.github.io/website/" target="_blank" rel="noreferrer">KServe</a> &mdash; inference on Kubernetes</li><li><a href="https://docs.nvidia.com/deeplearning/triton-inference-server/" target="_blank" rel="noreferrer">Triton</a> &mdash; GPU serving</li><li><a href="https://docs.bentoml.com" target="_blank" rel="noreferrer">BentoML</a> &mdash; packaging and serving</li><li><a href="https://docs.vllm.ai" target="_blank" rel="noreferrer">vLLM</a> &mdash; LLM serving</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-06-features-data-quality-handbook.html">&larr; Previous: Features and Data Quality</a><a class="lesson-link" href="mlops-08-monitoring-drift-handbook.html">Next lesson: Monitoring and Drift &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

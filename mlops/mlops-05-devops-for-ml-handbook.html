@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: how DevOps practices map to ML: repository layout, testing pyramid for ML, CI, CD, GitOps, containers, infrastructure as code, supply chain security and environments.">
+  <title>05. DevOps for ML: CI/CD/CT | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">05 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-04-pipelines-orchestration-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-06-features-data-quality-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 05 &middot; Intermediate &middot; Engineering discipline</div>
+      <h1>DevOps for ML: CI/CD/CT</h1>
+      <p class="lede">If you know DevOps, this is the bridge. The tooling is familiar; what changes is what you test and what artifacts move through the pipeline.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">CI/CD/CT</span><span class="badge">Testing ML</span></div>
+    </section>
+    <section class="lesson" id="map">
+      <h2>DevOps to MLOps map</h2><table><thead><tr><th>DevOps practice</th><th>ML equivalent</th></tr></thead><tbody><tr><td>Git branching and PR review</td><td>Same, plus review of data and config changes; DVC pointers in PRs</td></tr><tr><td>Continuous integration</td><td>Lint, unit tests, data and pipeline tests, small training smoke run</td></tr><tr><td>Continuous delivery</td><td>Deploy pipeline code and serving image after gates</td></tr><tr><td>Continuous training (CT)</td><td>Automated retraining and registration</td></tr><tr><td>Artifact registry</td><td>Model registry plus container registry</td></tr><tr><td>IaC (Terraform)</td><td>GPU clusters, feature store, tracking server, endpoints</td></tr><tr><td>GitOps</td><td>Model alias or version in Git drives deployment</td></tr><tr><td>Observability</td><td>Plus drift and model-quality monitoring</td></tr><tr><td>Environments dev/stage/prod</td><td>Same, with prod data access controls and shadow stages</td></tr></tbody></table><p>See the DevOps path for the base practices: <a href="../devops/devops-01-foundations-handbook.html">foundations</a>.</p>
+    </section>
+    <section class="lesson" id="layout">
+      <h2>Repository layout</h2><pre><code>ml-project/
+  src/            data/, features/, training/, serving/, common/
+  pipelines/      dvc.yaml or kfp definitions
+  configs/        yaml per environment
+  tests/          unit/, data/, model/, integration/
+  Dockerfile.train  Dockerfile.serve
+  infra/          terraform/ or helm/
+  .github/workflows/   ci.yml, train.yml, deploy.yml</code></pre>
+    </section>
+    <section class="lesson" id="tests">
+      <h2>Testing ML systems</h2><table><thead><tr><th>Layer</th><th>Examples</th></tr></thead><tbody><tr><td>Unit</td><td>Feature functions, preprocessing, loss code</td></tr><tr><td>Data tests</td><td>Schema, ranges, nulls, uniqueness, freshness (Great Expectations, Pandera, Soda, dbt tests)</td></tr><tr><td>Model tests</td><td>Beats baseline, no slice regression, invariance and directional tests, fairness thresholds, latency and size budgets</td></tr><tr><td>Pipeline tests</td><td>Run on a tiny sample end to end in CI</td></tr><tr><td>Integration</td><td>Serving container returns valid predictions for the signature</td></tr><tr><td>Post-deploy</td><td>Shadow comparison, canary metrics</td></tr></tbody></table><pre><code>def test_model_beats_baseline(model, val):
+    assert f1(model, val) &gt;= f1(BASELINE, val) + 0.02
+def test_no_slice_regression(model, champion, slices):
+    for name, d in slices.items():
+        assert f1(model, d) &gt;= f1(champion, d) - 0.01, name</code></pre>
+    </section>
+    <section class="lesson" id="ci">
+      <h2>A CI and CD pipeline</h2><pre><code># .github/workflows/ci.yml (sketch)
+on: [pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -r requirements.lock &amp;&amp; pytest tests/unit tests/data
+      - run: dvc pull data/sample &amp;&amp; python -m pipelines.smoke   # tiny end-to-end run
+      - run: docker build -f Dockerfile.serve -t model-serve:${{ github.sha }} .
+      - run: trivy image --exit-code 1 --severity HIGH,CRITICAL model-serve:${{ github.sha }}</code></pre><p>Use CML or workflow comments to post metric diffs on the pull request. Training on full data runs in the orchestrator, not in CI runners.</p>
+    </section>
+    <section class="lesson" id="supply">
+      <h2>Containers, supply chain and security</h2><ul><li>Pin dependencies with lock files and use slim, scanned base images; separate train and serve images.</li><li>Sign images and models (Sigstore cosign, model signing) and generate SBOMs; scan for unsafe pickle files and prefer safetensors.</li><li>Secrets in a vault or workload identity, never in notebooks.</li><li>Least-privilege access to training data; audit who can promote models.</li><li>Pull third-party models and datasets only from reviewed sources, and pin by hash.</li></ul>
+    </section>
+    <section class="lesson" id="iac">
+      <h2>Infrastructure and GitOps</h2><ul><li>Terraform or Pulumi for clusters, buckets, registries, GPU node pools and endpoints; Helm or Kustomize for in-cluster apps.</li><li>GitOps (Argo CD or Flux): a Git change to the model version or alias rolls out the new serving revision, with rollback by revert.</li><li>Cost controls: quotas, autoscaling to zero, spot capacity, TTL on dev clusters.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Add a data test and a model-gate test to an existing project and fail the build on regression.</li><li>Build and scan a serving image in CI.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://cml.dev" target="_blank" rel="noreferrer">CML</a> &mdash; CI for ML with reports</li><li><a href="https://greatexpectations.io" target="_blank" rel="noreferrer">Great Expectations</a> &mdash; data tests</li><li><a href="https://docs.sigstore.dev" target="_blank" rel="noreferrer">Sigstore</a> &mdash; signing</li><li><a href="https://argo-cd.readthedocs.io" target="_blank" rel="noreferrer">Argo CD</a> &mdash; GitOps</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-04-pipelines-orchestration-handbook.html">&larr; Previous: Pipelines and Orchestration</a><a class="lesson-link" href="mlops-06-features-data-quality-handbook.html">Next lesson: Features and Data Quality &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

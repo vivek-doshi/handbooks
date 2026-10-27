@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Advanced: architecting an enterprise knowledge assistant over a billion chunks and a customer support platform handling tens of millions of conversations, with data scale, RAG strategy, fine-tuning decisions, capacity and cost.">
+  <title>14. Use Cases 1 and 2: Knowledge Assistant and Support at Scale | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">14 / 16 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-13-serving-scale-cost-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-15-usecases-documents-code-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 14 &middot; Advanced &middot; Large-scale RAG and tuned models</div>
+      <h1>Use Cases 1 and 2: Knowledge Assistant and Support at Scale</h1>
+      <p class="lede">Two systems that look similar and need opposite answers to the fine-tuning question. The knowledge assistant is a retrieval problem at huge data scale; the support platform is a volume and behaviour problem where a tuned small model pays for itself.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">1.5B chunks</span><span class="badge">30M conversations a month</span></div>
+    </section>
+    <section class="lesson" id="intro">
+      <h2>How to read a case study</h2><p>Each case follows the same method: requirements and scale, then the decision ladder from step 12, architecture, data pipeline, serving capacity, evaluation, security and cost, and finally risks.</p><div class="callout"><strong>About the numbers</strong>All figures are illustrative planning numbers to show the method. Replace them with measured token counts, current prices and benchmark results for your own models and hardware.</div>
+    </section>
+    <section class="lesson" id="uc1-req">
+      <h2>Use case 1: Enterprise knowledge assistant</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Users</td><td>200,000 employees, 50,000 daily active users, around 10 questions a day each</td></tr><tr><td>Corpus</td><td>120 million documents across SharePoint, Confluence, Google Drive, Slack, ticketing and wikis; about 1.5 billion chunks; 40 percent changes weekly</td></tr><tr><td>Traffic</td><td>500,000 questions a day; peak about 40 requests a second</td></tr><tr><td>Quality</td><td>Answer with citations; refuse when evidence is missing; respect each user's document permissions exactly</td></tr><tr><td>Latency</td><td>First token under 2 seconds; full answer under 10 seconds</td></tr><tr><td>Constraints</td><td>Data stays in region; full audit trail; no training of vendor models on company data</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="uc1-decide">
+      <h2>UC1 decisions</h2><table><thead><tr><th>Question</th><th>Decision</th><th>Reason</th></tr></thead><tbody><tr><td>Fine-tune the generator?</td><td>No, use a frontier or strong open model with a strict grounded-answer prompt</td><td>The problem is knowledge and freshness, not behaviour</td></tr><tr><td>Fine-tune retrieval?</td><td>Yes, later: embedder and reranker tuned on click and citation logs</td><td>Company vocabulary and acronyms; the highest-value tuning here</td></tr><tr><td>RAG strategy?</td><td>Hybrid (dense + BM25), ACL pre-filtering, cross-encoder rerank, parent-child chunks, query rewriting; agentic retrieval only for complex queries</td><td>Quality from fundamentals; agents only where needed</td></tr><tr><td>Contextual chunk enrichment?</td><td>Selectively, for high-value sources</td><td>1.5B LLM calls would be prohibitive</td></tr><tr><td>Graph?</td><td>Entity graph for people, teams and projects, used by a router for relationship questions</td><td>Cheap, targeted</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="uc1-arch">
+      <h2>UC1 architecture</h2><pre><code>Sources (SharePoint, Confluence, Drive, Slack, tickets)
+   -&gt; Connectors (webhooks + incremental crawl + ACL sync) -&gt; Kafka
+   -&gt; Parse (layout-aware) -&gt; dedupe (MinHash) -&gt; chunk (structure-aware) -&gt; embed (GPU workers)
+   -&gt; Index: sharded vector engine + BM25 + metadata (acl_groups, source, updated_at)
+
+Query path:
+ user -&gt; gateway (SSO) -&gt; conversation rewrite -&gt; router
+      -&gt; retrieval: ACL pre-filter -&gt; dense top 100 + BM25 top 100 -&gt; RRF -&gt; rerank top 8
+      -&gt; prompt (cache-friendly prefix) -&gt; LLM -&gt; citations check -&gt; answer
+ side: trace + eval sampling, feedback (thumbs, clicks) -&gt; training data for embedder and reranker</code></pre><ul><li><strong>Permissions are the hard part.</strong> Sync ACLs continuously. Store group ids on chunks, resolve the caller's groups at query time, and filter inside the index. A permissions change must reach the index within minutes, and deleted documents must disappear.</li><li><strong>Index memory:</strong> 1.5B vectors at 1024 dimensions in float32 is 6 TB. Use Matryoshka truncation to 512 dimensions and int8 (about 770 GB) or binary (about 96 GB) for the first pass held in RAM across a sharded cluster, then rescore the top few hundred with full vectors on SSD.</li><li><strong>Backfill:</strong> about 600 billion tokens to embed. At 1 million tokens per second across a GPU fleet that is about a week; scale workers 5 to 10 times for the initial load and prioritise high-traffic sources first.</li><li><strong>Freshness:</strong> event-driven incremental updates, with a nightly reconciliation crawl to catch missed events.</li><li><strong>Tenancy and blast radius:</strong> partition indexes by region and business unit to keep shards small and failures contained.</li></ul>
+    </section>
+    <section class="lesson" id="uc1-cap">
+      <h2>UC1 capacity and cost</h2><table><thead><tr><th>Area</th><th>Estimate</th></tr></thead><tbody><tr><td>LLM calls</td><td>40 req/s peak, about 6,000 input tokens (8 chunks plus prompt), 300 output tokens; prefix caching cuts repeated system and policy tokens</td></tr><tr><td>Retrieval</td><td>About 40 queries a second, each fanned out across shards, target p95 under 150 ms for retrieval plus rerank</td></tr><tr><td>Rerank</td><td>Top 100 candidates per query is about 4,000 pairs a second; one or two GPU replicas, or a managed reranker</td></tr><tr><td>Index nodes</td><td>Around 12 to 24 memory-optimised nodes with replicas, depending on quantisation choice</td></tr><tr><td>Largest cost drivers</td><td>LLM tokens and index memory; control with model routing, prompt trimming and binary or int8 vectors</td></tr></tbody></table><ul><li><strong>Evaluate:</strong> 500-question golden set stratified by source and department, recall@10, faithfulness, permission-leak tests (must be zero), and online thumbs-up rate.</li><li><strong>Risks:</strong> permission leaks, stale or conflicting documents, prompt injection through shared documents, and cost growth. Mitigate with ACL tests in CI, freshness and authority ranking, injection defences, and budgets.</li></ul>
+    </section>
+    <section class="lesson" id="uc2-req">
+      <h2>Use case 2: Customer support platform</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Volume</td><td>30 million conversations a month, average 6 turns, 40 languages</td></tr><tr><td>Knowledge</td><td>3 million knowledge-base articles and 200 million historical resolved tickets</td></tr><tr><td>Goals</td><td>Deflect 35 percent of conversations, draft replies for human agents on the rest, keep resolution quality at or above human baseline</td></tr><tr><td>Actions</td><td>Order lookup, address change, refund up to a limit with approval, escalation to humans</td></tr><tr><td>Latency</td><td>Under 3 seconds to first token</td></tr><tr><td>Constraints</td><td>Tone and policy compliance, regulated refund rules, PII protection, multi-region</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="uc2-decide">
+      <h2>UC2 decisions</h2><table><thead><tr><th>Question</th><th>Decision</th><th>Reason</th></tr></thead><tbody><tr><td>Which model serves most traffic?</td><td>Fine-tuned 8B open model (SFT on about 500k resolved agent replies, then DPO on satisfaction-ranked pairs), with a frontier model for the long tail</td><td>180 million model calls a month make per-token pricing of a large model the dominant cost</td></tr><tr><td>Why fine-tune?</td><td>Brand tone, policy-faithful format, tool-call reliability, 40 languages, shorter prompts</td><td>Behaviour at volume is a fine-tuning problem</td></tr><tr><td>Facts?</td><td>RAG over KB articles and similar resolved tickets</td><td>Policies and products change weekly; never train facts in</td></tr><tr><td>Routing?</td><td>Fine-tuned small intent classifier: FAQ, account action, complex or sensitive, escalate</td><td>Cheap first hop; sensitive topics go to humans or the strongest model</td></tr><tr><td>Embedder and reranker?</td><td>Fine-tune on ticket to resolving-article pairs</td><td>Strong supervised signal already exists in the data</td></tr><tr><td>Actions?</td><td>Tools with schemas; refund over the limit requires human approval; idempotent calls</td><td>Least privilege and auditability</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="uc2-arch">
+      <h2>UC2 architecture</h2><pre><code>Channels (chat, email, WhatsApp, voice-&gt;ASR) -&gt; gateway -&gt; conversation service (state, memory)
+   -&gt; PII redaction -&gt; intent router (small tuned classifier)
+        |-- FAQ / how-to : RAG (KB hybrid + resolved-ticket retrieval) -&gt; tuned 8B generator
+        |-- account action: tool-calling agent (order, address, refund) -&gt; policy checker -&gt; tools
+        |-- complex / sensitive / low confidence: frontier model or human handoff
+   -&gt; guardrails (policy, tone, PII, groundedness) -&gt; reply + citations
+ Human agent assist: same retrieval + draft reply, agent approves; outcomes feed training data
+
+Training loop: transcripts -&gt; redact -&gt; quality filter (CSAT, resolution, no escalation)
+   -&gt; SFT + DPO datasets -&gt; train (QLoRA or full) -&gt; eval + safety regression -&gt; registry
+   -&gt; canary 5 percent -&gt; rollout; retrain quarterly or on policy change</code></pre>
+    </section>
+    <section class="lesson" id="uc2-cap">
+      <h2>UC2 capacity and economics</h2><pre><code>180M calls / month -&gt; ~70 req/s average, ~250 req/s peak
+Per call: ~1,200 input tokens (with retrieved context), ~150 output tokens
+Peak prefill ~300k tokens/s, peak decode ~37k tokens/s
+8B model, FP8, continuous batching on H100-class GPUs: benchmark ~3k to 5k decode tokens/s/GPU
+=&gt; roughly 10 to 16 GPUs for decode at peak, plus prefill headroom; plan ~24 GPUs across 2 regions (N+1)
+Frontier fallback for ~8 percent of calls = ~14M calls/month -&gt; budgeted with a hard cap
+Savings versus a frontier-only design: order of 5x to 10x per conversation (verify with your prices)</code></pre><ul><li><strong>Evaluate:</strong> golden set of 1,000 real conversations by intent and language; policy-compliance judge; groundedness; tool-call accuracy; CSAT; deflection and re-contact rate.</li><li><strong>Safeguards:</strong> block refunds and account changes above limits without approval; run red-team suites for jailbreaks and data requests; keep human handoff always one click away.</li><li><strong>Risks:</strong> policy drift (stale training), multilingual quality gaps, over-automation. Mitigate with RAG for policy facts, per-language evals, and phased rollout by intent.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>For UC1, recompute index memory with 768-dimension int8 vectors and 2 billion chunks.</li><li>For UC2, decide at what monthly volume the tuned model would no longer pay for itself with your prices.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/" target="_blank" rel="noreferrer">Azure AI architecture guides</a> &mdash; enterprise reference designs</li><li><a href="https://qdrant.tech/documentation/guides/quantization/" target="_blank" rel="noreferrer">Qdrant quantisation guide</a> &mdash; scalar and binary quantisation</li><li><a href="https://docs.vllm.ai/en/latest/features/lora.html" target="_blank" rel="noreferrer">vLLM LoRA serving</a> &mdash; multi-adapter serving</li><li><a href="../cloud/cloud-14-arch-data-ai-handbook.html" target="_blank" rel="noreferrer">Cloud path: data and AI architecture</a> &mdash; cloud-native versions of these designs</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-13-serving-scale-cost-handbook.html">&larr; Previous: Serving, Scale and Cost</a><a class="lesson-link" href="genai-15-usecases-documents-code-handbook.html">Next lesson: Use Cases: Documents and Code &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner: roles, clear instructions, few-shot examples, reasoning prompts, structured outputs, prompt injection basics, and how to version and test prompts.">
+  <title>02. Prompt Engineering | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">02 / 16 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-01-llm-foundations-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-03-embeddings-vector-search-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 02 &middot; Beginner &middot; Control the model</div>
+      <h1>Prompt Engineering</h1>
+      <p class="lede">Prompting is the cheapest lever you have, and the first one to try before retrieval or fine-tuning. This step covers the techniques that still matter with modern models, and the habits that keep prompts maintainable.</p>
+      <div class="hero-meta"><span class="badge">Beginner</span><span class="badge">System prompts</span><span class="badge">Structured output</span></div>
+    </section>
+    <section class="lesson" id="anatomy">
+      <h2>Anatomy of a prompt</h2><p>Chat models take a list of messages with roles. Instruction hierarchy matters: system or developer messages set rules; user messages carry the task; assistant messages are prior model turns; tool messages carry tool results.</p><table><thead><tr><th>Part</th><th>Purpose</th><th>Example</th></tr></thead><tbody><tr><td>Role and goal</td><td>Who the model is and what success looks like</td><td>You are a support analyst. Summarise tickets for engineers.</td></tr><tr><td>Context</td><td>Facts the model needs (retrieved documents, user profile)</td><td>Ticket text, policy excerpts</td></tr><tr><td>Task</td><td>The specific action</td><td>Classify severity and list next steps</td></tr><tr><td>Constraints</td><td>Rules, tone, length, what to refuse</td><td>Max 5 bullets; never promise refunds</td></tr><tr><td>Output format</td><td>Exact shape of the answer</td><td>JSON matching a schema</td></tr><tr><td>Examples</td><td>Few-shot input and output pairs</td><td>Two labelled tickets</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="principles">
+      <h2>Principles that hold across models</h2><ul><li><strong>Be specific.</strong> State the audience, the format, the length and what to do when information is missing.</li><li><strong>Separate instructions from data.</strong> Wrap untrusted or long content in delimiters such as XML tags or triple quotes and tell the model it is data, not instructions.</li><li><strong>Show, do not just tell.</strong> Two to five good examples beat a paragraph of rules for format and tone.</li><li><strong>Give an exit.</strong> Say &ldquo;answer only from the context; if it is not there, say you do not know&rdquo;. This is the cheapest anti-hallucination rule.</li><li><strong>Put long documents first and the question last</strong>, and repeat key constraints at the end for long prompts.</li><li><strong>Iterate with tests, not vibes.</strong> Change one thing at a time and compare on a fixed set of examples.</li></ul><pre><code>SYSTEM = """You are a support analyst for Acme.
+Answer ONLY from the &lt;context&gt; block. If the answer is not there, reply exactly:
+"I don't have that information."
+Cite sources as [doc_id]. Keep answers under 120 words."""
+
+user = f"""&lt;context&gt;
+{retrieved_text}
+&lt;/context&gt;
+
+&lt;question&gt;{question}&lt;/question&gt;"""</code></pre>
+    </section>
+    <section class="lesson" id="fewshot">
+      <h2>Zero-shot, few-shot and chain of thought</h2><table><thead><tr><th>Technique</th><th>What it is</th><th>Use when</th></tr></thead><tbody><tr><td>Zero-shot</td><td>Instruction only, no examples</td><td>Simple tasks, strong models</td></tr><tr><td>Few-shot</td><td>Add labelled examples in the prompt</td><td>Fixed output formats, niche labels, tone matching</td></tr><tr><td>Chain of thought</td><td>Ask the model to reason step by step before answering</td><td>Multi-step logic with non-reasoning models</td></tr><tr><td>Self-consistency</td><td>Sample several answers and take the majority</td><td>High-stakes reasoning where cost allows</td></tr><tr><td>Decomposition and prompt chaining</td><td>Split a task into steps, one prompt per step, validating between them</td><td>Complex workflows; easier to test and debug</td></tr><tr><td>Step-back and plan-then-act</td><td>Ask for the general principle or a plan first</td><td>Ambiguous or planning-heavy tasks</td></tr></tbody></table><div class="callout"><strong>Reasoning models change the advice</strong>Dedicated reasoning models already think internally. Give them the goal, constraints and acceptance criteria, and do not force &ldquo;think step by step&rdquo; or micro-manage the reasoning. Use the reasoning-effort setting to trade accuracy against cost.</div>
+    </section>
+    <section class="lesson" id="structured">
+      <h2>Structured outputs</h2><p>Free text is hard to integrate. Modern APIs can constrain output to a JSON schema (structured outputs, function-calling schemas, or grammar-constrained decoding in vLLM and llama.cpp), which makes parsing reliable.</p><pre><code>from pydantic import BaseModel
+from openai import OpenAI
+
+class Ticket(BaseModel):
+    severity: str          # "low" | "medium" | "high"
+    summary: str
+    next_steps: list[str]
+
+client = OpenAI()
+resp = client.chat.completions.parse(
+    model="MODEL_NAME",
+    messages=[{"role": "user", "content": "Triage: checkout page returns 500 for all EU users."}],
+    response_format=Ticket,
+)
+ticket = resp.choices[0].message.parsed   # typed object, validated against the schema</code></pre><p>Still validate semantically: a schema guarantees shape, not truth. Retry with the validation error on failure, and cap retries.</p>
+    </section>
+    <section class="lesson" id="injection">
+      <h2>Prompt injection in one page</h2><p>If the model reads untrusted text (web pages, emails, documents, tool output), an attacker can hide instructions in it. There is no perfect filter, so defend in layers:</p><ul><li>Mark untrusted content as data and never place it in the system role.</li><li>Give the model the minimum tools and permissions; require human approval for irreversible actions.</li><li>Validate and constrain outputs, and never execute model output as code or SQL without a sandbox or allow-list.</li><li>Log and test with adversarial prompts (step 10 covers guardrails and red teaming).</li></ul>
+    </section>
+    <section class="lesson" id="manage">
+      <h2>Managing prompts like code</h2><ul><li>Store prompts in version control or a prompt registry, with a version id logged on every call.</li><li>Keep a golden set of 30 to 200 representative inputs with expected outputs or rubrics, and run it on every prompt or model change.</li><li>Template variables explicitly; avoid string concatenation scattered through the code.</li><li>Pin the model version in production, and re-run the golden set before upgrading.</li><li>Common mistakes: vague goals, contradictory rules, huge copy-pasted contexts, no failure path, and tuning on three examples.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Write a classifier prompt for support tickets, first zero-shot, then with three examples, and compare accuracy on 20 samples.</li><li>Add a Pydantic schema and make the output parse every time.</li><li>Try a prompt injection hidden in a document and then harden the prompt and tool permissions.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://platform.openai.com/docs/guides/prompt-engineering" target="_blank" rel="noreferrer">OpenAI prompt engineering guide</a> &mdash; current best practices</li><li><a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview" target="_blank" rel="noreferrer">Anthropic prompt engineering overview</a> &mdash; techniques and examples</li><li><a href="https://www.promptingguide.ai" target="_blank" rel="noreferrer">Prompt Engineering Guide</a> &mdash; community catalogue of techniques</li><li><a href="https://genai.owasp.org" target="_blank" rel="noreferrer">OWASP GenAI Security Project</a> &mdash; LLM top 10 risks including injection</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-01-llm-foundations-handbook.html">&larr; Previous: LLM Foundations</a><a class="lesson-link" href="genai-03-embeddings-vector-search-handbook.html">Next lesson: Embeddings and Vectors &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

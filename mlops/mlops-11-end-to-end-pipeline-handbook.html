@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Advanced: a complete reference architecture with environments, data and model flow, CI/CD/CT, governance, a worked example with code and config, and a method for architecting any ML system.">
+  <title>11. End-to-End MLOps Architecture | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">11 / 13 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-10-platform-standards-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-12-usecases-tabular-scale-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 11 &middot; Advanced &middot; Putting it together</div>
+      <h1>End-to-End MLOps Architecture</h1>
+      <p class="lede">Here every earlier step is wired into one design: a worked churn-and-risk scoring platform you can adapt, plus a repeatable method for architecting new systems.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">Reference architecture</span><span class="badge">Worked example</span></div>
+    </section>
+    <section class="lesson" id="ref">
+      <h2>Reference architecture</h2><pre><code>  SOURCES (apps, events, DBs)                    CODE (Git)  ---- PR ----&gt;  CI: lint, unit, data + pipeline tests, image build/scan
+      |                                                                      |
+  INGEST (batch + streaming) -&gt; LAKEHOUSE (Iceberg/Delta, versioned) -&gt; DATA QUALITY GATES
+      |                                   |                                  |
+      |                         FEATURE PIPELINES -&gt; OFFLINE STORE      TRAINING PIPELINE (orchestrator, GPU pool)
+      |                                   |   \-&gt; ONLINE STORE              |  train -&gt; evaluate -&gt; gates
+      |                                   |                                  v
+      |                                   |                          TRACKING + REGISTRY (aliases, model cards)
+      |                                   |                                  |  approval
+      v                                   v                                  v
+  SERVING: batch scoring jobs | online endpoints (canary, shadow) | streaming consumers
+      |
+  MONITORING: system + data drift + model quality + business KPIs -&gt; alerts -&gt; retrain trigger (back to orchestrator)
+  CROSS-CUTTING: IAM, secrets, lineage, audit log, cost tags, IaC (Terraform), GitOps (Argo CD)</code></pre>
+    </section>
+    <section class="lesson" id="envs">
+      <h2>Environments and promotion</h2><table><thead><tr><th>Environment</th><th>Data</th><th>Purpose</th><th>Promotion</th></tr></thead><tbody><tr><td>Dev</td><td>Samples, synthetic</td><td>Experiments, notebooks, small pipeline runs</td><td>PR to main</td></tr><tr><td>Staging</td><td>Recent masked copy or sampled prod</td><td>Full pipeline run, integration, load, shadow</td><td>Automated gates</td></tr><tr><td>Production</td><td>Full, access controlled</td><td>Scheduled training, serving, monitoring</td><td>Approval plus canary</td></tr></tbody></table><p>Code is promoted; models are registered once and promoted by alias. Training can run in production data access with the model artifact flowing downward (deploy models, not training code) when data cannot leave production.</p>
+    </section>
+    <section class="lesson" id="example">
+      <h2>Worked example: churn scoring</h2><pre><code># 1. data + versions
+dvc import-url s3://lake/curated/customers/snapshot=2026-10-27 data/customers   # or Iceberg snapshot id
+# 2. dvc.yaml: validate -&gt; features -&gt; train -&gt; evaluate
+# 3. orchestrator run (weekly + on drift)
+#    train.py logs to MLflow with tags: git_sha, data_snapshot, feature_view_version
+# 4. gate (pipeline step)
+assert challenger.auc &gt;= champion.auc + 0.005
+assert all(challenger.slice_auc[s] &gt;= champion.slice_auc[s] - 0.01 for s in SLICES)
+assert challenger.p95_latency_ms &lt;= 50
+# 5. register + alias challenger, GitOps PR updates serving revision to canary 10 percent
+# 6. monitoring job (daily): PSI on top 20 features, score distribution, AUC on matured labels
+# 7. promote on healthy canary: set alias champion, close the loop</code></pre><ul><li>Batch scores land in a table every night; online scoring is only for the call-centre screen.</li><li>Everything from step 2 on is containerised and uses the same configs across environments.</li></ul>
+    </section>
+    <section class="lesson" id="method">
+      <h2>A method for architecting ML systems</h2><ol><li><strong>Frame:</strong> decision supported, metric, baseline, cost of errors, latency, volume, freshness.</li><li><strong>Data:</strong> sources, size and growth, labels and delay, privacy class, ownership.</li><li><strong>Choose serving pattern</strong> (batch, online, streaming, edge) from freshness and latency.</li><li><strong>Features:</strong> need a feature store? streaming features? skew risks?</li><li><strong>Training:</strong> compute need, distributed or not, retraining cadence and trigger.</li><li><strong>Gates and release:</strong> offline metrics, slices, shadow, canary, A/B.</li><li><strong>Monitoring and feedback:</strong> what drifts, how labels return.</li><li><strong>Platform fit:</strong> managed, open source or hybrid; team skills.</li><li><strong>Risk and compliance:</strong> classification, documentation, human oversight.</li><li><strong>Cost model and ADR:</strong> unit cost, scaling limits, alternatives rejected.</li></ol>
+    </section>
+    <section class="lesson" id="sizing">
+      <h2>Sizing arithmetic</h2><pre><code>Training data: 2 B rows x 300 features x 4 B = 2.4 TB per full pass (columnar compression 3-5x on disk)
+Online store: 80 M entities x 50 features x 8 B = 32 GB (x3 replication, plus indexes ~ 150 GB RAM-class)
+Online QPS: 20k peak, p95 20 ms model + 30 ms feature fetch = 50 ms
+  per replica 500 QPS -&gt; 40 replicas + 30% headroom = 52; two regions N+1
+Batch: 100 M scores nightly at 20k rows/s/worker -&gt; 5,000 s per worker; 20 workers -&gt; 4 min</code></pre>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Apply the ten-step method to a model you want to ship and write it as one page.</li><li>Draw its environments and promotion path.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning" target="_blank" rel="noreferrer">Google MLOps architecture</a> &mdash; CT and CD</li><li><a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/" target="_blank" rel="noreferrer">Azure AI architecture guides</a> &mdash; reference designs</li><li><a href="https://docs.aws.amazon.com/sagemaker/latest/dg/mlops.html" target="_blank" rel="noreferrer">AWS SageMaker MLOps</a> &mdash; managed implementation</li><li><a href="../architecture/architecture-01-dsa-foundations.html" target="_blank" rel="noreferrer">Architecture path</a> &mdash; general design method</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-10-platform-standards-handbook.html">&larr; Previous: Platform and Standards</a><a class="lesson-link" href="mlops-12-usecases-tabular-scale-handbook.html">Next lesson: Use Cases: Fraud, Recs, Forecast &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: feature stores, point-in-time correctness, training-serving skew, streaming features, data contracts, validation and lineage.">
+  <title>06. Feature Stores and Data Quality | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">06 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-05-devops-for-ml-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-07-serving-deployment-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 06 &middot; Intermediate &middot; Fix skew at the source</div>
+      <h1>Feature Stores and Data Quality</h1>
+      <p class="lede">Most production ML bugs are data bugs. This step covers keeping features consistent between training and serving and keeping data trustworthy.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">Feature store</span><span class="badge">Data contracts</span></div>
+    </section>
+    <section class="lesson" id="skew">
+      <h2>The skew problem</h2><p>If training computes <em>average spend in last 30 days</em> in SQL and serving recomputes it in application code, the two will differ. Define each feature once and serve it both ways.</p><ul><li><strong>Offline store</strong> (warehouse or lake): large history for training.</li><li><strong>Online store</strong> (Redis, DynamoDB, Bigtable, Cassandra): single-digit-millisecond lookups.</li><li><strong>Registry</strong>: definitions, owners, versions, lineage.</li><li><strong>Materialisation:</strong> jobs that compute and sync features offline and online.</li></ul>
+    </section>
+    <section class="lesson" id="pit">
+      <h2>Point-in-time correctness</h2><p>Training rows must use feature values <em>as they were at the event time</em>, never later values, or you leak the future.</p><pre><code>from feast import FeatureStore
+store = FeatureStore(".")
+train_df = store.get_historical_features(
+    entity_df=events[["user_id", "event_timestamp"]],   # label timestamps
+    features=["user_stats:spend_30d", "user_stats:txn_count_7d"]).to_df()   # as-of join
+
+online = store.get_online_features(
+    features=["user_stats:spend_30d"], entity_rows=[{"user_id": 42}]).to_dict()</code></pre>
+    </section>
+    <section class="lesson" id="tools">
+      <h2>Tools</h2><table><thead><tr><th>Tool</th><th>Notes</th></tr></thead><tbody><tr><td>Feast</td><td>Open source, pluggable stores</td></tr><tr><td>Tecton, Hopsworks</td><td>Managed or enterprise, strong streaming</td></tr><tr><td>Databricks Feature Engineering, SageMaker Feature Store, Vertex AI Feature Store</td><td>Cloud-native</td></tr><tr><td>Warehouse tables plus a cache</td><td>Fine for small scale; skip a feature store until skew or reuse hurts</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="stream">
+      <h2>Streaming and real-time features</h2><ul><li>Compute windowed aggregates in Flink, Spark Structured Streaming or Kafka Streams and write to the online store.</li><li>Use the same transformation definition for backfill (batch) and live (stream) paths.</li><li>Handle late and out-of-order events with watermarks, and track feature freshness as an SLI.</li></ul>
+    </section>
+    <section class="lesson" id="quality">
+      <h2>Data quality and contracts</h2><table><thead><tr><th>Control</th><th>How</th></tr></thead><tbody><tr><td>Schema and range checks</td><td>Pandera, Great Expectations, Soda in the pipeline before training</td></tr><tr><td>Data contracts</td><td>Producer teams publish schema, semantics, SLAs; breaking changes need review</td></tr><tr><td>Freshness and volume monitors</td><td>Alert on late or short loads</td></tr><tr><td>Lineage</td><td>OpenLineage, Marquez, catalog tools: from source to feature to model</td></tr><tr><td>Quarantine</td><td>Bad batches are isolated, not silently dropped</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Write a point-in-time join by hand in SQL and compare it with a naive join to see the leak.</li><li>Add a schema check that blocks a pipeline on a missing column.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://docs.feast.dev" target="_blank" rel="noreferrer">Feast</a> &mdash; feature store</li><li><a href="https://openlineage.io" target="_blank" rel="noreferrer">OpenLineage</a> &mdash; lineage standard</li><li><a href="https://docs.pytest.org" target="_blank" rel="noreferrer">pytest</a> &mdash; test harness</li><li><a href="../data-engineering/etl-handbook.html" target="_blank" rel="noreferrer">ETL handbook</a> &mdash; pipelines in this library</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-05-devops-for-ml-handbook.html">&larr; Previous: DevOps for ML</a><a class="lesson-link" href="mlops-07-serving-deployment-handbook.html">Next lesson: Serving and Deployment &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

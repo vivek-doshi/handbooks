@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner: embeddings, similarity metrics, approximate nearest neighbour indexes, choosing a vector database, hybrid search, and memory sizing.">
+  <title>03. Embeddings and Vector Search | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">03 / 16 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-02-prompting-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-04-rag-basics-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 03 &middot; Beginner &middot; Find by meaning</div>
+      <h1>Embeddings and Vector Search</h1>
+      <p class="lede">Retrieval is how you give a model knowledge it was never trained on. This step explains embeddings, vector indexes and the databases that serve them, including the memory maths that drives cost at large scale.</p>
+      <div class="hero-meta"><span class="badge">Beginner</span><span class="badge">Embeddings</span><span class="badge">ANN and vector DBs</span></div>
+    </section>
+    <section class="lesson" id="embeddings">
+      <h2>What an embedding is</h2><p>An embedding model turns text (or an image, audio clip or code) into a fixed-length vector so that items with similar meaning land close together. Search becomes geometry: embed the query, find the nearest document vectors.</p><pre><code>from sentence_transformers import SentenceTransformer
+import numpy as np
+
+model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+docs = ["Reset your password from the login page.",
+        "Our refund window is 30 days.",
+        "GPU nodes are billed per second."]
+D = model.encode(docs, normalize_embeddings=True)       # shape (3, 384)
+q = model.encode(["how do I get my money back?"], normalize_embeddings=True)
+scores = (D @ q.T).ravel()                             # cosine similarity (unit vectors)
+print(docs[int(np.argmax(scores))])</code></pre><table><thead><tr><th>Choice</th><th>Guidance</th></tr></thead><tbody><tr><td>Model</td><td>Pick from a current benchmark such as MTEB, then test on your own queries. Use the same model for documents and queries.</td></tr><tr><td>Dimensions</td><td>384 to 3072. Matryoshka-trained models let you truncate vectors (for example 1024 down to 256) with small quality loss.</td></tr><tr><td>Language and domain</td><td>Use multilingual models for mixed-language corpora; consider fine-tuning an embedding model for specialised vocabulary (step 07).</td></tr><tr><td>Re-embedding</td><td>Changing the model means re-embedding the whole corpus. Version the embedding model and index together.</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="metrics">
+      <h2>Similarity metrics</h2><table><thead><tr><th>Metric</th><th>Meaning</th><th>Use</th></tr></thead><tbody><tr><td>Cosine similarity</td><td>Angle between vectors</td><td>Default for text; equals dot product on normalised vectors</td></tr><tr><td>Dot product (inner product)</td><td>Angle and magnitude</td><td>Models trained for it; fastest</td></tr><tr><td>Euclidean (L2)</td><td>Straight-line distance</td><td>Some image and legacy models</td></tr></tbody></table><p>Always match the metric the embedding model was trained for, and configure the index with the same one.</p>
+    </section>
+    <section class="lesson" id="ann">
+      <h2>Approximate nearest neighbour (ANN) indexes</h2><p>Exact search compares the query to every vector, which is too slow beyond a few million. ANN indexes trade a little recall for orders of magnitude in speed.</p><table><thead><tr><th>Index</th><th>Idea</th><th>Strengths</th><th>Costs</th></tr></thead><tbody><tr><td>Flat</td><td>Exact brute force</td><td>Perfect recall, tiny datasets and GPU use</td><td>Linear time</td></tr><tr><td>HNSW</td><td>Layered proximity graph</td><td>Fast, high recall, default in most databases</td><td>High memory, slower builds and updates</td></tr><tr><td>IVF</td><td>Cluster vectors, search the nearest clusters</td><td>Lower memory, good for large sets</td><td>Needs training; recall tuned with nprobe</td></tr><tr><td>PQ and scalar quantisation</td><td>Compress vectors to bytes or bits</td><td>4x to 32x less memory</td><td>Some recall loss; usually re-rank with full vectors</td></tr><tr><td>DiskANN style (disk graph)</td><td>Graph index mostly on SSD</td><td>Billion-scale on modest RAM</td><td>Higher latency, more engineering</td></tr></tbody></table><div class="callout"><strong>Tuning knob to remember</strong>Every ANN index has a recall versus latency dial (HNSW ef_search, IVF nprobe). Measure recall@k against exact search on a sample, then set the dial to your target, for example 95 to 99 percent.</div>
+    </section>
+    <section class="lesson" id="sizing">
+      <h2>The memory maths</h2><p>Raw vector memory is <strong>vectors &times; dimensions &times; bytes per value</strong>, and an HNSW graph adds roughly 20 to 50 percent on top. Do this arithmetic before choosing a database.</p><table><thead><tr><th>Corpus (chunks)</th><th>Dimensions</th><th>float32</th><th>int8 scalar</th><th>Binary</th></tr></thead><tbody><tr><td>1 million</td><td>1024</td><td>4 GB</td><td>1 GB</td><td>0.13 GB</td></tr><tr><td>100 million</td><td>1024</td><td>410 GB</td><td>102 GB</td><td>13 GB</td></tr><tr><td>1 billion</td><td>1024</td><td>4.1 TB</td><td>1 TB</td><td>128 GB</td></tr><tr><td>1 billion</td><td>256 (Matryoshka)</td><td>1 TB</td><td>256 GB</td><td>32 GB</td></tr></tbody></table><p>This is why large-scale systems combine truncated or quantised vectors for the first-pass search with full-precision re-scoring of the top few hundred candidates, and shard the index across nodes.</p>
+    </section>
+    <section class="lesson" id="dbs">
+      <h2>Choosing a vector store</h2><table><thead><tr><th>Option</th><th>Best for</th><th>Notes</th></tr></thead><tbody><tr><td>pgvector (PostgreSQL)</td><td>Up to tens of millions of vectors, already using Postgres, need SQL joins and transactions</td><td>Simplest operations; HNSW and IVFFlat; pgvectorscale and similar extensions extend scale</td></tr><tr><td>Qdrant</td><td>Rich filtering, self-hosted or cloud, good performance per dollar</td><td>Rust, payload filters, quantisation, sharding</td></tr><tr><td>Milvus (Zilliz Cloud)</td><td>Billion-scale, many index types, GPU indexes</td><td>Distributed; more moving parts</td></tr><tr><td>Pinecone</td><td>Fully managed serverless with minimal ops</td><td>Vendor-hosted; check cost at scale</td></tr><tr><td>Weaviate</td><td>Built-in hybrid search and modules</td><td>Open source and managed</td></tr><tr><td>OpenSearch and Elasticsearch</td><td>You already run them; need keyword plus vector in one engine</td><td>Strong hybrid and filtering</td></tr><tr><td>Cloud-native (Azure AI Search, Vertex AI Vector Search, AWS S3 Vectors and OpenSearch, Aurora pgvector)</td><td>Staying inside one cloud's governance</td><td>See the cloud path for service maps</td></tr></tbody></table><p>Selection criteria: scale and growth, filter complexity (multi-tenant ACLs), update rate, hybrid search support, latency target, operational skills, and data residency. Start with the simplest store that fits the next 12 months.</p>
+    </section>
+    <section class="lesson" id="hybrid">
+      <h2>Metadata filters and hybrid search</h2><p>Pure vector search misses exact terms such as product codes, error ids, names and rare acronyms. <strong>Hybrid search</strong> runs keyword search (BM25 or sparse vectors such as SPLADE) alongside dense vectors and merges the rankings, typically with Reciprocal Rank Fusion: score = sum of 1 / (k + rank) across the result lists, with k near 60.</p><pre><code>-- pgvector example: filtered nearest neighbours
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TABLE chunks (
+  id bigserial PRIMARY KEY, doc_id text, tenant text, body text,
+  embedding vector(384));
+CREATE INDEX ON chunks USING hnsw (embedding vector_cosine_ops);
+
+SELECT id, doc_id, body
+FROM chunks
+WHERE tenant = 'acme'                       -- security and scoping filter
+ORDER BY embedding &lt;=&gt; '[0.12, -0.03, ...]' -- cosine distance
+LIMIT 10;</code></pre><p>Apply access-control filters inside the search, not after it; post-filtering can return empty or leaky results.</p>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Embed 200 FAQ entries and test ten paraphrased questions; measure how often the right entry is in the top 3.</li><li>Repeat with a keyword-only search and compare. Which questions does each miss?</li><li>Calculate the memory for your expected corpus at float32 and int8.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://huggingface.co/spaces/mteb/leaderboard" target="_blank" rel="noreferrer">MTEB leaderboard</a> &mdash; compare embedding models</li><li><a href="https://github.com/pgvector/pgvector" target="_blank" rel="noreferrer">pgvector</a> &mdash; Postgres vector extension</li><li><a href="https://qdrant.tech/documentation/" target="_blank" rel="noreferrer">Qdrant docs</a> &mdash; filtering, quantisation, sharding</li><li><a href="https://milvus.io/docs" target="_blank" rel="noreferrer">Milvus docs</a> &mdash; distributed vector search</li><li><a href="https://github.com/facebookresearch/faiss/wiki" target="_blank" rel="noreferrer">FAISS wiki</a> &mdash; index types explained</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-02-prompting-handbook.html">&larr; Previous: Prompt Engineering</a><a class="lesson-link" href="genai-04-rag-basics-handbook.html">Next lesson: RAG Basics &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

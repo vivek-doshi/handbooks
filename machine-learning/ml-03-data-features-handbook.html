@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner: explore and clean data, handle missing values and outliers, encode and scale features, engineer new ones, split correctly, and avoid data leakage.">
+  <title>03. Data preparation and feature engineering | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">03 / 13 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-02-math-stats-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-04-linear-models-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 03 &middot; Beginner &middot; Cleaning, encoding, scaling, feature engineering, splitting correctly, and avoiding leakage</div>
+      <h1>Data preparation and feature engineering</h1>
+      <p class="lede">Model quality is capped by data quality. This step covers the unglamorous work that decides most results: understanding the data, cleaning it, turning it into numbers, and splitting it so your scores can be trusted.</p>
+      <div class="hero-meta"><span class="badge">Explore</span><span class="badge">Missing values</span><span class="badge">Encoding</span><span class="badge">Scaling</span><span class="badge">Feature engineering</span><span class="badge">Splitting and leakage</span></div>
+    </section>
+    <section class="lesson" id="eda">
+      <h2>1. Explore before you model</h2><p>Spend time with the data first. For pandas fundamentals see the <a href="../data-engineering/pandas-handbook.html">pandas handbook</a>; for pipelines that deliver the data see the <a href="../data-engineering/etl-handbook.html">ETL handbook</a>.</p><pre><code>import pandas as pd
+
+df = pd.read_csv("customers.csv")
+print(df.shape)
+print(df.dtypes)
+print(df.describe(include="all").T)
+print(df.isna().mean().sort_values(ascending=False).head(10))   # share missing
+print(df["churned"].value_counts(normalize=True))                # target balance
+print(df.duplicated().sum())</code></pre><table><thead><tr><th>Check</th><th>Why it matters</th></tr></thead><tbody><tr><td>Target distribution</td><td>Imbalance changes the metric and the method</td></tr><tr><td>Missing values per column</td><td>Decides imputation strategy and whether missingness itself is informative</td></tr><tr><td>Duplicates and impossible values</td><td>Duplicates leak between train and test; negative ages are errors</td></tr><tr><td>Units and formats</td><td>Mixed currencies, time zones, date formats</td></tr><tr><td>Relationship to target</td><td>Plots and group means reveal useful features and suspicious ones</td></tr><tr><td>Representativeness</td><td>Does this data look like what the model will see in production?</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="missing">
+      <h2>2. Missing values and outliers</h2><table><thead><tr><th>Strategy</th><th>When to use</th></tr></thead><tbody><tr><td>Drop rows</td><td>Few rows missing and missing at random</td></tr><tr><td>Drop column</td><td>Mostly empty and not informative</td></tr><tr><td>Impute median or mean</td><td>Numeric, missing at random; median is safer with outliers</td></tr><tr><td>Impute most frequent or a constant</td><td>Categorical columns</td></tr><tr><td>Add a <code>was_missing</code> indicator</td><td>Missingness itself carries signal (income not provided)</td></tr><tr><td>Model-based imputation (KNN, iterative)</td><td>Strong relationships between features; costs more</td></tr><tr><td>Leave it</td><td>Tree-based models such as HistGradientBoosting, XGBoost and LightGBM handle NaN natively</td></tr></tbody></table><p>Always fit the imputer on training data only. Otherwise statistics from the test set leak into training.</p><ul><li><strong>Outliers:</strong> find them with box plots or the 1.5 x IQR rule, then decide. Errors get fixed or removed; genuine extremes are kept, and you choose robust methods (median, trees, Huber loss) or transform them (log).</li><li>Do not remove outliers just because they hurt the score; they may be exactly the cases you need to predict.</li></ul>
+    </section>
+    <section class="lesson" id="encode">
+      <h2>3. Encoding categorical features</h2><table><thead><tr><th>Method</th><th>What it does</th><th>Best for</th><th>Watch out for</th></tr></thead><tbody><tr><td>One-hot</td><td>One 0/1 column per category</td><td>Low-cardinality nominal data, linear models</td><td>Explodes with many categories</td></tr><tr><td>Ordinal</td><td>Maps categories to ordered integers</td><td>Truly ordered data (small, medium, large); tree models</td><td>Implies fake order for nominal data in linear models</td></tr><tr><td>Target / mean encoding</td><td>Replaces category with average target</td><td>High-cardinality categories</td><td>Leakage unless done inside cross-validation; scikit-learn's <code>TargetEncoder</code> does this safely</td></tr><tr><td>Frequency / count</td><td>Replaces category with how often it appears</td><td>High-cardinality, quick signal</td><td>Different categories can share a count</td></tr><tr><td>Hashing</td><td>Hashes categories into fixed columns</td><td>Huge or streaming vocabularies</td><td>Collisions, no reverse lookup</td></tr><tr><td>Native categorical support</td><td>Algorithm handles categories directly</td><td>CatBoost, LightGBM, HistGradientBoosting</td><td>Check each library's setting</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="scale">
+      <h2>4. Scaling and transforming numbers</h2><table><thead><tr><th>Method</th><th>Formula idea</th><th>Use when</th></tr></thead><tbody><tr><td>Standardisation</td><td>(x - mean) / std</td><td>Default for linear models, SVM, KNN, PCA, neural networks</td></tr><tr><td>Min-max</td><td>Rescale to 0 to 1</td><td>Bounded inputs; image pixels</td></tr><tr><td>Robust scaling</td><td>(x - median) / IQR</td><td>Many outliers</td></tr><tr><td>Log or power transform</td><td>log(1 + x), Yeo-Johnson</td><td>Right-skewed values such as prices and counts</td></tr></tbody></table><div class="callout"><strong>Who needs scaling?</strong>Distance-based and gradient-based models (KNN, SVM, k-means, PCA, linear models with regularisation, neural networks) need scaled features. Tree-based models (decision tree, random forest, gradient boosting) do not.</div>
+    </section>
+    <section class="lesson" id="fe">
+      <h2>5. Feature engineering</h2><p>Good features usually beat clever algorithms. Common patterns:</p><ul><li><strong>Dates:</strong> extract day of week, month, hour, is-weekend, days since an event; use cyclic encodings (sin and cos) for hour or month.</li><li><strong>Ratios and differences:</strong> debt-to-income, price per square metre, change since last period.</li><li><strong>Aggregations:</strong> per-customer averages, counts in the last 30 days, time since last purchase. Compute them using only information available at prediction time.</li><li><strong>Interactions and polynomials:</strong> products of features that matter together. Trees find interactions on their own; linear models need them added.</li><li><strong>Binning:</strong> turn age into bands when the effect is stepwise.</li><li><strong>Text:</strong> bag-of-words and TF-IDF for classical models, or embeddings (step 13).</li><li><strong>Domain knowledge:</strong> talk to the people who know the data. This is often the highest-value step.</li></ul><p><strong>Feature selection</strong> removes noise and speeds training: drop constant or duplicate columns, check high correlation between features, use L1 regularisation (step 04), tree importances or permutation importance (step 08), or recursive feature elimination (<code>RFE</code>).</p>
+    </section>
+    <section class="lesson" id="split">
+      <h2>6. Splitting data and avoiding leakage</h2><table><thead><tr><th>Split</th><th>Purpose</th><th>Rule</th></tr></thead><tbody><tr><td>Train</td><td>Fit the model</td><td>Everything you learn comes from here</td></tr><tr><td>Validation (or cross-validation folds)</td><td>Choose models and hyperparameters</td><td>Look at it as often as needed</td></tr><tr><td>Test</td><td>Final unbiased estimate</td><td>Use once at the end; never tune on it</td></tr></tbody></table><ul><li><strong>Stratified split</strong> keeps class proportions: use <code>stratify=y</code> for classification.</li><li><strong>Time-based split</strong> for anything that changes over time: train on the past, test on the future. Random splits leak the future.</li><li><strong>Group split</strong> when rows share an entity (many rows per patient or customer): keep each group wholly in one split.</li></ul><h3>Data leakage: the most common reason a great model fails in production</h3><table><thead><tr><th>Leak</th><th>Example</th><th>Fix</th></tr></thead><tbody><tr><td>Target leakage</td><td>A feature recorded after the outcome, such as &quot;refund issued&quot; when predicting churn</td><td>Ask, for every feature: is it known at prediction time?</td></tr><tr><td>Preprocessing leakage</td><td>Scaling or imputing before splitting</td><td>Fit all preprocessing inside a pipeline on training data only</td></tr><tr><td>Duplicate or near-duplicate rows</td><td>Same record in train and test</td><td>Deduplicate; group split</td></tr><tr><td>Temporal leakage</td><td>Random split of time-ordered data</td><td>Time-based split</td></tr></tbody></table><pre><code>from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+
+num = ["age", "tenure", "monthly_spend"]
+cat = ["plan", "region"]
+
+pre = ColumnTransformer([
+    ("num", Pipeline([("impute", SimpleImputer(strategy="median")),
+                      ("scale", StandardScaler())]), num),
+    ("cat", Pipeline([("impute", SimpleImputer(strategy="most_frequent")),
+                      ("onehot", OneHotEncoder(handle_unknown="ignore"))]), cat),
+])
+model = Pipeline([("pre", pre), ("clf", LogisticRegression(max_iter=1000))])
+
+X_train, X_test, y_train, y_test = train_test_split(
+    df[num + cat], df["churned"], test_size=0.2, stratify=df["churned"], random_state=42)
+model.fit(X_train, y_train)          # preprocessing is fitted on training data only</code></pre><div class="exercise"><strong>Practice</strong><ol><li>Take any CSV you have, list missing values per column and decide a strategy for each.</li><li>Ask of every feature: would I know this at the moment of prediction? Remove any that fail.</li><li>Build the pipeline above on your data and compare it to a <code>DummyClassifier</code> baseline.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://scikit-learn.org/stable/modules/preprocessing.html" target="_blank" rel="noreferrer">scikit-learn: Preprocessing data</a> &mdash; scaling, encoding and transformation</li><li><a href="https://scikit-learn.org/stable/modules/compose.html" target="_blank" rel="noreferrer">scikit-learn: Pipelines and ColumnTransformer</a> &mdash; leak-free preprocessing</li><li><a href="https://scikit-learn.org/stable/common_pitfalls.html" target="_blank" rel="noreferrer">scikit-learn: Common pitfalls and recommended practices</a> &mdash; leakage and other traps</li><li><a href="https://developers.google.com/machine-learning/crash-course/numerical-data" target="_blank" rel="noreferrer">Google ML Crash Course: Data preparation</a> &mdash; numerical and categorical data</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-02-math-stats-handbook.html">&larr; Previous: Math and Statistics</a><a class="lesson-link" href="ml-04-linear-models-handbook.html">Next lesson: Linear Models &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: attention and self-attention, the transformer architecture, BERT-style encoders, GPT-style decoders, tokenisation, embeddings, dense versus mixture-of-experts models, and using pretrained models.">
+  <title>13. Attention and transformers | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">13 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-12-cnn-sequence-transfer-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 13 &middot; Intermediate &middot; Self-attention, the transformer block, encoder and decoder models, and the bridge to LLMs</div>
+      <h1>Attention and transformers</h1>
+      <p class="lede">The transformer is the architecture behind modern language, vision and multimodal AI. This final step explains attention, builds the core block in code, compares the model families, and shows how to use pretrained models, then points to the generative AI handbooks for what comes next.</p>
+      <div class="hero-meta"><span class="badge">Attention</span><span class="badge">Transformer block</span><span class="badge">Model families</span><span class="badge">Tokens</span><span class="badge">Dense vs MoE</span><span class="badge">Using models</span><span class="badge">Next steps</span></div>
+    </section>
+    <section class="lesson" id="attention">
+      <h2>1. Why attention</h2><p>RNNs squeeze a whole sequence into one hidden state and read it one step at a time. <strong>Attention</strong> lets every position look directly at every other position and decide how much each one matters. That removes the memory bottleneck and allows the whole sequence to be processed in parallel on GPUs.</p><h3>Self-attention in three ideas</h3><ul><li>Each token is turned into three vectors: a <strong>query</strong> (what am I looking for), a <strong>key</strong> (what do I offer) and a <strong>value</strong> (what I contribute).</li><li>Scores are the dot product of a query with every key, scaled by the square root of the key size and passed through softmax to become weights that sum to 1.</li><li>The output is the weighted sum of the values: <code>softmax(Q K^T / sqrt(d)) V</code>.</li></ul><pre><code>import math, torch, torch.nn as nn, torch.nn.functional as F
+
+def attention(q, k, v, mask=None):
+    scores = q @ k.transpose(-2, -1) / math.sqrt(q.size(-1))
+    if mask is not None:
+        scores = scores.masked_fill(~mask, float("-inf"))
+    return F.softmax(scores, dim=-1) @ v
+
+class SelfAttention(nn.Module):
+    def __init__(self, d_model, n_heads):
+        super().__init__()
+        assert d_model % n_heads == 0
+        self.h, self.dk = n_heads, d_model // n_heads
+        self.qkv = nn.Linear(d_model, 3 * d_model)
+        self.out = nn.Linear(d_model, d_model)
+
+    def forward(self, x, causal=False):
+        B, T, D = x.shape
+        q, k, v = self.qkv(x).chunk(3, dim=-1)
+        q, k, v = (t.view(B, T, self.h, self.dk).transpose(1, 2) for t in (q, k, v))
+        y = F.scaled_dot_product_attention(q, k, v, is_causal=causal)   # fused, fast kernel
+        return self.out(y.transpose(1, 2).reshape(B, T, D))</code></pre><ul><li><strong>Multi-head attention</strong> runs several attention computations in parallel so each head can specialise (syntax, position, reference).</li><li><strong>Causal masking</strong> stops a token from seeing later tokens; it is what makes a model generate text one token at a time.</li><li><strong>Cost:</strong> attention compares every token with every other, so compute and memory grow with the square of the sequence length. Efficient kernels and sparse or sliding-window variants reduce this.</li></ul>
+    </section>
+    <section class="lesson" id="block">
+      <h2>2. The transformer block</h2><ol><li><strong>Embeddings and positions:</strong> tokens become vectors; position information is added (sinusoidal or learned in early models, rotary embeddings in many current ones) because attention alone ignores order.</li><li><strong>Self-attention</strong> mixes information across tokens.</li><li><strong>Feed-forward network:</strong> a small MLP applied to each token; it holds much of the model&#39;s knowledge.</li><li><strong>Residual connections and layer normalisation</strong> around each sub-layer keep deep stacks trainable (step 10).</li><li>Repeat for dozens of layers, then add an output head.</li></ol><pre><code>class Block(nn.Module):
+    def __init__(self, d_model=256, n_heads=8, d_ff=1024, p=0.1):
+        super().__init__()
+        self.ln1, self.ln2 = nn.LayerNorm(d_model), nn.LayerNorm(d_model)
+        self.attn = SelfAttention(d_model, n_heads)
+        self.ff = nn.Sequential(nn.Linear(d_model, d_ff), nn.GELU(), nn.Linear(d_ff, d_model))
+        self.drop = nn.Dropout(p)
+
+    def forward(self, x, causal=False):
+        x = x + self.drop(self.attn(self.ln1(x), causal))     # pre-norm residual
+        return x + self.drop(self.ff(self.ln2(x)))</code></pre>
+    </section>
+    <section class="lesson" id="families">
+      <h2>3. The three model families</h2><table><thead><tr><th>Family</th><th>Attention</th><th>Examples</th><th>Best for</th></tr></thead><tbody><tr><td>Encoder-only</td><td>Bidirectional (sees the whole input)</td><td>BERT, RoBERTa, DeBERTa, sentence embedding models</td><td>Classification, search embeddings, extraction, ranking</td></tr><tr><td>Decoder-only</td><td>Causal (sees only the past)</td><td>GPT-style and open-weight chat and code models</td><td>Text generation, chat, code, reasoning, agents</td></tr><tr><td>Encoder-decoder</td><td>Encoder reads the input; decoder generates with cross-attention</td><td>T5, BART, Whisper (speech)</td><td>Translation, summarisation, speech to text</td></tr><tr><td>Vision transformers (ViT)</td><td>Patches of an image as tokens</td><td>ViT, CLIP, SigLIP</td><td>Image classification, image-text matching, multimodal models</td></tr></tbody></table><p>Today&#39;s large language models are overwhelmingly decoder-only, pretrained to predict the next token on huge text and code corpora, then <strong>instruction-tuned</strong> and aligned with human or AI preference data. Multimodal models add image, audio and video tokens to the same sequence.</p>
+    </section>
+    <section class="lesson" id="tokens">
+      <h2>4. Tokens, embeddings and context</h2><ul><li><strong>Tokenisation:</strong> text is split into sub-word tokens (byte-pair encoding or similar), roughly 3 to 4 characters of English each. Costs, limits and speed are measured in tokens, and tokenisers differ between models.</li><li><strong>Embeddings:</strong> each token id maps to a learned vector; models also output embeddings you can use for search and classification.</li><li><strong>Context window:</strong> the maximum number of tokens a model can attend to. Longer is not always better; models can miss details in the middle of very long inputs.</li><li><strong>KV cache:</strong> during generation, keys and values of past tokens are cached so each new token is cheap; it is also the main memory cost of serving.</li><li><strong>Sampling:</strong> temperature, top-p and top-k control how random the next-token choice is.</li></ul>
+    </section>
+    <section class="lesson" id="moe">
+      <h2>5. Dense versus mixture-of-experts</h2><table><thead><tr><th></th><th>Dense</th><th>Mixture of experts (MoE)</th></tr></thead><tbody><tr><td>Idea</td><td>Every parameter is used for every token</td><td>A router sends each token to a few expert sub-networks</td></tr><tr><td>Compute per token</td><td>Proportional to total parameters</td><td>Only the active experts, so much lower than total size</td></tr><tr><td>Memory</td><td>Total parameters</td><td>Still all experts must be loaded</td></tr><tr><td>Pros</td><td>Simpler, easier to fine-tune and serve</td><td>More capacity for the same compute</td></tr><tr><td>Cons</td><td>Costly to scale</td><td>Harder to train, balance and serve; memory-heavy</td></tr></tbody></table><p>Many recent frontier and open-weight models are MoE. When comparing models, look at both <em>total</em> and <em>active</em> parameters.</p>
+    </section>
+    <section class="lesson" id="use">
+      <h2>6. Using pretrained transformers</h2><pre><code>from transformers import pipeline
+from sentence_transformers import SentenceTransformer, util
+
+clf = pipeline("sentiment-analysis", model="distilbert/distilbert-base-uncased-finetuned-sst-2-english")
+print(clf("The onboarding was smooth and support was fast."))
+
+enc = SentenceTransformer("all-MiniLM-L6-v2")                     # small embedding model
+a, b = enc.encode(["reset my password", "I forgot my login"])
+print(util.cos_sim(a, b))                                         # semantic similarity</code></pre><table><thead><tr><th>Need</th><th>Approach</th></tr></thead><tbody><tr><td>Classify or extract from text</td><td>Fine-tune an encoder, or use embeddings plus logistic regression</td></tr><tr><td>Search by meaning</td><td>Embedding model plus a vector index</td></tr><tr><td>Generate, summarise, converse</td><td>Instruction-tuned decoder model through an API or a local runtime</td></tr><tr><td>Domain behaviour or style</td><td>Prompting and retrieval first; fine-tune (LoRA) only if needed</td></tr><tr><td>Images and text together</td><td>A multimodal model or CLIP-style embeddings</td></tr></tbody></table><div class="callout"><strong>Know the limits</strong>Language models can state wrong things fluently (hallucination), reflect biases in their data, and be manipulated through their inputs. Evaluate on your own tasks, ground answers in retrieved sources, and add human review where errors are costly.</div>
+    </section>
+    <section class="lesson" id="next">
+      <h2>7. Where to go from here</h2><p>You now have the foundations that every modern AI system rests on. Continue with:</p><ul><li><strong>LLM concepts, prompting and retrieval:</strong> <a href="../gen-ai/genai-01-llm-foundations-handbook.html">LLM concepts</a>, <a href="../gen-ai/genai-02-prompting-handbook.html">prompt engineering</a>, <a href="../gen-ai/genai-05-advanced-rag-handbook.html">context engineering and RAG</a>, <a href="../gen-ai/genai-11-architecture-components-handbook.html">GenAI architecture</a>.</li><li><strong>Customising models:</strong> <a href="../gen-ai/genai-07-fine-tuning-fundamentals-handbook.html">fine-tuning</a> and <a href="../gen-ai/genai-08-fine-tuning-practice-handbook.html">Hugging Face fine-tuning</a>.</li><li><strong>Applications and agents:</strong> the <a href="../ai-frameworks/langchain-handbook.html">framework handbooks</a>.</li><li><strong>Shipping and running models:</strong> the <a href="../mlops/mlops-01-fundamentals-handbook.html">MLOps</a> handbooks, and the <a href="../cloud/cloud-03-aws-ai-handbook.html">cloud AI steps</a> for managed services.</li><li><strong>Responsible use:</strong> the AI governance and security handbooks.</li></ul><div class="exercise"><strong>Practice</strong><ol><li>Run the <code>Block</code> on a random tensor of shape <code>(2, 10, 256)</code> with <code>causal=True</code> and confirm the output shape.</li><li>Embed 20 short sentences with a sentence-embedding model, cluster them with k-means (step 07) and see whether the groups make sense.</li><li>Fine-tune a small encoder on a labelled text dataset and compare it with the TF-IDF plus logistic regression baseline from step 09.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noreferrer">Attention Is All You Need</a> &mdash; the original transformer paper</li><li><a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noreferrer">The Illustrated Transformer</a> &mdash; visual walkthrough</li><li><a href="https://huggingface.co/learn/llm-course" target="_blank" rel="noreferrer">Hugging Face LLM Course</a> &mdash; hands-on with the transformers library</li><li><a href="https://www.youtube.com/@AndrejKarpathy" target="_blank" rel="noreferrer">Andrej Karpathy: Neural Networks, Zero to Hero</a> &mdash; build a GPT from scratch</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-12-cnn-sequence-transfer-handbook.html">&larr; Previous: CNNs and Sequences</a><a class="lesson-link" href="../index.html">Back to all handbooks &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

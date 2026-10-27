@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Advanced: architecting a natural-language analytics agent over a multi-petabyte lakehouse, then a cross-case comparison, a production-readiness checklist and where to go next.">
+  <title>16. Use Case 5: Analytics Agent and the Architecture Playbook | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">16 / 16 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-15-usecases-documents-code-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 16 &middot; Advanced &middot; Agentic AI over a petabyte lakehouse</div>
+      <h1>Use Case 5: Analytics Agent and the Architecture Playbook</h1>
+      <p class="lede">The final case is the most agentic: a text-to-SQL analytics assistant over a multi-petabyte lakehouse, where the retrieval target is metadata rather than documents. The step ends with a comparison of all five cases and a reusable architecture playbook.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">10 PB lakehouse</span><span class="badge">Playbook</span></div>
+    </section>
+    <section class="lesson" id="req">
+      <h2>Use case 5: Natural-language analytics agent</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Data</td><td>10 PB lakehouse (Iceberg or Delta), 200,000 tables, about 5 million columns, multiple warehouses and BI tools</td></tr><tr><td>Users</td><td>30,000 business users and analysts asking questions in plain language</td></tr><tr><td>Output</td><td>Correct SQL, a result table, a chart and a plain-language explanation with the metric definitions used</td></tr><tr><td>Controls</td><td>Row and column-level security, masked PII, query cost limits, no writes</td></tr><tr><td>Accuracy</td><td>Metric answers must match certified dashboards; wrong numbers are worse than no number</td></tr></tbody></table><div class="callout"><strong>Where the scale is</strong>The data is huge, but the <em>retrieval corpus</em> is not: table and column descriptions, metric definitions and example queries total a few million small items, which fits one modest vector index. The scale problem is query cost, governance and correctness, not vector search.</div>
+    </section>
+    <section class="lesson" id="decide">
+      <h2>UC5 decisions</h2><table><thead><tr><th>Question</th><th>Decision</th><th>Reason</th></tr></thead><tbody><tr><td>Embed the data?</td><td>No. Embed metadata only: table and column descriptions, metric definitions, example question-and-SQL pairs</td><td>Rows cannot be retrieved by similarity and would be a security risk</td></tr><tr><td>Semantic layer</td><td>Yes: governed metrics, dimensions, join paths and synonyms (dbt semantic layer, LookML, Cube or the platform's native one)</td><td>Lets the model choose metrics instead of inventing SQL, the largest accuracy gain</td></tr><tr><td>Model approach</td><td>Frontier or strong reasoning model, schema-linked prompts, retrieved similar queries; fine-tune only a small SQL dialect model if volume demands</td><td>Correctness is more important than cost per call; volume is modest</td></tr><tr><td>Agent or pipeline?</td><td>Bounded agent loop: plan, retrieve schema, write SQL, validate, run, inspect, answer; max 6 steps</td><td>Self-repair on errors is valuable; the budget keeps it safe</td></tr><tr><td>Verification</td><td>Static validation, EXPLAIN cost estimate, row-limit sampling, comparison with certified metrics, and a result sanity check</td><td>Programmatic verifiers beat self-assessment</td></tr><tr><td>Security</td><td>Execute as the end user with row and column policies, read-only role, allow-listed schemas</td><td>The model must never gain more access than the user</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="arch">
+      <h2>UC5 architecture</h2><pre><code>User question -&gt; gateway (SSO) -&gt; intent: metric lookup | ad-hoc analysis | explain | out of scope
+  1. Retrieve context: hybrid search over catalog (tables, columns, metrics, glossary, golden queries)
+                       + semantic layer lookup (certified metrics first)
+  2. Plan + generate query (semantic-layer query if the metric exists, otherwise SQL with retrieved join paths)
+  3. Validate: parse, allow-list tables, force partition filters and LIMIT, EXPLAIN -&gt; estimated bytes scanned
+        reject if above budget or ask the user to narrow
+  4. Execute as the user on an isolated warehouse (workload management, timeout, scan cap)
+  5. Inspect result: empty? implausible? compare with certified value; retry up to N times with the error
+  6. Answer: table + chart + natural-language summary + SQL + metric definitions + data freshness
+ Cache: normalised question + user policy hash -&gt; result (TTL by data freshness)
+ Feedback: thumbs, SQL edits by analysts -&gt; new golden queries -&gt; eval set</code></pre><ul><li><strong>Catalog quality drives accuracy.</strong> Invest in column descriptions and metric definitions (LLMs can draft them for owners to approve) before tuning models.</li><li><strong>Cost guardrails:</strong> estimated scan size limit, per-user and per-team budgets, dedicated small warehouses for the agent, and result caching.</li><li><strong>Ambiguity handling:</strong> when several metrics match (&ldquo;revenue&rdquo;), ask a clarifying question or show the options rather than guessing.</li><li><strong>Evaluation:</strong> 500 to 1,000 question and answer pairs with verified results; execution accuracy (the result matches, not the SQL text), schema-linking accuracy, refusal quality, cost per answer, and unsafe-query block rate.</li></ul>
+    </section>
+    <section class="lesson" id="compare">
+      <h2>All five cases compared</h2><table><thead><tr><th>Case</th><th>Data scale</th><th>Core problem</th><th>Fine-tune?</th><th>RAG strategy</th><th>Hardest part</th></tr></thead><tbody><tr><td>1. Knowledge assistant</td><td>1.5B chunks</td><td>Retrieval over a vast, permissioned corpus</td><td>Embedder and reranker, not the generator</td><td>Hybrid, ACL pre-filter, rerank, parent-child</td><td>Permissions and freshness</td></tr><tr><td>2. Support platform</td><td>180M calls a month</td><td>Volume and behaviour</td><td>Yes: SFT and DPO on a small model</td><td>KB plus resolved tickets</td><td>Policy compliance and multilingual quality</td></tr><tr><td>3. Document intelligence</td><td>600M pages a month</td><td>Throughput and cost per page</td><td>Yes: distil into small extractors</td><td>Mostly not RAG; index for search</td><td>Confidence calibration and drift</td></tr><tr><td>4. Code intelligence</td><td>5B lines</td><td>Latency and exact retrieval</td><td>Yes: completion and review models</td><td>Lexical plus symbol plus agentic search</td><td>Freshness and safe agent execution</td></tr><tr><td>5. Analytics agent</td><td>10 PB data, 5M columns of metadata</td><td>Correctness and governance</td><td>Rarely</td><td>Metadata RAG plus semantic layer</td><td>Wrong-number risk and cost control</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="patterns">
+      <h2>Reusable patterns from the five cases</h2><ul><li><strong>Funnel:</strong> cheap models first, expensive models for the hard remainder (cases 2, 3 and 4).</li><li><strong>Verifiers beat opinions:</strong> tests, schemas, rules and certified metrics make AI output trustworthy (cases 3, 4 and 5).</li><li><strong>Identity everywhere:</strong> propagate the user's identity to retrieval, tools and databases (cases 1, 4 and 5).</li><li><strong>Retrieve the right thing:</strong> documents, tickets, symbols or metadata, depending on the question (all cases).</li><li><strong>Close the loop:</strong> production corrections become golden sets and training data (all cases).</li><li><strong>Separate knowledge from behaviour:</strong> RAG for facts, fine-tuning for style and skill (cases 1 and 2).</li><li><strong>Budget everything:</strong> tokens, steps, scan bytes, dollars and time.</li></ul>
+    </section>
+    <section class="lesson" id="checklist">
+      <h2>Production-readiness checklist</h2><table><thead><tr><th>Area</th><th>Check</th></tr></thead><tbody><tr><td>Requirements</td><td>Scale, latency, quality targets and constraints written down; decision ADRs exist</td></tr><tr><td>Data</td><td>Sources, ownership, ACLs, retention and licence confirmed; ingestion is incremental and idempotent</td></tr><tr><td>Retrieval</td><td>Recall measured; hybrid and rerank evaluated; ACL filtering tested for leaks</td></tr><tr><td>Models</td><td>Baseline, routing and fallback defined; versions pinned; fine-tune only with eval proof</td></tr><tr><td>Safety</td><td>Guardrails, injection tests, least-privilege tools, human approval for risky actions</td></tr><tr><td>Evaluation</td><td>Golden set in CI, online sampling, red-team results recorded</td></tr><tr><td>Operations</td><td>Tracing, dashboards, SLOs, budgets, on-call runbooks, canary and rollback</td></tr><tr><td>Cost</td><td>Unit economics per task, caching, batching and quotas in place</td></tr><tr><td>Governance</td><td>Data-use terms, privacy review, audit logs, change management</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="next">
+      <h2>Where to go next</h2><ul><li>Revisit step 12 when a requirement changes: the decision ladder is meant to be re-run, not done once.</li><li>Practise by building one case at small scale end to end, then size it up on paper with the capacity method in step 13.</li><li>Pair this path with the cloud architecture case studies, the MLOps handbooks for pipelines and registries, and the DevOps path for delivery.</li><li>Keep a living evaluation set. It is the asset that lets you adopt new models quickly and safely.</li></ul><p>Related handbooks: <a href="../cloud/cloud-14-arch-data-ai-handbook.html">Cloud: data and AI architectures</a>, <a href="../cloud/cloud-15-arch-pure-ai-handbook.html">Cloud: pure AI architectures</a>, <a href="../mlops/mlops-01-fundamentals-handbook.html">MLOps</a>.</p>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Pick your own use case and write one page: requirements, decision ladder outcome, architecture sketch, capacity estimate and top three risks.</li><li>Run the production-readiness checklist against a system you already operate.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://docs.getdbt.com/docs/build/about-metricflow" target="_blank" rel="noreferrer">dbt semantic layer (MetricFlow)</a> &mdash; governed metrics for text-to-SQL</li><li><a href="https://yale-lily.github.io/spider" target="_blank" rel="noreferrer">Spider benchmark</a> &mdash; text-to-SQL evaluation</li><li><a href="https://bird-bench.github.io" target="_blank" rel="noreferrer">BIRD benchmark</a> &mdash; large-scale text-to-SQL</li><li><a href="https://iceberg.apache.org" target="_blank" rel="noreferrer">Apache Iceberg</a> &mdash; open table format</li><li><a href="../cloud/cloud-15-arch-pure-ai-handbook.html" target="_blank" rel="noreferrer">Cloud path: pure AI architectures</a> &mdash; related patterns</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-15-usecases-documents-code-handbook.html">&larr; Previous: Use Cases: Documents and Code</a><a class="lesson-link" href="../index.html">Back to all handbooks &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-28">
+  <meta name="description" content="Beginner refresher: container concepts, Dockerfile principles, image hardening, Compose, and Docker vs Podman.">
+  <title>03. Containers with Docker | DevOps Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
+    <span class="path-progress">03 / 13 · Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="devops-02-git-collaboration-handbook.html">← Previous</a><a href="../index.html">All handbooks</a><a href="devops-04-dev-containers-handbook.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 03 · Beginner · Images, containers, Dockerfiles, and what production-grade means</div>
+      <h1>Containers with Docker</h1>
+      <p class="lede">Containers package an application with its dependencies so it runs the same on a laptop, in CI, and in production. This refresher covers the model, the habits of good images, and where to see full Dockerfiles.</p>
+      <div class="hero-meta"><span class="badge">Images</span><span class="badge">Dockerfile</span><span class="badge">Multi-stage</span><span class="badge">Compose</span><span class="badge">Podman</span></div>
+    </section>
+    <section class="lesson" id="model">
+      <h2>1. The mental model</h2>
+<ul><li><strong>Image:</strong> an immutable, layered filesystem plus metadata, built from a Dockerfile.</li><li><strong>Container:</strong> a running process isolated with namespaces and cgroups; it is not a VM.</li><li><strong>Registry:</strong> where images are stored and pulled (Docker Hub, GHCR, ECR, ACR, Artifact Registry).</li><li><strong>Volume:</strong> storage that outlives the container.</li></ul>
+<pre><code>docker build -t app:1.0 .
+docker run --rm -p 8080:8080 app:1.0
+docker logs -f &lt;container&gt;
+docker exec -it &lt;container&gt; sh</code></pre>
+    </section>
+    <section class="lesson" id="dockerfile">
+      <h2>2. What a good Dockerfile does</h2>
+<ul><li>Uses a small, pinned base image (digest-pinned for reproducibility; minimal or hardened images reduce CVEs).</li><li>Uses <strong>multi-stage builds</strong>: compile in a builder stage, copy only the artifact into a slim runtime stage.</li><li>Orders layers so dependency installs are cached before source copies.</li><li>Runs as a non-root user and drops writable paths where possible.</li><li>Ships a <code>.dockerignore</code>, a <code>HEALTHCHECK</code> or probe, and no secrets (use BuildKit secret mounts).</li></ul><div class="callout"><strong>See real snippets in the DevOps Playbook</strong> To see how an actual Dockerfile is written for Node.js, .NET, Python, and Go with multi-stage builds, non-root users and caching, use the Docker templates there. Open the <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook code template browser</a> to read and copy complete, working files.</div>
+    </section>
+    <section class="lesson" id="compose">
+      <h2>3. Compose for local multi-service work</h2>
+<p>Docker Compose describes an app's services, networks, and volumes in one <code>compose.yaml</code>. Use <code>docker compose up --build</code> locally and in integration tests; use <code>depends_on</code> with health conditions rather than sleeps. Compose is for development and small deployments; Kubernetes (Step 05) is the production path for most teams.</p>
+    </section>
+    <section class="lesson" id="practice">
+      <h2>4. Habits, pitfalls and alternatives</h2>
+<table><thead><tr><th>Anti-pattern</th><th>Better</th></tr></thead><tbody>
+<tr><td><code>latest</code> tags</td><td>Immutable version or digest tags</td></tr>
+<tr><td>Running as root</td><td><code>USER</code> non-root, read-only root filesystem</td></tr>
+<tr><td>Secrets in <code>ENV</code> or layers</td><td>Runtime secret injection or BuildKit secret mounts</td></tr>
+<tr><td>One giant image with build tools</td><td>Multi-stage, minimal runtime image</td></tr></tbody></table>
+<p><strong>Podman</strong> is a daemonless, rootless-by-default OCI-compatible alternative with a near-identical CLI; both build and run the same images.</p>
+<div class="exercise"><strong>Practice</strong>Containerize a small app with a multi-stage Dockerfile, compare image size before and after, and scan it with <code>docker scout</code> or Trivy.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+<ul class="reading-list">
+<li><a href="https://docs.docker.com/build/building/best-practices/" target="_blank" rel="noreferrer">Docker build best practices</a> — official guidance.</li>
+<li><a href="https://docs.docker.com/compose/" target="_blank" rel="noreferrer">Docker Compose docs</a> — Compose specification and CLI.</li>
+<li><a href="https://podman.io/docs" target="_blank" rel="noreferrer">Podman docs</a> — rootless containers.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="devops-02-git-collaboration-handbook.html">← Previous: Git Team Collaboration</a><a class="lesson-link" href="devops-04-dev-containers-handbook.html">Next lesson: Dev Containers →</a></div>
+    <footer class="site-footer">DevOps learning path · Updated 2026-10-28 · Real templates: <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a></footer>
+  </main>
+</body>
+</html>

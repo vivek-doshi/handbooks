@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: offline and online evaluation, LLM-as-judge, RAG and agent metrics, guardrail layers, red teaming, tracing, and governance basics.">
+  <title>10. Evaluation, Guardrails and Observability | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">10 / 16 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-09-agents-tools-mcp-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-11-architecture-components-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 10 &middot; Intermediate &middot; Trust but verify</div>
+      <h1>Evaluation, Guardrails and Observability</h1>
+      <p class="lede">Generative systems fail quietly. Evaluation, guardrails and observability are what turn a demo into a service you can change safely. Build them before scale, not after the first incident.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">Evals</span><span class="badge">Guardrails and tracing</span></div>
+    </section>
+    <section class="lesson" id="evals">
+      <h2>Evaluation layers</h2><table><thead><tr><th>Layer</th><th>What</th><th>When</th></tr></thead><tbody><tr><td>Golden set (offline)</td><td>50 to 500 representative inputs with expected answers or rubrics</td><td>Every prompt, model, retrieval or code change; run in CI</td></tr><tr><td>Component evals</td><td>Retriever recall, reranker nDCG, classifier accuracy, tool-call accuracy</td><td>While tuning each part</td></tr><tr><td>End-to-end evals</td><td>Task success on the full pipeline</td><td>Before release</td></tr><tr><td>Online evaluation</td><td>Sampled production traffic scored automatically, plus user feedback</td><td>Continuously</td></tr><tr><td>A/B and canary tests</td><td>Compare versions on live metrics</td><td>Releases that change behaviour or cost</td></tr><tr><td>Red teaming</td><td>Adversarial testing for safety, injection and leakage</td><td>Before launch and periodically</td></tr></tbody></table><div class="callout"><strong>Start small</strong>Thirty real examples with honest labels beat zero examples. Grow the set from production failures: every bug becomes a test case.</div>
+    </section>
+    <section class="lesson" id="metrics">
+      <h2>What to measure</h2><table><thead><tr><th>System</th><th>Metrics</th></tr></thead><tbody><tr><td>RAG</td><td>Context recall and precision, faithfulness (groundedness), answer relevance, citation accuracy, refusal when unanswerable</td></tr><tr><td>Extraction and classification</td><td>Precision, recall, F1, exact-match per field, schema validity</td></tr><tr><td>Summarisation and generation</td><td>Rubric scores (accuracy, coverage, tone), factual consistency, human preference</td></tr><tr><td>Agents</td><td>Task success, correct tool selection, trajectory efficiency (steps, cost), recovery from errors</td></tr><tr><td>Safety</td><td>Attack success rate on injection and jailbreak suites, PII leak rate, toxicity</td></tr><tr><td>Operations</td><td>p50 and p95 latency, time to first token, cost per request, cache hit rate, error rate</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="judge">
+      <h2>LLM-as-judge</h2><p>A strong model scores outputs against a rubric. It scales human judgement but has biases: it prefers longer answers, its own style, and the first option shown.</p><pre><code>JUDGE = """You grade an answer against the context.
+Return JSON: {"faithful": true|false, "reason": "..."}.
+faithful = every claim in the answer is supported by the context.
+
+&lt;context&gt;{context}&lt;/context&gt;
+&lt;answer&gt;{answer}&lt;/answer&gt;"""</code></pre><ul><li>Use a clear rubric with small integer scales or boolean checks, not vague 1 to 10 scores.</li><li>Randomise answer order in pairwise comparisons and use a different model family from the generator when possible.</li><li>Calibrate against 100 or so human-labelled examples and report agreement.</li><li>Prefer programmatic checks (exact match, tests, schema) wherever they exist.</li></ul>
+    </section>
+    <section class="lesson" id="tools">
+      <h2>Evaluation tooling</h2><table><thead><tr><th>Tool</th><th>Use</th></tr></thead><tbody><tr><td>Ragas, DeepEval, TruLens, promptfoo</td><td>Open-source metrics and test runners for RAG and prompts</td></tr><tr><td>LangSmith, Langfuse, Arize Phoenix, W&amp;B Weave, MLflow GenAI</td><td>Tracing, datasets, experiments and evaluators in one place</td></tr><tr><td>Cloud evaluators (Bedrock, Vertex AI, Azure AI Foundry)</td><td>Managed evaluation and safety scoring</td></tr><tr><td>lm-evaluation-harness, HELM, public leaderboards</td><td>General model comparison; never a substitute for your own set</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="guardrails">
+      <h2>Guardrail layers</h2><pre><code>request -&gt; [input guardrails] -&gt; model/agent -&gt; [output guardrails] -&gt; [action guardrails] -&gt; user/system
+   PII redaction              schema validation        allow-listed tools
+   injection/jailbreak        grounding check          human approval
+   topic and policy filter    moderation               rate and spend limits
+   auth and quota             citation check           sandboxed execution</code></pre><table><thead><tr><th>Control</th><th>Examples</th></tr></thead><tbody><tr><td>Input</td><td>PII detection and masking, prompt-injection classifiers, off-topic filters, size limits</td></tr><tr><td>Output</td><td>JSON schema validation, content moderation, groundedness checks, banned-content and secret scanners</td></tr><tr><td>Action</td><td>Least-privilege tools, human-in-the-loop for payments, deletions and external messages, sandboxed code execution</td></tr><tr><td>Products</td><td>Llama Guard and similar safety models, NVIDIA NeMo Guardrails, Guardrails AI, cloud content filters (Azure AI Content Safety, Bedrock Guardrails, Google Model Armor)</td></tr></tbody></table><p>Layer cheap deterministic checks first and model-based checks second, and measure the false-positive rate, since over-blocking harms the product as much as under-blocking.</p>
+    </section>
+    <section class="lesson" id="observe">
+      <h2>Observability</h2><ul><li><strong>Trace everything:</strong> one trace per request with spans for retrieval, reranking, each model call and tool call, including prompts, versions, token counts, latency and cost. OpenTelemetry GenAI semantic conventions are the emerging standard.</li><li><strong>Redact before storing:</strong> traces contain user data; apply PII masking and retention limits.</li><li><strong>Dashboards and alerts:</strong> latency, error and refusal rates, cost per tenant, cache hit rate, retrieval-empty rate, guardrail triggers, user thumbs-up and down.</li><li><strong>Feedback loop:</strong> sample failures into a review queue, label them, add them to the golden set, and use them for fine-tuning or retrieval fixes.</li><li><strong>Drift:</strong> watch for changes in input mix, document corpus, provider model updates and cost.</li></ul>
+    </section>
+    <section class="lesson" id="governance">
+      <h2>Governance and risk</h2><ul><li>Use the OWASP Top 10 for LLM applications as a threat checklist (injection, sensitive information disclosure, supply chain, excessive agency, and more).</li><li>Map to frameworks your organisation follows: NIST AI RMF, ISO/IEC 42001, and regional rules such as the EU AI Act where relevant. Document intended use, data sources, evaluation results and human oversight.</li><li>Keep model and prompt change logs, access reviews for tools and data, and an incident process for harmful outputs.</li><li>Review vendor terms: training on your data, retention, regional processing and sub-processors.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Create a 30-question golden set for your RAG app and run it in CI.</li><li>Add a groundedness judge and measure agreement with your own labels on 20 answers.</li><li>Add tracing and find your slowest span.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noreferrer">OWASP Top 10 for LLM applications</a> &mdash; risk checklist</li><li><a href="https://docs.ragas.io" target="_blank" rel="noreferrer">Ragas</a> &mdash; RAG metrics</li><li><a href="https://langfuse.com/docs" target="_blank" rel="noreferrer">Langfuse</a> &mdash; open-source tracing and evals</li><li><a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/" target="_blank" rel="noreferrer">OpenTelemetry GenAI conventions</a> &mdash; standard trace attributes</li><li><a href="https://www.nist.gov/itl/ai-risk-management-framework" target="_blank" rel="noreferrer">NIST AI RMF</a> &mdash; risk management framework</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-09-agents-tools-mcp-handbook.html">&larr; Previous: Tools, Agents and MCP</a><a class="lesson-link" href="genai-11-architecture-components-handbook.html">Next lesson: Architecture Components &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

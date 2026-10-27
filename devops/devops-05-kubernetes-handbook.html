@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-28">
+  <meta name="description" content="Intermediate: Kubernetes architecture, workloads, configuration, storage, autoscaling, probes, rollouts, RBAC, Pod Security, and debugging.">
+  <title>05. Kubernetes core concepts and operations | DevOps Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
+    <span class="path-progress">05 / 13 · Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="devops-04-dev-containers-handbook.html">← Previous</a><a href="../index.html">All handbooks</a><a href="devops-06-networking-handbook.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 05 · Intermediate · From pods to production workloads, scaling, security, and troubleshooting</div>
+      <h1>Kubernetes core concepts and operations</h1>
+      <p class="lede">Kubernetes is the control plane for running containers at scale: you declare desired state and controllers continually reconcile reality to match it. This step teaches the objects and operational habits you need before anything is automated on top.</p>
+      <div class="hero-meta"><span class="badge">Architecture</span><span class="badge">Workloads</span><span class="badge">Config and storage</span><span class="badge">Autoscaling</span><span class="badge">RBAC</span><span class="badge">Troubleshooting</span></div>
+    </section>
+    <section class="lesson" id="arch">
+      <h2>1. Architecture and the reconcile loop</h2>
+<p>The <strong>control plane</strong> (API server, etcd, scheduler, controller manager) stores desired state and decides placement. <strong>Nodes</strong> run the kubelet, a container runtime (containerd or CRI-O), and kube-proxy or an eBPF dataplane. Every object is a declarative resource: you <code>apply</code> a manifest, and controllers drive the cluster toward it. Docker as a runtime was removed in v1.24; images built with Docker still run unchanged.</p>
+<p>Managed services (EKS, AKS, GKE) operate the control plane; you own workloads, upgrades of node pools, and add-ons. Upgrade at least a few times a year because only the three most recent minor versions receive patches.</p>
+    </section>
+    <section class="lesson" id="workloads">
+      <h2>2. Choosing the right workload object</h2>
+<table><thead><tr><th>Need</th><th>Object</th></tr></thead><tbody>
+<tr><td>Stateless service with rolling updates</td><td>Deployment (manages ReplicaSets, which manage Pods)</td></tr>
+<tr><td>Stable identity and per-replica storage</td><td>StatefulSet</td></tr>
+<tr><td>One pod per node (agents, log shippers)</td><td>DaemonSet</td></tr>
+<tr><td>Run to completion / on a schedule</td><td>Job / CronJob</td></tr></tbody></table>
+<p>Pods are disposable. Use native <strong>sidecar containers</strong> (init containers with <code>restartPolicy: Always</code>, GA in 1.33) for proxies and log shippers that must start before and outlive the main container. Organize with Namespaces and labels; enforce quotas with <code>ResourceQuota</code> and <code>LimitRange</code>.</p>
+    </section>
+    <section class="lesson" id="config">
+      <h2>3. Configuration, secrets and resources</h2>
+<ul><li><strong>ConfigMap</strong> for non-secret settings; <strong>Secret</strong> for sensitive values. Secrets are only base64-encoded by default: enable encryption at rest and prefer an external store (External Secrets Operator, Secrets Store CSI Driver) in production.</li><li>Always set <strong>requests</strong> (scheduling and the guaranteed share) and sensible <strong>limits</strong>. Avoid CPU limits that cause throttling unless you need them; always set memory limits.</li><li>QoS classes (Guaranteed, Burstable, BestEffort) decide eviction order under pressure.</li></ul>
+    </section>
+    <section class="lesson" id="probes">
+      <h2>4. Health, rollouts and rollbacks</h2>
+<ul><li><strong>Startup</strong> probe protects slow starters, <strong>readiness</strong> gates traffic, <strong>liveness</strong> restarts stuck containers. Do not use liveness to check dependencies.</li><li>Tune <code>maxSurge</code>/<code>maxUnavailable</code>, set <code>minReadySeconds</code>, and add a <code>PodDisruptionBudget</code> so drains and upgrades do not take every replica down.</li><li>Roll back with <code>kubectl rollout undo</code>, but prefer fixing forward through Git (Step 10).</li><li>Spread replicas with <code>topologySpreadConstraints</code> across zones and nodes.</li></ul>
+    </section>
+    <section class="lesson" id="scale">
+      <h2>5. Autoscaling and storage</h2>
+<table><thead><tr><th>Layer</th><th>Tool</th><th>Notes</th></tr></thead><tbody>
+<tr><td>Pods (horizontal)</td><td>HPA</td><td>CPU, memory or custom metrics; KEDA for event-driven scaling</td></tr>
+<tr><td>Pods (vertical)</td><td>VPA</td><td>Recommendation mode is a safe start; in-place resize is maturing</td></tr>
+<tr><td>Nodes</td><td>Cluster Autoscaler or Karpenter</td><td>Right-size and consolidate nodes to control cost</td></tr></tbody></table>
+<p>Storage uses <strong>PersistentVolumeClaims</strong> bound through a <strong>StorageClass</strong> and a CSI driver. Choose the reclaim policy and volume binding mode deliberately, and test backups and snapshot restores.</p>
+    </section>
+    <section class="lesson" id="security">
+      <h2>6. Access control and baseline security</h2>
+<ul><li><strong>RBAC:</strong> grant least privilege with namespaced Roles; avoid <code>cluster-admin</code> and wildcards; one ServiceAccount per workload; disable token automount when unneeded.</li><li><strong>Pod Security Admission</strong> enforces the <em>baseline</em> or <em>restricted</em> Pod Security Standards per namespace: non-root, no privilege escalation, dropped capabilities, seccomp <code>RuntimeDefault</code>.</li><li>Add NetworkPolicies (Step 06), image pull from trusted registries only, and policy-as-code admission (Step 10).</li></ul><div class="callout"><strong>See real snippets in the DevOps Playbook</strong> Production-ready Deployment, StatefulSet, HPA, PDB, NetworkPolicy and RBAC manifests, plus the Kubernetes security baseline, are in the Kubernetes templates there. Open the <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook code template browser</a> to read and copy complete, working files.</div>
+    </section>
+    <section class="lesson" id="debug">
+      <h2>7. A debugging routine</h2>
+<ol><li><code>kubectl get pods -o wide</code> and <code>kubectl describe pod</code> — read Events first.</li><li>Pending: check requests vs capacity, taints, PVC binding. ImagePullBackOff: registry auth or tag. CrashLoopBackOff: <code>kubectl logs --previous</code>.</li><li>Network or DNS: test from a debug pod; check Service endpoints (<code>kubectl get endpointslices</code>).</li><li>Use <code>kubectl debug</code> with ephemeral containers on distroless images.</li></ol>
+<div class="exercise"><strong>Practice</strong>Deploy a two-replica app with probes, a PDB and resource requests. Break it three ways (bad image tag, failing readiness, memory limit too low) and diagnose each using only <code>get</code>, <code>describe</code>, and <code>logs</code>.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+<ul class="reading-list">
+<li><a href="https://kubernetes.io/docs/concepts/" target="_blank" rel="noreferrer">Kubernetes concepts</a> — canonical object reference.</li>
+<li><a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/" target="_blank" rel="noreferrer">Pod Security Standards</a> — baseline and restricted profiles.</li>
+<li><a href="https://kubernetes.io/docs/tasks/debug/" target="_blank" rel="noreferrer">Debugging guides</a> — official troubleshooting tasks.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="devops-04-dev-containers-handbook.html">← Previous: Dev Containers</a><a class="lesson-link" href="devops-06-networking-handbook.html">Next lesson: Container and K8s Networking →</a></div>
+    <footer class="site-footer">DevOps learning path · Updated 2026-10-28 · Real templates: <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a></footer>
+  </main>
+</body>
+</html>

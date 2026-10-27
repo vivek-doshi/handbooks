@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: the reference architecture of a generative AI system, what each component does, why it exists, when to add it, and the common architecture shapes from a simple assistant to an agent platform.">
+  <title>11. GenAI Architecture: Components | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">11 / 16 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-10-evaluation-guardrails-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-12-architecture-decisions-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 11 &middot; Intermediate &middot; The building blocks</div>
+      <h1>GenAI Architecture: Components</h1>
+      <p class="lede">A production GenAI system is much more than a model call. This step walks through every component in the reference architecture, explains why it exists and when you need it, and shows how systems grow from a single prompt to a platform.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">Reference architecture</span><span class="badge">Why and when</span></div>
+    </section>
+    <section class="lesson" id="big-picture">
+      <h2>The reference architecture</h2><pre><code>                +-------------------- Clients: web, mobile, API, Slack, IDE -----------------+
+                                              |
+                              [ API gateway / AuthN / rate limits ]
+                                              |
+        +------------------------- Application / Orchestration layer ----------------------+
+        |  session + memory | prompt registry | router | workflow or agent loop | tools/MCP |
+        +--------+-------------------+----------------------+------------------+-----------+
+                 |                   |                      |                  |
+         [ Guardrails in/out ]  [ Retrieval service ]   [ Model gateway ]   [ Tool services ]
+                                 query rewrite, hybrid,   routing, fallback,   APIs, SQL, search,
+                                 rerank, ACL filter       cache, quotas        code sandbox
+                                      |                       |
+                          [ Vector + keyword + graph ]   [ Hosted LLM APIs | Self-hosted vLLM/GPU ]
+                                      ^
+              [ Ingestion pipelines: connectors -&gt; parse -&gt; chunk -&gt; embed -&gt; index ]
+                                      ^
+                          [ Source systems: docs, DBs, wikis, tickets, files ]
+
+  Cross-cutting: observability + tracing | evaluation | cost controls | security + governance
+  Feedback loop: logs -&gt; labelled failures -&gt; golden set -&gt; prompt, retrieval or fine-tuning fixes</code></pre>
+    </section>
+    <section class="lesson" id="components">
+      <h2>Components: what, why and when</h2><table><thead><tr><th>Component</th><th>What it does</th><th>Why it exists</th><th>Add it when</th><th>Options</th></tr></thead><tbody><tr><td>API gateway and identity</td><td>AuthN and AuthZ, quotas, rate limits, WAF</td><td>Protects expensive calls and enforces who may see what</td><td>Always</td><td>Cloud API gateways, Kong, Envoy, OIDC providers</td></tr><tr><td>Orchestration layer</td><td>Runs the prompt chain, workflow or agent loop</td><td>Glue between model, data and tools; holds business logic</td><td>Always (can start as plain code)</td><td>Plain code, LangGraph, Agents SDKs, Temporal, Step Functions</td></tr><tr><td>Prompt registry</td><td>Versioned prompts and templates</td><td>Change prompts without redeploys; audit and roll back</td><td>More than one prompt, or more than one author</td><td>Git, Langfuse, LangSmith, cloud prompt management</td></tr><tr><td>Model gateway and router</td><td>One API over many models; routing, retries, fallbacks, budgets</td><td>Avoid vendor lock-in; control cost and reliability</td><td>More than one model or team</td><td>LiteLLM, Portkey, Kong AI Gateway, cloud AI gateways, OpenRouter</td></tr><tr><td>Model layer</td><td>Hosted API or self-hosted inference</td><td>The reasoning engine</td><td>Always</td><td>Frontier APIs, vLLM, SGLang, TensorRT-LLM, managed endpoints</td></tr><tr><td>Ingestion pipeline</td><td>Connectors, parsing, chunking, embedding, indexing, deletes</td><td>Quality and freshness of knowledge</td><td>Any RAG</td><td>Airflow, Dagster, Spark, Kafka, Unstructured, Docling</td></tr><tr><td>Retrieval service</td><td>Query rewrite, hybrid search, rerank, ACL filters</td><td>Finds the right evidence quickly and safely</td><td>Any RAG</td><td>pgvector, Qdrant, Milvus, OpenSearch, Pinecone, rerankers</td></tr><tr><td>Knowledge stores</td><td>Vector index, keyword index, graph, SQL, object store</td><td>Different questions need different access paths</td><td>As data types diversify</td><td>See step 03</td></tr><tr><td>Memory store</td><td>User facts, session summaries, agent notes</td><td>Continuity and personalisation</td><td>Multi-session assistants and agents</td><td>Redis, Postgres, vector DB, memory services</td></tr><tr><td>Tool layer</td><td>Business APIs, search, code sandbox, MCP servers</td><td>Lets the system act and compute exactly</td><td>Agents and workflows that take actions</td><td>OpenAPI wrappers, MCP, serverless functions</td></tr><tr><td>Semantic and prefix cache</td><td>Reuse answers or computed prompt prefixes</td><td>Cut cost and latency on repeated work</td><td>High repeat traffic or long shared prefixes</td><td>Redis, GPTCache style, provider prompt caching</td></tr><tr><td>Guardrails</td><td>Input, output and action policies</td><td>Safety, compliance, brand protection</td><td>Any user-facing or action-taking system</td><td>Llama Guard, NeMo Guardrails, cloud filters</td></tr><tr><td>Evaluation and observability</td><td>Tracing, evals, dashboards</td><td>You cannot improve or debug what you cannot see</td><td>From day one</td><td>Langfuse, LangSmith, Phoenix, OpenTelemetry</td></tr><tr><td>Fine-tuning pipeline</td><td>Data curation, training, registry, deployment</td><td>Specialised, cheaper or smaller models</td><td>When prompting plus RAG plateau (step 12)</td><td>TRL, Unsloth, managed tuning, MLflow</td></tr><tr><td>Feedback and data flywheel</td><td>Capture ratings and corrections, label failures</td><td>Continuous quality improvement and training data</td><td>After launch</td><td>In-app feedback, review queues</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="shapes">
+      <h2>Common architecture shapes</h2><table><thead><tr><th>Shape</th><th>Components</th><th>Typical use</th><th>Complexity</th></tr></thead><tbody><tr><td>Direct model call</td><td>Gateway, prompt, model, logging</td><td>Summarise, rewrite, classify</td><td>Low</td></tr><tr><td>RAG assistant</td><td>Plus ingestion, vector store, retrieval, citations</td><td>Knowledge base Q&A, support</td><td>Medium</td></tr><tr><td>Hybrid RAG with rerank and guardrails</td><td>Plus hybrid search, reranker, ACLs, eval suite</td><td>Enterprise search at scale</td><td>Medium to high</td></tr><tr><td>Workflow automation</td><td>Orchestrator with fixed steps, tools, human approval</td><td>Document processing, ticket triage</td><td>Medium</td></tr><tr><td>Agentic system</td><td>Plus tools or MCP, memory, verifiers, budgets</td><td>Research, coding, ops automation</td><td>High</td></tr><tr><td>GenAI platform</td><td>Shared gateway, registry, eval, guardrails, catalogue for many teams</td><td>Organisation-wide enablement</td><td>High, but amortised</td></tr></tbody></table><div class="callout"><strong>Grow by evidence</strong>Start with the smallest shape that meets the requirement and add a component only when a measured failure demands it. A reranker added because recall@5 was low is architecture; a graph database added because it sounded modern is cost.</div>
+    </section>
+    <section class="lesson" id="flows">
+      <h2>Request patterns</h2><table><thead><tr><th>Pattern</th><th>How</th><th>Use for</th></tr></thead><tbody><tr><td>Synchronous request and response</td><td>Blocking call</td><td>Short tasks (under a few seconds)</td></tr><tr><td>Streaming (SSE, WebSockets)</td><td>Tokens streamed as generated</td><td>Chat; improves perceived latency</td></tr><tr><td>Async job with queue</td><td>Submit, poll or webhook on completion</td><td>Long agent runs, report generation</td></tr><tr><td>Batch</td><td>Offline bulk processing, often a discounted provider batch API</td><td>Nightly enrichment, classification of millions of items</td></tr><tr><td>Event-driven</td><td>Triggers from queues, webhooks or schedulers</td><td>Ticket created, file uploaded, alert fired</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="cross">
+      <h2>Cross-cutting concerns</h2><ul><li><strong>Security:</strong> identity propagation to retrieval and tools, secret management, egress control, prompt-injection defences, tenant isolation.</li><li><strong>Data governance:</strong> classification, retention, residency, PII handling, and consent for using data in fine-tuning.</li><li><strong>Reliability:</strong> timeouts, retries with jitter, circuit breakers, multi-provider fallback, graceful degradation (answer without retrieval, switch to a smaller model).</li><li><strong>Cost:</strong> per-tenant budgets, token accounting, model routing, caching.</li><li><strong>Operations:</strong> infrastructure as code, CI for prompts and evals, canary releases. See the DevOps and cloud paths.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Draw the architecture for a support assistant at three maturity stages and list the components added at each.</li><li>For each component in the table, write the failure you would see if it were missing.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://learn.microsoft.com/en-us/azure/architecture/ai-ml/" target="_blank" rel="noreferrer">Azure AI architecture guides</a> &mdash; reference architectures</li><li><a href="https://docs.aws.amazon.com/prescriptive-guidance/latest/generative-ai-architecture/" target="_blank" rel="noreferrer">AWS prescriptive guidance for GenAI</a> &mdash; patterns and services</li><li><a href="https://cloud.google.com/architecture/ai-ml" target="_blank" rel="noreferrer">Google Cloud AI and ML architecture centre</a> &mdash; reference architectures</li><li><a href="../cloud/cloud-03-aws-ai-handbook.html" target="_blank" rel="noreferrer">Cloud path: AWS AI</a> &mdash; managed AI services in this library</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-10-evaluation-guardrails-handbook.html">&larr; Previous: Evaluation and Guardrails</a><a class="lesson-link" href="genai-12-architecture-decisions-handbook.html">Next lesson: Architecture Decisions &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

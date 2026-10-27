@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Core software architecture concepts, quality attributes, architectural styles, tradeoffs, anti-patterns, and a practical design checklist.">
+  <title>03. Software Architecture Foundations | Architecture Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
+    <span class="path-progress">03 / 12 · Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="architecture-02-enterprise-foundations.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-04-pattern-decisions.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 03 · Beginner · Core concepts</div>
+      <h1>Software architecture: boundaries, qualities, and tradeoffs</h1>
+      <p class="lede">Architecture is the set of structures and decisions that shape a system's behavior and evolution. Good architecture is not a diagram or a fashionable pattern: it is a set of deliberate choices that helps teams meet user needs under real constraints.</p>
+      <div class="hero-meta"><span class="badge">Quality attributes</span><span class="badge">Architectural styles</span><span class="badge">Failure and change</span><span class="badge">Decision checklist</span></div>
+    </section>
+    <section class="lesson" id="foundations">
+      <h2>1. Start with context and quality attributes</h2>
+      <p>Before selecting a style, define system boundaries, actors, external dependencies, data ownership, and constraints. Convert vague goals into observable scenarios:</p>
+      <pre><code>When [stimulus] occurs,
+under [operating condition],
+the system should [measurable response].
+Measure: [latency, availability, correctness, cost, recovery].</code></pre>
+      <p>Examples include a p95 checkout response below a target under a specified load, a recoverable regional outage, a safe schema migration with old and new clients, or a deletion request completed across derived data. Prioritize a few critical qualities; optimizing everything often creates needless complexity.</p>
+      <h3>Architecture is consequential, not immutable</h3>
+      <p>Keep decisions that are expensive to reverse visible, but do not freeze every implementation choice. Use lightweight Architecture Decision Records, small experiments, and fitness functions (automated checks for boundaries, dependencies, performance, or compliance) to validate that the design remains true.</p>
+    </section>
+    <section class="lesson" id="styles">
+      <h2>2. The main architectural styles</h2>
+      <table>
+        <thead><tr><th>Style</th><th>Good starting point when</th><th>Cost to plan for</th></tr></thead>
+        <tbody>
+          <tr><td>Monolith</td><td>One product/team benefits from simple local calls and transactions</td><td>Unmanaged shared code and coupled releases</td></tr>
+          <tr><td>Modular monolith</td><td>Clear domain modules can share one deployment and operational model</td><td>Boundary discipline and module-level tests</td></tr>
+          <tr><td>Microservices</td><td>Independent ownership, scaling, or release cadence is a proven need</td><td>Network failure, data ownership, observability, and platform work</td></tr>
+          <tr><td>Event-driven</td><td>Producers and consumers need temporal decoupling or stream processing</td><td>Event contracts, duplicates, ordering, and eventual consistency</td></tr>
+          <tr><td>Serverless</td><td>Managed execution and elastic or event-triggered workloads fit the platform</td><td>Limits, cold starts, provider coupling, and distributed debugging</td></tr>
+          <tr><td>Layered / hexagonal</td><td>Separation of business policy from delivery and infrastructure matters</td><td>Abstraction overhead if boundaries are speculative</td></tr>
+        </tbody>
+      </table>
+      <h3>BFF, CQRS, and event sourcing</h3>
+      <p>A Backend for Frontend (BFF) tailors an API to a client experience; avoid turning it into a second business domain. CQRS separates command and query models when their needs differ materially. Event sourcing stores state changes as an event history; it adds replay, projection, privacy, and schema responsibilities. Neither CQRS nor event sourcing is a default requirement for every event-driven system.</p>
+    </section>
+    <section class="lesson" id="anti-patterns">
+      <h2>3. Anti-patterns and the microservice complexity tax</h2>
+      <ul>
+        <li><strong>Big-ball-of-mud:</strong> no enforced ownership or stable boundaries.</li>
+        <li><strong>Distributed monolith:</strong> multiple services that must deploy together and share data tightly.</li>
+        <li><strong>Premature abstraction:</strong> framework or platform built before repeatable needs are known.</li>
+        <li><strong>Shared database by default:</strong> teams change one schema without clear ownership or compatibility.</li>
+        <li><strong>Golden hammer:</strong> apply one style to every problem.</li>
+        <li><strong>Architecture astronautics:</strong> optimize for hypothetical scale rather than measured constraints.</li>
+      </ul>
+      <p>Microservices move complexity from in-process code to the network and organization: service discovery, authentication, deployment, compatibility, partial failure, tracing, on-call, and data consistency. A service boundary is worth its operational price when it buys clear ownership or an independently valuable capability.</p>
+    </section>
+    <section class="lesson" id="industry">
+      <h2>4. Current practice: optimize for outcomes, not fashions</h2>
+      <p>Modern architecture practice emphasizes operability and continuous learning: product-oriented platform capabilities, secure defaults, observable systems, automated delivery, and progressive change. A platform should be treated as a product for internal users, measured by adoption and reduced friction—not by how many tools it contains.</p>
+      <p>DORA's current software-delivery model uses five measures: change lead time, deployment frequency, failed deployment recovery time, change fail rate, and deployment rework rate. Use them to guide improvement for an application or service; do not turn one metric into an individual performance target. OpenTelemetry's semantic conventions help make telemetry more consistent across services and tools.</p>
+      <p>AI-enabled components add explicit concerns: model/provider substitution, data exposure, evaluation quality, cost per task, latency, unsafe outputs, and human escalation. Treat them as system dependencies with testable service objectives and risk controls, not as magical internal libraries.</p>
+    </section>
+    <section class="lesson" id="process">
+      <h2>5. A practical architecture process</h2>
+      <ol>
+        <li>State users, outcomes, scope, constraints, and non-goals.</li>
+        <li>Map important use cases, data flows, external systems, and trust boundaries.</li>
+        <li>Write measurable quality scenarios and identify the highest risks.</li>
+        <li>Compare at least two viable options, including the simplest one.</li>
+        <li>Document only consequential decisions, alternatives, and consequences.</li>
+        <li>Validate with a prototype, load test, threat model, or migration rehearsal.</li>
+        <li>Instrument production, review evidence, and revise decisions when context changes.</li>
+      </ol>
+      <div class="exercise"><strong>Practice</strong>For a small online bookstore, compare a single deployable application, a modular monolith, and service decomposition. Use team count, independent release needs, availability targets, data ownership, and operating maturity—not anticipated user counts alone.</div>
+    </section>
+    <section class="lesson" id="checklist">
+      <h2>Architecture design checklist</h2>
+      <ul>
+        <li>Are system scope, responsibilities, owners, and external dependencies clear?</li>
+        <li>Are the critical quality attributes measurable and prioritized?</li>
+        <li>Are data classification, retention, privacy, and recovery addressed?</li>
+        <li>Are failure modes, overload, retries, timeouts, and degraded behavior explicit?</li>
+        <li>Can teams deploy, observe, secure, and operate the proposed design?</li>
+        <li>Are compatibility and migration steps planned for interfaces and data?</li>
+        <li>Can the design be simplified without breaking a real requirement?</li>
+      </ul>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://dora.dev/guides/dora-metrics/" target="_blank" rel="noreferrer">DORA software delivery performance metrics</a> — current five-metric model and guidance.</li>
+        <li><a href="https://opentelemetry.io/docs/specs/semconv/" target="_blank" rel="noreferrer">OpenTelemetry semantic conventions</a> — evolving conventions for interoperable telemetry.</li>
+        <li><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noreferrer">NIST SP 800-207: Zero Trust Architecture</a> — identity- and resource-centric security principles.</li>
+        <li><a href="https://tag-app-delivery.cncf.io/whitepapers/platform-eng-maturity-model/" target="_blank" rel="noreferrer">CNCF Platform Engineering Maturity Model</a> — assess platform maturity across multiple aspects.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="architecture-02-enterprise-foundations.html">← Previous: Enterprise foundations</a><a class="lesson-link" href="architecture-04-pattern-decisions.html">Next lesson: Pattern decisions →</a></div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Architecture is a living set of tradeoffs.</footer>
+  </main>
+</body>
+</html>

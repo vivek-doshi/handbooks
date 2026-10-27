@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="An advanced API gateway guide to routing, authentication, rate limiting, quotas, resilience, threat protection, AI gateways, and observability.">
+  <title>11. API Gateway Patterns | Architecture Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
+    <span class="path-progress">11 / 12 · Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="architecture-10-graphql.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-12-togaf.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 11 · Advanced · Edge and API policy</div>
+      <h1>API gateway patterns</h1>
+      <p class="lede">An API gateway is a controlled edge for routing, identity enforcement, traffic policy, and observability. Keep it focused on cross-cutting edge concerns; domain rules belong with the domain owner, and a gateway does not make an unsafe backend safe.</p>
+      <div class="hero-meta"><span class="badge">Routing and auth</span><span class="badge">Rate limits and quotas</span><span class="badge">Zero trust</span><span class="badge">AI gateways</span></div>
+    </section>
+    <section class="lesson" id="anatomy">
+      <h2>1. Gateway anatomy and product choices</h2>
+      <p>A gateway commonly provides TLS termination, route selection, authentication integration, request limits, protocol translation, traffic shaping, and telemetry. A reverse proxy, API management platform, service mesh ingress, and BFF overlap but solve different operational problems.</p>
+      <p>Kong Gateway and Google Apigee are examples of products, not architecture patterns. Compare deployment model, control plane, policy lifecycle, plugin/extensions, latency, high availability, developer portal, analytics, data residency, and total operating cost. Keep configuration portable where practical and test the exit path.</p>
+    </section>
+    <section class="lesson" id="traffic">
+      <h2>2. Rate limiting, throttling, and quotas</h2>
+      <p>Rate limiting bounds request rate, throttling controls behavior under pressure, and quotas enforce a usage allowance over a longer period. Choose the key deliberately: identity, tenant, API key, route, or a combination. A single IP limit is often unfair behind NAT and easy to evade with distributed clients.</p>
+      <ul>
+        <li><strong>Token bucket:</strong> permits bursts within a refill budget.</li>
+        <li><strong>Leaky bucket / queue:</strong> smooths arrivals but may add latency or reject overflow.</li>
+        <li><strong>Fixed window:</strong> simple counters, with boundary burst effects.</li>
+        <li><strong>Sliding window:</strong> smoother accounting, at greater state/compute cost.</li>
+      </ul>
+      <p>Define behavior when the limiter store is unavailable, how limits synchronize across regions, what clients receive on rejection, and how paid plans are audited. Do not rely on an edge policy as the only resource-protection control.</p>
+    </section>
+    <section class="lesson" id="resilience">
+      <h2>3. Circuit breakers and failure containment</h2>
+      <p>A circuit breaker can stop repeated calls to a failing dependency, using closed/open/half-open states. Pair it with bounded timeouts, limited retries with jitter, concurrency limits, and fallbacks that preserve correctness. A breaker is not a replacement for capacity management or a service-level objective.</p>
+      <p>Avoid retries at every layer; stacked retries multiply load. Choose one retry owner, preserve an end-to-end deadline, and do not retry non-idempotent operations unless the request has an idempotency contract.</p>
+    </section>
+    <section class="lesson" id="identity">
+      <h2>4. Authentication, mTLS, and zero trust</h2>
+      <p>Use standards-based OIDC/OAuth flows appropriate to the client and current security guidance. Validate issuer, audience, expiry, signature, and scopes/claims; forward identity only through authenticated channels. Apply authorization at the service that owns the resource.</p>
+      <p>Mutual TLS can establish workload identity between services. Rotate credentials, validate identities, and authorize specific workloads and actions. Zero trust means continuously evaluating identity, device/workload, context, and resource policy—not simply putting a gateway at the network perimeter.</p>
+    </section>
+    <section class="lesson" id="threats">
+      <h2>5. Threat protection and policy as code</h2>
+      <p>Validate content type, request size, method, path normalization, schema, and known attack patterns. Protect against credential stuffing, injection, SSRF, broken object-level authorization, and resource exhaustion. Use a WAF as defense in depth, not a substitute for application fixes.</p>
+      <p>Keep gateway policies version-controlled, peer-reviewed, tested, and promoted through environments. Include policy owners, expiry for exceptions, safe rollback, and auditable changes. Test that misconfiguration fails safely and does not accidentally expose internal routes.</p>
+    </section>
+    <section class="lesson" id="ai">
+      <h2>6. AI gateway patterns and LLM-specific risks</h2>
+      <p>An AI gateway may route model-provider requests, centralize credential controls, record usage, apply budgets, select fallbacks, and standardize telemetry. It does not make model output reliable or remove the application's responsibility for safe tool execution.</p>
+      <ul>
+        <li>Protect provider keys and tenant data; isolate credentials and enforce least privilege.</li>
+        <li>Apply per-tenant, per-model, and token-aware budgets while accounting for provider-specific tokenization and billing.</li>
+        <li>Defend against prompt injection, data exfiltration, unsafe tool calls, and cross-tenant context leakage.</li>
+        <li>Do not assume prompt inspection can reliably classify intent; combine controls, constrained tools, and human review where risk warrants.</li>
+        <li>Record model/provider version, latency, token usage, outcome, and safety signals without logging sensitive prompt content by default.</li>
+        <li>Evaluate quality and safety before routing traffic to a fallback model; equivalent names do not guarantee equivalent behavior.</li>
+      </ul>
+      <p>Use risk management throughout design, evaluation, deployment, and monitoring. NIST's AI RMF 1.0 remains a voluntary framework and is being updated; check the official NIST page for revision status before referencing a version as current.</p>
+    </section>
+    <section class="lesson" id="observability">
+      <h2>7. Observability, selection, and quick reference</h2>
+      <p>Track request rate, rejection reasons, upstream latency/status, saturation, retries, breaker state, and per-tenant usage. Propagate trace context while protecting sensitive headers. Alert on SLO symptoms and policy failures, not only process health.</p>
+      <table>
+        <thead><tr><th>Need</th><th>Gateway responsibility</th><th>Backend responsibility</th></tr></thead>
+        <tbody>
+          <tr><td>Identity</td><td>Validate edge credentials; pass trusted identity safely</td><td>Authorize each resource/action</td></tr>
+          <tr><td>Abuse limits</td><td>Coarse route/tenant limits</td><td>Domain-specific budgets and expensive-operation limits</td></tr>
+          <tr><td>Resilience</td><td>Bound connection and request behavior</td><td>Correct idempotency, deadlines, and graceful degradation</td></tr>
+          <tr><td>AI safety</td><td>Credential, routing, and usage controls</td><td>Prompt/data policy, constrained tools, output validation, evaluation</td></tr>
+        </tbody>
+      </table>
+      <div class="exercise"><strong>Practice</strong>Design gateway policy for a public order API: authentication, per-tenant quotas, request-size limits, payment-provider timeout, audit events, and safe behavior if the limiter store is unavailable. Separate what the gateway can enforce from backend invariants.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://www.rfc-editor.org/rfc/rfc9700" target="_blank" rel="noreferrer">RFC 9700: OAuth 2.0 Security Best Current Practice</a> — current OAuth security recommendations.</li>
+        <li><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noreferrer">NIST SP 800-207: Zero Trust Architecture</a> — identity and resource-centered policy.</li>
+        <li><a href="https://owasp.org/www-project-api-security/" target="_blank" rel="noreferrer">OWASP API Security Project</a> — common API risks.</li>
+        <li><a href="https://airc.nist.gov/AI_RMF_Knowledge_Base/" target="_blank" rel="noreferrer">NIST AI Risk Management Framework resources</a> — current framework and revision status.</li>
+        <li><a href="https://docs.konghq.com/gateway/latest/" target="_blank" rel="noreferrer">Kong Gateway documentation</a> and <a href="https://docs.apigee.com/" target="_blank" rel="noreferrer">Apigee documentation</a> — vendor-specific capabilities; verify current versions.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="architecture-10-graphql.html">← Previous: GraphQL</a><a class="lesson-link" href="architecture-12-togaf.html">Next lesson: TOGAF →</a></div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Edge controls complement, but never replace, backend security.</footer>
+  </main>
+</body>
+</html>

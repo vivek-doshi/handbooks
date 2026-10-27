@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: PyTorch tensors and autograd, nn.Module, Dataset and DataLoader, the standard training loop, GPU and mixed precision, torch.compile, saving models, and higher-level tools.">
+  <title>11. Deep learning with PyTorch | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">11 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-10-neural-networks-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-12-cnn-sequence-transfer-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 11 &middot; Intermediate &middot; Tensors, autograd, modules, data loading, the training loop, GPUs and saving models</div>
+      <h1>Deep learning with PyTorch</h1>
+      <p class="lede">PyTorch is the dominant framework for deep learning research and most production work. This step turns the ideas of step 10 into runnable code: a complete, correct training loop you can adapt to almost any task.</p>
+      <div class="hero-meta"><span class="badge">Tensors</span><span class="badge">Autograd</span><span class="badge">Modules</span><span class="badge">Data</span><span class="badge">Training loop</span><span class="badge">GPU and speed</span><span class="badge">Save and load</span></div>
+    </section>
+    <section class="lesson" id="tensors">
+      <h2>1. Tensors</h2><p>A tensor is an n-dimensional array like NumPy&#39;s, with two extras: it can live on a GPU and it can track gradients. Install from <a href="https://pytorch.org/get-started/locally/" target="_blank" rel="noreferrer">pytorch.org</a> with the command for your platform (CPU or CUDA).</p><pre><code>import torch
+
+x = torch.tensor([[1., 2.], [3., 4.]])
+print(x.shape, x.dtype, x.device)
+y = x @ x.T + 1                    # matrix multiply and broadcasting
+z = torch.from_numpy(x.numpy())    # share memory with NumPy (CPU only)
+
+device = ("cuda" if torch.cuda.is_available()
+          else "mps" if torch.backends.mps.is_available() else "cpu")
+x = x.to(device)</code></pre><ul><li><strong>Shapes</strong> are the main source of bugs: print them often. Common layout is <code>(batch, features)</code> for tables, <code>(batch, channels, height, width)</code> for images and <code>(batch, sequence, features)</code> for sequences.</li><li>Data types: <code>float32</code> for inputs, <code>long</code> (int64) for class labels used with cross-entropy.</li><li>Move the model <em>and</em> every batch to the same device.</li></ul>
+    </section>
+    <section class="lesson" id="autograd">
+      <h2>2. Autograd: automatic gradients</h2><pre><code>w = torch.tensor(2.0, requires_grad=True)
+loss = (w * 3 - 12) ** 2           # builds a computation graph
+loss.backward()                    # fills w.grad with d(loss)/dw
+print(w.grad)                      # 2 * (6 - 12) * 3 = -36
+
+with torch.no_grad():              # no graph: use for evaluation and manual updates
+    w -= 0.01 * w.grad
+w.grad.zero_()                     # gradients accumulate, so reset them</code></pre><p>Gradients <strong>accumulate</strong> across <code>backward()</code> calls. Forgetting to zero them in a training loop is a classic bug.</p>
+    </section>
+    <section class="lesson" id="modules">
+      <h2>3. Building models with nn.Module</h2><p>A model is a class that creates layers in <code>__init__</code> and defines the forward computation in <code>forward</code>. PyTorch tracks all parameters automatically.</p><pre><code>import torch.nn as nn
+
+class MLP(nn.Module):
+    def __init__(self, n_in, n_hidden, n_out, p=0.2):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_in, n_hidden), nn.ReLU(), nn.Dropout(p),
+            nn.Linear(n_hidden, n_hidden), nn.ReLU(), nn.Dropout(p),
+            nn.Linear(n_hidden, n_out))          # raw logits out
+
+    def forward(self, x):
+        return self.net(x)
+
+model = MLP(20, 128, 3).to(device)
+print(sum(p.numel() for p in model.parameters()), "parameters")</code></pre>
+    </section>
+    <section class="lesson" id="data">
+      <h2>4. Datasets and DataLoaders</h2><p>A <code>Dataset</code> returns one example; a <code>DataLoader</code> batches, shuffles and loads in parallel.</p><pre><code>from torch.utils.data import Dataset, DataLoader, random_split
+
+class TabularDataset(Dataset):
+    def __init__(self, X, y):
+        self.X = torch.as_tensor(X, dtype=torch.float32)
+        self.y = torch.as_tensor(y, dtype=torch.long)
+    def __len__(self):
+        return len(self.X)
+    def __getitem__(self, i):
+        return self.X[i], self.y[i]
+
+ds = TabularDataset(X_scaled, y)
+train_ds, val_ds = random_split(ds, [0.8, 0.2], generator=torch.Generator().manual_seed(0))
+train_dl = DataLoader(train_ds, batch_size=64, shuffle=True, num_workers=2, pin_memory=True)
+val_dl = DataLoader(val_ds, batch_size=256)</code></pre><p>Fit scalers on the training split only (step 03). For images, <code>torchvision.datasets</code> and transforms provide ready-made datasets and augmentation; for text and audio see Hugging Face <code>datasets</code>.</p>
+    </section>
+    <section class="lesson" id="loop">
+      <h2>5. The training loop</h2><p>The loop is the same for almost every task: forward, loss, <strong>zero gradients, backward, step</strong>. Switch to <code>model.eval()</code> and <code>torch.no_grad()</code> for validation so dropout and batch normalisation behave correctly.</p><pre><code>loss_fn = nn.CrossEntropyLoss()
+opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
+sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=30)
+
+def run_epoch(dl, train):
+    model.train(train)
+    total, correct, n = 0.0, 0, 0
+    for xb, yb in dl:
+        xb, yb = xb.to(device), yb.to(device)
+        with torch.set_grad_enabled(train):
+            logits = model(xb)
+            loss = loss_fn(logits, yb)
+        if train:
+            opt.zero_grad(set_to_none=True)
+            loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            opt.step()
+        total += loss.item() * len(xb)
+        correct += (logits.argmax(1) == yb).sum().item()
+        n += len(xb)
+    return total / n, correct / n
+
+best, patience = float("inf"), 0
+for epoch in range(30):
+    tr_loss, tr_acc = run_epoch(train_dl, True)
+    va_loss, va_acc = run_epoch(val_dl, False)
+    sched.step()
+    print(f"{epoch:02d} train {tr_loss:.3f}/{tr_acc:.3f}  val {va_loss:.3f}/{va_acc:.3f}")
+    if va_loss &lt; best:
+        best, patience = va_loss, 0
+        torch.save(model.state_dict(), "best.pt")
+    else:
+        patience += 1
+        if patience == 5:
+            break                      # early stopping</code></pre>
+    </section>
+    <section class="lesson" id="speed">
+      <h2>6. GPUs, mixed precision and speed</h2><ul><li><strong>Mixed precision:</strong> run most maths in <code>bfloat16</code> or <code>float16</code> for speed and memory. In PyTorch, wrap the forward pass and loss in <code>torch.autocast(device_type=&quot;cuda&quot;, dtype=torch.bfloat16)</code>. (<code>float16</code> also needs a gradient scaler.)</li><li><strong>torch.compile:</strong> <code>model = torch.compile(model)</code> in PyTorch 2.x fuses operations for faster training and inference; try it once the model works.</li><li><strong>Data loading:</strong> raise <code>num_workers</code> and set <code>pin_memory=True</code> if the GPU is idle.</li><li><strong>Memory:</strong> lower the batch size, use gradient accumulation, or mixed precision. Use <code>torch.inference_mode()</code> when predicting.</li><li><strong>Reproducibility:</strong> <code>torch.manual_seed(0)</code>; bit-exact results need deterministic settings and may cost speed.</li><li><strong>No GPU?</strong> Use free notebook GPUs or the cloud (see the <a href="../cloud/cloud-03-aws-ai-handbook.html">cloud AI steps</a>) rather than waiting on a CPU.</li></ul><pre><code>with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+    logits = model(xb)
+    loss = loss_fn(logits, yb)
+loss.backward()</code></pre>
+    </section>
+    <section class="lesson" id="save">
+      <h2>7. Saving, loading and the wider ecosystem</h2><pre><code>torch.save(model.state_dict(), "model.pt")            # save weights, not the whole object
+
+model = MLP(20, 128, 3)
+state = torch.load("model.pt", map_location="cpu", weights_only=True)   # safe loading
+model.load_state_dict(state)
+model.eval()
+with torch.inference_mode():
+    probs = torch.softmax(model(torch.randn(1, 20)), dim=1)</code></pre><ul><li>Never load checkpoints from untrusted sources; pickle can execute code. Prefer <code>weights_only=True</code> or the <code>safetensors</code> format.</li><li>Save the optimiser and epoch too when you want to resume training.</li><li><strong>Export</strong> for serving with ONNX or TorchScript-style paths, or serve directly with a model server.</li></ul><table><thead><tr><th>Tool</th><th>Purpose</th></tr></thead><tbody><tr><td>PyTorch Lightning, Hugging Face Accelerate</td><td>Remove loop boilerplate; multi-GPU and mixed precision</td></tr><tr><td>torchmetrics</td><td>Correct, device-aware metrics</td></tr><tr><td>Keras 3</td><td>High-level API that runs on PyTorch, JAX or TensorFlow</td></tr><tr><td>TensorBoard, Weights &amp; Biases, MLflow</td><td>Experiment tracking (see the <a href="../mlops/mlops-03-experiment-tracking-registry-handbook.html">W&amp;B handbook</a>)</td></tr></tbody></table><div class="exercise"><strong>Practice</strong><ol><li>Train the MLP above on a tabular dataset and compare its AUC with gradient boosting from step 06.</li><li>Remove <code>opt.zero_grad()</code> and observe what happens to the loss.</li><li>Train with and without <code>torch.autocast</code> and compare time and accuracy.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://pytorch.org/tutorials/" target="_blank" rel="noreferrer">PyTorch tutorials</a> &mdash; official learn-the-basics path</li><li><a href="https://pytorch.org/docs/stable/index.html" target="_blank" rel="noreferrer">PyTorch documentation</a> &mdash; API reference</li><li><a href="https://lightning.ai/docs/pytorch/stable/" target="_blank" rel="noreferrer">PyTorch Lightning</a> &mdash; structured training code</li><li><a href="https://huggingface.co/docs/safetensors/" target="_blank" rel="noreferrer">safetensors</a> &mdash; a safe format for model weights</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-10-neural-networks-handbook.html">&larr; Previous: Neural Networks</a><a class="lesson-link" href="ml-12-cnn-sequence-transfer-handbook.html">Next lesson: CNNs and Sequences &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-28">
+  <meta name="description" content="Intermediate: local clusters with minikube, kind and k3d, image workflows, contexts, and a Docker and kubectl command playbook for daily operations.">
+  <title>07. Local Kubernetes and the daily CLI | DevOps Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
+    <span class="path-progress">07 / 13 · Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="devops-06-networking-handbook.html">← Previous</a><a href="../index.html">All handbooks</a><a href="devops-08-github-actions-cicd-handbook.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 07 · Intermediate · Practice safely on your laptop and master Docker and kubectl operations</div>
+      <h1>Local Kubernetes and the daily CLI</h1>
+      <p class="lede">A local cluster lets you apply Steps 05 and 06 with zero cloud cost, and a disciplined command routine turns that practice into fast, safe operations. This step covers both.</p>
+      <div class="hero-meta"><span class="badge">minikube</span><span class="badge">kind and k3d</span><span class="badge">Contexts</span><span class="badge">kubectl routines</span><span class="badge">Cleanup</span></div>
+    </section>
+    <section class="lesson" id="choose">
+      <h2>1. Choosing a local cluster</h2>
+<table><thead><tr><th>Tool</th><th>Strength</th></tr></thead><tbody>
+<tr><td>minikube</td><td>Rich add-ons, profiles, multiple drivers, good for learning</td></tr>
+<tr><td>kind</td><td>Clusters in Docker; ideal for CI and multi-node tests</td></tr>
+<tr><td>k3d / k3s</td><td>Very light; fast startup, good for edge-like setups</td></tr>
+<tr><td>Docker Desktop / Rancher Desktop</td><td>Built-in single-node cluster</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="minikube">
+      <h2>2. minikube essentials</h2>
+<ul><li><code>minikube start --driver=docker --cpus=4 --memory=8g</code> then <code>kubectl get nodes</code>.</li><li><strong>Add-ons</strong> enable ingress, metrics-server, dashboard, and registry with one command (<code>minikube addons enable ingress</code>).</li><li><strong>Profiles</strong> (<code>-p name</code>) give isolated clusters, for example one per Kubernetes version.</li><li>Reach services with <code>minikube service</code>, <code>minikube tunnel</code> (LoadBalancer), or <code>kubectl port-forward</code>.</li><li>Use images without a registry: <code>minikube image load app:dev</code> or build directly with <code>minikube image build</code>.</li></ul>
+<div class="callout"><strong>Pitfall</strong>Local clusters are not production. Resource limits, storage, networking and cloud integrations differ; use them to validate manifests and flows, not capacity.</div><div class="callout"><strong>See real snippets in the DevOps Playbook</strong> Complete local-cluster and Terraform-driven Minikube examples live in the Kubernetes and Terraform templates. Open the <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook code template browser</a> to read and copy complete, working files.</div>
+    </section>
+    <section class="lesson" id="context">
+      <h2>3. Contexts, namespaces, and safety</h2>
+<ul><li>Always know your context: <code>kubectl config current-context</code>; use a prompt indicator or <code>kubectx</code>/<code>kubens</code>.</li><li>Set a default namespace per context to avoid accidental cross-namespace changes.</li><li>Use <code>--dry-run=server</code> and <code>kubectl diff</code> before applying.</li><li>Prefer read-only kubeconfigs for production browsing.</li></ul>
+    </section>
+    <section class="lesson" id="docker-cli">
+      <h2>4. Docker command routine</h2>
+<table><thead><tr><th>Goal</th><th>Command</th></tr></thead><tbody>
+<tr><td>What is running / everything</td><td><code>docker ps</code> / <code>docker ps -a</code></td></tr>
+<tr><td>Logs and live stats</td><td><code>docker logs -f --tail 100 c</code> / <code>docker stats</code></td></tr>
+<tr><td>Inspect config or IP</td><td><code>docker inspect c</code></td></tr>
+<tr><td>Shell into a container</td><td><code>docker exec -it c sh</code></td></tr>
+<tr><td>Reclaim disk</td><td><code>docker system df</code>, <code>docker system prune</code> (review first)</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="kubectl">
+      <h2>5. kubectl routine for daily operations</h2>
+<table><thead><tr><th>Goal</th><th>Command</th></tr></thead><tbody>
+<tr><td>Overview</td><td><code>kubectl get all -n ns</code>, <code>kubectl top pods</code></td></tr>
+<tr><td>Why is it failing?</td><td><code>kubectl describe</code>, <code>kubectl get events --sort-by=.lastTimestamp</code></td></tr>
+<tr><td>Logs, multi-pod</td><td><code>kubectl logs -l app=x --all-containers -f</code> (or stern)</td></tr>
+<tr><td>Scale and roll out</td><td><code>kubectl scale</code>, <code>kubectl rollout status|undo</code></td></tr>
+<tr><td>Debug</td><td><code>kubectl debug -it pod --image=busybox --target=app</code></td></tr>
+<tr><td>Access</td><td><code>kubectl port-forward svc/x 8080:80</code></td></tr>
+<tr><td>Node work</td><td><code>kubectl cordon|drain|uncordon</code></td></tr></tbody></table>
+<p>Cleanup of stuck or failed objects: delete failed pods with <code>kubectl delete pod --field-selector=status.phase==Failed -A</code>; for stuck Terminating pods find the finalizer first rather than force-deleting blindly.</p>
+<div class="exercise"><strong>Practice</strong>Start a kind or minikube cluster, deploy an app, load a locally built image, expose it, break the readiness probe, and use only the commands above to find and fix it.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+<ul class="reading-list">
+<li><a href="https://minikube.sigs.k8s.io/docs/" target="_blank" rel="noreferrer">minikube docs</a> — drivers, add-ons, profiles.</li>
+<li><a href="https://kind.sigs.k8s.io/" target="_blank" rel="noreferrer">kind</a> — Kubernetes in Docker.</li>
+<li><a href="https://kubernetes.io/docs/reference/kubectl/quick-reference/" target="_blank" rel="noreferrer">kubectl quick reference</a> — official cheat sheet.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="devops-06-networking-handbook.html">← Previous: Container and K8s Networking</a><a class="lesson-link" href="devops-08-github-actions-cicd-handbook.html">Next lesson: CI/CD with GitHub Actions →</a></div>
+    <footer class="site-footer">DevOps learning path · Updated 2026-10-28 · Real templates: <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a></footer>
+  </main>
+</body>
+</html>

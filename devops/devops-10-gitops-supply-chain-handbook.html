@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-28">
+  <meta name="description" content="Advanced: GitOps with Argo CD and Flux, progressive delivery, secrets management, SBOM, SLSA, Sigstore, admission policy, and runtime security.">
+  <title>10. GitOps, supply chain security and policy as code | DevOps Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
+    <span class="path-progress">10 / 13 · Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="devops-09-terraform-iac-handbook.html">← Previous</a><a href="../index.html">All handbooks</a><a href="devops-11-platform-sre-finops-handbook.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 10 · Advanced · Declarative delivery you can trust: reconcile, verify, enforce</div>
+      <h1>GitOps, supply chain security and policy as code</h1>
+      <p class="lede">Once you have pipelines, clusters, and infrastructure as code, the next question is trust: who can change production, and how do we know what we run is what we built? This step covers GitOps delivery, secret handling, software supply chain security, and policy as code.</p>
+      <div class="hero-meta"><span class="badge">OpenGitOps</span><span class="badge">Argo CD / Flux</span><span class="badge">Progressive delivery</span><span class="badge">SLSA and Sigstore</span><span class="badge">Kyverno and OPA</span><span class="badge">Runtime security</span></div>
+    </section>
+    <section class="lesson" id="gitops">
+      <h2>1. GitOps principles</h2>
+<p>OpenGitOps defines four principles: the system is <strong>declarative</strong>; desired state is <strong>versioned and immutable</strong> (Git); agents <strong>pull</strong> approved state automatically; and agents <strong>continuously reconcile</strong> drift. Benefits: a complete audit trail, easy rollback (revert a commit), no cluster credentials in CI, and self-healing.</p>
+<table><thead><tr><th></th><th>Argo CD</th><th>Flux</th></tr></thead><tbody>
+<tr><td>Model</td><td>Application/ApplicationSet CRDs with a rich UI</td><td>Composable controllers (Source, Kustomize, Helm)</td></tr>
+<tr><td>Strengths</td><td>Visualization, multi-cluster, SSO, sync waves</td><td>Lightweight, Kubernetes-native, image automation</td></tr></tbody></table>
+<p>Both are CNCF graduated projects; pick one and standardize.</p>
+    </section>
+    <section class="lesson" id="repo">
+      <h2>2. Repository and promotion design</h2>
+<ul><li>Separate <strong>application repos</strong> (code, CI) from a <strong>GitOps/config repo</strong> (manifests, environment overlays).</li><li>Use Helm or Kustomize for packaging: Helm for third-party and parameterized charts, Kustomize overlays for simple per-environment patches.</li><li>CI builds and signs the image, then opens a pull request (or uses image automation) updating the image tag or digest in the config repo; merge triggers reconciliation.</li><li>Promote by pull request across environment directories; production requires approval.</li><li>Use ApplicationSets (Argo) or Kustomizations per cluster to scale to many clusters and tenants.</li></ul><div class="callout"><strong>See real snippets in the DevOps Playbook</strong> Argo CD Application and ApplicationSet patterns, promotion flow, Helm and Kustomize layouts, and Kyverno policies are provided as templates there. Open the <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook code template browser</a> to read and copy complete, working files.</div>
+    </section>
+    <section class="lesson" id="progressive">
+      <h2>3. Progressive delivery</h2>
+<p>Deploy safely by controlling exposure: <strong>rolling</strong> (default), <strong>blue/green</strong>, <strong>canary</strong> with automated analysis, and feature flags to decouple deploy from release. Argo Rollouts or Flagger shift traffic in steps and abort automatically when SLO metrics (error rate, latency) regress. Database changes use <strong>expand/contract</strong> migrations so old and new versions run together.</p>
+    </section>
+    <section class="lesson" id="secrets">
+      <h2>4. Secrets and identity</h2>
+<ul><li>Never store plaintext secrets in Git. Use External Secrets Operator or the Secrets Store CSI Driver with Vault or a cloud secret manager; or encrypted-in-Git (SOPS, Sealed Secrets) if you accept key-management overhead.</li><li>Prefer <strong>workload identity</strong> (IRSA, Azure Workload Identity, GKE Workload Identity) over static credentials; prefer short-lived and dynamic secrets.</li><li>Rotate regularly, audit access, and scan repositories and images for leaked secrets.</li></ul>
+    </section>
+    <section class="lesson" id="supply">
+      <h2>5. Software supply chain security</h2>
+<table><thead><tr><th>Control</th><th>What it gives you</th><th>Common tools</th></tr></thead><tbody>
+<tr><td>Dependency and image scanning</td><td>Known-vulnerability visibility</td><td>Trivy, Grype, Docker Scout, Dependabot</td></tr>
+<tr><td>SBOM</td><td>Inventory of components (SPDX, CycloneDX)</td><td>Syft, Trivy, BuildKit attestations</td></tr>
+<tr><td>Provenance (SLSA)</td><td>Verifiable record of how and where an artifact was built</td><td>SLSA GitHub generator, GitHub artifact attestations</td></tr>
+<tr><td>Signing</td><td>Authenticity and integrity</td><td>Sigstore cosign (keyless via OIDC), Notary</td></tr>
+<tr><td>Verification at admission</td><td>Only trusted, signed images run</td><td>Kyverno verifyImages, Connaisseur, policy controllers</td></tr></tbody></table>
+<p>Pin dependencies and base images by digest, use hermetic or reproducible builds where feasible, and aim for progressively higher SLSA build levels. Keep a vulnerability management process with severity and SLA targets, and use VEX statements to reduce noise.</p>
+    </section>
+    <section class="lesson" id="policy">
+      <h2>6. Policy as code and runtime</h2>
+<ul><li><strong>Admission policy:</strong> Kyverno or OPA Gatekeeper, and native ValidatingAdmissionPolicy (CEL, GA in 1.30). Start in audit mode, then enforce: no privileged pods, required resource limits, required cost and owner labels, allowed registries, signed images.</li><li><strong>Shift left:</strong> run the same policies in CI with Conftest or Kyverno CLI so developers see failures before merge.</li><li><strong>Runtime:</strong> Falco or Tetragon for syscall-level detection, audit logging, and runbooks for response.</li><li><strong>Compliance evidence:</strong> collect policy results, scan reports, and attestations automatically.</li></ul>
+<div class="exercise"><strong>Practice</strong>Install Argo CD or Flux on a local cluster, deploy an app from a config repo, then add an admission policy that rejects unsigned images and prove it blocks a test pod.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+<ul class="reading-list">
+<li><a href="https://opengitops.dev/" target="_blank" rel="noreferrer">OpenGitOps</a> — principles and resources.</li>
+<li><a href="https://slsa.dev/" target="_blank" rel="noreferrer">SLSA</a> — supply-chain levels and provenance spec.</li>
+<li><a href="https://docs.sigstore.dev/" target="_blank" rel="noreferrer">Sigstore</a> — keyless signing and verification.</li>
+<li><a href="https://kyverno.io/docs/" target="_blank" rel="noreferrer">Kyverno</a> — Kubernetes-native policy.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="devops-09-terraform-iac-handbook.html">← Previous: Infrastructure as Code (Terraform)</a><a class="lesson-link" href="devops-11-platform-sre-finops-handbook.html">Next lesson: Platform Engineering, SRE and FinOps →</a></div>
+    <footer class="site-footer">DevOps learning path · Updated 2026-10-28 · Real templates: <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a></footer>
+  </main>
+</body>
+</html>

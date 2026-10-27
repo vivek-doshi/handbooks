@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Advanced: architecting a document extraction pipeline processing tens of millions of documents a month and a code intelligence platform over billions of lines of code.">
+  <title>15. Use Cases 3 and 4: Document Intelligence and Code Intelligence | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">15 / 16 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-14-usecases-knowledge-support-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-16-usecase-analytics-agent-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 15 &middot; Advanced &middot; Batch pipelines and developer platforms</div>
+      <h1>Use Cases 3 and 4: Document Intelligence and Code Intelligence</h1>
+      <p class="lede">A batch pipeline where distillation and tiered models drive the economics, and a developer platform where latency, freshness and agentic search over a huge repository set the design.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">600M pages a month</span><span class="badge">5B lines of code</span></div>
+    </section>
+    <section class="lesson" id="uc3-req">
+      <h2>Use case 3: Document intelligence pipeline</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Volume</td><td>50 million documents a month (contracts, invoices, claims, forms), averaging 12 pages: about 600 million pages a month; a 2 PB back-archive to process once</td></tr><tr><td>Output</td><td>Structured JSON per document (parties, dates, amounts, clauses), searchable index, human review for low confidence</td></tr><tr><td>Accuracy</td><td>At least 98 percent field-level accuracy on key fields; audit trail for every value</td></tr><tr><td>Latency</td><td>Hours, not seconds; throughput and cost per page matter most</td></tr><tr><td>Constraints</td><td>Sensitive data, region-bound, many layouts and languages, scanned and handwritten input</td></tr></tbody></table><div class="callout"><strong>Reading the scale</strong>600 million pages a month is about 230 pages a second sustained. At this volume, a frontier vision model on every page is rarely affordable, so the design is a funnel of cheaper models with expensive ones reserved for the hard cases.</div>
+    </section>
+    <section class="lesson" id="uc3-decide">
+      <h2>UC3 decisions</h2><table><thead><tr><th>Question</th><th>Decision</th><th>Reason</th></tr></thead><tbody><tr><td>RAG or fine-tuning?</td><td>Fine-tune and distil. RAG appears only in the search index and optional clause-lookup features</td><td>Extraction is a behavioural task with a fixed schema at huge volume</td></tr><tr><td>Model funnel</td><td>Classifier (tiny) -> layout and OCR -> small tuned extractor -> frontier model for low confidence -> human review</td><td>Most documents are routine</td></tr><tr><td>How to get training data?</td><td>Label 20k documents with a frontier model plus human verification; distil into a small multimodal or text model</td><td>Cheap labels, strong supervision</td></tr><tr><td>Output control</td><td>JSON schema constrained decoding plus business-rule validation (totals add up, dates valid)</td><td>Shape and consistency guaranteed</td></tr><tr><td>Execution mode</td><td>Asynchronous queues and provider batch APIs where available</td><td>Throughput and discounts</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="uc3-arch">
+      <h2>UC3 architecture</h2><pre><code>Object storage (landing) -&gt; event -&gt; queue (SQS / Pub/Sub / Kafka) -&gt; orchestrator (Temporal / Step Functions)
+  1. Classify doc type + language + quality          (small model, ~5 ms)
+  2. Layout + OCR / parse                             (document AI or open layout models; GPU or serverless)
+  3. Extract fields                                   (tuned small model, JSON-schema constrained)
+  4. Validate                                         (rules, cross-field checks, confidence from logprobs + agreement)
+  5. Escalate low confidence (about 10-15 percent)    (frontier model with the page image)
+  6. Human review queue (about 2-5 percent)           (UI shows source highlights; corrections saved)
+  7. Persist: structured store + search index (chunks with provenance) + audit log
+ Feedback: corrections -&gt; labelled data -&gt; weekly retrain -&gt; eval gate -&gt; canary</code></pre><ul><li><strong>Idempotency and retries:</strong> each document has a content hash; every step is safe to re-run; poison documents go to a dead-letter queue with the reason.</li><li><strong>Provenance:</strong> keep page and bounding-box references for each extracted value so reviewers and auditors can verify it.</li><li><strong>Confidence:</strong> combine model log probabilities, agreement between two cheap passes, and rule validations. Calibrate thresholds so that auto-accepted fields meet the accuracy target.</li><li><strong>Back-archive:</strong> run a separate low-priority lane on spot or batch capacity; throttle so it never starves live traffic.</li></ul><pre><code>Illustrative per-page cost funnel (replace with measured numbers)
+  all pages:      OCR/layout ............ $0.0006
+  all docs:       tuned extractor ........ $0.0004 per page-equivalent
+  12% escalated:  frontier vision ........ $0.012 per page -&gt; $0.0014 amortised
+  4% human:       reviewer time .......... $0.15 per document -&gt; $0.0005 per page amortised
+  total ~ $0.003 per page -&gt; ~ $1.8M / month at 600M pages
+  frontier-only alternative at ~$0.012 per page -&gt; ~$7.2M / month</code></pre>
+    </section>
+    <section class="lesson" id="uc3-eval">
+      <h2>UC3 evaluation and risks</h2><ul><li>Field-level precision and recall per document type and language; a frozen test set refreshed quarterly; track accuracy by layout vendor.</li><li>Monitor drift: new templates, new languages and scan quality shifts show up as a falling confidence distribution.</li><li>Risks: silent layout drift, rare-class documents, over-trust in OCR text, and PII in prompts. Mitigate with drift alerts, per-class thresholds, vision fallbacks, and redaction before any external call.</li></ul>
+    </section>
+    <section class="lesson" id="uc4-req">
+      <h2>Use case 4: Code intelligence platform</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Users</td><td>20,000 developers</td></tr><tr><td>Code</td><td>100,000 repositories, about 5 billion lines, several languages, monorepos, thousands of commits an hour</td></tr><tr><td>Features</td><td>Inline completion, chat over the codebase, agentic changes with tests, automated pull-request review, security fixes</td></tr><tr><td>Latency</td><td>Completion under 300 ms; chat first token under 2 s; agents run minutes</td></tr><tr><td>Constraints</td><td>Source code must not leave the company boundary unless approved; secrets and licences must be respected</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="uc4-decide">
+      <h2>UC4 decisions</h2><table><thead><tr><th>Capability</th><th>Approach</th><th>Reason</th></tr></thead><tbody><tr><td>Inline completion</td><td>Self-hosted code model (7B to 15B) fine-tuned for fill-in-the-middle on internal code, speculative decoding, prefix caching</td><td>Tight latency and huge call volume: roughly 2,000 completions per developer per day is 40 million a day</td></tr><tr><td>Chat and Q&A on code</td><td>Frontier model plus hybrid code retrieval: trigram or lexical search, symbol graph, embeddings</td><td>Quality on reasoning; code needs exact identifiers</td></tr><tr><td>Agentic edits</td><td>Agent with tools (search, read, edit, run tests) in sandboxes; verifiers are tests, linters and type checkers</td><td>Verifiable outcomes make agents reliable</td></tr><tr><td>Retrieval for a huge codebase</td><td>Agentic search (grep, symbol lookup, go-to-definition) over a precise index rather than relying on embeddings alone</td><td>Code is structured; exact search beats semantic similarity for many queries</td></tr><tr><td>Freshness</td><td>Incremental indexing per commit with branch overlays</td><td>Developers expect results from the code they just wrote</td></tr><tr><td>Fine-tuning</td><td>Completion model and a small PR-review model on internal conventions; not for facts about the code</td><td>Style and conventions are behaviour; the code itself is retrieved</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="uc4-arch">
+      <h2>UC4 architecture</h2><pre><code>IDE / CLI / PR bot -&gt; gateway (SSO, repo permissions) -&gt; router
+   Completion path (hot): editor context (prefix + suffix + recent files) -&gt; FIM model (self-hosted, speculative decoding)
+   Chat / agent path:    orchestrator -&gt; tools:
+        code search (trigram/lexical, e.g. Zoekt style) | symbol index (SCIP/LSIF) | embeddings (functions, docs)
+        file read | edit | sandboxed build + test | CI results | issue tracker (MCP servers)
+        -&gt; frontier model(s) with budgets, verifiers (tests, lint, type check, security scan)
+Indexing: git events -&gt; parse with tree-sitter -&gt; chunk by function/class -&gt; symbols + call graph -&gt; embeddings
+   -&gt; per-repo shards, ACLs from repository permissions, branch overlays for open PRs
+Safety: secret scanners, licence filters, sandbox with no network by default, human approval to merge</code></pre><ul><li><strong>Index size:</strong> 5 billion lines is on the order of 50 to 100 million functions and classes; at 768 dimensions with quantisation that is tens to hundreds of GB, which is easily sharded. The lexical and symbol indexes matter more than the vector index.</li><li><strong>Completion capacity:</strong> 40 million requests a day is roughly 460 a second on average and 1,500 at peak, with short prompts (a few thousand tokens) and short outputs. Plan a replicated GPU pool of a few dozen cards, regional placement near developers, aggressive prefix caching, and cancellation when the developer keeps typing.</li><li><strong>Agent cost control:</strong> per-task token and time budgets, a limited tool set, test-based verification, and escalation to humans when tests fail repeatedly.</li><li><strong>Evaluation:</strong> completion acceptance rate and persistence of accepted code; for agents, task success on a benchmark built from your own resolved issues (the SWE-bench idea on internal repositories); review precision for PR comments.</li><li><strong>Risks:</strong> insecure or licence-tainted suggestions, secret leakage, prompt injection from comments and issues, over-reliance. Mitigate with scanners, sandboxes, repository-scoped permissions and mandatory review.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>For UC3, recompute the funnel cost if escalation drops from 12 to 6 percent after fine-tuning.</li><li>For UC4, design the index update path for a monorepo with 50 commits a minute.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://cloud.google.com/document-ai/docs" target="_blank" rel="noreferrer">Google Document AI</a> &mdash; managed document extraction</li><li><a href="https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/" target="_blank" rel="noreferrer">Azure AI Document Intelligence</a> &mdash; managed extraction</li><li><a href="https://docs.aws.amazon.com/textract/" target="_blank" rel="noreferrer">Amazon Textract</a> &mdash; managed OCR and forms</li><li><a href="https://github.com/sourcegraph/zoekt" target="_blank" rel="noreferrer">Zoekt</a> &mdash; trigram code search</li><li><a href="https://www.swebench.com" target="_blank" rel="noreferrer">SWE-bench</a> &mdash; agentic software engineering benchmark</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-14-usecases-knowledge-support-handbook.html">&larr; Previous: Use Cases: Knowledge and Support</a><a class="lesson-link" href="genai-16-usecase-analytics-agent-handbook.html">Next lesson: Use Case: Analytics Agent &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

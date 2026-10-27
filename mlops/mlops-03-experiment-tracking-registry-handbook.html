@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner to intermediate: MLflow tracking and registry, Weights and Biases, model signatures, aliases, metadata, and a promotion workflow.">
+  <title>03. Experiment Tracking and Model Registry | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">03 / 13 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-02-data-versioning-dvc-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-04-pipelines-orchestration-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 03 &middot; Beginner &middot; Record every run</div>
+      <h1>Experiment Tracking and Model Registry</h1>
+      <p class="lede">Experiments are cheap only if you can compare them later. Tracking records what was run; the registry records which model is approved for which stage.</p>
+      <div class="hero-meta"><span class="badge">Beginner</span><span class="badge">MLflow</span><span class="badge">W&B</span></div>
+    </section>
+    <section class="lesson" id="track">
+      <h2>What to track</h2><ul><li>Parameters, metrics (per step), tags, code version (git SHA), data version (DVC or snapshot id), environment, hardware, seed.</li><li>Artifacts: model files, plots, confusion matrices, sample predictions.</li><li>Evaluation reports and the dataset used for them.</li></ul>
+    </section>
+    <section class="lesson" id="mlflow">
+      <h2>MLflow tracking</h2><pre><code>import mlflow, mlflow.sklearn
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import f1_score
+
+mlflow.set_tracking_uri("http://mlflow.internal:5000")   # shared server, not local files
+mlflow.set_experiment("churn")
+
+with mlflow.start_run(run_name="rf-baseline"):
+    mlflow.set_tags({"git_sha": GIT_SHA, "data_version": DATA_REV})
+    params = {"n_estimators": 300, "max_depth": 12}
+    mlflow.log_params(params)
+    model = RandomForestClassifier(**params).fit(X_train, y_train)
+    mlflow.log_metric("f1", f1_score(y_val, model.predict(X_val)))
+    mlflow.sklearn.log_model(model, name="model", input_example=X_val[:5])</code></pre><p><code>mlflow.autolog()</code> captures most of this for common libraries. Always set the tracking URI explicitly; a silent local <code>mlruns</code> folder is the classic pitfall. Parameter names such as <code>name</code> versus <code>artifact_path</code> in <code>log_model</code> vary by MLflow version; check your docs.</p>
+    </section>
+    <section class="lesson" id="registry">
+      <h2>Model registry and lifecycle</h2><ul><li>The registry is a catalogue of model versions with lineage back to the run, data and code.</li><li>Use <strong>aliases</strong> (for example <code>champion</code>, <code>challenger</code>) and tags instead of the older fixed stages; deployment code loads <code>models:/churn@champion</code>.</li><li>Attach a model card: purpose, data, metrics by segment, limits, owner, approval record.</li></ul><pre><code>from mlflow import MlflowClient
+c = MlflowClient()
+mv = mlflow.register_model(f"runs:/{run_id}/model", "churn")
+c.set_registered_model_alias("churn", "challenger", mv.version)
+# after validation gates pass:
+c.set_registered_model_alias("churn", "champion", mv.version)
+model = mlflow.pyfunc.load_model("models:/churn@champion")</code></pre><p>A <strong>model signature</strong> (input and output schema) lets serving reject malformed requests.</p>
+    </section>
+    <section class="lesson" id="wandb">
+      <h2>Weights and Biases</h2><pre><code>import wandb
+run = wandb.init(project="vision", config={"lr": 3e-4, "epochs": 20})
+for epoch in range(20):
+    wandb.log({"train_loss": loss, "val_acc": acc})
+art = wandb.Artifact("resnet", type="model"); art.add_file("model.pt"); run.log_artifact(art)
+run.finish()</code></pre><ul><li>Strengths: rich dashboards, sweeps for hyperparameter search, artifacts with lineage, reports for collaboration.</li><li>Pitfalls: network stalls from logging too often, orphaned runs, artifact bloat. Log at intervals and set retention.</li><li>Choose MLflow when you want open source and self-hosting with a registry; W&B for rich collaboration; both can coexist.</li></ul>
+    </section>
+    <section class="lesson" id="promote">
+      <h2>A promotion workflow</h2><pre><code>train run -&gt; evaluation job (held-out + slice metrics + fairness + latency)
+  -&gt; compare with champion -&gt; gate: better by margin, no slice regression, passes tests
+  -&gt; register as challenger -&gt; shadow or canary in staging/prod -&gt; approve -&gt; alias champion</code></pre>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Log three runs with different params in MLflow and compare them in the UI.</li><li>Register the best one and load it by alias from a separate script.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://mlflow.org/docs/latest/" target="_blank" rel="noreferrer">MLflow docs</a> &mdash; tracking, registry, GenAI</li><li><a href="https://docs.wandb.ai" target="_blank" rel="noreferrer">W&B docs</a> &mdash; tracking, sweeps, artifacts</li><li><a href="https://arxiv.org/abs/1810.03993" target="_blank" rel="noreferrer">Model Cards paper</a> &mdash; documenting models</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-02-data-versioning-dvc-handbook.html">&larr; Previous: Data Versioning (DVC)</a><a class="lesson-link" href="mlops-04-pipelines-orchestration-handbook.html">Next lesson: Pipelines and Orchestration &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

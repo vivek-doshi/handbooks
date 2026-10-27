@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: the scikit-learn estimator API and pipelines, a complete algorithm decision guide for when to use which model, a cheat sheet, and four end-to-end use cases.">
+  <title>09. The scikit-learn workflow and choosing an algorithm | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">09 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-08-evaluation-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-10-neural-networks-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 09 &middot; Intermediate &middot; Pipelines, the estimator API, an algorithm decision guide, and four end-to-end examples</div>
+      <h1>The scikit-learn workflow and choosing an algorithm</h1>
+      <p class="lede">This step ties steps 03 to 08 together. You will learn the scikit-learn pattern for leak-free end-to-end workflows, get a practical decision guide for picking an algorithm, and see four complete examples: churn, house prices, segmentation and text.</p>
+      <div class="hero-meta"><span class="badge">Estimator API</span><span class="badge">Pipelines</span><span class="badge">Algorithm chooser</span><span class="badge">Cheat sheet</span><span class="badge">Use cases</span><span class="badge">Next steps</span></div>
+    </section>
+    <section class="lesson" id="api">
+      <h2>1. The estimator API</h2><table><thead><tr><th>Method</th><th>Purpose</th><th>Applies to</th></tr></thead><tbody><tr><td><code>fit(X, y)</code></td><td>Learn from data</td><td>All estimators</td></tr><tr><td><code>predict(X)</code></td><td>Predict labels or numbers</td><td>Models</td></tr><tr><td><code>predict_proba(X)</code></td><td>Class probabilities</td><td>Most classifiers</td></tr><tr><td><code>transform(X)</code></td><td>Apply a learned transformation</td><td>Scalers, encoders, PCA</td></tr><tr><td><code>fit_transform(X)</code></td><td>Fit then transform (training data only)</td><td>Transformers</td></tr><tr><td><code>score(X, y)</code></td><td>Default metric</td><td>Models</td></tr><tr><td><code>get_params / set_params</code></td><td>Read and change hyperparameters</td><td>All; used by search</td></tr></tbody></table><p>Because everything follows this contract, models are interchangeable, and any combination can sit inside a pipeline or a search.</p>
+    </section>
+    <section class="lesson" id="pipes">
+      <h2>2. Pipelines that cannot leak</h2><p>A <code>Pipeline</code> chains preprocessing and a model into one estimator. Cross-validation then refits the preprocessing inside every fold, which removes preprocessing leakage by construction. Build the preprocessing once and reuse it for every candidate model.</p><pre><code>from sklearn.compose import ColumnTransformer, make_column_selector as selector
+from sklearn.pipeline import make_pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.model_selection import cross_val_score
+import joblib
+
+num = make_pipeline(SimpleImputer(strategy="median"), StandardScaler())
+cat = make_pipeline(SimpleImputer(strategy="most_frequent"), OneHotEncoder(handle_unknown="ignore"))
+pre = ColumnTransformer([("num", num, selector(dtype_include="number")),
+                         ("cat", cat, selector(dtype_exclude="number"))])
+
+candidates = {
+    "logreg": make_pipeline(pre, LogisticRegression(max_iter=2000)),
+    "hgb": HistGradientBoostingClassifier(categorical_features="from_dtype"),   # needs category dtype
+}
+for name, est in candidates.items():
+    print(name, cross_val_score(est, X, y, cv=5, scoring="roc_auc").mean().round(3))
+
+best = candidates["logreg"].fit(X, y)
+joblib.dump(best, "model.joblib")      # only load files you created; joblib uses pickle</code></pre><ul><li><strong>Persist the whole pipeline</strong>, not only the model, so production applies identical preprocessing.</li><li><strong>Security:</strong> pickle-based files can run code on load. Never load a model file from an untrusted source; consider ONNX or skops for sharing.</li><li><strong>Reproducibility:</strong> fix <code>random_state</code>, pin library versions, and log the data version with each run (see the <a href="../mlops/mlops-01-fundamentals-handbook.html">MLOps handbook</a>).</li></ul>
+    </section>
+    <section class="lesson" id="chooser">
+      <h2>3. Algorithm chooser: when to use which</h2><p>Start from the problem, then narrow by your data size and constraints. When unsure, run a baseline and one boosting model and compare with cross-validation.</p><table><thead><tr><th>Problem</th><th>Start with</th><th>Then try</th><th>Notes</th></tr></thead><tbody><tr><td>Regression, small or interpretable</td><td>Linear / ridge / lasso</td><td>Random forest, gradient boosting</td><td>Check residuals; log-transform skewed targets</td></tr><tr><td>Regression, tabular, accuracy matters</td><td>HistGradientBoosting, LightGBM</td><td>XGBoost, CatBoost, ensembling</td><td>Use early stopping</td></tr><tr><td>Binary classification, tabular</td><td>Logistic regression baseline</td><td>Gradient boosting; random forest</td><td>Tune the threshold; calibrate probabilities</td></tr><tr><td>Imbalanced classification</td><td>Class-weighted logistic regression or boosting</td><td>Threshold tuning, resampling</td><td>Judge by PR-AUC and recall at a precision target</td></tr><tr><td>Multiclass</td><td>Logistic regression (softmax), random forest</td><td>Gradient boosting, neural network</td><td>Use macro-averaged metrics</td></tr><tr><td>Text classification</td><td>TF-IDF + logistic regression or LinearSVC</td><td>Naive Bayes baseline; fine-tuned transformer</td><td>Transformers win with enough data and compute</td></tr><tr><td>Small data, high-dimensional</td><td>Regularised linear, SVM</td><td>Naive Bayes, KNN</td><td>Cross-validate with repeated folds</td></tr><tr><td>Segmentation (no labels)</td><td>K-means on scaled features</td><td>HDBSCAN, GMM, hierarchical</td><td>Profile clusters; judge by usefulness</td></tr><tr><td>Anomaly detection</td><td>Isolation forest</td><td>Local outlier factor, autoencoder</td><td>Tune on review capacity</td></tr><tr><td>Many correlated features, compress</td><td>PCA</td><td>UMAP for visualisation</td><td>Standardise first</td></tr><tr><td>Time series forecasting</td><td>Seasonal naive baseline, then gradient boosting on lag features</td><td>Dedicated forecasting libraries, deep models</td><td>Time-based validation only</td></tr><tr><td>Images, audio, video</td><td>Pretrained CNN or vision transformer (steps 12 and 13)</td><td>Fine-tune</td><td>Do not train from scratch with small data</td></tr><tr><td>Language, documents</td><td>Pretrained transformer (step 13)</td><td>Embeddings + classifier, fine-tuning</td><td>See the gen-ai handbooks</td></tr></tbody></table><h3>Choose by data characteristics</h3><table><thead><tr><th>Algorithm</th><th>Needs scaling</th><th>Handles missing values</th><th>Captures non-linearity</th><th>Interpretable</th><th>Good with many rows</th></tr></thead><tbody><tr><td>Linear / logistic</td><td>Yes</td><td>No</td><td>No (add features)</td><td>High</td><td>Yes</td></tr><tr><td>Naive Bayes</td><td>No</td><td>No</td><td>Limited</td><td>Medium</td><td>Yes</td></tr><tr><td>KNN</td><td>Yes</td><td>No</td><td>Yes</td><td>Medium</td><td>No</td></tr><tr><td>SVM (rbf)</td><td>Yes</td><td>No</td><td>Yes</td><td>Low</td><td>No</td></tr><tr><td>Decision tree</td><td>No</td><td>Some libraries</td><td>Yes</td><td>High (shallow)</td><td>Yes</td></tr><tr><td>Random forest</td><td>No</td><td>Some libraries</td><td>Yes</td><td>Medium</td><td>Yes</td></tr><tr><td>Gradient boosting</td><td>No</td><td>Yes (modern libraries)</td><td>Yes</td><td>Medium (with SHAP)</td><td>Yes</td></tr><tr><td>Neural network</td><td>Yes</td><td>No</td><td>Yes</td><td>Low</td><td>Yes, with enough data</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="cheat">
+      <h2>4. Cheat sheet: imports and key settings</h2><table><thead><tr><th>Task</th><th>Class</th><th>Key settings</th></tr></thead><tbody><tr><td>Linear regression</td><td><code>sklearn.linear_model.LinearRegression, Ridge, Lasso, ElasticNet</code></td><td><code>alpha</code>, <code>l1_ratio</code></td></tr><tr><td>Logistic regression</td><td><code>sklearn.linear_model.LogisticRegression</code></td><td><code>C</code>, <code>penalty</code>, <code>class_weight</code></td></tr><tr><td>Naive Bayes</td><td><code>sklearn.naive_bayes.MultinomialNB, GaussianNB</code></td><td><code>alpha</code></td></tr><tr><td>KNN</td><td><code>sklearn.neighbors.KNeighborsClassifier</code></td><td><code>n_neighbors</code>, <code>weights</code></td></tr><tr><td>SVM</td><td><code>sklearn.svm.SVC, LinearSVC, SVR</code></td><td><code>C</code>, <code>kernel</code>, <code>gamma</code></td></tr><tr><td>Decision tree</td><td><code>sklearn.tree.DecisionTreeClassifier</code></td><td><code>max_depth</code>, <code>min_samples_leaf</code></td></tr><tr><td>Random forest</td><td><code>sklearn.ensemble.RandomForestClassifier</code></td><td><code>n_estimators</code>, <code>max_features</code></td></tr><tr><td>Boosting</td><td><code>sklearn.ensemble.HistGradientBoostingClassifier</code></td><td><code>learning_rate</code>, <code>max_iter</code>, early stopping</td></tr><tr><td>Clustering</td><td><code>sklearn.cluster.KMeans, DBSCAN, HDBSCAN</code></td><td><code>n_clusters</code>, <code>eps</code>, <code>min_cluster_size</code></td></tr><tr><td>Dimensionality reduction</td><td><code>sklearn.decomposition.PCA</code></td><td><code>n_components</code></td></tr><tr><td>Search</td><td><code>GridSearchCV, RandomizedSearchCV, HalvingGridSearchCV</code></td><td><code>cv</code>, <code>scoring</code>, <code>n_iter</code></td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="cases">
+      <h2>5. Four end-to-end use cases</h2><h3>A. Customer churn (binary classification, imbalanced)</h3><ol><li>Target: <code>churned</code> within 30 days; use a time-based split.</li><li>Features: tenure, plan, usage trend, support tickets in the last 30 days (no post-churn fields).</li><li>Baseline: majority class and last-month usage rule. Model: class-weighted logistic regression, then gradient boosting.</li><li>Metric: PR-AUC and recall at the capacity of the retention team; choose the threshold from campaign cost versus customer value.</li></ol><h3>B. House price (regression)</h3><pre><code>from sklearn.compose import TransformedTargetRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.metrics import mean_absolute_error
+import numpy as np
+
+reg = TransformedTargetRegressor(HistGradientBoostingRegressor(), func=np.log1p, inverse_func=np.expm1)
+reg.fit(X_train, y_train)               # model the log of price, predict in dollars
+print(mean_absolute_error(y_test, reg.predict(X_test)))</code></pre><p>Prices are right-skewed, so modelling the log of the target is a common improvement; report MAE in currency and compare with a per-neighbourhood median baseline.</p><h3>C. Customer segmentation (unsupervised)</h3><ol><li>Build recency, frequency and monetary-value features; log-transform and standardise.</li><li>Run k-means for several k, check silhouette and stability, then profile each cluster in plain language.</li><li>Validate with the business: can marketing act differently on each segment?</li></ol><h3>D. Text classification</h3><pre><code>from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.metrics import classification_report
+
+clf = make_pipeline(TfidfVectorizer(ngram_range=(1, 2), min_df=3, sublinear_tf=True),
+                    LogisticRegression(C=4, max_iter=2000))
+clf.fit(train_texts, train_labels)
+print(classification_report(test_labels, clf.predict(test_texts)))</code></pre><p>TF-IDF plus a linear model is a strong, cheap baseline. Move to a fine-tuned transformer (step 13) only if the baseline is not good enough.</p>
+    </section>
+    <section class="lesson" id="next">
+      <h2>6. What to do next</h2><ul><li>Practise on real datasets: Kaggle, UCI, or your own company data, always with a baseline and a proper split.</li><li>Move to neural networks and deep learning (steps 10 to 13) for images, audio, text and sequences.</li><li>Learn to ship models: <a href="../mlops/mlops-01-fundamentals-handbook.html">MLOps</a>, <a href="../mlops/mlops-03-experiment-tracking-registry-handbook.html">MLflow</a> and the <a href="../mlops/mlops-04-pipelines-orchestration-handbook.html">Kubeflow</a> handbooks.</li><li>Plan for life after deployment: monitoring drift, retraining, and model governance (see the AI governance handbooks).</li></ul><div class="exercise"><strong>Practice</strong><ol><li>Pick one dataset and solve it with a baseline, logistic regression, random forest and gradient boosting using the same pipeline and cross-validation. Write a short comparison.</li><li>Save the winning pipeline with <code>joblib</code> and reload it in a fresh script to predict one new row.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://scikit-learn.org/stable/machine_learning_map.html" target="_blank" rel="noreferrer">scikit-learn: Choosing the right estimator</a> &mdash; the official decision map</li><li><a href="https://scikit-learn.org/stable/user_guide.html" target="_blank" rel="noreferrer">scikit-learn user guide</a> &mdash; reference for every estimator</li><li><a href="https://scikit-learn.org/stable/common_pitfalls.html" target="_blank" rel="noreferrer">scikit-learn: Common pitfalls</a> &mdash; leakage and pipeline mistakes</li><li><a href="https://www.kaggle.com/learn" target="_blank" rel="noreferrer">Kaggle Learn</a> &mdash; short hands-on courses</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-08-evaluation-handbook.html">&larr; Previous: Evaluation and Tuning</a><a class="lesson-link" href="ml-10-neural-networks-handbook.html">Next lesson: Neural Networks &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

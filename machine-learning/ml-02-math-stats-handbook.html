@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner: the practical math behind ML, including vectors and matrices, gradients, probability, Bayes theorem, distributions, statistics, and entropy.">
+  <title>02. Math and statistics essentials | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">02 / 13 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-01-foundations-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-03-data-features-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 02 &middot; Beginner &middot; Just enough linear algebra, calculus, probability and statistics to understand why models work</div>
+      <h1>Math and statistics essentials</h1>
+      <p class="lede">You do not need a mathematics degree to use ML, but a handful of ideas appear everywhere. This step teaches them through intuition and short NumPy examples, so later algorithms read as familiar pieces.</p>
+      <div class="hero-meta"><span class="badge">Linear algebra</span><span class="badge">Calculus</span><span class="badge">Probability</span><span class="badge">Bayes theorem</span><span class="badge">Statistics</span><span class="badge">Entropy and distance</span></div>
+    </section>
+    <section class="lesson" id="linalg">
+      <h2>1. Vectors and matrices</h2><p>A sample is a <strong>vector</strong> of features; a dataset is a <strong>matrix</strong> with one row per sample and one column per feature. Models are mostly sums and products of these.</p><ul><li><strong>Dot product:</strong> multiply matching elements and add them up. It measures how aligned two vectors are and is the core of a linear model: <code>w . x + b</code>.</li><li><strong>Matrix multiplication:</strong> applies many dot products at once. A neural network layer is a matrix multiplication plus a non-linearity.</li><li><strong>Shapes:</strong> most bugs are shape mismatches. Always check <code>(n_samples, n_features)</code>.</li><li><strong>Norms:</strong> L2 is the usual length (square root of the sum of squares); L1 is the sum of absolute values. They reappear as regularisation in step 04.</li><li><strong>Eigenvectors and SVD:</strong> directions of greatest variation in data; the basis of PCA (step 07).</li></ul><pre><code>import numpy as np
+
+X = np.array([[1., 2.], [3., 4.], [5., 6.]])   # 3 samples, 2 features
+w = np.array([0.5, -1.0])                        # one weight per feature
+b = 0.1
+
+y_hat = X @ w + b                                # shape (3,)
+print(y_hat)
+print(np.linalg.norm(w), np.linalg.norm(w, 1))   # L2 and L1 norms</code></pre>
+    </section>
+    <section class="lesson" id="calculus">
+      <h2>2. Derivatives and gradients</h2><p>Training a model means minimising a loss. The <strong>derivative</strong> tells you how the loss changes if you nudge one parameter; the <strong>gradient</strong> is the vector of all those derivatives, pointing uphill. To go downhill, step in the opposite direction.</p><pre><code># Minimise f(w) = (w - 3)^2 by gradient descent
+w, lr = 0.0, 0.1
+for step in range(50):
+    grad = 2 * (w - 3)      # derivative of f
+    w -= lr * grad
+print(w)                    # close to 3</code></pre><ul><li><strong>Learning rate</strong> is the step size: too large overshoots and diverges, too small is slow.</li><li><strong>Chain rule:</strong> the derivative of a composition is the product of derivatives. Backpropagation (step 10) is the chain rule applied layer by layer.</li><li><strong>Convex vs non-convex:</strong> linear and logistic regression have one global minimum; neural networks have many, but gradient descent still works well in practice.</li></ul>
+    </section>
+    <section class="lesson" id="prob">
+      <h2>3. Probability</h2><table><thead><tr><th>Idea</th><th>Meaning</th><th>Example</th></tr></thead><tbody><tr><td>Probability</td><td>Number between 0 and 1 for how likely an event is</td><td>P(rain) = 0.3</td></tr><tr><td>Conditional probability</td><td>P(A | B): chance of A given B happened</td><td>P(fraud | foreign transaction)</td></tr><tr><td>Independence</td><td>Knowing one event tells nothing about the other</td><td>Two fair coin flips</td></tr><tr><td>Expected value</td><td>Probability-weighted average outcome</td><td>Average payoff of a bet</td></tr><tr><td>Variance</td><td>How spread out values are around the mean</td><td>Stable vs volatile sales</td></tr></tbody></table><h3>Distributions you will meet</h3><table><thead><tr><th>Distribution</th><th>Models</th><th>Where it shows up</th></tr></thead><tbody><tr><td>Normal (Gaussian)</td><td>Continuous values clustering around a mean</td><td>Measurement noise, Gaussian Naive Bayes, weight initialisation</td></tr><tr><td>Bernoulli / Binomial</td><td>Yes or no outcomes, and counts of yes outcomes</td><td>Classification targets, click or no click</td></tr><tr><td>Poisson</td><td>Counts of events in a fixed interval</td><td>Calls per hour, Poisson regression</td></tr><tr><td>Uniform</td><td>All values equally likely</td><td>Random sampling, hyperparameter search</td></tr><tr><td>Categorical / Multinomial</td><td>One of several classes</td><td>Softmax outputs, text word counts</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="bayes">
+      <h2>4. Bayes theorem</h2><p>Bayes theorem updates a belief after seeing evidence:</p><pre><code>P(class | evidence) = P(evidence | class) * P(class) / P(evidence)</code></pre><p><strong>Prior</strong> P(class) is what you believed before; <strong>likelihood</strong> P(evidence | class) is how well the class explains the evidence; <strong>posterior</strong> P(class | evidence) is the updated belief.</p><div class="example"><strong>Worked example: a rare-event test</strong><p>A disease affects 1% of people. A test catches 90% of cases (true positive) and wrongly flags 5% of healthy people. Given a positive test, what is the chance of disease? <code>0.9 * 0.01 / (0.9 * 0.01 + 0.05 * 0.99) = about 15%</code>. Most positives are false alarms because the condition is rare. The same effect is why <strong>accuracy misleads on          imbalanced data</strong> (step 08).</p></div>
+    </section>
+    <section class="lesson" id="stats">
+      <h2>5. Statistics you will use daily</h2><ul><li><strong>Mean, median, standard deviation, quantiles:</strong> summarise a column. The median resists outliers; the mean does not.</li><li><strong>Correlation:</strong> strength of a linear relationship between two variables from -1 to 1. Correlation is not causation, and it misses non-linear relationships.</li><li><strong>Sampling and the central limit theorem:</strong> averages of many samples are approximately normal, which is why confidence intervals work.</li><li><strong>Confidence interval:</strong> a range that, across repeated experiments, would contain the true value a stated share of the time. Report model metrics with one rather than a single number.</li><li><strong>Hypothesis test and p-value:</strong> how surprising the data would be if there were no real effect. A small p-value is evidence of an effect, not its size or importance.</li><li><strong>Maximum likelihood:</strong> choose the parameters that make the observed data most probable. Linear regression with squared error and logistic regression with log loss are both maximum-likelihood fits.</li></ul><pre><code>import numpy as np
+from scipy import stats
+
+a = np.random.default_rng(0).normal(100, 15, 200)
+b = np.random.default_rng(1).normal(105, 15, 200)
+print(a.mean(), a.std(ddof=1), np.percentile(a, [25, 50, 75]))
+print(stats.ttest_ind(a, b))          # compare two groups
+print(np.corrcoef(a, b)[0, 1])        # correlation</code></pre>
+    </section>
+    <section class="lesson" id="info">
+      <h2>6. Entropy, cross-entropy and distance</h2><ul><li><strong>Entropy</strong> measures uncertainty in a distribution. Decision trees (step 06) choose splits that reduce it.</li><li><strong>Cross-entropy / log loss</strong> measures how far predicted probabilities are from the true labels. It is the standard loss for classification, including neural networks and language models.</li><li><strong>KL divergence</strong> measures how one distribution differs from another; it appears in variational models and in fine-tuning objectives.</li><li><strong>Distances:</strong> Euclidean (straight line), Manhattan (grid), cosine (angle, used for embeddings and text). The choice defines what &quot;similar&quot; means for k-nearest neighbours, clustering and vector search.</li></ul><div class="exercise"><strong>Practice</strong><ol><li>Use gradient descent to minimise <code>(w - 3)^2</code> with learning rates 0.01, 0.1, 1.0 and 1.1. Which diverge?</li><li>Reproduce the disease-test example in code, then change the prevalence to 10% and see how the posterior changes.</li><li>Compute the cosine similarity of two vectors with <code>np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))</code>.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://www.statlearning.com/" target="_blank" rel="noreferrer">An Introduction to Statistical Learning</a> &mdash; probability and statistics through ML</li><li><a href="https://mml-book.github.io/" target="_blank" rel="noreferrer">Mathematics for Machine Learning</a> &mdash; free book on the linear algebra, calculus and probability used here</li><li><a href="https://numpy.org/doc/stable/user/absolute_beginners.html" target="_blank" rel="noreferrer">NumPy: absolute beginners guide</a> &mdash; arrays, shapes and broadcasting</li><li><a href="https://docs.scipy.org/doc/scipy/reference/stats.html" target="_blank" rel="noreferrer">SciPy stats</a> &mdash; distributions and statistical tests</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-01-foundations-handbook.html">&larr; Previous: ML Foundations</a><a class="lesson-link" href="ml-03-data-features-handbook.html">Next lesson: Data and Features &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

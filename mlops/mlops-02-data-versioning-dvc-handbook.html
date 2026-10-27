@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner: why data needs versioning, Git plus DVC, remotes, pipelines with dvc.yaml, experiments, and alternatives such as lakeFS, Delta and Iceberg time travel.">
+  <title>02. Data Versioning with DVC | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">02 / 13 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-01-fundamentals-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-03-experiment-tracking-registry-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 02 &middot; Beginner &middot; Version the data</div>
+      <h1>Data Versioning with DVC</h1>
+      <p class="lede">Git cannot hold gigabytes. DVC keeps small pointer files in Git and the actual data in object storage, so every commit identifies exact code and exact data.</p>
+      <div class="hero-meta"><span class="badge">Beginner</span><span class="badge">DVC</span><span class="badge">Reproducibility</span></div>
+    </section>
+    <section class="lesson" id="why">
+      <h2>Why version data</h2><ul><li>A model is a function of code and data. Without data versions you cannot reproduce or audit it.</li><li>Rollback: restore the dataset that produced the last good model.</li><li>Collaboration: teammates fetch the same data by checking out a commit.</li></ul><table><thead><tr><th>Tool</th><th>Granularity</th><th>Best for</th></tr></thead><tbody><tr><td>DVC</td><td>Files and directories, pointers in Git</td><td>Projects of any size, data scientist workflow</td></tr><tr><td>lakeFS</td><td>Git-like branches over an object store</td><td>Data lakes, many writers, atomic merges</td></tr><tr><td>Delta Lake / Iceberg / Hudi</td><td>Table snapshots with time travel</td><td>Tabular data in lakehouses</td></tr><tr><td>W&B Artifacts, MLflow datasets, Hugging Face Datasets</td><td>Dataset versions with lineage</td><td>Tracking tied to experiments</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="dvc">
+      <h2>DVC basics</h2><pre><code>pip install dvc[s3]            # or [gs], [azure]
+git init &amp;&amp; dvc init
+dvc remote add -d storage s3://my-bucket/dvcstore
+dvc add data/raw.csv           # creates data/raw.csv.dvc, ignores the file in git
+git add data/raw.csv.dvc data/.gitignore .dvc/config
+git commit -m "Track raw data v1"
+dvc push                       # upload data to the remote
+
+# teammate or CI
+git clone &lt;repo&gt; &amp;&amp; dvc pull   # fetch exact data for this commit
+git checkout v1.0 &amp;&amp; dvc checkout   # switch data with code</code></pre><ul><li>Use shared remotes with least-privilege credentials; enable bucket versioning as a safety net.</li><li>DVC caches by content hash, so identical files are stored once.</li><li>Never commit the data or the secrets; commit the <code>.dvc</code> files and <code>dvc.lock</code>.</li></ul>
+    </section>
+    <section class="lesson" id="pipelines">
+      <h2>DVC pipelines</h2><pre><code># dvc.yaml
+stages:
+  prepare:
+    cmd: python src/prepare.py data/raw.csv data/prepared
+    deps: [src/prepare.py, data/raw.csv]
+    outs: [data/prepared]
+  train:
+    cmd: python src/train.py data/prepared models/model.pkl
+    deps: [src/train.py, data/prepared]
+    params: [train.lr, train.n_estimators]
+    outs: [models/model.pkl]
+    metrics: [metrics.json: {cache: false}]
+
+# run only what changed
+dvc repro
+dvc metrics diff main
+dvc params diff</code></pre><p>DVC builds a graph from <code>deps</code> and <code>outs</code> and re-runs only stages whose inputs changed. The <code>dvc.lock</code> file pins exact hashes, giving a reproducible run.</p>
+    </section>
+    <section class="lesson" id="exp">
+      <h2>Experiments</h2><pre><code>dvc exp run -S train.lr=0.01          # run a variation without committing
+dvc exp show                            # table of params and metrics
+dvc exp apply &lt;name&gt; &amp;&amp; git commit      # promote the winner</code></pre><p>DVC experiments are lightweight; for team dashboards, collaboration and registries pair DVC with MLflow or W&B (step 03).</p>
+    </section>
+    <section class="lesson" id="scale">
+      <h2>Beyond a laptop</h2><ul><li>For petabyte lakes do not copy data into DVC; reference it with <code>dvc import-url</code> or use table-format snapshots (Iceberg or Delta version ids) and record the snapshot id in the run.</li><li>Use lakeFS or object-store versioning when many pipelines write the same bucket.</li><li>Keep data contracts and schema checks next to the pointer (step 06).</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Track a dataset with DVC and a bucket remote, change it, and switch back with git checkout and dvc checkout.</li><li>Build a two-stage dvc.yaml and observe dvc repro skipping unchanged stages.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://dvc.org/doc" target="_blank" rel="noreferrer">DVC documentation</a> &mdash; commands and pipelines</li><li><a href="https://docs.lakefs.io" target="_blank" rel="noreferrer">lakeFS</a> &mdash; Git for data lakes</li><li><a href="https://iceberg.apache.org" target="_blank" rel="noreferrer">Apache Iceberg</a> &mdash; table snapshots</li><li><a href="https://delta.io" target="_blank" rel="noreferrer">Delta Lake</a> &mdash; time travel</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-01-fundamentals-handbook.html">&larr; Previous: MLOps Fundamentals</a><a class="lesson-link" href="mlops-03-experiment-tracking-registry-handbook.html">Next lesson: Tracking and Registry &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

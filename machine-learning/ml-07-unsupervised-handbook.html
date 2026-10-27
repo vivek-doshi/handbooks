@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: k-means, hierarchical clustering, DBSCAN and HDBSCAN, Gaussian mixtures, PCA, t-SNE and UMAP, anomaly detection, and how to evaluate results without labels.">
+  <title>07. Unsupervised learning | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">07 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-06-trees-ensembles-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-08-evaluation-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 07 &middot; Intermediate &middot; Clustering, dimensionality reduction and anomaly detection when there are no labels</div>
+      <h1>Unsupervised learning</h1>
+      <p class="lede">When there is no target to predict, unsupervised learning finds structure: groups of similar rows, a smaller set of features, or the rows that do not fit. This step covers the main algorithms and the honest way to judge results that have no answer key.</p>
+      <div class="hero-meta"><span class="badge">Clustering</span><span class="badge">K-means</span><span class="badge">DBSCAN and HDBSCAN</span><span class="badge">Dimensionality reduction</span><span class="badge">Anomaly detection</span><span class="badge">Evaluation</span></div>
+    </section>
+    <section class="lesson" id="overview">
+      <h2>1. What unsupervised learning is for</h2><table><thead><tr><th>Goal</th><th>Techniques</th><th>Example</th></tr></thead><tbody><tr><td>Group similar items</td><td>K-means, hierarchical, DBSCAN or HDBSCAN, Gaussian mixture</td><td>Customer segmentation, document grouping</td></tr><tr><td>Compress or visualise features</td><td>PCA, t-SNE, UMAP, autoencoders</td><td>Plot 100 features in 2D; remove noise</td></tr><tr><td>Find unusual rows</td><td>Isolation forest, local outlier factor, one-class SVM</td><td>Fraud, sensor faults, intrusion</td></tr><tr><td>Find co-occurring items</td><td>Association rules (Apriori, FP-Growth)</td><td>Market basket analysis</td></tr></tbody></table><div class="callout"><strong>Scale first, and expect judgement</strong>Distance-based methods need standardised features. There is no accuracy score, so results must be validated with domain experts and by checking that groups are stable and useful.</div>
+    </section>
+    <section class="lesson" id="kmeans">
+      <h2>2. K-means and hierarchical clustering</h2><h3>K-means</h3><ul><li><strong>What it does:</strong> Partitions rows into k groups, each represented by its centre (centroid).</li><li><strong>How it works:</strong> Pick k centres (k-means++ initialisation), assign each row to the nearest centre, move each centre to the mean of its rows, and repeat until stable.</li><li><strong>Use it when:</strong> You expect compact, similar-sized, roughly round clusters and want a fast method that scales to large data: customer segments, colour quantisation, preprocessing.</li><li><strong>Avoid it when:</strong> Clusters have odd shapes, very different sizes or densities, many outliers, or you do not know k and cannot inspect results.</li><li><strong>Key settings:</strong> <code>n_clusters</code> (choose with silhouette score or the elbow method plus business sense), <code>n_init</code>, <code>init=&quot;k-means++&quot;</code>.</li></ul><pre><code>from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+Xs = StandardScaler().fit_transform(X)
+for k in range(2, 9):
+    labels = KMeans(n_clusters=k, n_init=10, random_state=0).fit_predict(Xs)
+    print(k, round(silhouette_score(Xs, labels), 3))</code></pre><h3>Hierarchical (agglomerative) clustering</h3><ul><li><strong>What it does:</strong> Builds a tree of clusters by repeatedly merging the two closest groups.</li><li><strong>How it works:</strong> Start with each row alone and merge using a linkage rule (<code>ward</code> for compact groups, <code>average</code>, <code>complete</code>, <code>single</code>). A dendrogram shows the merges so you can cut at any level.</li><li><strong>Use it when:</strong> You want to see structure at several granularities, have a small dataset, or need clusters of arbitrary shape (single linkage).</li><li><strong>Avoid it when:</strong> Datasets with tens of thousands of rows or more (memory grows quadratically).</li><li><strong>Key settings:</strong> <code>linkage</code>, <code>n_clusters</code> or <code>distance_threshold</code>, <code>metric</code>.</li></ul>
+    </section>
+    <section class="lesson" id="density">
+      <h2>3. DBSCAN, HDBSCAN and Gaussian mixtures</h2><h3>DBSCAN and HDBSCAN</h3><ul><li><strong>What it does:</strong> Find clusters as dense regions separated by sparse ones and label points in sparse regions as noise.</li><li><strong>How it works:</strong> DBSCAN grows clusters from points that have at least <code>min_samples</code> neighbours within distance <code>eps</code>. HDBSCAN removes the need to pick <code>eps</code> by exploring many density levels.</li><li><strong>Use it when:</strong> Clusters have arbitrary shapes, the number of clusters is unknown, or you want outliers identified automatically (geospatial data, anomaly-aware grouping).</li><li><strong>Avoid it when:</strong> Densities vary a lot between clusters (prefer HDBSCAN), or the data is very high dimensional.</li><li><strong>Key settings:</strong> DBSCAN: <code>eps</code> and <code>min_samples</code>. HDBSCAN: <code>min_cluster_size</code>. Both are in scikit-learn (<code>sklearn.cluster</code>).</li></ul><pre><code>from sklearn.cluster import DBSCAN, HDBSCAN
+labels = HDBSCAN(min_cluster_size=25).fit_predict(Xs)   # -1 means noise
+print((labels == -1).mean(), "share flagged as noise")</code></pre><h3>Gaussian mixture model (GMM)</h3><ul><li><strong>What it does:</strong> Models the data as a mix of bell-shaped clusters and gives each row a <strong>probability</strong> of belonging to each (soft clustering).</li><li><strong>How it works:</strong> Fits means, covariances and mixing weights with the expectation-maximisation algorithm. Choose the number of components by BIC or AIC.</li><li><strong>Use it when:</strong> Clusters overlap or are elliptical, or you need probabilities and a density model.</li><li><strong>Avoid it when:</strong> Many features relative to rows (covariances are hard to estimate); non-Gaussian shapes.</li><li><strong>Key settings:</strong> <code>n_components</code>, <code>covariance_type</code>.</li></ul>
+    </section>
+    <section class="lesson" id="dimred">
+      <h2>4. Dimensionality reduction</h2><h3>Principal component analysis (PCA)</h3><ul><li><strong>What it does:</strong> Rotates the data onto new axes (principal components) ordered by how much variance they capture, so you can keep the first few.</li><li><strong>How it works:</strong> Uses the eigenvectors of the covariance matrix (singular value decomposition, step 02). Components are linear combinations of the original features and are uncorrelated.</li><li><strong>Use it when:</strong> Compressing correlated features, removing noise, speeding up other algorithms, de-correlating inputs, or a first 2D look at the data.</li><li><strong>Avoid it when:</strong> You need interpretable original features, the structure is non-linear, or features are unscaled (always standardise first).</li><li><strong>Key settings:</strong> <code>n_components</code> (an integer, or a float such as 0.95 to keep 95% of the variance).</li></ul><pre><code>from sklearn.decomposition import PCA
+pca = PCA(n_components=0.95).fit(Xs)
+print(pca.n_components_, pca.explained_variance_ratio_.cumsum()[:10])</code></pre><h3>t-SNE and UMAP: for pictures, not for features</h3><ul><li><strong>t-SNE</strong> and <strong>UMAP</strong> embed high-dimensional data into 2D or 3D so similar rows land close together. They are excellent for visualising embeddings and cluster structure.</li><li>Distances between far-apart clusters and cluster sizes are <strong>not</strong> reliable, and results change with settings (<code>perplexity</code> for t-SNE; <code>n_neighbors</code> and <code>min_dist</code> for UMAP). Use them to explore, not to prove.</li><li>UMAP is faster than t-SNE and keeps more global structure; it is available in the <code>umap-learn</code> package.</li><li><strong>Autoencoders</strong> (step 12) learn a non-linear compressed representation with a neural network.</li></ul>
+    </section>
+    <section class="lesson" id="anomaly">
+      <h2>5. Anomaly detection</h2><table><thead><tr><th>Method</th><th>Idea</th><th>Notes</th></tr></thead><tbody><tr><td>Isolation Forest</td><td>Random splits isolate unusual points in fewer steps</td><td>Fast, scales well, strong default; set <code>contamination</code> carefully</td></tr><tr><td>Local Outlier Factor</td><td>Compares a point&#39;s local density to its neighbours&#39;</td><td>Finds outliers relative to local context</td></tr><tr><td>One-Class SVM</td><td>Learns a boundary around normal data</td><td>Sensitive to scaling and parameters; best on smaller data</td></tr><tr><td>Reconstruction error</td><td>Autoencoder or PCA that fails to rebuild unusual rows</td><td>Useful for images and sensors</td></tr></tbody></table><pre><code>from sklearn.ensemble import IsolationForest
+iso = IsolationForest(n_estimators=300, contamination="auto", random_state=0).fit(Xs)
+scores = -iso.score_samples(Xs)          # higher = more anomalous
+flag = iso.predict(Xs) == -1</code></pre><p>Anomaly detection usually has few or no confirmed labels. Review the top-ranked rows with experts, tune the alert threshold to the team&#39;s review capacity, and measure with precision at k once feedback exists.</p>
+    </section>
+    <section class="lesson" id="eval">
+      <h2>6. Evaluating without labels</h2><table><thead><tr><th>Check</th><th>What it tells you</th></tr></thead><tbody><tr><td>Silhouette score (-1 to 1)</td><td>How well separated and compact clusters are; higher is better</td></tr><tr><td>Davies-Bouldin, Calinski-Harabasz</td><td>Alternative internal measures; compare across k</td></tr><tr><td>BIC / AIC (GMM)</td><td>Model fit penalised for complexity</td></tr><tr><td>Stability</td><td>Do clusters remain similar on resamples or different seeds?</td></tr><tr><td>Profiling</td><td>Summarise each cluster (averages, top categories). Are the groups distinct and actionable?</td></tr><tr><td>Downstream value</td><td>Does using the clusters improve a task, such as targeting or a supervised model?</td></tr><tr><td>Adjusted Rand index</td><td>Only if reference labels exist</td></tr></tbody></table><div class="exercise"><strong>Practice</strong><ol><li>Segment a customer dataset with k-means for k from 2 to 8 and profile the winning clusters in plain language.</li><li>Run HDBSCAN on the same data. How many customers does it call noise?</li><li>Reduce to two PCA components and plot the clusters. Then try UMAP and compare.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://scikit-learn.org/stable/modules/clustering.html" target="_blank" rel="noreferrer">scikit-learn: Clustering</a> &mdash; algorithms compared with a selection guide</li><li><a href="https://scikit-learn.org/stable/modules/decomposition.html" target="_blank" rel="noreferrer">scikit-learn: Decomposing signals</a> &mdash; PCA and relatives</li><li><a href="https://scikit-learn.org/stable/modules/outlier_detection.html" target="_blank" rel="noreferrer">scikit-learn: Novelty and outlier detection</a> &mdash; anomaly detection options</li><li><a href="https://umap-learn.readthedocs.io/" target="_blank" rel="noreferrer">UMAP documentation</a> &mdash; parameters and interpretation</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-06-trees-ensembles-handbook.html">&larr; Previous: Trees and Ensembles</a><a class="lesson-link" href="ml-08-evaluation-handbook.html">Next lesson: Evaluation and Tuning &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

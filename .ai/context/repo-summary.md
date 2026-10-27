@@ -22,5 +22,4 @@ It contains concise, topic-focused HTML handbooks with a shared index, shared UI
 ## Current Handbook Additions
 
 - `python/jupyter-handbook.html` — Jupyter Notebook Field Handbook
-- `devops/devops-playbook-handbook.html` — DevOps Playbook Handbook
-- `devops/platform-engineering-concepts-handbook.html` — Platform Engineering Concepts Handbook
+- `devops/devops-01-foundations-handbook.html` … `devops/devops-13-devops-microservices-handbook.html` — DevOps learning path (13 numbered steps, beginner to architect)

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="An engineering guide to gRPC and Protocol Buffers: service definitions, HTTP/2, RPC modes, schema evolution, security, and operations.">
+  <title>09. gRPC and Protocol Buffers | Architecture Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
+    <span class="path-progress">09 / 12 · Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="architecture-08-event-driven-systems.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-10-graphql.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 09 · Advanced · Service contracts</div>
+      <h1>gRPC and Protocol Buffers</h1>
+      <p class="lede">gRPC offers generated, strongly typed remote procedure calls; Protocol Buffers (Protobuf) define compact, language-neutral messages and services. Together they are useful for controlled service-to-service contracts where streaming or generated clients matter.</p>
+      <div class="hero-meta"><span class="badge">HTTP/2</span><span class="badge">Four RPC modes</span><span class="badge">Schema evolution</span><span class="badge">Security and telemetry</span></div>
+    </section>
+    <section class="lesson" id="fundamentals">
+      <h2>1. What gRPC is and when to choose it</h2>
+      <p>Define a service and messages in an interface definition language, generate client/server code, and exchange typed messages over a transport. gRPC is a strong fit for internal APIs, low-latency service communication, streaming, and polyglot teams with contract tooling.</p>
+      <p>REST/JSON may be a simpler public-web contract with broad browser and debugging support. Browser clients may use gRPC-Web through a compatible proxy. Compare compatibility, tooling, observability, load balancing, proxy support, and consumer needs; binary serialization alone does not guarantee faster end-to-end behavior.</p>
+    </section>
+    <section class="lesson" id="protobuf">
+      <h2>2. Protobuf syntax, field types, and binary encoding</h2>
+      <pre><code>syntax = "proto3";
+
+package inventory.v1;
+
+message GetItemRequest {
+  string item_id = 1;
+}
+
+message Item {
+  string item_id = 1;
+  string display_name = 2;
+  int64 available_quantity = 3;
+}
+
+service InventoryService {
+  rpc GetItem(GetItemRequest) returns (Item);
+}</code></pre>
+      <p>Messages contain numbered fields with scalar, enum, message, repeated, map, or oneof types. Protobuf encodes field numbers and wire types rather than field names, which keeps the wire format compact. Field numbers are part of the compatibility contract.</p>
+      <div class="callout"><strong>Schema evolution rule</strong>Never reuse a deleted field number or name. Mark deleted numbers and names as <code>reserved</code>. Add fields compatibly and test old/new reader-writer combinations. Review the current Protobuf Editions guide as well as proto3: Editions are the current evolution path described by the official documentation.</div>
+    </section>
+    <section class="lesson" id="transport">
+      <h2>3. HTTP/2, metadata, and the four RPC modes</h2>
+      <p>gRPC uses HTTP/2 framing in its conventional transport, with headers, streams, and flow control. A single connection can carry multiple RPC streams. Proxies and load balancers must support the relevant HTTP/2 behavior and long-lived streams.</p>
+      <table>
+        <thead><tr><th>Mode</th><th>Message flow</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td>Unary</td><td>One request, one response</td><td>Get a customer profile</td></tr>
+          <tr><td>Server streaming</td><td>One request, response stream</td><td>Watch inventory updates</td></tr>
+          <tr><td>Client streaming</td><td>Request stream, one response</td><td>Upload a batch or telemetry window</td></tr>
+          <tr><td>Bidirectional streaming</td><td>Independent request and response streams</td><td>Interactive session or live feed</td></tr>
+        </tbody>
+      </table>
+      <p>Metadata carries cross-cutting values such as authentication credentials, request IDs, or tracing context; do not treat it as an unbounded payload. Set deadlines on calls and propagate cancellation. A client timeout does not guarantee server work stopped unless cancellation is handled.</p>
+    </section>
+    <section class="lesson" id="reliability">
+      <h2>4. Errors, interceptors, and load balancing</h2>
+      <p>Use canonical gRPC status codes and structured details where appropriate. Define retry policy only for safe, transient failures; set an overall deadline so retries do not multiply latency. Mutating methods need idempotency semantics before automatic retries.</p>
+      <p>Interceptors implement cross-cutting concerns such as authentication, logging, metrics, and tracing. Keep them predictable and avoid swallowing errors. Load balancing may be client-side or proxy/service-mesh managed; verify name resolution, health checking, endpoint discovery, connection reuse, and streaming behavior in the chosen environment.</p>
+    </section>
+    <section class="lesson" id="security">
+      <h2>5. TLS, authentication, and authorization</h2>
+      <p>Use TLS for transport confidentiality and integrity. Use mutual TLS when workload identity and two-way authentication are required, with managed certificate rotation. Authenticate the caller and authorize each method/resource; network location alone is not authorization. Keep tokens out of logs and metadata dumps.</p>
+      <p>Apply message-size limits, rate limits, deadlines, and validation. Treat reflection as an operational/debugging feature with access controls; do not expose service inventory unnecessarily on public endpoints.</p>
+    </section>
+    <section class="lesson" id="operations">
+      <h2>6. Observability, compatibility, and rollout</h2>
+      <p>Instrument RPC count, status, duration, request/response size, deadlines, retries, and active streams. Propagate W3C trace context or supported metadata across calls. Use OpenTelemetry conventions supported by your language SDK and exporter; avoid sensitive or high-cardinality labels.</p>
+      <ol>
+        <li>Publish contract changes and compatibility policy.</li>
+        <li>Run breaking-change checks and generate clients in CI.</li>
+        <li>Deploy servers that accept old and new clients before rolling clients forward.</li>
+        <li>Monitor error codes and version adoption; remove old fields only after consumers migrate.</li>
+        <li>Test deadline, cancellation, stream backpressure, and network interruption.</li>
+      </ol>
+      <div class="exercise"><strong>Practice</strong>Define a unary <code>ReserveStock</code> RPC and a server-streaming <code>WatchStock</code> RPC. Specify idempotency, deadlines, authorization, error mapping, and how an old client behaves after adding a response field.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://grpc.io/docs/what-is-grpc/core-concepts/" target="_blank" rel="noreferrer">gRPC core concepts and RPC lifecycle</a> — official transport and call behavior.</li>
+        <li><a href="https://protobuf.dev/programming-guides/proto3/" target="_blank" rel="noreferrer">Protobuf proto3 guide</a> — syntax, field numbers, and compatibility.</li>
+        <li><a href="https://protobuf.dev/programming-guides/editions/" target="_blank" rel="noreferrer">Protobuf Editions guide</a> — current schema evolution direction.</li>
+        <li><a href="https://opentelemetry.io/docs/specs/semconv/rpc/" target="_blank" rel="noreferrer">OpenTelemetry RPC semantic conventions</a> — standard RPC telemetry concepts.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="architecture-08-event-driven-systems.html">← Previous: Event-driven systems</a><a class="lesson-link" href="architecture-10-graphql.html">Next lesson: GraphQL →</a></div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Verify transport and language-specific behavior against current gRPC docs.</footer>
+  </main>
+</body>
+</html>
