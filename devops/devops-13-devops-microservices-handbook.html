@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-28">
+  <meta name="description" content="Architect level: opinionated DevOps architecture for a 20-service platform covering repos, trunk-based flow, CI, GitOps with Argo CD, Helm, Kubernetes, observability, secrets, environments, and security.">
+  <title>13. Architecting DevOps for 20 microservices | DevOps Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
+    <span class="path-progress">13 / 13 · Architect</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="devops-12-devops-modular-monolith-handbook.html">← Previous</a><a href="../index.html">All handbooks</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 13 · Architect · An opinionated reference architecture and the reasoning behind every choice</div>
+      <h1>Architecting DevOps for 20 microservices</h1>
+      <p class="lede">With around twenty services and multiple teams, consistency becomes the main challenge. This capstone gives an opinionated reference architecture, explains each decision and the alternatives, and ties together everything in the path.</p>
+      <div class="hero-meta"><span class="badge">Reference architecture</span><span class="badge">GitOps</span><span class="badge">Helm and Argo CD</span><span class="badge">Observability</span><span class="badge">Security</span><span class="badge">Decision log</span></div>
+    </section>
+    <section class="lesson" id="landscape">
+      <h2>1. Landscape and goals</h2>
+<p>Goals: independent deploys per service, a uniform paved road, strong security defaults, observability by default, and cost visibility. Assume 20 services owned by several teams, a managed Kubernetes cluster per environment (or per region), a shared platform team, and a service mesh or gateway only where needed.</p>
+<div class="callout"><strong>Prerequisite</strong>This design assumes you are comfortable with Steps 05–11. If a term is unfamiliar, revisit that step first.</div>
+    </section>
+    <section class="lesson" id="repos">
+      <h2>2. Source control and branching</h2>
+<ul><li><strong>Repo per service</strong> (polyrepo) for ownership and independent pipelines; shared code lives in versioned libraries and reusable workflows, not copy-paste. A monorepo is viable with strong tooling (Bazel, Nx) but raises build and access complexity.</li><li><strong>Trunk-based development</strong>, short-lived branches, feature flags, and required checks on <code>main</code> (Step 02).</li><li>A separate <strong>GitOps config repo</strong> (or one per environment group) holds deployment state. It is mandatory: it gives an auditable, reviewable record of what runs where.</li></ul>
+    </section>
+    <section class="lesson" id="pipeline">
+      <h2>3. The pipeline, stage by stage</h2>
+<table><thead><tr><th>Stage</th><th>What happens</th><th>Gate</th></tr></thead><tbody>
+<tr><td>Verify</td><td>Lint, unit and contract tests</td><td>Required check</td></tr>
+<tr><td>Secure</td><td>SCA, SAST, secret and IaC scan</td><td>Fail on high-severity, with exceptions tracked</td></tr>
+<tr><td>Build</td><td>Multi-stage image, SBOM, provenance, cosign signature</td><td>Immutable tag = commit SHA, push by digest</td></tr>
+<tr><td>Publish</td><td>Push to a private registry with retention and scanning</td><td>Registry policy</td></tr>
+<tr><td>Update config</td><td>Pipeline opens a PR (or image automation) bumping the digest in the config repo</td><td>Review for production</td></tr>
+<tr><td>Reconcile</td><td>Argo CD or Flux syncs the cluster</td><td>Health checks, progressive rollout</td></tr>
+<tr><td>Verify live</td><td>Smoke tests and SLO-based analysis; auto rollback on regression</td><td>Argo Rollouts or Flagger analysis</td></tr></tbody></table><div class="callout"><strong>See real snippets in the DevOps Playbook</strong> A full reusable CI workflow, a production Dockerfile, an Argo CD ApplicationSet, a Helm chart skeleton and Kyverno policies for this exact pipeline are in the DevOps Playbook — read those files rather than copying snippets from documentation. Open the <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook code template browser</a> to read and copy complete, working files.</div>
+    </section>
+    <section class="lesson" id="packaging">
+      <h2>4. Packaging and GitOps tooling</h2>
+<ul><li><strong>Helm</strong> with one shared, versioned "service chart" that each service configures through values, giving consistent probes, resources, security context, autoscaling, and monitoring. Kustomize overlays handle per-environment differences. Raw manifests do not scale to 20 services; Kustomize alone makes sharing defaults awkward.</li><li><strong>Argo CD</strong> with ApplicationSets generates an app per service per environment, supports multi-cluster, SSO, RBAC and sync waves. Flux is an equally valid choice if your team prefers a composable, CLI-first model; do not run both.</li><li>Use Argo Rollouts or Flagger for canary and blue/green, with metric analysis.</li></ul>
+    </section>
+    <section class="lesson" id="platform">
+      <h2>5. Kubernetes platform layout</h2>
+<ul><li>Cluster per environment (at minimum prod separate from non-prod); namespace per team or service with quotas, LimitRanges, default-deny NetworkPolicies, and Pod Security <em>restricted</em>.</li><li>Gateway API for north-south traffic with automated TLS; add a service mesh only if you need uniform mTLS, traffic policy, or advanced telemetry.</li><li>Autoscaling: HPA or KEDA for pods, Karpenter or Cluster Autoscaler for nodes, PodDisruptionBudgets and topology spread for resilience.</li><li>Platform add-ons managed by the platform team through GitOps: ingress/gateway, cert-manager, External Secrets, policy engine, observability agents, cost tooling.</li><li>Clusters, networks and cloud accounts provisioned with Terraform (Step 09), versioned and drift-checked.</li></ul>
+    </section>
+    <section class="lesson" id="observe">
+      <h2>6. Observability and reliability</h2>
+<ul><li>OpenTelemetry everywhere; Collector DaemonSet and gateway; traces, metrics, and logs correlated by trace ID. Choose a backend (Grafana LGTM stack, or a commercial platform) and standardize dashboards generated from service metadata.</li><li>Each service ships with SLOs, burn-rate alerts, and a runbook link created from a template when the service is scaffolded.</li><li>Run chaos and game days, define RTO and RPO per tier, and test restores regularly.</li></ul>
+    </section>
+    <section class="lesson" id="secrets">
+      <h2>7. Secrets, environments and security</h2>
+<ul><li>External Secrets Operator with Vault or a cloud secret manager; workload identity for cloud access; short-lived credentials.</li><li>Environments: dev (ephemeral preview environments per pull request if affordable), staging (production-like), production. Same image and chart everywhere; only values differ. Promote by pull request in the config repo.</li><li>Supply chain: SLSA provenance, cosign signatures, admission verification, SBOM storage, dependency update automation, and scheduled rescans of deployed images.</li><li>Policy as code with Kyverno or Gatekeeper in audit then enforce; required owner and cost labels; audit logging and runtime detection with Falco or Tetragon.</li></ul>
+    </section>
+    <section class="lesson" id="decisions">
+      <h2>8. Decision log and tool summary</h2>
+<table><thead><tr><th>Concern</th><th>Default choice</th><th>Alternatives</th><th>Switch when</th></tr></thead><tbody>
+<tr><td>CI</td><td>GitHub Actions with reusable workflows</td><td>GitLab CI, Azure Pipelines, Jenkins</td><td>Platform standardized elsewhere</td></tr>
+<tr><td>Packaging</td><td>Shared Helm chart + Kustomize</td><td>Kustomize only, Jsonnet, Timoni</td><td>Few, uniform services</td></tr>
+<tr><td>GitOps</td><td>Argo CD + ApplicationSets</td><td>Flux</td><td>Team prefers composable controllers</td></tr>
+<tr><td>Delivery</td><td>Argo Rollouts canary</td><td>Flagger, plain rolling</td><td>Mesh-based traffic shaping already present</td></tr>
+<tr><td>Secrets</td><td>External Secrets + Vault/cloud store</td><td>SOPS, Sealed Secrets</td><td>No secret manager available</td></tr>
+<tr><td>Policy</td><td>Kyverno</td><td>OPA Gatekeeper, VAP</td><td>Existing Rego expertise</td></tr>
+<tr><td>Observability</td><td>OpenTelemetry + Grafana stack</td><td>Commercial APM</td><td>Operations capacity is limited</td></tr>
+<tr><td>Platform</td><td>Backstage or similar portal, golden paths</td><td>Scripts and docs</td><td>Fewer than ~10 teams</td></tr></tbody></table>
+<div class="exercise"><strong>Capstone</strong>Design the architecture for your own system: list services and owners, choose repo and branching strategy, draw the pipeline, define environments and promotion, choose GitOps and secrets tooling, set SLOs, and write a one-page decision record for each choice.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+<ul class="reading-list">
+<li><a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a> — the template set that implements this architecture.</li>
+<li><a href="https://argo-cd.readthedocs.io/" target="_blank" rel="noreferrer">Argo CD</a> and <a href="https://argo-rollouts.readthedocs.io/" target="_blank" rel="noreferrer">Argo Rollouts</a> — GitOps and progressive delivery.</li>
+<li><a href="https://cloud.google.com/architecture/devops" target="_blank" rel="noreferrer">Google Cloud DevOps capabilities</a> — DORA capability catalogue.</li>
+<li><a href="https://landscape.cncf.io/" target="_blank" rel="noreferrer">CNCF Landscape</a> — tools by category.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="devops-12-devops-modular-monolith-handbook.html">← Previous: DevOps Architecture: Modular Monolith</a><a class="lesson-link" href="../index.html">Back to all handbooks →</a></div>
+    <footer class="site-footer">DevOps learning path · Updated 2026-10-28 · Real templates: <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a></footer>
+  </main>
+</body>
+</html>

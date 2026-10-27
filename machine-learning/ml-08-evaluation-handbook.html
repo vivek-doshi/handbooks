@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: regression and classification metrics, validation strategies, bias-variance, hyperparameter tuning, imbalanced data, calibration, and model interpretation.">
+  <title>08. Evaluation, validation and tuning | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">08 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-07-unsupervised-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-09-sklearn-workflow-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 08 &middot; Intermediate &middot; Metrics, cross-validation, bias and variance, hyperparameter tuning, imbalance, calibration and interpretability</div>
+      <h1>Evaluation, validation and tuning</h1>
+      <p class="lede">Choosing the right metric and validating honestly is where most ML projects are won or lost. This step covers how to measure a model, diagnose why it fails, tune it without fooling yourself, and explain what it learned.</p>
+      <div class="hero-meta"><span class="badge">Metrics</span><span class="badge">Validation</span><span class="badge">Bias and variance</span><span class="badge">Tuning</span><span class="badge">Imbalance</span><span class="badge">Calibration</span><span class="badge">Interpretation</span></div>
+    </section>
+    <section class="lesson" id="regmetrics">
+      <h2>1. Regression metrics</h2><table><thead><tr><th>Metric</th><th>Meaning</th><th>Use when</th></tr></thead><tbody><tr><td>MAE</td><td>Average absolute error, in target units</td><td>Easy to explain; robust to outliers</td></tr><tr><td>RMSE</td><td>Square root of mean squared error, in target units</td><td>Large errors should hurt more</td></tr><tr><td>R-squared</td><td>Share of variance explained; 1 is perfect, 0 equals predicting the mean</td><td>Comparing models on the same data; can be negative</td></tr><tr><td>MAPE / sMAPE</td><td>Percentage error</td><td>Relative error matters; breaks when true values are near zero</td></tr><tr><td>Pinball loss</td><td>Quantile accuracy</td><td>Prediction intervals</td></tr></tbody></table><p>Always compare against a baseline such as the mean or last observation. An RMSE of 12 means nothing without knowing the baseline is 13 or 40.</p>
+    </section>
+    <section class="lesson" id="clsmetrics">
+      <h2>2. Classification metrics</h2><p>Every classification metric derives from the <strong>confusion matrix</strong>: true positives (TP), false positives (FP), false negatives (FN) and true negatives (TN).</p><table><thead><tr><th>Metric</th><th>Formula idea</th><th>Answers</th><th>Use when</th></tr></thead><tbody><tr><td>Accuracy</td><td>(TP + TN) / all</td><td>How often is it right?</td><td>Balanced classes and equal costs only</td></tr><tr><td>Precision</td><td>TP / (TP + FP)</td><td>Of predicted positives, how many are real?</td><td>False alarms are costly (spam sent to junk)</td></tr><tr><td>Recall (sensitivity)</td><td>TP / (TP + FN)</td><td>Of real positives, how many did we catch?</td><td>Misses are costly (disease, fraud)</td></tr><tr><td>F1 / F-beta</td><td>Harmonic mean of precision and recall</td><td>A single balance; beta above 1 favours recall</td><td>Imbalanced data, one number needed</td></tr><tr><td>ROC-AUC</td><td>Ranking quality across all thresholds</td><td>Can it rank positives above negatives?</td><td>Comparing models; balanced-ish data</td></tr><tr><td>PR-AUC (average precision)</td><td>Precision vs recall across thresholds</td><td>Quality on the rare class</td><td>Heavily imbalanced data</td></tr><tr><td>Log loss</td><td>Penalises confident wrong probabilities</td><td>How good are the probabilities?</td><td>You use the probabilities directly</td></tr><tr><td>Matthews correlation (MCC)</td><td>Balanced single score from the confusion matrix</td><td>Overall quality with imbalance</td><td>A robust single number</td></tr></tbody></table><pre><code>from sklearn.metrics import (classification_report, confusion_matrix, roc_auc_score,
+                             average_precision_score, ConfusionMatrixDisplay)
+
+proba = model.predict_proba(X_test)[:, 1]
+pred = proba &gt;= 0.4                                     # your chosen threshold
+print(classification_report(y_test, pred, digits=3))
+print(confusion_matrix(y_test, pred))
+print("ROC-AUC", roc_auc_score(y_test, proba), "PR-AUC", average_precision_score(y_test, proba))</code></pre><ul><li><strong>Threshold:</strong> models output scores; the 0.5 cut-off is arbitrary. Pick the threshold from the cost of each kind of error or the team&#39;s review capacity.</li><li><strong>Multiclass:</strong> average per-class metrics with <code>macro</code> (every class equal), <code>weighted</code> (by support) or <code>micro</code> (pooled).</li><li><strong>Ranking and recommendation:</strong> precision@k, recall@k, NDCG and MAP. <strong>Clustering:</strong> see step 07.</li><li><strong>Business metric:</strong> convert errors to money or time and report that alongside the technical metric.</li></ul>
+    </section>
+    <section class="lesson" id="validation">
+      <h2>3. Validation strategies</h2><table><thead><tr><th>Strategy</th><th>How</th><th>Use when</th></tr></thead><tbody><tr><td>Hold-out</td><td>One train/validation/test split</td><td>Plenty of data; a quick check</td></tr><tr><td>K-fold cross-validation</td><td>Train on k-1 folds, validate on the rest, rotate; average</td><td>Small to medium data; the default</td></tr><tr><td>Stratified K-fold</td><td>Folds keep class proportions</td><td>Classification, especially imbalanced</td></tr><tr><td>Group K-fold</td><td>All rows of a group stay in one fold</td><td>Many rows per patient, user, device</td></tr><tr><td>Time series split</td><td>Always train on the past, validate on the future</td><td>Forecasting and any time-dependent data</td></tr><tr><td>Nested cross-validation</td><td>Tune in an inner loop, evaluate in an outer loop</td><td>An honest estimate when tuning many choices on small data</td></tr></tbody></table><pre><code>from sklearn.model_selection import cross_validate, StratifiedKFold
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+res = cross_validate(model, X, y, cv=cv, scoring=["roc_auc", "average_precision", "f1"],
+                     return_train_score=True, n_jobs=-1)
+for k in ("test_roc_auc", "test_average_precision", "test_f1"):
+    print(k, res[k].mean().round(3), "+/-", res[k].std().round(3))</code></pre><div class="callout"><strong>Keep the test set sacred</strong>Use cross-validation to compare and tune. Touch the final test set once, to report the number. Every time you look at it and change something, it becomes part of training.</div>
+    </section>
+    <section class="lesson" id="biasvar">
+      <h2>4. Bias, variance and diagnosing problems</h2><table><thead><tr><th>Symptom</th><th>Diagnosis</th><th>What to try</th></tr></thead><tbody><tr><td>Poor train score and poor validation score</td><td><strong>High bias</strong> (underfitting)</td><td>More expressive model, better features, less regularisation, train longer</td></tr><tr><td>Great train score, much worse validation score</td><td><strong>High variance</strong> (overfitting)</td><td>More data, stronger regularisation, simpler model, fewer features, early stopping, ensembling</td></tr><tr><td>Good validation, poor production</td><td>Leakage or drift</td><td>Audit features and splits; check data distribution changes</td></tr></tbody></table><p>A <strong>learning curve</strong> (score against training-set size) tells you whether more data would help: if the validation score is still rising, yes. A <strong>validation curve</strong> (score against one hyperparameter) shows where the model moves from underfitting to overfitting.</p><pre><code>from sklearn.model_selection import learning_curve
+sizes, tr, va = learning_curve(model, X, y, cv=5, scoring="roc_auc",
+                               train_sizes=[0.1, 0.25, 0.5, 0.75, 1.0], n_jobs=-1)
+print(tr.mean(axis=1), va.mean(axis=1))</code></pre>
+    </section>
+    <section class="lesson" id="tuning">
+      <h2>5. Hyperparameter tuning</h2><table><thead><tr><th>Method</th><th>How</th><th>Use when</th></tr></thead><tbody><tr><td>Grid search</td><td>Try every combination</td><td>Few parameters, small ranges</td></tr><tr><td>Random search</td><td>Sample combinations at random</td><td>The default for many parameters; beats grid for the same budget</td></tr><tr><td>Successive halving</td><td>Try many cheaply, keep the best, give them more resources</td><td>Large search spaces, limited compute</td></tr><tr><td>Bayesian optimisation (Optuna, Hyperopt)</td><td>Uses past trials to choose the next</td><td>Expensive models such as boosting and neural networks</td></tr></tbody></table><pre><code>import optuna
+from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import HistGradientBoostingClassifier
+
+def objective(trial):
+    m = HistGradientBoostingClassifier(
+        learning_rate=trial.suggest_float("lr", 0.01, 0.3, log=True),
+        max_leaf_nodes=trial.suggest_int("leaves", 8, 64),
+        min_samples_leaf=trial.suggest_int("min_leaf", 10, 100),
+        l2_regularization=trial.suggest_float("l2", 1e-3, 10, log=True))
+    return cross_val_score(m, X_train, y_train, cv=5, scoring="roc_auc").mean()
+
+study = optuna.create_study(direction="maximize")
+study.optimize(objective, n_trials=50)
+print(study.best_params)</code></pre><ul><li>Tune the <strong>whole pipeline</strong> (preprocessing included) so every fold is leak-free.</li><li>Search learning rates and regularisation on a log scale.</li><li>Set a budget. Past a point, tuning gains are smaller than the noise in your validation score.</li><li>Track experiments with MLflow or Weights &amp; Biases (see the <a href="../mlops/mlops-03-experiment-tracking-registry-handbook.html">MLflow handbook</a>).</li></ul>
+    </section>
+    <section class="lesson" id="imbalance">
+      <h2>6. Imbalanced data</h2><p>When one class is rare (fraud, churn, defects), accuracy is misleading: predicting &quot;never fraud&quot; scores 99.9% and is useless. Work through this order:</p><ol><li>Use the right metrics: PR-AUC, recall at a fixed precision, F-beta.</li><li>Use stratified splits so every fold contains positives.</li><li>Try <strong>class weights</strong> (<code>class_weight=&quot;balanced&quot;</code>, <code>scale_pos_weight</code>); cheap and often enough.</li><li>Tune the <strong>decision threshold</strong> for the business cost.</li><li>Consider resampling (random under-sampling, SMOTE from <code>imbalanced-learn</code>), only inside cross-validation folds and never on the test set.</li><li>Collect more minority examples if you can; it beats every trick.</li></ol>
+    </section>
+    <section class="lesson" id="calibration">
+      <h2>7. Probability calibration</h2><p>A well-calibrated model that says 30% should be right about 30% of the time. Boosted trees, random forests and SVMs often are not. Calibrate when you use the probabilities directly (pricing, risk scores, expected-value decisions).</p><pre><code>from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+cal = CalibratedClassifierCV(model, method="isotonic", cv=5).fit(X_train, y_train)
+frac_pos, mean_pred = calibration_curve(y_test, cal.predict_proba(X_test)[:, 1], n_bins=10)</code></pre><p>Use <code>sigmoid</code> (Platt scaling) for small data and <code>isotonic</code> with plenty of data.</p>
+    </section>
+    <section class="lesson" id="interpret">
+      <h2>8. Interpreting models</h2><table><thead><tr><th>Technique</th><th>Scope</th><th>Notes</th></tr></thead><tbody><tr><td>Coefficients / odds ratios</td><td>Global, linear models</td><td>Scale features to compare them</td></tr><tr><td>Permutation importance</td><td>Global, any model</td><td>Shuffle a feature and see how much the score drops; compute on held-out data</td></tr><tr><td>Partial dependence and ICE plots</td><td>Global and individual</td><td>Average effect of one feature; misleading with correlated features</td></tr><tr><td>SHAP values</td><td>Global and per-prediction</td><td>Attributes each prediction to features; fast exact version for trees</td></tr><tr><td>LIME</td><td>Per-prediction</td><td>Local linear approximation; less stable than SHAP</td></tr><tr><td>Error analysis</td><td>Slices of data</td><td>Where does the model fail: which segments, which classes?</td></tr></tbody></table><pre><code>import shap
+from sklearn.inspection import permutation_importance
+
+pi = permutation_importance(model, X_val, y_val, scoring="roc_auc", n_repeats=10, random_state=0)
+explainer = shap.TreeExplainer(model)          # tree models
+shap_values = explainer(X_val)
+shap.plots.beeswarm(shap_values)</code></pre><p>Interpretation shows what the model uses, not what causes the outcome. Also check performance across subgroups (age, region, language) for fairness, and document limits in a model card (see the AI governance handbooks).</p><div class="exercise"><strong>Practice</strong><ol><li>Take a classification model, plot its precision-recall curve and choose a threshold that gives at least 80% precision.</li><li>Compare 5-fold stratified CV with a single random split across ten random seeds. How much do they vary?</li><li>Run permutation importance and SHAP on the same model and note any disagreement.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://scikit-learn.org/stable/modules/model_evaluation.html" target="_blank" rel="noreferrer">scikit-learn: Metrics and scoring</a> &mdash; all metrics and when to use them</li><li><a href="https://scikit-learn.org/stable/modules/cross_validation.html" target="_blank" rel="noreferrer">scikit-learn: Cross-validation</a> &mdash; splitters and pitfalls</li><li><a href="https://optuna.org/" target="_blank" rel="noreferrer">Optuna</a> &mdash; hyperparameter optimisation framework</li><li><a href="https://shap.readthedocs.io/" target="_blank" rel="noreferrer">SHAP documentation</a> &mdash; model explanations</li><li><a href="https://imbalanced-learn.org/" target="_blank" rel="noreferrer">imbalanced-learn</a> &mdash; resampling toolkit</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-07-unsupervised-handbook.html">&larr; Previous: Unsupervised Learning</a><a class="lesson-link" href="ml-09-sklearn-workflow-handbook.html">Next lesson: Workflow and Chooser &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

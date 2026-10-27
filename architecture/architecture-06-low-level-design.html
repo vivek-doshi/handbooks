@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="A practical low-level design guide to responsibilities, SOLID, interfaces, data models, UML, design patterns, examples, and review.">
+  <title>06. Low-Level Design | Architecture Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
+    <span class="path-progress">06 / 12 · Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="architecture-05-high-level-design.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-07-modular-monolith.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 06 · Intermediate · Component-level design</div>
+      <h1>Low-level design: make responsibilities explicit</h1>
+      <p class="lede">Low-level design (LLD) turns a system-level choice into implementable modules, contracts, state transitions, and tests. The objective is clarity at the seams—not a class diagram for every line of code.</p>
+      <div class="hero-meta"><span class="badge">SOLID</span><span class="badge">Interfaces and APIs</span><span class="badge">UML</span><span class="badge">Design patterns</span></div>
+    </section>
+    <section class="lesson" id="scope">
+      <h2>1. HLD vs. LLD and when to write one</h2>
+      <p>HLD establishes system responsibilities and cross-system behavior. LLD specifies the internal contracts needed to implement a bounded feature: module responsibilities, data model, validation rules, state transitions, error behavior, and test seams.</p>
+      <p>Write LLD when multiple engineers must coordinate, a domain invariant is subtle, an interface has compatibility consequences, or concurrency/failure behavior is easy to misunderstand. For routine local changes, code plus tests may be the better documentation.</p>
+    </section>
+    <section class="lesson" id="design">
+      <h2>2. Responsibilities, SOLID, and class design</h2>
+      <ul>
+        <li><strong>Single responsibility:</strong> keep a module focused on one reason to change.</li>
+        <li><strong>Open/closed:</strong> extend through a stable seam when variation is real; do not build speculative plugin frameworks.</li>
+        <li><strong>Liskov substitution:</strong> implementations must honor the behavioral contract callers rely on.</li>
+        <li><strong>Interface segregation:</strong> expose small interfaces aligned to client needs.</li>
+        <li><strong>Dependency inversion:</strong> keep policy independent from infrastructure details where the boundary pays for itself.</li>
+      </ul>
+      <p>Prefer composition for assembling behavior. Avoid public mutable state, global service locators, deep inheritance, and classes that own unrelated persistence, transport, and business rules. Name concepts in the business domain rather than naming classes after a framework.</p>
+    </section>
+    <section class="lesson" id="models">
+      <h2>3. APIs, interface contracts, and data models</h2>
+      <p>For each interface, define inputs, outputs, validation, authorization, errors, idempotency, pagination, concurrency, and compatibility. Use explicit error categories and stable client-facing semantics; do not leak implementation stack traces.</p>
+      <p>For persistence models, identify the aggregate or transaction boundary, invariants, uniqueness constraints, lifecycle, indexes, and migration strategy. Treat wire schemas and database schemas as contracts with readers and writers that may be on different versions during rollout.</p>
+      <pre><code>PlaceOrder
+  input: customerId, items[], idempotencyKey
+  validates: item availability, quantity limits, customer access
+  persists: order + outbox event atomically
+  returns: orderId + current status
+  retries: same key returns the original outcome</code></pre>
+    </section>
+    <section class="lesson" id="uml">
+      <h2>4. UML and other diagrams in LLD</h2>
+      <ul>
+        <li><strong>Class diagram:</strong> selected types, relationships, and ownership.</li>
+        <li><strong>Sequence diagram:</strong> calls, events, and error paths in one use case.</li>
+        <li><strong>State diagram:</strong> allowed states and transitions for an entity or workflow.</li>
+        <li><strong>Activity diagram:</strong> branching business logic where prose is ambiguous.</li>
+        <li><strong>ER diagram:</strong> persisted entities, keys, and relationships.</li>
+      </ul>
+      <p>Use the least formal notation that makes a decision reviewable. Keep diagrams small and update them alongside the relevant contract or code.</p>
+    </section>
+    <section class="lesson" id="patterns">
+      <h2>5. Design patterns and when they help</h2>
+      <table>
+        <thead><tr><th>Pattern</th><th>Useful when</th><th>Watch for</th></tr></thead>
+        <tbody>
+          <tr><td>Strategy</td><td>Several interchangeable algorithms exist</td><td>Unnecessary abstraction for one stable algorithm</td></tr>
+          <tr><td>Factory</td><td>Construction has meaningful selection or validation</td><td>Factories that only rename constructors</td></tr>
+          <tr><td>Adapter</td><td>An external interface differs from an internal port</td><td>Leaking vendor types into domain policy</td></tr>
+          <tr><td>Decorator</td><td>Cross-cutting behavior composes around an implementation</td><td>Surprising order or hidden side effects</td></tr>
+          <tr><td>Repository</td><td>Domain code needs a collection-like persistence boundary</td><td>Generic CRUD abstractions hiding query needs</td></tr>
+          <tr><td>State machine</td><td>Legal lifecycle transitions must be enforced</td><td>States that omit failure, cancellation, or retry behavior</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="lesson" id="examples">
+      <h2>6. Worked examples: parking, library, and elevator systems</h2>
+      <h3>Parking lot</h3>
+      <p>Model a ticket, vehicle, spot, and payment. Define allocation policy separately from spot inventory. Make ticket close/idempotency and concurrent allocation invariants explicit. Persist the allocation transactionally or use a conditional update to prevent two vehicles claiming one spot.</p>
+      <h3>Library management</h3>
+      <p>Separate catalog search from circulation. A book title is not the same as a physical copy. Model loans with due date, renewal policy, holds, and overdue state. Define who may issue, renew, return, or reserve an item.</p>
+      <h3>Elevator controller</h3>
+      <p>Represent elevators, requests, current direction, and door state. Define safe transitions first; route optimization is secondary. A scheduler assigns requests while the controller enforces safety constraints and reports faults.</p>
+    </section>
+    <section class="lesson" id="workflow">
+      <h2>7. Create an LLD step by step</h2>
+      <ol>
+        <li>Read the HLD and choose one bounded use case.</li>
+        <li>Write invariants and edge cases before choosing classes.</li>
+        <li>Identify domain concepts, ownership, and state transitions.</li>
+        <li>Define API and persistence contracts, including failure and retry semantics.</li>
+        <li>Draw only diagrams that resolve a real ambiguity.</li>
+        <li>Map tests to invariants, boundary conditions, and contract compatibility.</li>
+        <li>Review for security, concurrency, observability, and migration risks.</li>
+        <li>Update the design when implementation teaches you something new.</li>
+      </ol>
+      <h3>Common pitfalls and review checklist</h3>
+      <ul>
+        <li>Can a new teammate implement the behavior without guessing invariants?</li>
+        <li>Do public interfaces hide internal representation and enforce authorization?</li>
+        <li>Are concurrency, retries, duplicate requests, and partial failures covered?</li>
+        <li>Are tests arranged around observable behavior, not private method layout?</li>
+        <li>Is a pattern or abstraction solving a demonstrated problem?</li>
+      </ul>
+      <div class="exercise"><strong>Practice and interview tip</strong>Design a library checkout flow. First list invariants and edge cases, then define the API and data changes, and only then sketch types. In an interview, state assumptions, compare alternatives, and explain failure handling before optimizing for scale.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://martinfowler.com/articles/practical-test-pyramid.html" target="_blank" rel="noreferrer">The Practical Test Pyramid</a> — a useful model for test scope and feedback time.</li>
+        <li><a href="https://c4model.com/" target="_blank" rel="noreferrer">C4 model</a> — complement implementation-level design with system context.</li>
+        <li><a href="https://www.rfc-editor.org/rfc/rfc9110" target="_blank" rel="noreferrer">RFC 9110: HTTP Semantics</a> — normative HTTP behavior for API design.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="architecture-05-high-level-design.html">← Previous: High-level design</a><a class="lesson-link" href="architecture-07-modular-monolith.html">Next lesson: Modular monolith →</a></div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Design enough to make behavior clear; keep the code authoritative.</footer>
+  </main>
+</body>
+</html>

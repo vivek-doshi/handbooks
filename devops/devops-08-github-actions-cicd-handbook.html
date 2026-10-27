@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-28">
+  <meta name="description" content="Intermediate: GitHub Actions workflows, triggers, runners, caching, matrices, reusable workflows, OIDC, environments, and secure pipeline practices.">
+  <title>08. CI/CD pipelines with GitHub Actions | DevOps Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
+    <span class="path-progress">08 / 13 · Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="devops-07-local-kubernetes-cli-handbook.html">← Previous</a><a href="../index.html">All handbooks</a><a href="devops-09-terraform-iac-handbook.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 08 · Intermediate · Fast, secure, reusable pipelines from commit to deploy</div>
+      <h1>CI/CD pipelines with GitHub Actions</h1>
+      <p class="lede">A pipeline turns every commit into a verified, releasable artifact. This step uses GitHub Actions as the concrete tool, but the principles (fast feedback, build once, least privilege, traceable releases) apply to GitLab CI, Azure Pipelines, or Jenkins.</p>
+      <div class="hero-meta"><span class="badge">Workflow anatomy</span><span class="badge">Reusable workflows</span><span class="badge">OIDC</span><span class="badge">Environments</span><span class="badge">Security hardening</span></div>
+    </section>
+    <section class="lesson" id="anatomy">
+      <h2>1. Anatomy and triggers</h2>
+<p>A workflow (YAML in <code>.github/workflows</code>) contains jobs that run on runners; jobs contain steps that run commands or reusable actions. Common triggers: <code>push</code>, <code>pull_request</code>, <code>workflow_dispatch</code>, <code>schedule</code>, <code>release</code>, and <code>workflow_call</code>. Use path filters and <code>concurrency</code> groups with <code>cancel-in-progress</code> to avoid wasted runs.</p>
+<p>Contexts and expressions (<code>github</code>, <code>env</code>, <code>secrets</code>, <code>needs</code>, <code>matrix</code>) drive conditions; keep logic in scripts you can run locally rather than in long expression chains.</p>
+    </section>
+    <section class="lesson" id="stages">
+      <h2>2. A good universal pipeline</h2>
+<ol><li><strong>Verify:</strong> lint, unit tests, type checks, on every pull request, in under ~10 minutes.</li><li><strong>Security:</strong> dependency scan (SCA), secret scan, SAST (CodeQL), IaC scan.</li><li><strong>Build once:</strong> create the container image or package, tag with the commit SHA, push to the registry.</li><li><strong>Attest:</strong> generate an SBOM and provenance, sign the artifact (Step 10).</li><li><strong>Deploy:</strong> promote the same artifact dev → staging → production with approvals; GitOps for clusters.</li><li><strong>Verify in production:</strong> smoke tests, SLO checks, automatic rollback.</li></ol><div class="callout"><strong>See real snippets in the DevOps Playbook</strong> Complete CI and CD workflows for Node.js, .NET, Docker build and push, GitHub Pages, and release/deploy are available as Actions templates there. Open the <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook code template browser</a> to read and copy complete, working files.</div>
+    </section>
+    <section class="lesson" id="speed">
+      <h2>3. Speed and reuse</h2>
+<ul><li><strong>Caching:</strong> use the built-in caching of <code>setup-*</code> actions and Docker layer caching (<code>cache-from</code>/<code>cache-to</code> with BuildKit).</li><li><strong>Matrix</strong> strategies test across versions and operating systems in parallel; use <code>fail-fast</code> deliberately.</li><li><strong>Reusable workflows</strong> (<code>workflow_call</code>) and <strong>composite actions</strong> give you one maintained pipeline for many repositories; org-level required workflows or rulesets can enforce them.</li><li><strong>Runners:</strong> GitHub-hosted for convenience; larger runners for heavy builds; self-hosted or Actions Runner Controller on Kubernetes for private networks (ephemeral, isolated runners only).</li></ul>
+    </section>
+    <section class="lesson" id="secure">
+      <h2>4. Securing pipelines</h2>
+<ul><li>Set <code>permissions:</code> to read-only at the top and widen per job. The default token should never have write access you do not need.</li><li>Use <strong>OIDC</strong> federation to AWS, Azure, or GCP instead of long-lived cloud keys.</li><li>Pin third-party actions to a full commit SHA, and let Dependabot update them. Prefer verified or first-party actions.</li><li>Use <strong>environments</strong> with required reviewers and environment-scoped secrets for production.</li><li>Never run untrusted pull request code with secrets (<code>pull_request_target</code> pitfalls). Treat script injection from <code>${{ github.event.* }}</code> inputs as a real attack path.</li><li>Use artifact attestations and branch protection or rulesets so only reviewed code reaches release workflows.</li></ul>
+    </section>
+    <section class="lesson" id="measure">
+      <h2>5. Pipeline as a product</h2>
+<p>Track the DORA metrics from your pipeline: lead time (commit to production), deployment frequency, change fail rate, and time to recover. Keep a flaky-test budget, monitor queue and run time, and treat a failing <code>main</code> as an urgent defect.</p>
+<div class="exercise"><strong>Practice</strong>Build a workflow that lints, tests, builds an image tagged with the commit SHA, pushes it to GHCR with <code>permissions</code> minimized, and deploys to a staging environment requiring approval.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+<ul class="reading-list">
+<li><a href="https://docs.github.com/en/actions" target="_blank" rel="noreferrer">GitHub Actions documentation</a> — workflows, runners, reuse.</li>
+<li><a href="https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions" target="_blank" rel="noreferrer">Security hardening for GitHub Actions</a> — OIDC, permissions, pinning.</li>
+<li><a href="https://docs.github.com/en/code-security/dependabot" target="_blank" rel="noreferrer">Dependabot docs</a> — automated dependency and action updates.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="devops-07-local-kubernetes-cli-handbook.html">← Previous: Local Kubernetes and CLI</a><a class="lesson-link" href="devops-09-terraform-iac-handbook.html">Next lesson: Infrastructure as Code (Terraform) →</a></div>
+    <footer class="site-footer">DevOps learning path · Updated 2026-10-28 · Real templates: <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a></footer>
+  </main>
+</body>
+</html>

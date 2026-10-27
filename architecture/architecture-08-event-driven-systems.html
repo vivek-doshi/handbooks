@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Learn event-driven architecture, messaging patterns, event contracts, Kafka, Pulsar, RabbitMQ, delivery semantics, sagas, and operations.">
+  <title>08. Event-Driven Systems | Architecture Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
+    <span class="path-progress">08 / 12 · Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="architecture-07-modular-monolith.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-09-grpc-protobuf.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 08 · Intermediate · Asynchronous design</div>
+      <h1>Event-driven architecture</h1>
+      <p class="lede">Events let producers publish facts without coordinating every consumer in real time. This enables decoupled workflows and streaming, while introducing eventual consistency, duplicate handling, contract evolution, and operational responsibility.</p>
+      <div class="hero-meta"><span class="badge">Messaging patterns</span><span class="badge">Kafka · Pulsar · RabbitMQ</span><span class="badge">Delivery and retries</span><span class="badge">Sagas and CQRS</span></div>
+    </section>
+    <section class="lesson" id="concepts">
+      <h2>1. Event-driven architecture and core patterns</h2>
+      <p>An event is an immutable statement that something happened, such as <code>OrderPlaced</code>. A command requests work (<code>ReserveInventory</code>); a query requests current information. Keep these meanings distinct.</p>
+      <ul>
+        <li><strong>Publish/subscribe:</strong> multiple subscribers react to an event.</li>
+        <li><strong>Queue / competing consumers:</strong> workers share a stream of tasks for load distribution.</li>
+        <li><strong>Event notification:</strong> a small fact prompts a consumer to fetch more data.</li>
+        <li><strong>Event-carried state transfer:</strong> an event contains enough data for a consumer, with stronger privacy and schema obligations.</li>
+        <li><strong>Stream processing:</strong> process ordered records with windows, joins, and state over time.</li>
+      </ul>
+      <h3>Event anatomy</h3>
+      <p>Include a stable event type and version, unique event ID, occurrence time, producer/source, aggregate or entity ID, correlation/trace context, and the minimal payload consumers require. Distinguish event time from processing time; avoid secrets and unnecessary personal data.</p>
+    </section>
+    <section class="lesson" id="patterns">
+      <h2>2. Pub/sub, event sourcing, and CQRS</h2>
+      <p>Pub/sub distributes events; it does not require the producer's state to be event-sourced. Event sourcing uses an append-only event log as the authoritative history from which state can be rebuilt. It is useful for audit-heavy or temporal domains when replay and history justify more complex schema evolution, projections, privacy handling, and operations.</p>
+      <p>CQRS separates command handling from query models. A read projection can lag behind writes, so APIs must explain consistency and handle stale reads. Combine CQRS with event sourcing only when those independent needs are real.</p>
+      <h3>Transactional outbox</h3>
+      <p>When a database update must produce an event, save both business state and an outbox record in one local transaction. A relay publishes records and marks progress. Consumers remain idempotent because publication and delivery can repeat.</p>
+    </section>
+    <section class="lesson" id="brokers">
+      <h2>3. Choosing a broker: Kafka, Pulsar, or RabbitMQ</h2>
+      <p>Select based on workload, operational capability, ecosystem, and measured requirements—not brand popularity.</p>
+      <table>
+        <thead><tr><th>Technology</th><th>Common fit</th><th>Evaluate carefully</th></tr></thead>
+        <tbody>
+          <tr><td>Apache Kafka</td><td>Durable partitioned logs, replay, high-throughput streams, broad ecosystem</td><td>Partition/key design, retention, consumer lag, cluster operations</td></tr>
+          <tr><td>Apache Pulsar</td><td>Messaging and streaming with multi-tenancy and separated storage/compute options</td><td>Operational model, deployment complexity, ecosystem fit</td></tr>
+          <tr><td>RabbitMQ</td><td>Flexible routing, task queues, work distribution, conventional broker workflows</td><td>Queue topology, persistence/throughput needs, cluster and flow control</td></tr>
+        </tbody>
+      </table>
+      <p>Managed service availability, regional recovery, quotas, client maturity, support, and total operating cost may be more decisive than feature comparisons. Prototype the failure and replay paths before standardizing.</p>
+    </section>
+    <section class="lesson" id="delivery">
+      <h2>4. Contracts, ordering, and delivery guarantees</h2>
+      <p>Schema evolution is a compatibility policy. Add optional fields carefully, preserve field meaning, and test producer/consumer combinations during rolling deployment. Use a schema registry or contract checks when multiple teams publish shared events. CloudEvents offers a common event envelope, but it does not define business semantics.</p>
+      <ul>
+        <li><strong>At-most-once:</strong> no retry after uncertain processing; loss is possible.</li>
+        <li><strong>At-least-once:</strong> retry until acknowledged; duplicates are possible.</li>
+        <li><strong>Effectively-once business effect:</strong> use stable event IDs, idempotency, deduplication, and transactional boundaries.</li>
+      </ul>
+      <p>Ordering is usually scoped to a partition, key, queue, or entity—not global. Pick a key that preserves only the ordering your domain requires. Avoid describing a broker's delivery guarantee as an end-to-end business guarantee.</p>
+    </section>
+    <section class="lesson" id="reliability">
+      <h2>5. Idempotency, retries, and dead-letter handling</h2>
+      <p>Consumers should store processed IDs or use an idempotent state transition. Apply bounded retries with exponential backoff and jitter; classify transient versus permanent failures. A poison message should not block unrelated work unless strict ordering requires it.</p>
+      <p>Dead-letter queues are quarantine and investigation tools, not automatic success. Include original metadata, failure reason, attempt count, and replay process. Redact sensitive payloads, set retention, alert on growth, and make replay safe.</p>
+      <h3>Saga pattern</h3>
+      <p>A saga coordinates a long-running business workflow through local transactions and explicit compensations or forward recovery. Define timeouts, duplicate messages, compensation failure, manual intervention, and the source of workflow truth. Choose choreography for small, loosely coupled flows; an orchestrator can make complex state more visible.</p>
+    </section>
+    <section class="lesson" id="operations">
+      <h2>6. Observability and anti-patterns</h2>
+      <p>Propagate trace and correlation context. Monitor publish errors, consumer lag, processing latency, retry rate, dead-letter volume, throughput, and broker saturation. OpenTelemetry messaging conventions evolve; use the current conventions supported by your instrumentation, and avoid high-cardinality identifiers as metric labels.</p>
+      <ul>
+        <li>Do not use a generic event bus as hidden remote procedure calls.</li>
+        <li>Do not publish database rows as public contracts without ownership.</li>
+        <li>Do not promise immediate consistency to clients when projections lag.</li>
+        <li>Do not retry forever or silently discard failures.</li>
+        <li>Do not create a topic/queue per entity without lifecycle governance.</li>
+      </ul>
+    </section>
+    <section class="lesson" id="roadmap">
+      <h2>7. Migration roadmap and practice</h2>
+      <ol>
+        <li>Choose one integration where asynchronous behavior has clear value.</li>
+        <li>Define event ownership, schema, privacy, retention, ordering, and consumer obligations.</li>
+        <li>Implement transactional publication and an idempotent consumer.</li>
+        <li>Test duplicate, delayed, out-of-order, poison, and unavailable-broker cases.</li>
+        <li>Add tracing, lag/error metrics, alerts, DLQ review, and replay procedures.</li>
+        <li>Roll out beside the existing flow, compare outcomes, then retire the old path.</li>
+      </ol>
+      <div class="exercise"><strong>Practice</strong>Model order placed → payment authorized → inventory reserved. Define event payloads, idempotency key, timeout behavior, compensation, and what the customer sees while the workflow is pending.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://cloudevents.io/" target="_blank" rel="noreferrer">CloudEvents</a> — interoperable event metadata specification.</li>
+        <li><a href="https://kafka.apache.org/documentation/" target="_blank" rel="noreferrer">Apache Kafka documentation</a> — architecture, producers, consumers, and operations.</li>
+        <li><a href="https://pulsar.apache.org/docs/" target="_blank" rel="noreferrer">Apache Pulsar documentation</a> — messaging and streaming model.</li>
+        <li><a href="https://www.rabbitmq.com/docs" target="_blank" rel="noreferrer">RabbitMQ documentation</a> — queues, routing, reliability, and operations.</li>
+        <li><a href="https://opentelemetry.io/docs/specs/semconv/messaging/" target="_blank" rel="noreferrer">OpenTelemetry messaging conventions</a> — telemetry for messaging operations.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="architecture-07-modular-monolith.html">← Previous: Modular monolith</a><a class="lesson-link" href="architecture-09-grpc-protobuf.html">Next lesson: gRPC and Protobuf →</a></div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Design for duplicates, lag, and recovery from the beginning.</footer>
+  </main>
+</body>
+</html>

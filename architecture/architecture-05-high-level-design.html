@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="A practical high-level design handbook covering requirements, quality attributes, diagrams, capacity, security, operations, examples, and review.">
+  <title>05. High-Level Design | Architecture Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
+    <span class="path-progress">05 / 12 · Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="architecture-04-pattern-decisions.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-06-low-level-design.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 05 · Intermediate · System-level design</div>
+      <h1>High-level design: turn requirements into a system</h1>
+      <p class="lede">A high-level design (HLD) communicates the system boundary, major components, data movement, external dependencies, and operational behavior. It is a shared model for decisions—not a promise that every implementation detail is already known.</p>
+      <div class="hero-meta"><span class="badge">HLD vs. LLD</span><span class="badge">Diagram toolkit</span><span class="badge">Capacity and failure</span><span class="badge">Worked commerce example</span></div>
+    </section>
+    <section class="lesson" id="scope">
+      <h2>1. What an HLD is—and when to write one</h2>
+      <p>Write or update an HLD when a change crosses teams or systems, introduces a new trust boundary, changes a critical data flow, has significant availability/cost consequences, or is expensive to reverse. Keep it proportional: a small change may need only an ADR and a sequence diagram.</p>
+      <table>
+        <thead><tr><th>HLD</th><th>LLD</th></tr></thead>
+        <tbody>
+          <tr><td>System scope, components, major contracts, data flows, runtime topology</td><td>Module/class responsibilities, schemas, method/API behavior, transaction details</td></tr>
+          <tr><td>Explains the "what" and major tradeoffs</td><td>Explains implementation-level "how"</td></tr>
+          <tr><td>Used by product, engineering, security, platform, and operations</td><td>Used mostly by implementing and reviewing engineers</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="lesson" id="requirements">
+      <h2>2. Gather requirements and define measurable qualities</h2>
+      <p>Capture goals, actors, use cases, dependencies, data classification, legal constraints, availability targets, recovery expectations, and explicit non-goals. Convert terms like "fast" or "highly available" into scenarios with a workload and measure.</p>
+      <div class="example"><strong>Quality scenario</strong>During a 10-minute payment-provider outage, order placement remains available, pending payments are visible, no order is marked paid without confirmation, and recovery is observable within the agreed recovery objective.</div>
+      <p>Estimate capacity from peak traffic, payload size, retention, read/write mix, fan-out, and growth assumptions. Show the assumptions and ranges. Avoid false precision; load test the design before treating estimates as facts.</p>
+    </section>
+    <section class="lesson" id="contents">
+      <h2>3. What to include: a concise HLD template</h2>
+      <ol>
+        <li><strong>Summary:</strong> goal, scope, owners, status, reviewers, and decision links.</li>
+        <li><strong>Requirements:</strong> use cases, quality scenarios, constraints, and non-goals.</li>
+        <li><strong>Context:</strong> users, external systems, data owners, and trust boundaries.</li>
+        <li><strong>Design:</strong> components, responsibilities, interfaces, persistence, and key flows.</li>
+        <li><strong>Runtime:</strong> deployment, scaling, regions, dependencies, and environment assumptions.</li>
+        <li><strong>Risk controls:</strong> identity, authorization, privacy, threat mitigations, and audit.</li>
+        <li><strong>Operations:</strong> SLOs, telemetry, alerts, failure modes, backup, restore, and support ownership.</li>
+        <li><strong>Tradeoffs:</strong> alternatives, cost model, decisions, open questions, and revisit signals.</li>
+        <li><strong>Delivery:</strong> migration, rollout, rollback, compatibility, and acceptance tests.</li>
+      </ol>
+    </section>
+    <section class="lesson" id="diagrams">
+      <h2>4. Diagram types and when to use them</h2>
+      <ul>
+        <li><strong>System context:</strong> scope, users, and external dependencies.</li>
+        <li><strong>Container / deployment view:</strong> major applications, datastores, runtime, network, and trust zones.</li>
+        <li><strong>Component view:</strong> responsibilities inside one container, when that detail helps.</li>
+        <li><strong>Sequence diagram:</strong> time-ordered calls, retries, and error paths.</li>
+        <li><strong>Data-flow diagram:</strong> data origins, transformations, storage, classification, and deletion.</li>
+        <li><strong>State diagram:</strong> important lifecycle and transition invariants.</li>
+      </ul>
+      <p>Use a consistent legend, name each boundary, show direction and protocol where it matters, and annotate critical assumptions. A diagram that cannot be read without its author is not a useful design artifact.</p>
+      <pre><code>Customer → Storefront → Order API → Order DB
+                              │
+                              └─ outbox → Event broker
+                                           ├─ Payment workflow → Provider
+                                           └─ Fulfillment consumer → Warehouse</code></pre>
+    </section>
+    <section class="lesson" id="steps">
+      <h2>5. Step by step: create and validate an HLD</h2>
+      <ol>
+        <li>Write the problem statement, decision owner, stakeholders, and scope.</li>
+        <li>Map the current system and the business/data owners involved.</li>
+        <li>List functional requirements and rank quality scenarios.</li>
+        <li>Sketch two or more viable options and make constraints visible.</li>
+        <li>Choose component responsibilities and interface/data ownership.</li>
+        <li>Walk through normal, peak, degraded, security, and recovery paths.</li>
+        <li>Estimate cost and capacity; identify unknowns for prototype or test.</li>
+        <li>Record decisions, migration steps, observability, and accountable owners.</li>
+        <li>Review with implementation, security, data, platform, and operations peers.</li>
+        <li>Update the design from implementation and production evidence.</li>
+      </ol>
+    </section>
+    <section class="lesson" id="example">
+      <h2>6. Worked example: an e-commerce order flow</h2>
+      <p>Keep the order API responsible for order state. Persist an order and an outbox record in the same database transaction. A publisher delivers the event; payment and fulfillment workflows consume it independently. Each consumer is idempotent and reports progress. A status API exposes pending, paid, rejected, and fulfillment states.</p>
+      <p>Document what happens if payment times out after the provider accepted it, if an event is delivered twice, if the broker is unavailable, or if the customer retries checkout. Define the authoritative status, reconciliation process, and compensation for a failed workflow.</p>
+    </section>
+    <section class="lesson" id="review">
+      <h2>7. Pitfalls and review checklist</h2>
+      <ul>
+        <li>Does every component have a responsibility and owner?</li>
+        <li>Are synchronous dependencies and timeout budgets bounded?</li>
+        <li>Are data ownership, consistency, retention, and deletion explicit?</li>
+        <li>Are authentication, authorization, secrets, and trust boundaries shown?</li>
+        <li>Can an operator detect, diagnose, recover, and safely replay work?</li>
+        <li>Are deployment, compatibility, rollback, and migration paths feasible?</li>
+        <li>Are costs, assumptions, and known unknowns visible?</li>
+      </ul>
+      <p>Common HLD failures include technology inventories without behavior, diagrams with unbounded arrows, no failure path, mixing current and target states, and a document that is never revised after implementation.</p>
+      <div class="exercise"><strong>Practice</strong>Produce one context diagram, one order-flow sequence, and a one-page HLD for a service that accepts orders during a payment outage. Ask a teammate to identify the source of truth and recovery process without your explanation.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Tools and further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://c4model.com/" target="_blank" rel="noreferrer">C4 model</a> — context, container, component, and code views.</li>
+        <li><a href="https://mermaid.js.org/" target="_blank" rel="noreferrer">Mermaid</a> — diagrams maintained as text alongside documentation.</li>
+        <li><a href="https://opentelemetry.io/docs/specs/semconv/" target="_blank" rel="noreferrer">OpenTelemetry semantic conventions</a> — consistent telemetry attributes.</li>
+        <li><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noreferrer">NIST SP 800-207</a> — zero-trust architecture principles.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="architecture-04-pattern-decisions.html">← Previous: Pattern decisions</a><a class="lesson-link" href="architecture-06-low-level-design.html">Next lesson: Low-level design →</a></div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Keep the design actionable, testable, and owned.</footer>
+  </main>
+</body>
+</html>

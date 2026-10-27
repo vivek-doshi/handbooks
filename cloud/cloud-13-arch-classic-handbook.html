@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Architect level: worked cloud architectures for a global e-commerce platform and a multi-tenant SaaS product, with service choices across AWS, Azure, and Google Cloud, plus where AI fits.">
+  <title>13. Cloud architecture by example: classic systems | Cloud Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Cloud Path</span> / Handbooks</a>
+    <span class="path-progress">13 / 15 &middot; Architect</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="cloud-12-resilience-dr-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="cloud-14-arch-data-ai-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 13 &middot; Architect &middot; Two end-to-end designs: global e-commerce and multi-tenant SaaS</div>
+      <h1>Cloud architecture by example: classic systems</h1>
+      <p class="lede">This book shows how to turn requirements into a cloud architecture, step by step. Each use case lists requirements, a flow, provider-specific service choices, security, reliability, cost and trade-offs, then adds the AI components that enhance the system.</p>
+      <div class="hero-meta"><span class="badge">E-commerce</span><span class="badge">Multi-tenant SaaS</span><span class="badge">Cross-provider mapping</span><span class="badge">Trade-offs</span></div>
+    </section>
+    <section class="lesson" id="method">
+      <h2>How to work through a case</h2><ol><li>Write requirements as measurable targets (availability, latency, scale, compliance, cost).</li><li>List constraints and assumptions.</li><li>Sketch the request path and the data path separately.</li><li>Choose services using the pillars and record decisions with trade-offs.</li><li>Add security, reliability and cost explicitly.</li><li>Decide where AI adds value and what guardrails it needs.</li></ol><div class="callout"><strong>Prerequisites</strong>Steps 09 to 12 supply the standards used here: landing zone, patterns, FinOps and resilience.</div>
+    </section>
+    <section class="lesson" id="s1a">
+      <h2>Use case 1: Global e-commerce platform</h2><p>A retailer sells in 20 countries with seasonal peaks 10 times normal load. It wants fast pages, reliable checkout, and the ability to ship features daily.</p><h3>Requirements</h3><ul><li>99.95 percent availability for browse and checkout; peak of 20,000 requests per second</li><li>Sub-second page loads worldwide; payment data in PCI scope only where unavoidable</li><li>Daily deployments by several teams; cost must follow traffic</li></ul>
+    </section>
+    <section class="lesson" id="s1b">
+      <h2>Architecture flow</h2><ol><li>Users reach a CDN and WAF at the edge; static and cacheable content is served from cache.</li><li>A global load balancer routes to regional stacks of stateless services (catalogue, cart, checkout, orders) on containers across three zones.</li><li>Catalogue and sessions use a cache plus a document or key-value store; orders use a relational database with Multi-AZ failover.</li><li>Order events go to an event bus or queue so inventory, email, fulfilment and analytics react asynchronously.</li><li>Payments are delegated to a PCI-compliant provider; the platform stores tokens only.</li><li>Telemetry flows to a central observability stack with SLOs on checkout success and latency.</li></ol>
+    </section>
+    <section class="lesson" id="s1c">
+      <h2>Service choices by provider</h2><table><thead><tr><th>Concern</th><th>AWS</th><th>Azure</th><th>Google Cloud</th></tr></thead><tbody><tr><td>Edge</td><td>CloudFront, WAF, Shield</td><td>Front Door with WAF</td><td>Cloud CDN, Cloud Armor</td></tr><tr><td>Compute</td><td>ECS Fargate or EKS</td><td>Container Apps or AKS</td><td>Cloud Run or GKE</td></tr><tr><td>Relational</td><td>Aurora PostgreSQL</td><td>Azure SQL or PostgreSQL Flexible Server</td><td>AlloyDB or Cloud SQL</td></tr><tr><td>Catalogue / cart</td><td>DynamoDB, ElastiCache</td><td>Cosmos DB, Managed Redis</td><td>Firestore, Memorystore</td></tr><tr><td>Events</td><td>EventBridge, SQS</td><td>Service Bus, Event Grid</td><td>Pub/Sub</td></tr><tr><td>Search</td><td>OpenSearch</td><td>AI Search</td><td>Vertex AI Search</td></tr><tr><td>Analytics</td><td>Kinesis, Redshift</td><td>Event Hubs, Fabric</td><td>Pub/Sub, BigQuery</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="s1h">
+      <h2>Where AI fits</h2><ul><li>Personalised recommendations from a managed ML service or a feature store with a ranking model.</li><li>Semantic search with embeddings and a hybrid index for the catalogue.</li><li>Product description generation and a support assistant grounded in order and policy data, behind a guardrailed gateway.</li></ul>
+    </section>
+    <section class="lesson" id="s1d">
+      <h2>Security and governance</h2><ul><li>Separate accounts or subscriptions for production and payments; private subnets and private endpoints for data stores.</li><li>Tokenised payments to keep card data out of scope; WAF bot and rate rules; secrets in a managed store.</li><li>Audit logs centralised and immutable; least-privilege workload identities.</li></ul>
+    </section>
+    <section class="lesson" id="s1e">
+      <h2>Reliability and scaling</h2><ul><li>Three zones per region; multi-region active-active for stateless tiers, with the order database region-primary and cross-region replicas.</li><li>Autoscale on requests per target and queue depth; pre-scale and raise quotas before sales events; load test beforehand.</li><li>Idempotent order APIs, retries with jitter, circuit breakers, graceful degradation (for example cached catalogue when search fails).</li></ul>
+    </section>
+    <section class="lesson" id="s1f">
+      <h2>Cost levers</h2><ul><li>CDN offload and image optimisation; Savings Plans for the baseline and spot for batch and analytics.</li><li>Right-size databases; use read replicas and caching before bigger instances.</li><li>Cross-AZ and egress charges tracked per service.</li></ul>
+    </section>
+    <section class="lesson" id="s1g">
+      <h2>Trade-offs and decisions</h2><ul><li>Containers versus serverless: containers give predictable performance at peak; use functions for event glue.</li><li>Strong consistency only for stock reservation and payment; eventual consistency elsewhere.</li><li>Single-provider depth beats multi-cloud here unless regulation or risk demands otherwise.</li></ul>
+    </section>
+    <section class="lesson" id="s2a">
+      <h2>Use case 2: Multi-tenant SaaS platform</h2><p>A B2B SaaS product serves thousands of customers with different sizes, some with strict compliance needs. It needs strong tenant isolation, per-tenant metering and fast onboarding.</p><h3>Requirements</h3><ul><li>Tenant isolation that withstands audit; noisy-neighbour protection</li><li>Self-service onboarding in minutes; enterprise SSO (SAML, OIDC)</li><li>Usage-based billing and per-tenant cost visibility</li><li>Regional data residency for selected customers</li></ul>
+    </section>
+    <section class="lesson" id="s2b">
+      <h2>Architecture flow</h2><ol><li>Identity layer authenticates users with tenant-aware tokens; every request carries a tenant context.</li><li>An API gateway applies per-tenant rate limits and routes to services in a shared pool; large or regulated tenants can be placed in dedicated cells.</li><li>Data uses a chosen isolation model: pooled with row-level security, schema per tenant, or database per tenant.</li><li>A control plane service handles onboarding, provisioning (infrastructure as code per tenant when dedicated), configuration and entitlements.</li><li>A metering pipeline records usage events to a stream, aggregates them and feeds billing and cost allocation.</li></ol>
+    </section>
+    <section class="lesson" id="s2c">
+      <h2>Service choices by provider</h2><table><thead><tr><th>Concern</th><th>AWS</th><th>Azure</th><th>Google Cloud</th></tr></thead><tbody><tr><td>Identity</td><td>Cognito, IAM Identity Center for staff</td><td>Entra External ID</td><td>Identity Platform</td></tr><tr><td>Gateway</td><td>API Gateway, Application Load Balancer</td><td>API Management, Front Door</td><td>Apigee, API Gateway</td></tr><tr><td>Compute</td><td>EKS or ECS</td><td>AKS or Container Apps</td><td>GKE or Cloud Run</td></tr><tr><td>Data</td><td>Aurora with row-level security, DynamoDB with tenant key</td><td>Azure SQL elastic pools, Cosmos DB partition by tenant</td><td>Spanner or AlloyDB, Firestore</td></tr><tr><td>Metering</td><td>Kinesis, Athena</td><td>Event Hubs, Data Explorer</td><td>Pub/Sub, BigQuery</td></tr><tr><td>Provisioning</td><td>Step Functions, CDK or Terraform</td><td>Durable Functions, Bicep</td><td>Workflows, Terraform</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="s2h">
+      <h2>Where AI fits</h2><ul><li>Tenant-scoped retrieval: vector indexes and prompts must never mix tenant data; filter by tenant in the index and enforce it in the data layer.</li><li>Per-tenant AI quotas, usage metering and model choice by plan tier.</li><li>Bring-your-own-key and data-processing terms for customers who restrict AI use.</li></ul>
+    </section>
+    <section class="lesson" id="s2d">
+      <h2>Security and governance</h2><ul><li>Tenant ID enforced in the data layer, not only in application code; automated tests that try cross-tenant access.</li><li>Per-tenant encryption keys for sensitive customers; audit logs filterable by tenant.</li><li>Separate cells and accounts for regulated tenants; documented compliance mapping (SOC 2, ISO 27001, GDPR).</li></ul>
+    </section>
+    <section class="lesson" id="s2e">
+      <h2>Reliability and scaling</h2><ul><li>Cell-based architecture: each cell is a full stack serving a subset of tenants, limiting blast radius and enabling gradual rollouts.</li><li>Per-tenant quotas, concurrency limits and queues to stop noisy neighbours.</li><li>Backups and restores that can target a single tenant.</li></ul>
+    </section>
+    <section class="lesson" id="s2f">
+      <h2>Cost levers</h2><ul><li>Pool small tenants to maximise utilisation; dedicated resources priced into enterprise plans.</li><li>Tag or attribute cost per tenant using metering data to find unprofitable tenants.</li></ul>
+    </section>
+    <section class="lesson" id="s2g">
+      <h2>Trade-offs and decisions</h2><ul><li>Pooled versus siloed: pooled is cheapest and simplest to operate; siloed is easiest to prove isolation. Many products use a hybrid with tiers.</li><li>Shared schema complicates migrations; plan expand and contract changes and tenant-by-tenant rollout.</li><li>Build the control plane early; retrofitting multi-tenancy is expensive.</li></ul>
+    </section>
+    <section class="lesson" id="lab">
+      <h2>Exercise</h2><div class="exercise"><strong>Practice</strong>Redraw use case 1 on a provider you know. Change one requirement (for example availability to 99.99 percent) and list what you must change.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://aws.amazon.com/architecture/" target="_blank" rel="noreferrer">AWS Architecture Center</a> — Reference architectures.</li><li><a href="https://learn.microsoft.com/azure/architecture/" target="_blank" rel="noreferrer">Azure Architecture Center</a> — Reference architectures.</li><li><a href="https://cloud.google.com/architecture" target="_blank" rel="noreferrer">Google Cloud Architecture Center</a> — Reference architectures.</li><li><a href="https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/saas-lens.html" target="_blank" rel="noreferrer">SaaS Lens</a> — Well-Architected guidance for SaaS.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="cloud-12-resilience-dr-handbook.html">&larr; Previous: Resilience and Disaster Recovery</a><a class="lesson-link" href="cloud-14-arch-data-ai-handbook.html">Next lesson: Case Studies: Data and AI-Enabled Systems &rarr;</a></div>
+    <footer class="site-footer">Cloud learning path &middot; Updated 2026-10-27 &middot; Check provider documentation for current limits and pricing</footer>
+  </main>
+</body>
+</html>

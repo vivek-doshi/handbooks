@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-28">
+  <meta name="description" content="Advanced: Terraform and OpenTofu fundamentals, state, modules, testing, policy, secrets, CI/CD workflows, drift, and multi-environment structure.">
+  <title>09. Infrastructure as Code with Terraform | DevOps Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
+    <span class="path-progress">09 / 13 · Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="devops-08-github-actions-cicd-handbook.html">← Previous</a><a href="../index.html">All handbooks</a><a href="devops-10-gitops-supply-chain-handbook.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 09 · Advanced · Provision cloud and cluster infrastructure declaratively, safely, and at team scale</div>
+      <h1>Infrastructure as Code with Terraform</h1>
+      <p class="lede">Infrastructure as Code makes environments reproducible, reviewable and auditable. This step goes beyond <code>terraform apply</code>: state design, module contracts, testing, delivery workflow and governance for teams.</p>
+      <div class="hero-meta"><span class="badge">State and locking</span><span class="badge">Modules</span><span class="badge">Testing</span><span class="badge">Policy</span><span class="badge">Pipelines</span><span class="badge">Drift</span></div>
+    </section>
+    <section class="lesson" id="model">
+      <h2>1. The model</h2>
+<p>Terraform describes desired infrastructure in HCL. The workflow is <strong>init → plan → apply</strong>: the plan diffs configuration against state and reality, and a reviewed plan is applied. Providers translate resources into API calls. <strong>OpenTofu</strong> is the Linux Foundation fork created after Terraform moved to the BUSL license; the language is largely compatible, so check licensing and feature needs when choosing, and pin the tool version either way.</p>
+    </section>
+    <section class="lesson" id="state">
+      <h2>2. State is the critical asset</h2>
+<ul><li>Use a <strong>remote backend</strong> with locking (S3 with native lockfile locking, Azure Blob, GCS, or HCP Terraform / similar). Enable versioning and encryption.</li><li>Split state by blast radius and change cadence: network, platform/cluster, and each application separately; never one state for everything.</li><li>Treat state as sensitive: it can contain secrets. Restrict read access, and use ephemeral values and write-only arguments (newer Terraform) or an external secret manager so secrets stay out of state.</li><li>Bootstrap the backend itself first, then migrate state into it.</li></ul>
+    </section>
+    <section class="lesson" id="modules">
+      <h2>3. Modules and composition</h2>
+<ul><li>A module has a narrow purpose, typed <code>variables</code> with validation, documented <code>outputs</code>, and a version.</li><li>Prefer composition of small modules over one flexible "do everything" module; avoid deeply nested modules.</li><li>Publish internal modules to a registry or tag them in Git; pin consumers to versions and update deliberately.</li><li>Use <code>for_each</code> over <code>count</code> for stable addressing; use <code>moved</code> blocks for safe refactors and <code>import</code> blocks to adopt existing resources.</li><li>Pin provider versions and commit the lock file.</li></ul><div class="callout"><strong>See real snippets in the DevOps Playbook</strong> Complete cloud modules (network, Kubernetes cluster, database with backups), bootstrap of remote state, and environment overlays are available as Terraform templates there. Open the <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook code template browser</a> to read and copy complete, working files.</div>
+    </section>
+    <section class="lesson" id="test">
+      <h2>4. Quality: validate, test, scan</h2>
+<table><thead><tr><th>Stage</th><th>Tools</th></tr></thead><tbody>
+<tr><td>Format and validate</td><td><code>terraform fmt</code>, <code>validate</code>, TFLint</td></tr>
+<tr><td>Unit and integration tests</td><td>Native <code>terraform test</code> (mock providers for fast tests), Terratest</td></tr>
+<tr><td>Security and compliance</td><td>Trivy (config scanning), Checkov, OPA/Conftest on the plan JSON, Sentinel</td></tr>
+<tr><td>Cost</td><td>Infracost on pull requests</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="delivery">
+      <h2>5. Delivery workflow and access</h2>
+<ol><li>Pull request runs fmt, validate, scans, and posts the <code>plan</code>.</li><li>Review and approve the plan, then merge.</li><li>Pipeline applies the saved plan using OIDC federation to the cloud (no static keys), with a protected production environment.</li><li>Scheduled plan-only runs detect <strong>drift</strong> and alert.</li></ol>
+<p>Limit human write access to production; keep break-glass procedures. Tools such as Atlantis, Terraform Cloud, Spacelift, or plain CI work; what matters is consistent, auditable applies. Alternatives and complements: Pulumi, Crossplane (Kubernetes-native control planes, a building block for platforms in Step 11), and CDK for Terraform.</p>
+    </section>
+    <section class="lesson" id="layout">
+      <h2>6. Multi-environment layout</h2>
+<p>Prefer one root configuration per environment-and-stack that reuses versioned modules with environment-specific variables (directories, not workspaces, for strongly isolated prod). Keep accounts/subscriptions separate per environment, and keep naming and tagging conventions in a shared module, including cost-allocation tags for Step 11.</p>
+<div class="exercise"><strong>Practice</strong>Create a small module with variable validation and a <code>terraform test</code>, publish it with a tag, consume it from two environments with a remote backend, and add a scheduled drift check.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+<ul class="reading-list">
+<li><a href="https://developer.hashicorp.com/terraform/docs" target="_blank" rel="noreferrer">Terraform documentation</a> — language, state, testing.</li>
+<li><a href="https://opentofu.org/docs/" target="_blank" rel="noreferrer">OpenTofu documentation</a> — open-source alternative.</li>
+<li><a href="https://docs.crossplane.io/" target="_blank" rel="noreferrer">Crossplane</a> — Kubernetes-native infrastructure APIs.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="devops-08-github-actions-cicd-handbook.html">← Previous: CI/CD with GitHub Actions</a><a class="lesson-link" href="devops-10-gitops-supply-chain-handbook.html">Next lesson: GitOps, Supply Chain and Policy →</a></div>
+    <footer class="site-footer">DevOps learning path · Updated 2026-10-28 · Real templates: <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a></footer>
+  </main>
+</body>
+</html>

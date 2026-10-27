@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Advanced: real-time fraud detection, a recommender system for hundreds of millions of users, and demand forecasting for hundreds of millions of series, each with scale, architecture, MLOps design and risks.">
+  <title>12. Use Cases 1 to 3: Fraud, Recommendations and Forecasting | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">12 / 13 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-11-end-to-end-pipeline-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-13-usecases-llm-vision-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 12 &middot; Advanced &middot; Large-scale classic ML</div>
+      <h1>Use Cases 1 to 3: Fraud, Recommendations and Forecasting</h1>
+      <p class="lede">Three large classic-ML systems, each stressing a different part of the platform: streaming features and latency, embedding retrieval at huge scale, and massively parallel training.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">Streaming</span><span class="badge">Billions of rows</span></div>
+    </section>
+    <section class="lesson" id="how">
+      <h2>How to read the cases</h2><p>Each case gives requirements, the architecture, the MLOps pipeline and the main risks. Method: step 11.</p><div class="callout"><strong>About the numbers</strong>Volumes, prices and throughput are illustrative planning figures that show the method. Replace them with measurements and current prices from your own environment.</div>
+    </section>
+    <section class="lesson" id="uc1">
+      <h2>Use case 1: Real-time fraud detection</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Volume</td><td>3 billion card transactions a month, 5,000 per second average, 25,000 peak</td></tr><tr><td>Latency</td><td>Decision under 100 ms end to end</td></tr><tr><td>Labels</td><td>Chargebacks arrive 30 to 90 days late; fraud rate 0.1 percent</td></tr><tr><td>Data</td><td>80 TB of history, 1.5 B accounts and devices</td></tr><tr><td>Constraints</td><td>PCI data, explainability for declines, 99.99 percent availability</td></tr></tbody></table><pre><code>txn -&gt; gateway -&gt; feature service (online store: card/device/merchant aggregates) + stream features (Flink, 1m/1h/24h windows)
+    -&gt; rules engine (hard blocks) -&gt; gradient-boosted model (served on CPU, p99 15 ms) -&gt; decision + reason codes
+    -&gt; Kafka decision log -&gt; lakehouse
+Training: daily/weekly pipeline: label join (late), point-in-time features, time-based split, XGBoost/LightGBM,
+          cost-weighted metrics (precision at fixed review capacity), calibration
+Release: shadow 1 week -&gt; canary 5 percent of traffic -&gt; ramp; champion/challenger always running
+Monitoring: feature drift, score distribution, approval rate, alert volume, delayed-label recall</code></pre><ul><li><strong>Decisions:</strong> boosted trees on CPU beat deep models on latency and explainability; features matter more than model class. Use SHAP reason codes.</li><li><strong>Skew control:</strong> one feature definition for batch backfill and Flink; point-in-time joins; freshness SLO of 5 seconds.</li><li><strong>Delayed labels:</strong> train on matured labels, use proxy signals (analyst decisions) for fast feedback, and weight recent fraud patterns.</li><li><strong>Capacity:</strong> 25k QPS at 500 QPS per replica is 50 replicas plus headroom; online store sized for hot keys; multi-region active-active.</li><li><strong>Risks:</strong> adversarial adaptation, label bias (only reviewed cases have labels), outages causing fail-open. Mitigate with rules fallback, exploration traffic, and degraded mode.</li></ul>
+    </section>
+    <section class="lesson" id="uc2">
+      <h2>Use case 2: Recommendations at 300 million users</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Scale</td><td>300 M users, 50 M items, 20 B interaction events a month</td></tr><tr><td>Latency</td><td>Home feed in 150 ms</td></tr><tr><td>Goal</td><td>Increase engagement and long-term retention, fresh items surface quickly</td></tr><tr><td>Data</td><td>Several hundred TB of events; embeddings refreshed daily</td></tr></tbody></table><pre><code>Events (Kafka) -&gt; lakehouse -&gt; feature jobs + two-tower training (GPU, daily) -&gt; user/item embeddings
+Online:  candidate generation (ANN over item embeddings, multiple sources: collaborative, content, popularity, recent)
+         -&gt; ranking (deep ranker, 500 candidates -&gt; 50, real-time features) -&gt; re-ranking (diversity, business rules) -&gt; feed
+Release: offline recall@k/NDCG -&gt; interleaving -&gt; A/B on engagement and retention
+Monitoring: coverage, diversity, popularity bias, freshness, feedback loops, latency per stage</code></pre><ul><li><strong>Why multi-stage:</strong> you cannot score 50 M items per request; retrieve hundreds cheaply then rank accurately.</li><li><strong>Embedding index:</strong> 50 M items x 128 dims int8 is about 6 GB per replica; shard for QPS, rebuild blue-green daily.</li><li><strong>Training:</strong> distributed data-parallel on GPUs with sharded embedding tables; incremental fine-tuning between full runs; spot instances with checkpoints.</li><li><strong>Evaluation:</strong> offline metrics mislead (position bias, feedback loops), so A/B and counterfactual evaluation are the arbiters.</li><li><strong>Risks:</strong> filter bubbles, cold start, and exposure bias; mitigate with exploration and diversity constraints.</li></ul>
+    </section>
+    <section class="lesson" id="uc3">
+      <h2>Use case 3: Demand forecasting for 200 million series</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Scale</td><td>200 M store-SKU series, daily history of 3 years, about 220 B observations</td></tr><tr><td>Output</td><td>28-day forecast with prediction intervals, refreshed daily</td></tr><tr><td>Goal</td><td>Reduce stockouts and waste; planners can override</td></tr><tr><td>Constraints</td><td>Cost per forecast matters; many series are sparse</td></tr></tbody></table><pre><code>Lakehouse (partitioned by date/region) -&gt; feature build (calendar, promos, price, weather, lags) in Spark
+-&gt; segment series: dense / intermittent / new (cold start)
+-&gt; Train: global model (LightGBM or deep global model) across all series + per-segment baselines;
+          embarrassingly parallel by region on a Spark/Ray cluster; hyperparameter search on a sample
+-&gt; Backtest: rolling-origin cross-validation (never random splits), WAPE, bias, interval coverage
+-&gt; Batch inference nightly: write forecasts to a table, override layer for planners
+Monitoring: forecast accuracy by segment vs naive baseline, bias, coverage; retrain weekly, full refresh monthly</code></pre><ul><li><strong>Global model beats 200 M local models</strong> operationally and for sparse series; keep a seasonal-naive fallback.</li><li><strong>Batch only:</strong> no online serving; cost is dominated by the feature build and the nightly scoring job, so partition and incremental processing matter.</li><li><strong>Hierarchy:</strong> reconcile forecasts across SKU, store and region so totals agree.</li><li><strong>Risks:</strong> promotions and shocks outside history, data gaps, planners distrusting a black box. Mitigate with explainable drivers, overrides logged as training signal, and accuracy dashboards.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>For UC1 compute replicas needed at 40,000 peak QPS and 400 QPS per replica with 30 percent headroom.</li><li>For UC3, estimate nightly scoring runtime with 400 workers at 25,000 series per second each.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://docs.feast.dev" target="_blank" rel="noreferrer">Feast</a> &mdash; feature serving</li><li><a href="https://nightlies.apache.org/flink/flink-docs-stable/" target="_blank" rel="noreferrer">Apache Flink</a> &mdash; streaming features</li><li><a href="https://github.com/Nixtla/statsforecast" target="_blank" rel="noreferrer">Nixtla forecasting libraries</a> &mdash; scalable forecasting</li><li><a href="https://github.com/facebookresearch/faiss/wiki" target="_blank" rel="noreferrer">FAISS</a> &mdash; ANN retrieval</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-11-end-to-end-pipeline-handbook.html">&larr; Previous: End-to-End Architecture</a><a class="lesson-link" href="mlops-13-usecases-llm-vision-handbook.html">Next lesson: Use Cases: SLM and Vision &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="An enterprise GraphQL guide to schema design, queries, mutations, subscriptions, BFFs, federation, security, performance, and tooling.">
+  <title>10. Enterprise GraphQL | Architecture Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
+    <span class="path-progress">10 / 12 · Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="architecture-09-grpc-protobuf.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-11-api-gateway.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 10 · Advanced · Client-shaped APIs</div>
+      <h1>GraphQL for enterprise systems</h1>
+      <p class="lede">GraphQL gives clients a typed schema and lets each operation request a shaped result. It can reduce over-fetching across varied clients, but shifts important responsibilities to schema governance, query cost control, authorization, and resolver performance.</p>
+      <div class="hero-meta"><span class="badge">Schema design</span><span class="badge">Queries and mutations</span><span class="badge">Federation</span><span class="badge">Security and performance</span></div>
+    </section>
+    <section class="lesson" id="basics">
+      <h2>1. GraphQL core concepts and current specification</h2>
+      <p>A schema defines object, scalar, enum, interface, union, input, and root operation types. A query reads data, a mutation requests a state change, and a subscription delivers updates through a transport selected by the implementation.</p>
+      <p>As of October 2026, the official GraphQL specification site lists September 2025 as its latest release and a September 2026 working draft. Pin implementation behavior to a published specification and your server/client versions; do not assume working-draft features are production-stable.</p>
+      <div class="callout"><strong>Choose GraphQL when</strong>many clients need different compositions, a product needs a typed graph over owned data, and the organization can operate schema governance and query protections.</div>
+      <p>It may be a poor fit for a simple CRUD API with one stable client, large file transfer, public cacheable content with conventional HTTP semantics, or a team unable to monitor resolver/query behavior. REST, gRPC, or server-rendered pages may be simpler.</p>
+    </section>
+    <section class="lesson" id="schema">
+      <h2>2. Schema design, queries, and mutations</h2>
+      <pre><code>type Query {
+  order(id: ID!): Order
+}
+
+type Mutation {
+  submitOrder(input: SubmitOrderInput!): SubmitOrderResult!
+}
+
+type Order {
+  id: ID!
+  status: OrderStatus!
+  lines(first: Int!, after: String): OrderLineConnection!
+}</code></pre>
+      <p>Design from client-visible domain concepts, not database tables. Use stable IDs, explicit nullability, input objects, enums for closed sets, and connection pagination for large collections. Keep mutations task-oriented and define validation/business errors in a predictable result shape.</p>
+      <h3>ARB pushback, answered</h3>
+      <ul>
+        <li><strong>"It creates one giant API."</strong> Use domain ownership, schema review, and modular resolver code; federation is optional and adds its own coordination.</li>
+        <li><strong>"Clients can request too much."</strong> Enforce depth/complexity budgets, pagination, timeouts, and persisted operations where suitable.</li>
+        <li><strong>"It is hard to cache."</strong> Use field-aware caching and client operation strategies where they fit; do not assume URL-based HTTP caching works unchanged.</li>
+        <li><strong>"It replaces every API."</strong> It need not. Keep REST, events, or gRPC where their contracts better fit the interaction.</li>
+      </ul>
+    </section>
+    <section class="lesson" id="runtime">
+      <h2>3. Subscriptions, BFF, and federation</h2>
+      <p>Subscriptions are long-lived streams; plan for connection authentication, reconnection, backpressure, fan-out, and delivery semantics. Do not promise durable event replay unless the implementation explicitly provides it.</p>
+      <p>A BFF can expose a GraphQL graph tailored to a product experience and compose data from owned services. Keep business invariants in their source domain and prevent resolver logic from becoming an unbounded integration layer.</p>
+      <p>Federation composes subgraphs under a supergraph/router. Define entity ownership, shared field rules, composition checks, rollout order, and failure isolation. Federation increases the importance of schema review, query plans, router telemetry, and clear team boundaries; it is not required for every GraphQL deployment.</p>
+    </section>
+    <section class="lesson" id="security">
+      <h2>4. Security and authorization</h2>
+      <ul>
+        <li>Authenticate requests and authorize at the data/field boundary; hide neither access decisions nor tenant scoping inside client assumptions.</li>
+        <li>Prevent object-level authorization flaws for every resolver returning user-owned data.</li>
+        <li>Bound query depth, complexity, aliases, batch sizes, pagination, and execution time.</li>
+        <li>Limit introspection or schema visibility according to the threat model; schema secrecy is not authorization.</li>
+        <li>Protect mutations against CSRF when cookie-based authentication is used; configure CORS and origin checks carefully.</li>
+        <li>Redact tokens, personal data, and query variables from logs; retain enough identifiers to investigate.</li>
+      </ul>
+      <p>Use OWASP API Security guidance alongside GraphQL-specific controls. A gateway/WAF can enforce edge rules but cannot replace resolver authorization and cost limits.</p>
+    </section>
+    <section class="lesson" id="performance">
+      <h2>5. Performance, tooling, and production operations</h2>
+      <p>Nested field resolution can create an N+1 pattern. Use request-scoped batching/data loaders, bounded caches, and query planning. Measure resolver-level latency, downstream calls, error rate, result size, complexity, and saturation. Add deadlines to downstream operations and avoid waiting on long chains of synchronous services.</p>
+      <ul>
+        <li>Validate and compose schemas in CI; treat breaking changes as managed migrations.</li>
+        <li>Use operation registries or persisted queries where they improve control and cacheability.</li>
+        <li>Run contract, authorization, query-cost, and compatibility tests.</li>
+        <li>Track field usage before deprecation; announce, migrate, and remove with a published policy.</li>
+        <li>Propagate traces through resolvers and downstream services using supported OpenTelemetry instrumentation.</li>
+      </ul>
+      <div class="exercise"><strong>Practice</strong>Design an order query for a mobile client with paginated lines. Add tenant authorization, a complexity budget, N+1 prevention, and a backward-compatible field deprecation plan.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://spec.graphql.org/" target="_blank" rel="noreferrer">Official GraphQL specification</a> — released specification and working draft status.</li>
+        <li><a href="https://graphql.org/learn/" target="_blank" rel="noreferrer">GraphQL learning guide</a> — schema and operation fundamentals.</li>
+        <li><a href="https://owasp.org/www-project-api-security/" target="_blank" rel="noreferrer">OWASP API Security Project</a> — API risks and mitigations.</li>
+        <li><a href="https://www.apollographql.com/docs/graphos/schema-design/federated-schemas/" target="_blank" rel="noreferrer">Apollo federation documentation</a> — federation concepts and schema design.</li>
+        <li><a href="https://opentelemetry.io/docs/" target="_blank" rel="noreferrer">OpenTelemetry documentation</a> — instrumentation and distributed tracing.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="architecture-09-grpc-protobuf.html">← Previous: gRPC and Protobuf</a><a class="lesson-link" href="architecture-11-api-gateway.html">Next lesson: API gateways →</a></div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Verify draft status and implementation behavior before adopting new spec features.</footer>
+  </main>
+</body>
+</html>

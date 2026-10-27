@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner: linear regression, polynomial features, ridge, lasso and elastic net, gradient descent, logistic regression, loss functions, and when to use each.">
+  <title>04. Linear and logistic regression | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">04 / 13 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-03-data-features-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-05-bayes-knn-svm-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 04 &middot; Beginner &middot; Predicting numbers and probabilities with the simplest, most interpretable models</div>
+      <h1>Linear and logistic regression</h1>
+      <p class="lede">Linear models are the best first algorithm for most tabular problems: fast, interpretable, and a strong baseline. Understanding them also unlocks regularisation, loss functions and gradient descent, which every later model reuses.</p>
+      <div class="hero-meta"><span class="badge">Linear regression</span><span class="badge">Regularisation</span><span class="badge">Gradient descent</span><span class="badge">Logistic regression</span><span class="badge">Loss functions</span><span class="badge">When to use</span></div>
+    </section>
+    <section class="lesson" id="linreg">
+      <h2>1. Linear regression</h2><p>Predicts a number as a weighted sum of features: <code>y = w1*x1 + w2*x2 + ... + b</code>. Training finds the weights that minimise the sum of squared errors (ordinary least squares).</p><h3>Linear regression (OLS)</h3><ul><li><strong>What it does:</strong> Fits a straight line (or plane) through the data to predict a continuous value.</li><li><strong>How it works:</strong> Chooses weights that minimise mean squared error. It has a closed-form solution, so training is instant and deterministic.</li><li><strong>Use it when:</strong> The relationship is roughly linear, you need to explain the effect of each feature (&quot;each extra bedroom adds about X&quot;), or you need a fast baseline.</li><li><strong>Avoid it when:</strong> Relationships are strongly non-linear, features are highly correlated with each other (unstable weights), or outliers dominate.</li><li><strong>Key settings:</strong> Almost none. Use regularised variants (below) to control complexity.</li></ul><pre><code>from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, r2_score
+
+m = LinearRegression().fit(X_train, y_train)
+pred = m.predict(X_test)
+print(mean_absolute_error(y_test, pred), r2_score(y_test, pred))
+print(dict(zip(X_train.columns, m.coef_)))    # interpretable weights</code></pre><h3>Assumptions worth checking</h3><ul><li><strong>Linearity:</strong> plot residuals against predictions; a curve means missing non-linearity.</li><li><strong>Constant spread of errors:</strong> a funnel shape means errors grow with the target; try modelling the log of the target.</li><li><strong>No strong multicollinearity:</strong> if two features are near copies of each other, their weights become unstable. Drop one or use ridge.</li><li><strong>Independent errors:</strong> time series and grouped data violate this; use appropriate splits.</li></ul><h3>Polynomial and interaction features</h3><p>To capture curves with a linear model, add powers and products of features, then scale. Higher degrees overfit quickly, so keep them small and regularise.</p><pre><code>from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.linear_model import Ridge
+
+model = make_pipeline(PolynomialFeatures(degree=2, include_bias=False),
+                      StandardScaler(), Ridge(alpha=1.0))</code></pre>
+    </section>
+    <section class="lesson" id="reg">
+      <h2>2. Regularisation: ridge, lasso and elastic net</h2><p>Regularisation adds a penalty on large weights to the loss. It trades a little bias for much lower variance, which fights overfitting, especially with many features or few rows. Always scale features first.</p><table><thead><tr><th>Method</th><th>Penalty</th><th>Effect</th><th>Use when</th></tr></thead><tbody><tr><td>Ridge (L2)</td><td>Sum of squared weights</td><td>Shrinks all weights, keeps all features</td><td>Many correlated features; default choice</td></tr><tr><td>Lasso (L1)</td><td>Sum of absolute weights</td><td>Drives some weights exactly to zero (feature selection)</td><td>You suspect many features are irrelevant</td></tr><tr><td>Elastic net</td><td>Mix of L1 and L2</td><td>Selection plus stability with correlated groups</td><td>Lasso is unstable on correlated features</td></tr></tbody></table><pre><code>from sklearn.linear_model import RidgeCV, LassoCV, ElasticNetCV
+ridge = RidgeCV(alphas=[0.01, 0.1, 1, 10, 100]).fit(X_train_scaled, y_train)
+lasso = LassoCV(cv=5).fit(X_train_scaled, y_train)
+print(ridge.alpha_, (lasso.coef_ != 0).sum(), "features kept by lasso")</code></pre><p>The strength is <code>alpha</code> in scikit-learn (larger means more shrinkage); choose it by cross-validation. For classifiers the equivalent knob is <code>C</code>, the <em>inverse</em> strength.</p>
+    </section>
+    <section class="lesson" id="gd">
+      <h2>3. Gradient descent and loss functions</h2><p>OLS has a formula, but most other models are trained with <strong>gradient descent</strong>: repeatedly compute the gradient of the loss and step the weights downhill (step 02).</p><table><thead><tr><th>Variant</th><th>Uses per step</th><th>Trade-off</th></tr></thead><tbody><tr><td>Batch</td><td>All rows</td><td>Stable, slow on big data</td></tr><tr><td>Stochastic (SGD)</td><td>One row</td><td>Fast, noisy</td></tr><tr><td>Mini-batch</td><td>A small batch (32 to 1024)</td><td>The practical default, used by deep learning</td></tr></tbody></table><pre><code>import numpy as np
+rng = np.random.default_rng(0)
+X = rng.normal(size=(200, 1)); y = 3 * X[:, 0] + 2 + rng.normal(0, .3, 200)
+
+w, b, lr = 0.0, 0.0, 0.1
+for _ in range(200):
+    err = (w * X[:, 0] + b) - y
+    w -= lr * 2 * (err * X[:, 0]).mean()
+    b -= lr * 2 * err.mean()
+print(w, b)       # approx 3 and 2</code></pre><h3>Choosing a regression loss</h3><table><thead><tr><th>Loss</th><th>Behaviour</th><th>Use when</th></tr></thead><tbody><tr><td>MSE (squared error)</td><td>Punishes large errors heavily</td><td>Default; outliers are real and costly</td></tr><tr><td>MAE (absolute error)</td><td>Treats all errors linearly, robust to outliers</td><td>Outliers are noise; median-like predictions</td></tr><tr><td>Huber</td><td>Squared for small errors, linear for large</td><td>A compromise: robust but smooth</td></tr><tr><td>Quantile / pinball</td><td>Predicts a chosen percentile</td><td>You need prediction intervals or asymmetric costs</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="logreg">
+      <h2>4. Logistic regression (classification)</h2><p>Despite the name, logistic regression is a <strong>classifier</strong>. It computes the same weighted sum as linear regression, then squeezes it through the sigmoid function to get a probability between 0 and 1. Predict the positive class when the probability passes a threshold (0.5 by default, but tune it for your costs).</p><h3>Logistic regression</h3><ul><li><strong>What it does:</strong> Estimates the probability that a row belongs to a class.</li><li><strong>How it works:</strong> Minimises log loss (cross-entropy) with gradient-based solvers. For more than two classes it uses softmax, which gives one probability per class.</li><li><strong>Use it when:</strong> You need a strong, fast, interpretable baseline, calibrated probabilities, or a model that regulators can audit. Works well with many sparse features such as text TF-IDF.</li><li><strong>Avoid it when:</strong> The decision boundary is clearly non-linear and you cannot engineer features to fix that; use trees or boosting instead.</li><li><strong>Key settings:</strong> <code>C</code> (inverse regularisation, default 1.0), <code>penalty</code> (l1, l2, elasticnet), <code>class_weight=&quot;balanced&quot;</code> for imbalance, <code>solver</code>.</li></ul><pre><code>from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report
+
+clf = make_pipeline(StandardScaler(), LogisticRegression(C=1.0, class_weight="balanced", max_iter=1000))
+clf.fit(X_train, y_train)
+print(classification_report(y_test, clf.predict(X_test)))
+proba = clf.predict_proba(X_test)[:, 1]          # probabilities, not just labels</code></pre><ul><li><strong>Reading coefficients:</strong> <code>exp(weight)</code> is the odds ratio, the multiplier on the odds of the positive class for one unit (or one standard deviation, if scaled) increase in the feature.</li><li><strong>Probabilities:</strong> logistic regression is usually well calibrated; many other models are not (step 08).</li><li><strong>Multiclass:</strong> scikit-learn fits a softmax model automatically when there are more than two classes; no extra setting is needed.</li></ul><h3>Loss for classification</h3><table><thead><tr><th>Loss</th><th>Used by</th></tr></thead><tbody><tr><td>Log loss / cross-entropy</td><td>Logistic regression, neural networks, boosting</td></tr><tr><td>Hinge loss</td><td>Support vector machines (step 05)</td></tr><tr><td>Gini / entropy impurity</td><td>Decision trees (step 06)</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="generalised">
+      <h2>5. Beyond the basics</h2><ul><li><strong>Generalised linear models:</strong> Poisson regression for counts, Gamma regression for positive skewed values such as claim amounts (<code>PoissonRegressor</code>, <code>GammaRegressor</code>).</li><li><strong>Robust regression:</strong> <code>HuberRegressor</code> and <code>RANSACRegressor</code> when outliers are present.</li><li><strong>Generalised additive models (GAMs):</strong> linear-style interpretability with curved per-feature effects; useful for regulated settings.</li><li><strong>Stochastic solvers:</strong> <code>SGDRegressor</code> and <code>SGDClassifier</code> scale linear models to very large datasets and support <code>partial_fit</code> for streaming.</li></ul>
+    </section>
+    <section class="lesson" id="use">
+      <h2>6. When to use linear models</h2><table><thead><tr><th>Situation</th><th>Choice</th></tr></thead><tbody><tr><td>First model on any tabular problem</td><td>Linear or logistic regression as the baseline</td></tr><tr><td>Interpretability or audit is required</td><td>Linear, logistic, or a GAM</td></tr><tr><td>Many features, few rows</td><td>Ridge, lasso or elastic net</td></tr><tr><td>Sparse high-dimensional data (text)</td><td>Logistic regression or linear SVM with TF-IDF</td></tr><tr><td>Complex interactions and non-linearity</td><td>Move to trees and boosting (step 06)</td></tr></tbody></table><div class="exercise"><strong>Practice</strong><ol><li>Fit a linear regression on a housing dataset, then plot residuals against predictions. Is there a pattern?</li><li>Compare OLS, ridge and lasso using cross-validated MAE. How many features does lasso keep?</li><li>Train logistic regression, then move the decision threshold from 0.5 to 0.3 and observe precision and recall.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://scikit-learn.org/stable/modules/linear_model.html" target="_blank" rel="noreferrer">scikit-learn: Linear models</a> &mdash; every linear estimator with guidance</li><li><a href="https://scikit-learn.org/stable/modules/sgd.html" target="_blank" rel="noreferrer">scikit-learn: Stochastic gradient descent</a> &mdash; scaling linear models</li><li><a href="https://developers.google.com/machine-learning/crash-course/linear-regression" target="_blank" rel="noreferrer">Google ML Crash Course: Linear regression</a> &mdash; interactive introduction</li><li><a href="https://www.statlearning.com/" target="_blank" rel="noreferrer">An Introduction to Statistical Learning</a> &mdash; regression and regularisation chapters</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-03-data-features-handbook.html">&larr; Previous: Data and Features</a><a class="lesson-link" href="ml-05-bayes-knn-svm-handbook.html">Next lesson: Bayes, KNN and SVM &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

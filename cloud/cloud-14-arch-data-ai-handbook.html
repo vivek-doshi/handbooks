@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Architect level: worked cloud architectures for real-time analytics with ML, an AI copilot embedded in a business application, and an agentic workflow platform, across AWS, Azure, and Google Cloud.">
+  <title>14. Cloud architecture by example: data and AI-enabled systems | Cloud Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Cloud Path</span> / Handbooks</a>
+    <span class="path-progress">14 / 15 &middot; Architect</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="cloud-13-arch-classic-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="cloud-15-arch-pure-ai-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 14 &middot; Architect &middot; Three complete systems that use AI components: real-time ML, an embedded copilot, and an agent platform</div>
+      <h1>Cloud architecture by example: data and AI-enabled systems</h1>
+      <p class="lede">Here AI is a component of a larger system, not the whole system. Each use case shows the surrounding platform, the AI parts, the controls around them, and how the choices map across the three providers.</p>
+      <div class="hero-meta"><span class="badge">Streaming and ML</span><span class="badge">RAG copilot</span><span class="badge">Agent platform</span><span class="badge">AI governance</span></div>
+    </section>
+    <section class="lesson" id="method">
+      <h2>How these differ from classic systems</h2><ul><li>AI components are probabilistic: design evaluation, guardrails and fallbacks in from the start.</li><li>Data quality and permissions decide outcomes; retrieval and tools must enforce access.</li><li>Cost and latency are driven by tokens and model size; budget and measure per request.</li><li>Operate with new signals: groundedness, drift, tool success, and human override rate.</li></ul><div class="callout"><strong>Prerequisites</strong>Read steps 03, 05 and 07 for provider AI services, and 09 for the landing-zone guardrails.</div>
+    </section>
+    <section class="lesson" id="s3a">
+      <h2>Use case 3: Real-time analytics with machine learning</h2><p>A logistics company wants live visibility of vehicles and shipments, anomaly alerts, and ETA predictions. Millions of events arrive per minute from devices and applications.</p><h3>Requirements</h3><ul><li>End-to-end latency under 5 seconds for alerts; dashboards refresh within 30 seconds</li><li>Historical analysis and model training on years of data</li><li>Prediction service with p95 latency under 200 ms</li><li>Data governance: lineage, access control and PII handling</li></ul>
+    </section>
+    <section class="lesson" id="s3b">
+      <h2>Architecture flow</h2><ol><li>Devices and services publish events to a streaming backbone.</li><li>A stream processor validates, enriches and windows the events; bad records go to a dead-letter queue.</li><li>Hot data lands in a low-latency store for dashboards; all data lands in a lakehouse in open table formats (Iceberg, Delta) for history.</li><li>Features are computed once and served from an online store for inference and from the offline store for training.</li><li>Training pipelines run on schedule or on drift; approved models are registered and deployed to autoscaled endpoints.</li><li>Alerts and predictions flow back through the stream to operations tools; monitoring tracks data quality and model drift.</li></ol>
+    </section>
+    <section class="lesson" id="s3c">
+      <h2>Service choices by provider</h2><table><thead><tr><th>Concern</th><th>AWS</th><th>Azure</th><th>Google Cloud</th></tr></thead><tbody><tr><td>Streaming</td><td>Kinesis or MSK</td><td>Event Hubs</td><td>Pub/Sub or Managed Kafka</td></tr><tr><td>Processing</td><td>Managed Flink, Glue streaming</td><td>Stream Analytics, Fabric Real-Time, Databricks</td><td>Dataflow</td></tr><tr><td>Lakehouse / warehouse</td><td>S3 with Iceberg, Athena, Redshift</td><td>OneLake, Synapse, Fabric</td><td>Cloud Storage with BigLake, BigQuery</td></tr><tr><td>Feature store</td><td>SageMaker Feature Store</td><td>Azure ML feature store, Fabric</td><td>Vertex AI Feature Store, BigQuery</td></tr><tr><td>Training and serving</td><td>SageMaker pipelines and endpoints</td><td>Azure ML pipelines and endpoints</td><td>Vertex AI Pipelines and endpoints</td></tr><tr><td>Governance</td><td>Lake Formation, Glue Data Catalog, DataZone</td><td>Purview</td><td>Dataplex</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="s3h">
+      <h2>Where AI fits</h2><ul><li>Anomaly detection and ETA regression models trained on the lakehouse and served online.</li><li>Generative summaries of incidents and natural-language queries over analytics (text-to-SQL) with read-only, governed access.</li><li>Monitor drift, data quality and fairness; retrain through the same pipeline.</li></ul>
+    </section>
+    <section class="lesson" id="s3d">
+      <h2>Security and governance</h2><ul><li>Column- and row-level access control; tokenise or mask PII at ingestion.</li><li>Catalogue with lineage; separate raw, curated and serving zones with different access.</li><li>Encrypt streams and storage; private networking between processing and stores.</li></ul>
+    </section>
+    <section class="lesson" id="s3e">
+      <h2>Reliability and scaling</h2><ul><li>Partition streams for parallelism and size for peak plus headroom; use replay from retained logs to recover.</li><li>Exactly-once or idempotent writes; watermarking for late events.</li><li>Serve models from at least two zones; keep a rules-based fallback when the model is unavailable.</li></ul>
+    </section>
+    <section class="lesson" id="s3f">
+      <h2>Cost levers</h2><ul><li>Tier data (hot, warm, cold); compact small files; prune partitions.</li><li>Autoscale or use serverless processing; spot for training.</li><li>Retain raw streams only as long as needed.</li></ul>
+    </section>
+    <section class="lesson" id="s3g">
+      <h2>Trade-offs and decisions</h2><ul><li>Managed streaming costs more than self-run Kafka but saves operations.</li><li>Lakehouse with open formats reduces lock-in and lets multiple engines share data.</li><li>Real-time features raise complexity; compute only the ones that improve decisions.</li></ul>
+    </section>
+    <section class="lesson" id="s4a">
+      <h2>Use case 4: AI copilot embedded in a business application</h2><p>A financial services firm adds an assistant to its customer-service application. It answers questions from policies and customer records, drafts replies and can perform limited actions, such as creating a case.</p><h3>Requirements</h3><ul><li>Answers grounded in approved documents with citations; permission-aware access to customer data</li><li>p95 response under 6 seconds with streaming; 500 concurrent conversations</li><li>No sensitive data leaves the approved boundary; full audit trail</li><li>Safe actions with human approval for anything that changes money or customer state</li></ul>
+    </section>
+    <section class="lesson" id="s4b">
+      <h2>Architecture flow</h2><ol><li>The application calls an AI gateway with the user's identity; the gateway applies rate limits, logging, redaction and routing.</li><li>An orchestration service retrieves context: hybrid search over indexed documents (with ACLs) and read-only queries to customer systems.</li><li>The model generates a response with citations; input and output pass through safety filters and groundedness checks.</li><li>Tools (create case, fetch status) are exposed through a controlled tool gateway with scoped credentials; high-risk tools require approval.</li><li>Conversations, retrieved sources and tool calls are traced; feedback and evaluation datasets improve the system.</li></ol>
+    </section>
+    <section class="lesson" id="s4c">
+      <h2>Service choices by provider</h2><table><thead><tr><th>Concern</th><th>AWS</th><th>Azure</th><th>Google Cloud</th></tr></thead><tbody><tr><td>Model access</td><td>Bedrock</td><td>Microsoft Foundry and Azure OpenAI</td><td>Vertex AI Gemini</td></tr><tr><td>Retrieval</td><td>Knowledge Bases with OpenSearch or Aurora pgvector</td><td>Azure AI Search</td><td>Vertex AI RAG Engine and Vector Search</td></tr><tr><td>Safety</td><td>Bedrock Guardrails</td><td>Content Safety and prompt shields</td><td>Model Armor</td></tr><tr><td>Agent and tools</td><td>Bedrock Agents or AgentCore, Lambda tools</td><td>Foundry Agent Service, Functions</td><td>Agent Engine, ADK, Cloud Run tools</td></tr><tr><td>Gateway</td><td>API Gateway with Lambda, or a gateway layer</td><td>API Management AI gateway</td><td>Apigee or Cloud Run gateway</td></tr><tr><td>Observability</td><td>CloudWatch, X-Ray, AgentCore observability</td><td>Azure Monitor and Foundry tracing</td><td>Cloud Trace, Logging, Vertex evaluation</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="s4h">
+      <h2>Where AI fits</h2><ul><li>This use case is the AI component: evaluation sets, groundedness metrics and human feedback loops are part of the architecture, not optional extras.</li><li>Continuously test with adversarial prompts (red teaming) before each release.</li></ul>
+    </section>
+    <section class="lesson" id="s4d">
+      <h2>Security and governance</h2><ul><li>Retrieval enforces the caller's permissions (security trimming); the model never sees data the user cannot see.</li><li>Defend against prompt injection, including indirect injection from documents; treat retrieved content as untrusted.</li><li>Private endpoints, customer-managed keys, regional deployment, no training on prompts; retention policy for logs.</li><li>Map to NIST AI RMF and applicable regulation; document model and data risks.</li></ul>
+    </section>
+    <section class="lesson" id="s4e">
+      <h2>Reliability and scaling</h2><ul><li>Autoscale the gateway and orchestrator; provisioned throughput or reserved quota for predictable load.</li><li>Fallback model or cached answers when the primary model is throttled; graceful 'cannot answer' behaviour.</li><li>Timeouts and budgets per request to bound latency and cost.</li></ul>
+    </section>
+    <section class="lesson" id="s4f">
+      <h2>Cost levers</h2><ul><li>Smallest model that passes evaluation; route simple intents to cheaper models; prompt caching for shared context.</li><li>Limit retrieved chunks and history; summarise long conversations.</li><li>Track cost per conversation and per resolved case.</li></ul>
+    </section>
+    <section class="lesson" id="s4g">
+      <h2>Trade-offs and decisions</h2><ul><li>RAG versus fine-tuning: start with RAG; fine-tune for style or narrow tasks after measuring.</li><li>Managed retrieval is faster to ship; custom pipelines give control over chunking and ranking.</li><li>Autonomy versus control: begin with draft-only and approval-gated actions, widen only with evidence.</li></ul>
+    </section>
+    <section class="lesson" id="s5a">
+      <h2>Use case 5: Agentic workflow platform for operations</h2><p>An operations team wants agents that triage incidents, gather diagnostics from many systems, propose remediations and, after approval, execute runbooks. Multiple teams will build agents on a shared platform.</p><h3>Requirements</h3><ul><li>Multiple agents with clear roles, shared tools and memory</li><li>Every tool call authenticated and authorised as the requesting user or a scoped service identity</li><li>Complete traceability and replay; cost and step limits per run</li><li>Human-in-the-loop approval for changes in production</li></ul>
+    </section>
+    <section class="lesson" id="s5b">
+      <h2>Architecture flow</h2><ol><li>A trigger (alert, ticket, chat) starts a workflow in an agent runtime with a unique run identity.</li><li>A planner agent decomposes the task and delegates to specialist agents (diagnostics, knowledge, change) using an agent-to-agent protocol.</li><li>Agents reach systems only through a tool gateway exposing MCP or API tools with per-tool scopes and rate limits.</li><li>Short-term state lives in the run; long-term memory and knowledge use a governed vector and document store.</li><li>Proposed changes are shown to an approver with evidence; approved actions execute through existing change pipelines.</li><li>Telemetry captures prompts, tool calls, decisions and cost; evaluations run continuously against recorded scenarios.</li></ol>
+    </section>
+    <section class="lesson" id="s5c">
+      <h2>Service choices by provider</h2><table><thead><tr><th>Concern</th><th>AWS</th><th>Azure</th><th>Google Cloud</th></tr></thead><tbody><tr><td>Agent runtime</td><td>Bedrock AgentCore, Strands Agents</td><td>Foundry Agent Service, Microsoft Agent Framework</td><td>Agent Engine, ADK</td></tr><tr><td>Tool access</td><td>AgentCore Gateway, Lambda, MCP servers</td><td>API Management, Functions, MCP servers</td><td>Cloud Run MCP servers, Apigee</td></tr><tr><td>Workflow and approvals</td><td>Step Functions with task tokens</td><td>Logic Apps, Durable Functions</td><td>Workflows, Eventarc</td></tr><tr><td>Memory and knowledge</td><td>AgentCore Memory, Knowledge Bases</td><td>AI Search, Cosmos DB</td><td>Vertex AI RAG, Firestore, AlloyDB</td></tr><tr><td>Identity</td><td>IAM roles per agent, Cognito or IdP</td><td>Entra Agent ID, managed identities</td><td>Service accounts, Workload Identity</td></tr><tr><td>Observability</td><td>AgentCore observability, CloudWatch, OpenTelemetry</td><td>Foundry tracing, Azure Monitor</td><td>Cloud Trace, Logging, OpenTelemetry</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="s5h">
+      <h2>Where AI fits</h2><ul><li>Evaluate end-to-end task success, not only model answers; keep scenario suites and regression tests.</li><li>Record decisions for audit and learning; require approvals for irreversible actions.</li></ul>
+    </section>
+    <section class="lesson" id="s5d">
+      <h2>Security and governance</h2><ul><li>Least-privilege identity per agent and per tool; short-lived credentials; no shared super-user.</li><li>Policy checks outside the model (allow lists, limits, change windows); never rely on the prompt for enforcement.</li><li>Isolate code execution in sandboxes; scan tool descriptions and inputs for injection; version and review tools like code.</li></ul>
+    </section>
+    <section class="lesson" id="s5e">
+      <h2>Reliability and scaling</h2><ul><li>Idempotent tools, timeouts, step and cost budgets, and loop detection.</li><li>Durable workflow engine so runs survive restarts and can be resumed or replayed.</li><li>Kill switch and per-agent circuit breaker; degrade to manual runbooks.</li></ul>
+    </section>
+    <section class="lesson" id="s5f">
+      <h2>Cost levers</h2><ul><li>Cap tokens and tool calls per run; use small models for routine steps and larger models for planning.</li><li>Cache stable tool results; schedule non-urgent agents in batch.</li></ul>
+    </section>
+    <section class="lesson" id="s5g">
+      <h2>Trade-offs and decisions</h2><ul><li>Single powerful agent versus several specialised agents: start simple, split when context or permissions demand.</li><li>Open protocols (MCP, A2A) reduce lock-in but need governance of external tools.</li><li>Autonomy level should match risk; measure success and escalation rate.</li></ul>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://aws.amazon.com/architecture/generative-ai/" target="_blank" rel="noreferrer">AWS generative AI architectures</a> — Reference designs.</li><li><a href="https://learn.microsoft.com/azure/architecture/ai-ml/" target="_blank" rel="noreferrer">Azure AI architecture guides</a> — Patterns for AI and ML.</li><li><a href="https://cloud.google.com/architecture/ai-ml" target="_blank" rel="noreferrer">Google Cloud AI and ML architectures</a> — Reference designs.</li><li><a href="https://modelcontextprotocol.io/" target="_blank" rel="noreferrer">Model Context Protocol</a> — Open standard for tool access.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="cloud-13-arch-classic-handbook.html">&larr; Previous: Case Studies: Classic Systems</a><a class="lesson-link" href="cloud-15-arch-pure-ai-handbook.html">Next lesson: Case Study: Enterprise AI Platform &rarr;</a></div>
+    <footer class="site-footer">Cloud learning path &middot; Updated 2026-10-27 &middot; Check provider documentation for current limits and pricing</footer>
+  </main>
+</body>
+</html>

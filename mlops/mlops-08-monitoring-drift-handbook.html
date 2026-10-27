@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: the four layers of ML monitoring, data drift, concept drift, delayed labels, drift metrics, alerting, and closing the loop with retraining.">
+  <title>08. Monitoring, Drift and Retraining | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">08 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-07-serving-deployment-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-09-llmops-genai-ops-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 08 &middot; Intermediate &middot; Know when it decays</div>
+      <h1>Monitoring, Drift and Retraining</h1>
+      <p class="lede">Models decay silently. Monitoring turns that into alerts and retraining decisions.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">Drift</span><span class="badge">Retraining loop</span></div>
+    </section>
+    <section class="lesson" id="layers">
+      <h2>Four layers</h2><table><thead><tr><th>Layer</th><th>Signals</th><th>Tools</th></tr></thead><tbody><tr><td>System</td><td>Latency, errors, GPU use, cost</td><td>Prometheus, Grafana, cloud monitoring</td></tr><tr><td>Data</td><td>Schema, nulls, ranges, feature drift, freshness</td><td>Evidently, WhyLabs, Arize, Great Expectations</td></tr><tr><td>Model</td><td>Prediction distribution, confidence, accuracy once labels arrive</td><td>Evidently, Arize, Fiddler, cloud monitors</td></tr><tr><td>Business</td><td>Conversion, loss, complaints, human override rate</td><td>BI and product analytics</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="drift">
+      <h2>Kinds of drift</h2><table><thead><tr><th>Type</th><th>Meaning</th><th>Example</th></tr></thead><tbody><tr><td>Data (covariate) drift</td><td>Input distribution P(X) changes</td><td>New customer segment, sensor recalibration</td></tr><tr><td>Label drift</td><td>Target distribution changes</td><td>Fraud rate rises</td></tr><tr><td>Concept drift</td><td>Relationship P(Y given X) changes</td><td>Behaviour shifts after a pricing change</td></tr><tr><td>Upstream data change</td><td>Pipeline bug or schema change</td><td>Currency unit changed</td></tr></tbody></table><p>Drift in inputs does not always hurt accuracy, and accuracy can fall without visible input drift. Monitor both.</p>
+    </section>
+    <section class="lesson" id="metrics">
+      <h2>Detecting drift</h2><pre><code>import numpy as np
+def psi(expected, actual, bins=10):
+    edges = np.quantile(expected, np.linspace(0, 1, bins + 1))
+    e = np.histogram(expected, edges)[0] / len(expected)
+    a = np.histogram(np.clip(actual, edges[0], edges[-1]), edges)[0] / len(actual)
+    e, a = np.clip(e, 1e-6, None), np.clip(a, 1e-6, None)
+    return float(np.sum((a - e) * np.log(a / e)))
+# rule of thumb: PSI &lt; 0.1 stable, 0.1 to 0.25 watch, &gt; 0.25 investigate</code></pre><ul><li>Numeric: PSI, Kolmogorov-Smirnov, Wasserstein distance.</li><li>Categorical: chi-square, Jensen-Shannon divergence.</li><li>Embeddings and text: domain classifier or embedding distance.</li><li>Compare production windows to the training reference and to the previous window.</li></ul>
+    </section>
+    <section class="lesson" id="labels">
+      <h2>Delayed and missing labels</h2><ul><li>Use proxy metrics now (prediction drift, user feedback) and true metrics when ground truth arrives (fraud chargebacks arrive weeks later).</li><li>Sample and label a slice of traffic with human reviewers.</li><li>Log predictions with ids so labels can be joined later.</li></ul>
+    </section>
+    <section class="lesson" id="loop">
+      <h2>Closing the loop</h2><pre><code>monitor -&gt; alert (threshold + persistence) -&gt; triage (data bug? real drift?)
+   -&gt; trigger retrain pipeline on fresh data -&gt; challenger vs champion gates -&gt; canary -&gt; promote
+Policy: retrain on schedule AND on drift; never auto-promote without gates</code></pre><ul><li>Alert on sustained deviations to avoid noise; page only for user-impacting issues.</li><li>Keep runbooks: rollback, fallback to rules or the previous model, disable feature.</li><li>Retraining on the newest data is not always better; evaluate on a recent holdout.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Compute PSI between a training column and a shifted copy.</li><li>Define three alerts for a model you run and the action for each.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://docs.evidentlyai.com" target="_blank" rel="noreferrer">Evidently</a> &mdash; open-source monitoring</li><li><a href="https://prometheus.io/docs/" target="_blank" rel="noreferrer">Prometheus</a> &mdash; metrics</li><li><a href="https://developers.google.com/machine-learning/guides/rules-of-ml" target="_blank" rel="noreferrer">Rules of ML</a> &mdash; practical advice</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-07-serving-deployment-handbook.html">&larr; Previous: Serving and Deployment</a><a class="lesson-link" href="mlops-09-llmops-genai-ops-handbook.html">Next lesson: LLMOps &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

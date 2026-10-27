@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Advanced: inference mechanics, serving engines, GPU capacity sizing, autoscaling, gateways, caching and routing, large-scale ingestion and index operations, and a cost-control playbook.">
+  <title>13. Serving, Scale and Cost | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">13 / 16 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-12-architecture-decisions-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-14-usecases-knowledge-support-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 13 &middot; Advanced &middot; Run it at volume</div>
+      <h1>Serving, Scale and Cost</h1>
+      <p class="lede">Large to very large scale changes the problem. This step covers how inference actually consumes GPU memory and time, how to size and scale serving, how to operate billion-chunk indexes, and where the real cost savings are.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">Inference</span><span class="badge">Capacity and cost</span></div>
+    </section>
+    <section class="lesson" id="inference">
+      <h2>How inference spends time and memory</h2><ul><li><strong>Prefill</strong> processes the whole prompt in parallel and is compute-bound; it drives time to first token.</li><li><strong>Decode</strong> generates one token at a time and is memory-bandwidth-bound; it drives tokens per second.</li><li><strong>KV cache</strong> stores keys and values for every token of every active sequence. It is usually what limits concurrency.</li></ul><pre><code>KV cache bytes per token = 2 (K and V) * layers * kv_heads * head_dim * bytes_per_value
+Example 70B-class model: 80 layers, 8 KV heads (grouped-query attention), head_dim 128, fp16
+  = 2 * 80 * 8 * 128 * 2 = 327,680 bytes ~ 0.31 MB per token
+  8,000-token sequence ~ 2.5 GB   |   32,000 tokens ~ 10 GB (per active request)
+
+Weights: 70B at FP8 ~ 70 GB; at 4-bit ~ 40 GB
+Two 80 GB GPUs (tensor parallel 2), FP8 weights: ~160 - 70 - overhead ~ 75 GB for KV
+  -&gt; roughly 30 concurrent 8k-token sequences. Measure with your real traffic mix.</code></pre>
+    </section>
+    <section class="lesson" id="engines">
+      <h2>Serving engines and techniques</h2><table><thead><tr><th>Technique</th><th>What it gives you</th></tr></thead><tbody><tr><td>Continuous batching</td><td>New requests join the running batch every step; the biggest throughput gain over naive serving</td></tr><tr><td>PagedAttention and prefix caching</td><td>Efficient KV memory use and reuse of shared prefixes</td></tr><tr><td>Quantisation (FP8, AWQ, GPTQ, INT4)</td><td>Smaller weights and faster decode; evaluate quality impact</td></tr><tr><td>Speculative decoding</td><td>A small draft model proposes tokens, the big model verifies several at once; lower latency</td></tr><tr><td>Tensor, pipeline and expert parallelism</td><td>Split large or MoE models across GPUs</td></tr><tr><td>Prefill and decode disaggregation</td><td>Separate pools tuned for each phase at very large scale</td></tr><tr><td>Chunked prefill</td><td>Avoid long prompts blocking decoding of others</td></tr><tr><td>LoRA multi-adapter serving</td><td>Many fine-tuned variants on one base deployment</td></tr></tbody></table><table><thead><tr><th>Engine</th><th>Notes</th></tr></thead><tbody><tr><td>vLLM</td><td>Popular open-source engine, OpenAI-compatible API, broad model support</td></tr><tr><td>SGLang</td><td>Strong on structured generation and prefix reuse</td></tr><tr><td>TensorRT-LLM and NVIDIA Dynamo or NIM</td><td>Highest performance on NVIDIA GPUs, more build effort</td></tr><tr><td>Hugging Face TGI</td><td>Mature serving server</td></tr><tr><td>llama.cpp, Ollama, LM Studio</td><td>CPU, laptop and edge inference with GGUF</td></tr><tr><td>Managed endpoints (Bedrock, Vertex AI, Azure AI Foundry, Together, Fireworks, Baseten, Databricks)</td><td>Skip the operational burden; pay per token or per provisioned throughput</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="capacity">
+      <h2>Capacity planning</h2><pre><code>1. Measure: average and p95 input tokens, output tokens, requests/s at peak, latency SLO.
+2. Throughput target (tokens/s) = peak_req_per_s * (avg_output_tokens + prefill_equivalent)
+3. Benchmark ONE replica with your real prompt mix and engine settings:
+   tokens/s at the SLO (time to first token &lt; 1 s, inter-token &lt; 50 ms, for example).
+4. Replicas = ceil(peak_target / per_replica_throughput * headroom 1.3)
+5. Add: redundancy across zones (N+1), warm pool for failover, canary capacity.</code></pre><ul><li>Autoscale on queue depth, KV-cache utilisation and time to first token, not CPU. GPU nodes take minutes to start, so keep a warm buffer and use schedulers such as KEDA or cloud-native autoscalers with pre-pulled images.</li><li>Reserve or commit for the steady base load; use on-demand or spot for bursts and batch jobs.</li><li>Separate pools: interactive (low latency), batch (throughput), and fine-tuning or evaluation jobs.</li><li>Plan quotas early: GPU and provider rate limits are the most common launch blockers.</li></ul>
+    </section>
+    <section class="lesson" id="gateway">
+      <h2>Gateway, routing and resilience</h2><ul><li><strong>Model gateway</strong> (LiteLLM, Portkey, cloud gateways): unified API, per-tenant budgets, rate limiting, retries, fallbacks across providers, and central logging.</li><li><strong>Routing:</strong> by task type, input size, tenant tier or classifier confidence; cascade from a small model to a larger one.</li><li><strong>Resilience:</strong> timeouts, exponential backoff with jitter, circuit breakers, hedged requests for tail latency, multi-region and multi-provider fallback, and graceful degradation.</li><li><strong>Semantic cache:</strong> return stored answers for near-duplicate questions where the answer is not user-specific, with TTLs and invalidation; measure false-hit rate carefully.</li><li><strong>Rate-limit fairness:</strong> per-tenant token budgets so one workload cannot starve the rest.</li></ul>
+    </section>
+    <section class="lesson" id="data-scale">
+      <h2>Operating large retrieval indexes</h2><table><thead><tr><th>Concern</th><th>Practice at large scale</th></tr></thead><tbody><tr><td>Ingestion throughput</td><td>Distributed parse and embed workers on queues; GPU or batch embedding; idempotent upserts keyed by content hash</td></tr><tr><td>Freshness</td><td>CDC or event streams into incremental updates; tombstones for deletes; per-source freshness SLOs</td></tr><tr><td>Re-embedding on model change</td><td>Build a new index version in parallel (blue-green), shadow-evaluate, switch alias, then retire the old one</td></tr><tr><td>Sharding and replicas</td><td>Shard by tenant or hash for capacity, replicate for throughput and availability</td></tr><tr><td>Memory cost</td><td>Quantised or truncated vectors in RAM, full vectors on SSD or object storage for rescoring, tiered hot and cold data</td></tr><tr><td>Filtering and ACLs</td><td>Pre-filter with indexed metadata; keep group membership out of each chunk where possible, using group ids resolved at query time</td></tr><tr><td>Quality at scale</td><td>Continuous retrieval evals on sampled queries; monitor empty-result rate and click or citation feedback</td></tr><tr><td>Backups and DR</td><td>Snapshots of indexes and source manifests so you can rebuild; cross-region replicas for critical systems</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="cost">
+      <h2>Cost-control playbook</h2><table><thead><tr><th>Lever</th><th>How</th><th>Typical effect</th></tr></thead><tbody><tr><td>Right-size the model</td><td>Route and cascade; small tuned models for narrow tasks</td><td>Large (often several-fold)</td></tr><tr><td>Shorten prompts</td><td>Trim context, compress, fewer few-shot examples, fine-tune to bake in instructions</td><td>Direct token reduction</td></tr><tr><td>Prompt and prefix caching</td><td>Stable prefix first; track hit rate</td><td>Large discount and latency win on repeated prefixes</td></tr><tr><td>Batch and async APIs</td><td>Non-interactive work through discounted batch endpoints</td><td>Commonly around half price</td></tr><tr><td>Limit output</td><td>max tokens, concise instructions, structured output</td><td>Output tokens cost more than input</td></tr><tr><td>Reasoning effort control</td><td>Low effort by default; escalate selectively</td><td>Avoids paying for hidden thinking tokens</td></tr><tr><td>Self-host at high utilisation</td><td>Quantised open models, continuous batching</td><td>Beats API pricing when GPUs stay busy</td></tr><tr><td>Quantise vectors and trim dimensions</td><td>int8, binary, Matryoshka</td><td>Many-fold index memory reduction</td></tr><tr><td>Tenant budgets and alerts</td><td>Hard caps and anomaly alerts</td><td>Prevents runaway agents</td></tr><tr><td>Measure unit economics</td><td>Cost per resolved task, not per token</td><td>Aligns engineering with value</td></tr></tbody></table><p>See the cloud path FinOps handbook for tagging, budgets and commitment strategy that apply to GPU and AI spend.</p>
+    </section>
+    <section class="lesson" id="slos">
+      <h2>Service level objectives</h2><table><thead><tr><th>SLI</th><th>Example SLO</th></tr></thead><tbody><tr><td>Time to first token (p95)</td><td>Under 1.5 seconds for chat</td></tr><tr><td>End-to-end latency (p95)</td><td>Under 8 seconds for RAG answers</td></tr><tr><td>Availability</td><td>99.9 percent, with provider fallback</td></tr><tr><td>Answer quality (online eval)</td><td>Faithfulness at or above 0.9 on sampled traffic</td></tr><tr><td>Cost</td><td>Under a stated cost per resolved task</td></tr><tr><td>Freshness</td><td>New documents searchable within 15 minutes</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Calculate KV cache per request for your model and the concurrency one GPU can hold.</li><li>Benchmark vLLM on a sample of your traffic and record tokens per second at your latency target.</li><li>Estimate monthly cost for API versus self-hosted at your volume.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://docs.vllm.ai" target="_blank" rel="noreferrer">vLLM documentation</a> &mdash; serving and optimisation</li><li><a href="https://docs.sglang.ai" target="_blank" rel="noreferrer">SGLang documentation</a> &mdash; serving and structured generation</li><li><a href="https://docs.litellm.ai" target="_blank" rel="noreferrer">LiteLLM documentation</a> &mdash; model gateway</li><li><a href="https://arxiv.org/abs/2309.06180" target="_blank" rel="noreferrer">PagedAttention paper</a> &mdash; KV cache memory management</li><li><a href="../cloud/cloud-11-finops-handbook.html" target="_blank" rel="noreferrer">Cloud path: FinOps</a> &mdash; cost governance</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-12-architecture-decisions-handbook.html">&larr; Previous: Architecture Decisions</a><a class="lesson-link" href="genai-14-usecases-knowledge-support-handbook.html">Next lesson: Use Cases: Knowledge and Support &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

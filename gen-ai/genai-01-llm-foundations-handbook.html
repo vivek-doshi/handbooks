@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner: what large language models are, tokens and context windows, sampling settings, the model landscape, known limitations, and your first API call.">
+  <title>01. LLM Foundations | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">01 / 16 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="../index.html">All handbooks</a><a href="genai-02-prompting-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 01 &middot; Beginner &middot; Start here</div>
+      <h1>LLM Foundations</h1>
+      <p class="lede">Everything in generative AI sits on one idea: a model that predicts the next token. This step builds the vocabulary you need for every later step, so the architecture choices later feel obvious rather than magical.</p>
+      <div class="hero-meta"><span class="badge">Beginner</span><span class="badge">Tokens and context</span><span class="badge">First API call</span></div>
+    </section>
+    <section class="lesson" id="what">
+      <h2>What an LLM is</h2><p>A large language model (LLM) is a neural network, almost always a decoder-only transformer, trained to predict the next token given the tokens before it. Generating text is just repeating that step: predict a token, append it, predict again. Everything else (chat, code, reasoning, tool use) is behaviour layered on that loop.</p><table><thead><tr><th>Training stage</th><th>What happens</th><th>Result</th></tr></thead><tbody><tr><td>Pretraining</td><td>Next-token prediction over trillions of tokens of web, books, code and licensed data</td><td>A base model that continues text but does not follow instructions</td></tr><tr><td>Supervised fine-tuning (SFT)</td><td>Train on curated instruction and answer pairs</td><td>An instruction-following model</td></tr><tr><td>Preference and RL tuning</td><td>RLHF, DPO and reinforcement learning with verifiable rewards</td><td>Helpful, safer, and (for reasoning models) better at multi-step problems</td></tr><tr><td>Reasoning training</td><td>RL teaches the model to produce long hidden chains of thought before answering</td><td>Reasoning models that trade latency and cost for accuracy</td></tr></tbody></table><div class="callout"><strong>Why this matters for architecture</strong>Knowledge is frozen at pretraining time, behaviour is shaped by fine-tuning, and everything else you add (retrieval, tools, guardrails) happens around the model at run time. Most of this handbook is about choosing which of those levers to pull.</div>
+    </section>
+    <section class="lesson" id="tokens">
+      <h2>Tokens, cost and the context window</h2><p>Models do not read words; they read tokens, sub-word pieces produced by a tokenizer such as byte-pair encoding. In English one token is roughly 4 characters or 0.75 words; code, numbers and non-English text use more tokens per word. You pay per token (input and output are priced separately, output costs more) and latency grows with output tokens.</p><pre><code>import tiktoken
+enc = tiktoken.get_encoding("o200k_base")
+text = "Retrieval-augmented generation reduces hallucinations."
+ids = enc.encode(text)
+print(len(ids), ids[:5])       # token count drives cost and latency
+print(enc.decode(ids))</code></pre><p>The <strong>context window</strong> is the maximum number of tokens (prompt plus output) the model can attend to in one request. Frontier models now advertise hundreds of thousands to millions of tokens, but three rules still hold:</p><ul><li>Quality degrades before the limit: models retrieve facts from the start and end of a long prompt better than from the middle (the &ldquo;lost in the middle&rdquo; effect).</li><li>Cost and time-to-first-token grow with prompt length, so stuffing everything in is rarely free.</li><li>The window is per request. The model has no memory between calls unless your application resends the history.</li></ul>
+    </section>
+    <section class="lesson" id="sampling">
+      <h2>Controlling the output</h2><p>After each step the model produces a probability distribution over the vocabulary. Sampling settings decide how the next token is chosen.</p><table><thead><tr><th>Setting</th><th>Effect</th><th>Typical use</th></tr></thead><tbody><tr><td><code>temperature</code></td><td>0 is near-deterministic; higher flattens the distribution and adds variety</td><td>0 to 0.3 for extraction and code, 0.7 to 1 for brainstorming</td></tr><tr><td><code>top_p</code></td><td>Sample only from the smallest set of tokens whose probability sums to p</td><td>Leave at default; tune temperature or top_p, not both</td></tr><tr><td><code>max_tokens</code></td><td>Hard cap on output length</td><td>Always set, to bound cost and runaway output</td></tr><tr><td><code>stop</code></td><td>Strings that end generation</td><td>Cut off at a delimiter</td></tr><tr><td>Reasoning effort</td><td>How long a reasoning model thinks (low, medium, high)</td><td>Raise for hard problems, lower for latency and cost</td></tr></tbody></table><p>Even at temperature 0, outputs are not guaranteed identical across runs or provider versions. Design for tolerance: validate outputs, pin model versions, and keep regression tests (step 10).</p>
+    </section>
+    <section class="lesson" id="landscape">
+      <h2>The model landscape</h2><p>Model names change every few months, so pick by category and test on your own data. Check each provider's current model list and pricing before deciding.</p><table><thead><tr><th>Category</th><th>Examples of the type</th><th>Strengths</th><th>Trade-offs</th></tr></thead><tbody><tr><td>Frontier proprietary (API)</td><td>OpenAI GPT family, Anthropic Claude, Google Gemini</td><td>Best general quality, tool use, multimodal, managed scaling</td><td>Per-token cost, data-governance review, vendor dependence</td></tr><tr><td>Open-weight</td><td>Meta Llama, Alibaba Qwen, Mistral, DeepSeek, OpenAI gpt-oss, Google Gemma</td><td>Self-hosting, fine-tuning, data stays in your boundary</td><td>You run the GPUs and the serving stack</td></tr><tr><td>Small language models (SLMs)</td><td>1B to 14B parameter open models</td><td>Cheap, fast, can run on one GPU or edge, ideal to fine-tune</td><td>Weaker at open-ended reasoning and breadth</td></tr><tr><td>Reasoning models</td><td>o-series style, Claude extended thinking, Gemini thinking, DeepSeek-R1 style</td><td>Much better on maths, code, planning</td><td>Slower and costlier per answer; hidden thinking tokens are billed</td></tr><tr><td>Mixture-of-experts (MoE)</td><td>Many recent frontier and open models</td><td>Large capacity at lower active compute per token</td><td>Needs memory for all experts when self-hosting</td></tr><tr><td>Multimodal and embedding models</td><td>Vision-language, speech, image generation, embedding and reranker models</td><td>Documents, images, audio, search</td><td>Separate evaluation and cost profile</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="limits">
+      <h2>Limitations you must design around</h2><table><thead><tr><th>Limitation</th><th>What it looks like</th><th>Typical mitigation</th></tr></thead><tbody><tr><td>Hallucination</td><td>Confident but wrong or invented facts and citations</td><td>Ground with retrieval (steps 04 to 05), require citations, verify</td></tr><tr><td>Stale knowledge</td><td>Unaware of events after its training cutoff and of your private data</td><td>RAG, tools, web search</td></tr><tr><td>Non-determinism</td><td>Different answers to the same prompt</td><td>Low temperature, structured outputs, tests</td></tr><tr><td>Prompt injection</td><td>Untrusted text in the context hijacks the instructions</td><td>Separate trust levels, least-privilege tools, guardrails (step 10)</td></tr><tr><td>Weak exact computation</td><td>Arithmetic, counting and long precise lookups fail</td><td>Delegate to code execution or tools</td></tr><tr><td>Cost and latency</td><td>Long contexts and reasoning make calls slow and expensive</td><td>Caching, routing to smaller models, batching (steps 12 and 13)</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="first-call">
+      <h2>Your first API call</h2><p>Most providers, and self-hosted servers such as vLLM, Ollama and llama.cpp, expose an OpenAI-compatible chat endpoint, so the same client code works across them. Only the base URL, key and model name change.</p><pre><code>from openai import OpenAI
+
+client = OpenAI()  # reads OPENAI_API_KEY; set base_url= for vLLM, Ollama, etc.
+
+resp = client.chat.completions.create(
+    model="MODEL_NAME",                 # check your provider's current list
+    messages=[
+        {"role": "system", "content": "You are a concise technical assistant."},
+        {"role": "user", "content": "Explain a context window in two sentences."},
+    ],
+    temperature=0.2,
+    max_tokens=200,
+)
+print(resp.choices[0].message.content)
+print(resp.usage)                       # prompt_tokens, completion_tokens
+
+# Streaming: show tokens as they arrive (better perceived latency)
+for chunk in client.chat.completions.create(
+        model="MODEL_NAME", stream=True,
+        messages=[{"role": "user", "content": "Name three uses of embeddings."}]):
+    print(chunk.choices[0].delta.content or "", end="")</code></pre><div class="callout"><strong>Habits to start now</strong>Log token usage on every call, store the model name and prompt version with each response, never hard-code secrets, and set timeouts and retries. These are cheap now and painful to add later.</div>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Count tokens for the same paragraph in English, Hindi and Python code and compare.</li><li>Call a model at temperature 0 and 1 five times each and note the variation.</li><li>Ask a question about an event after the model's cutoff and observe the failure mode. You will fix it in step 04.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://platform.openai.com/docs" target="_blank" rel="noreferrer">OpenAI API documentation</a> &mdash; chat, responses, structured outputs</li><li><a href="https://docs.anthropic.com" target="_blank" rel="noreferrer">Anthropic documentation</a> &mdash; messages API and prompting guides</li><li><a href="https://ai.google.dev/gemini-api/docs" target="_blank" rel="noreferrer">Gemini API documentation</a> &mdash; long context and multimodal</li><li><a href="https://huggingface.co/learn/llm-course" target="_blank" rel="noreferrer">Hugging Face LLM course</a> &mdash; free, hands-on</li><li><a href="../machine-learning/ml-13-attention-transformers-handbook.html" target="_blank" rel="noreferrer">ML path: Transformers</a> &mdash; the mechanics behind attention and tokens</li></ul>
+    </section>
+    <div class="lesson-footer"><span></span><a class="lesson-link" href="genai-02-prompting-handbook.html">Next lesson: Prompt Engineering &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

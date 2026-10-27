@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: what fine-tuning changes, SFT, LoRA and QLoRA, preference tuning and RL, data formats and quality, key hyperparameters, evaluation and pitfalls.">
+  <title>07. Fine-Tuning Fundamentals | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">07 / 16 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-06-context-engineering-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-08-fine-tuning-practice-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 07 &middot; Intermediate &middot; Change the model's behaviour</div>
+      <h1>Fine-Tuning Fundamentals</h1>
+      <p class="lede">Fine-tuning continues training a pretrained model on your data so that it behaves differently by default: a consistent style, a strict format, a narrow skill or a smaller and cheaper replacement for a large model. This step explains the methods and data; step 08 does it hands-on, and step 12 decides when it is worth it.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">SFT, LoRA, DPO</span><span class="badge">Data first</span></div>
+    </section>
+    <section class="lesson" id="what">
+      <h2>What fine-tuning does and does not do</h2><table><thead><tr><th>Fine-tuning is good for</th><th>Fine-tuning is poor for</th></tr></thead><tbody><tr><td>Consistent tone, persona and output format</td><td>Adding large amounts of fast-changing facts (use RAG)</td></tr><tr><td>Domain-specific tasks: classification, extraction, routing, code style</td><td>Anything needing citations and provenance</td></tr><tr><td>Teaching tool-call and function schemas reliably</td><td>Per-user access control</td></tr><tr><td>Shrinking a big model into a small, fast, cheap one (distillation)</td><td>Fixing missing information in the training data</td></tr><tr><td>Reducing prompt length by baking in instructions and examples</td><td>Quick experiments when prompting has not been tried</td></tr></tbody></table><div class="callout"><strong>The mental model</strong>Prompting and RAG change the <em>input</em>. Fine-tuning changes the <em>weights</em>. Use inputs to supply knowledge and weights to shape behaviour, skills and efficiency.</div>
+    </section>
+    <section class="lesson" id="methods">
+      <h2>Methods</h2><table><thead><tr><th>Method</th><th>What it trains</th><th>Typical use</th></tr></thead><tbody><tr><td>Full fine-tuning</td><td>All weights</td><td>Maximum quality, large GPU memory, needs a lot of data</td></tr><tr><td>LoRA</td><td>Small low-rank adapter matrices added to attention and MLP layers; base frozen</td><td>Default for most teams; adapters are megabytes, swappable</td></tr><tr><td>QLoRA</td><td>LoRA on a 4-bit quantised base model</td><td>Fine-tune 7B to 70B models on one GPU</td></tr><tr><td>Continued pretraining</td><td>All or most weights on raw domain text</td><td>New domain vocabulary and language (medical, legal, low-resource languages)</td></tr><tr><td>Supervised fine-tuning (SFT)</td><td>Learn from prompt and ideal-answer pairs</td><td>The standard first step</td></tr><tr><td>Preference tuning (DPO, ORPO, KTO)</td><td>Learn from chosen versus rejected answers</td><td>Style, helpfulness, safety, tone after SFT</td></tr><tr><td>RL with verifiable rewards (GRPO and similar)</td><td>Reward correct outcomes (tests pass, answer matches)</td><td>Reasoning, code and tool-use skills</td></tr><tr><td>Distillation</td><td>Student imitates a larger teacher's outputs</td><td>Cheaper serving at similar task quality</td></tr><tr><td>Embedding and reranker tuning</td><td>Contrastive training on query and passage pairs</td><td>Better domain retrieval; often the highest-value fine-tune in a RAG system</td></tr></tbody></table><p>LoRA keeps the pretrained weight matrix W frozen and learns an update <code>&Delta;W = B &times; A</code> where A and B have a small rank r (commonly 8 to 64). Only A and B are trained, so memory and storage drop by orders of magnitude, and adapters can be merged into W or served separately.</p>
+    </section>
+    <section class="lesson" id="data">
+      <h2>Data: the part that decides the result</h2><p>Quality beats quantity. A few hundred to a few thousand excellent examples often change behaviour more than 100,000 noisy ones.</p><pre><code># SFT, conversational format (one JSON object per line)
+{"messages": [
+  {"role": "system", "content": "You triage support tickets."},
+  {"role": "user", "content": "Checkout fails with error 500 for EU users"},
+  {"role": "assistant", "content": "{\"severity\": \"high\", \"team\": \"payments\"}"}]}
+
+# Preference format for DPO
+{"prompt": "Summarise this refund policy...",
+ "chosen": "Refunds are available within 30 days...",
+ "rejected": "I think there might be some kind of refund..."}</code></pre><ul><li><strong>Sources:</strong> real production traffic (with consent and PII removed), expert-written answers, and synthetic data generated by a stronger model then filtered.</li><li><strong>Match deployment:</strong> use the same system prompt, tool schema and chat template at training and inference. Template mismatch is the most common silent failure.</li><li><strong>Clean:</strong> deduplicate, remove contradictory labels, balance classes, and hold out a test set before looking at anything.</li><li><strong>Rough sizes:</strong> format or style 200 to 2,000 examples; narrow task 1,000 to 20,000; new domain skills far more; preference tuning 5,000 to 50,000 pairs.</li><li><strong>Licence and privacy:</strong> check that you may train on the data, and that the model cannot regurgitate personal data.</li></ul>
+    </section>
+    <section class="lesson" id="hyper">
+      <h2>Key hyperparameters</h2><table><thead><tr><th>Parameter</th><th>Typical value</th><th>Notes</th></tr></thead><tbody><tr><td>Learning rate</td><td>LoRA 1e-4 to 2e-4; full fine-tune 1e-5 to 2e-5</td><td>Too high causes forgetting and instability; use warmup and cosine or linear decay</td></tr><tr><td>Epochs</td><td>1 to 3</td><td>More epochs overfit small datasets quickly</td></tr><tr><td>LoRA rank r</td><td>8 to 64</td><td>Higher gives capacity but more memory; start at 16</td></tr><tr><td>LoRA alpha</td><td>r or 2r</td><td>Scales the adapter update</td></tr><tr><td>Target modules</td><td>All linear layers (q, k, v, o, gate, up, down)</td><td>Covering the MLPs usually beats attention only</td></tr><tr><td>Effective batch size</td><td>16 to 128 sequences</td><td>Use gradient accumulation when memory is tight</td></tr><tr><td>Max sequence length</td><td>Cover 95 percent of examples</td><td>Memory grows with length; pack short examples</td></tr><tr><td>Precision</td><td>bf16 on modern GPUs</td><td>fp16 needs loss scaling; QLoRA keeps the base in 4-bit</td></tr></tbody></table><p>Watch training and validation loss together. Training loss falling while validation loss rises means overfitting; stop earlier or add data.</p>
+    </section>
+    <section class="lesson" id="evaluate">
+      <h2>Evaluating a fine-tuned model</h2><ul><li>Compare against the strongest <em>prompted</em> baseline, not against the untuned small model. If prompting plus RAG reaches the target, you do not need to fine-tune.</li><li>Evaluate on a held-out task set that was never used in training, plus an LLM-as-judge or human rubric for open-ended output.</li><li>Run a regression suite of general abilities (instruction following, safety, a few public benchmarks) to catch catastrophic forgetting.</li><li>Test on the same prompts, system messages and tools used in production.</li><li>Track cost and latency per request alongside quality, because efficiency is often the reason to fine-tune.</li></ul>
+    </section>
+    <section class="lesson" id="pitfalls">
+      <h2>Common pitfalls</h2><table><thead><tr><th>Pitfall</th><th>Symptom</th><th>Fix</th></tr></thead><tbody><tr><td>Catastrophic forgetting</td><td>Great at the task, worse at everything else</td><td>Lower learning rate, fewer epochs, LoRA, mix in general data</td></tr><tr><td>Chat template mismatch</td><td>Gibberish, repeated tokens or ignored instructions</td><td>Use the tokenizer's chat template identically in training and serving</td></tr><tr><td>Training on the prompt</td><td>Model parrots inputs</td><td>Mask the loss to assistant tokens only</td></tr><tr><td>Test leakage</td><td>Excellent eval, poor production</td><td>Deduplicate across train and test; hold out by time or customer</td></tr><tr><td>Noisy labels</td><td>Plateaus and inconsistent output</td><td>Audit samples, cut weak data, tighten guidelines</td></tr><tr><td>Tokenizer or EOS bugs</td><td>Never stops generating</td><td>Verify the end-of-turn token is in the training targets</td></tr><tr><td>Fine-tuning for facts</td><td>Confident wrong answers</td><td>Use RAG for facts, fine-tune for behaviour</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Write 50 ideal input and output pairs for a task you care about, and test how a prompted model does on 20 held-out ones.</li><li>Decide from the results whether the gap is knowledge (use RAG) or behaviour (fine-tune).</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://arxiv.org/abs/2106.09685" target="_blank" rel="noreferrer">LoRA paper</a> &mdash; low-rank adaptation</li><li><a href="https://arxiv.org/abs/2305.14314" target="_blank" rel="noreferrer">QLoRA paper</a> &mdash; 4-bit fine-tuning</li><li><a href="https://arxiv.org/abs/2305.18290" target="_blank" rel="noreferrer">DPO paper</a> &mdash; preference optimisation without a reward model</li><li><a href="https://huggingface.co/docs/peft" target="_blank" rel="noreferrer">PEFT documentation</a> &mdash; adapter methods</li><li><a href="https://huggingface.co/docs/trl" target="_blank" rel="noreferrer">TRL documentation</a> &mdash; SFT, DPO, GRPO trainers</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-06-context-engineering-handbook.html">&larr; Previous: Context Engineering</a><a class="lesson-link" href="genai-08-fine-tuning-practice-handbook.html">Next lesson: Fine-Tuning in Practice &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

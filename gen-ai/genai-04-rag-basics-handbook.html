@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner: what retrieval-augmented generation is, the ingest and query pipelines, chunking, a working minimal example, evaluation basics, and when RAG is the wrong tool.">
+  <title>04. RAG Basics | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">04 / 16 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-03-embeddings-vector-search-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-05-advanced-rag-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 04 &middot; Beginner &middot; Ground the model in your data</div>
+      <h1>RAG Basics</h1>
+      <p class="lede">Retrieval-augmented generation (RAG) fetches relevant knowledge at question time and puts it in the prompt. It is the default way to make a model answer from private, fresh or large data, and the foundation for the advanced strategies in the next step.</p>
+      <div class="hero-meta"><span class="badge">Beginner</span><span class="badge">Ingest and query</span><span class="badge">Minimal RAG</span></div>
+    </section>
+    <section class="lesson" id="why">
+      <h2>Why RAG exists</h2><table><thead><tr><th>Problem</th><th>How RAG helps</th></tr></thead><tbody><tr><td>Model does not know your private data</td><td>Retrieve it at run time</td></tr><tr><td>Knowledge changes daily</td><td>Update the index, not the model</td></tr><tr><td>Hallucinated answers</td><td>Answer from retrieved evidence and cite it</td></tr><tr><td>Per-user permissions</td><td>Filter retrieval by the caller's access rights</td></tr><tr><td>Auditability</td><td>Show which sources produced the answer</td></tr></tbody></table><div class="callout"><strong>RAG gives knowledge, not behaviour</strong>RAG changes <em>what the model knows right now</em>. It does not change tone, output format, reasoning style or domain skill. Fine-tuning changes behaviour. Step 12 turns this distinction into a decision framework.</div>
+    </section>
+    <section class="lesson" id="pipeline">
+      <h2>The two pipelines</h2><pre><code>INGEST (offline, repeatable)
+  sources -&gt; parse -&gt; clean -&gt; chunk -&gt; embed -&gt; index (+ metadata, ACLs)
+
+QUERY (online, per request)
+  question -&gt; (rewrite) -&gt; embed -&gt; retrieve top-k -&gt; (rerank)
+           -&gt; build prompt with context -&gt; LLM -&gt; answer + citations</code></pre><ul><li><strong>Parse:</strong> extract text and structure from PDF, HTML, Office, tickets, wikis. Parsing quality caps answer quality, especially for tables and scans.</li><li><strong>Chunk:</strong> split into retrievable pieces, usually 200 to 800 tokens with 10 to 15 percent overlap, preferably along headings and paragraphs.</li><li><strong>Metadata:</strong> store source, title, section, date, owner and access groups with each chunk.</li><li><strong>Retrieve:</strong> top-k (often 20 to 50 candidates, narrowed later) by dense, sparse or hybrid search.</li><li><strong>Generate:</strong> prompt with only the best chunks, instruct the model to use them and cite.</li></ul>
+    </section>
+    <section class="lesson" id="minimal">
+      <h2>A minimal working example</h2><pre><code>import numpy as np
+from sentence_transformers import SentenceTransformer
+from openai import OpenAI
+
+emb = SentenceTransformer("BAAI/bge-small-en-v1.5")
+llm = OpenAI()
+
+# --- ingest ---
+docs = {"policy_1": "Refunds are available within 30 days of purchase with a receipt.",
+        "policy_2": "Enterprise plans include 24/7 support with a 1 hour response SLA."}
+ids, texts = list(docs), list(docs.values())
+vecs = emb.encode(texts, normalize_embeddings=True)
+
+# --- query ---
+def answer(question, k=2):
+    q = emb.encode([question], normalize_embeddings=True)
+    top = np.argsort(-(vecs @ q.T).ravel())[:k]
+    ctx = "\n".join(f"[{ids[i]}] {texts[i]}" for i in top)
+    msg = [{"role": "system", "content":
+            "Answer only from the context and cite ids like [policy_1]. "
+            "If the answer is missing, say you do not know."},
+           {"role": "user", "content": f"&lt;context&gt;\n{ctx}\n&lt;/context&gt;\n\nQuestion: {question}"}]
+    r = llm.chat.completions.create(model="MODEL_NAME", messages=msg, temperature=0)
+    return r.choices[0].message.content
+
+print(answer("How long do I have to return a purchase?"))</code></pre><p>In production replace the NumPy array with a vector database, add metadata filters, and run ingestion as a pipeline with incremental updates and deletes. See the DevOps and data-engineering paths for scheduling and CI.</p>
+    </section>
+    <section class="lesson" id="chunking">
+      <h2>Chunking basics</h2><table><thead><tr><th>Strategy</th><th>How</th><th>When</th></tr></thead><tbody><tr><td>Fixed size with overlap</td><td>Split every N tokens</td><td>Quick baseline, uniform text</td></tr><tr><td>Recursive structure-aware</td><td>Split on headings, then paragraphs, then sentences</td><td>Documents with structure (the sensible default)</td></tr><tr><td>Semantic</td><td>Split where embedding similarity drops</td><td>Narrative text; test before paying the cost</td></tr><tr><td>Parent-child</td><td>Search small chunks, return the larger parent</td><td>Precise match but wide context (next step)</td></tr></tbody></table><ul><li>Too small loses context; too large dilutes the embedding and wastes prompt budget.</li><li>Prepend the document title and section heading to each chunk before embedding.</li><li>Keep tables and code blocks intact, and evaluate parsing on your hardest documents first.</li></ul>
+    </section>
+    <section class="lesson" id="evaluate">
+      <h2>Evaluate retrieval before generation</h2><p>Most RAG failures are retrieval failures. Build a small set of 50 to 200 real questions with the document or passage that answers each, then measure the retriever on its own.</p><table><thead><tr><th>Metric</th><th>Question it answers</th></tr></thead><tbody><tr><td>Recall@k</td><td>Is a correct chunk in the top k?</td></tr><tr><td>MRR or nDCG</td><td>Is it near the top?</td></tr><tr><td>Faithfulness</td><td>Is the answer supported by the retrieved context?</td></tr><tr><td>Answer relevance</td><td>Does the answer address the question?</td></tr><tr><td>Context precision</td><td>How much of the retrieved context was actually useful?</td></tr></tbody></table><p>Fix retrieval first (parsing, chunking, hybrid search, reranking), then the prompt. Step 10 covers automated evaluation in depth.</p>
+    </section>
+    <section class="lesson" id="when-not">
+      <h2>When RAG is the wrong tool</h2><ul><li>The task needs consistent style, format or domain behaviour, which is a fine-tuning or prompting problem.</li><li>The whole corpus fits comfortably in the prompt and changes rarely: long context with prompt caching may be simpler.</li><li>The question needs aggregation over structured data (totals, joins): use text-to-SQL or tools, not chunk retrieval.</li><li>The answer needs multi-hop reasoning across many documents: consider graph or agentic retrieval (step 05).</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Build the example over 20 pages of your own documentation.</li><li>Create 30 test questions and compute recall@3 and a manual faithfulness check.</li><li>Change the chunk size from 200 to 800 tokens and compare.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://python.langchain.com/docs/tutorials/rag/" target="_blank" rel="noreferrer">LangChain RAG tutorial</a> &mdash; framework walkthrough</li><li><a href="https://docs.llamaindex.ai/en/stable/understanding/rag/" target="_blank" rel="noreferrer">LlamaIndex RAG guide</a> &mdash; pipeline concepts</li><li><a href="https://docs.ragas.io" target="_blank" rel="noreferrer">Ragas</a> &mdash; RAG evaluation metrics</li><li><a href="../ai-frameworks/langchain-handbook.html" target="_blank" rel="noreferrer">LangChain handbook</a> &mdash; framework reference in this library</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-03-embeddings-vector-search-handbook.html">&larr; Previous: Embeddings and Vectors</a><a class="lesson-link" href="genai-05-advanced-rag-handbook.html">Next lesson: RAG Strategies &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

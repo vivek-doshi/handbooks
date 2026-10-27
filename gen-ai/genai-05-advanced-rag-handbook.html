@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: how to improve retrieval with hybrid search, reranking, query transformation, contextual chunks, parent-child retrieval, GraphRAG, agentic and multimodal RAG, and how to pick a strategy from the symptom.">
+  <title>05. RAG Strategies | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">05 / 16 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-04-rag-basics-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-06-context-engineering-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 05 &middot; Intermediate &middot; Beyond naive RAG</div>
+      <h1>RAG Strategies</h1>
+      <p class="lede">Naive RAG gets you a demo. Production quality comes from choosing the right retrieval strategy for the failure you actually see. This step catalogues the strategies, shows how each works, and gives a symptom-to-fix map.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">Hybrid and rerank</span><span class="badge">GraphRAG and agentic</span></div>
+    </section>
+    <section class="lesson" id="map">
+      <h2>Strategy map</h2><table><thead><tr><th>Strategy</th><th>What it does</th><th>Fixes this symptom</th><th>Cost</th></tr></thead><tbody><tr><td>Hybrid search (dense + BM25)</td><td>Merge semantic and keyword results</td><td>Misses exact terms, ids, names</td><td>Low</td></tr><tr><td>Reranking (cross-encoder)</td><td>Re-score top 50 to 200 candidates with a precise model</td><td>Right chunk retrieved but ranked low</td><td>Medium (adds 50 to 300 ms)</td></tr><tr><td>Query rewriting and multi-query</td><td>LLM rewrites or expands the question</td><td>Short, vague or conversational queries</td><td>Low to medium</td></tr><tr><td>HyDE</td><td>Embed a hypothetical answer instead of the query</td><td>Query and document vocabulary differ</td><td>Medium</td></tr><tr><td>Query decomposition</td><td>Split a complex question into sub-questions</td><td>Multi-part questions</td><td>Medium</td></tr><tr><td>Parent-child (small-to-big)</td><td>Match on small chunks, return the larger section</td><td>Matches are precise but answers lack context</td><td>Low</td></tr><tr><td>Contextual chunks</td><td>LLM adds a one-line situating summary to every chunk before embedding</td><td>Chunks lose meaning out of context</td><td>Medium at ingest</td></tr><tr><td>Metadata filtering and self-query</td><td>Translate the question to filters (date, product, owner)</td><td>Right document, wrong version or tenant</td><td>Low</td></tr><tr><td>Context compression</td><td>Extract or summarise only the relevant parts</td><td>Prompts too long or noisy</td><td>Medium</td></tr><tr><td>GraphRAG and hierarchical summaries</td><td>Build entity graphs or summary trees for global questions</td><td>Questions about themes, relationships and multi-hop links</td><td>High at ingest</td></tr><tr><td>Agentic RAG</td><td>An agent decides what, where and whether to retrieve, iterating</td><td>Heterogeneous sources, ambiguous or research-style questions</td><td>High, variable latency</td></tr><tr><td>Corrective and self-reflective RAG</td><td>Grade retrieval, retry or fall back to web or another index</td><td>Low-quality retrieval silently passed to the model</td><td>Medium</td></tr><tr><td>Multimodal RAG</td><td>Retrieve page images, charts and tables (for example ColPali style late interaction)</td><td>Answers live in figures, slides and scans</td><td>High</td></tr><tr><td>Text-to-SQL and structured retrieval</td><td>Generate and run queries on tables and graphs</td><td>Aggregations, counts, joins</td><td>Medium</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="hybrid">
+      <h2>Hybrid search with reranking</h2><p>The most reliable upgrade for most systems is hybrid retrieval followed by a cross-encoder reranker. The bi-encoder embeds query and document separately (fast, approximate); the cross-encoder reads them together (slow, accurate), so it is applied only to the shortlist.</p><pre><code>from sentence_transformers import CrossEncoder
+
+def rrf(rankings, k=60):
+    """Reciprocal Rank Fusion over several ranked lists of ids."""
+    scores = {}
+    for ranking in rankings:
+        for rank, doc_id in enumerate(ranking):
+            scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (k + rank + 1)
+    return sorted(scores, key=scores.get, reverse=True)
+
+reranker = CrossEncoder("BAAI/bge-reranker-v2-m3")
+
+def retrieve(query, dense_search, bm25_search, texts, top_n=8):
+    candidates = rrf([dense_search(query, 50), bm25_search(query, 50)])[:100]
+    pairs = [(query, texts[i]) for i in candidates]
+    scores = reranker.predict(pairs)
+    best = sorted(zip(candidates, scores), key=lambda x: -x[1])[:top_n]
+    return [i for i, _ in best]</code></pre><p>Managed rerankers (Cohere Rerank, Voyage, Jina, cloud-provider rerank APIs) are alternatives when you do not want to host a model.</p>
+    </section>
+    <section class="lesson" id="query">
+      <h2>Query transformation</h2><ul><li><strong>Conversation rewriting:</strong> turn &ldquo;what about the enterprise plan?&rdquo; into a standalone query using chat history. Essential for chat RAG.</li><li><strong>Multi-query:</strong> generate 3 to 5 paraphrases, retrieve for each, fuse with RRF.</li><li><strong>HyDE:</strong> ask the model to write a plausible answer and embed that. Helps when questions and documents use different language, but can inject hallucinated terms, so combine with the original query.</li><li><strong>Decomposition:</strong> split &ldquo;compare X and Y pricing for EU&rdquo; into sub-queries, retrieve for each, then synthesise.</li><li><strong>Routing:</strong> a small classifier or LLM picks the index, namespace or tool (docs, tickets, SQL, web).</li></ul><pre><code>REWRITE = """Rewrite the user's last message as a standalone search query,
+using the conversation for context. Return only the query.
+
+Conversation:
+{history}
+Last message: {message}"""</code></pre>
+    </section>
+    <section class="lesson" id="chunk">
+      <h2>Smarter chunks</h2><ul><li><strong>Parent-child:</strong> index sentences or 200-token children; at query time return the 1000-token parent (or the section). Precision of small chunks with the context of large ones.</li><li><strong>Contextual retrieval:</strong> before embedding, ask a cheap model to write a 1 to 2 sentence description of where the chunk sits in its document, and prepend it. Combined with hybrid search and reranking this materially reduces failed retrievals. Prompt caching makes the ingest cost manageable.</li><li><strong>Late chunking and long-context embedders:</strong> embed the whole document, then pool per chunk so each chunk vector keeps document-level context.</li><li><strong>Structure-aware parsing:</strong> keep tables as tables (Markdown or HTML), keep headings as metadata, and use layout-aware parsers (Docling, Unstructured, cloud document AI) for PDFs and scans.</li></ul>
+    </section>
+    <section class="lesson" id="graph">
+      <h2>GraphRAG and hierarchical retrieval</h2><p>Vector search finds similar passages. It struggles with <em>global</em> questions (&ldquo;what are the main risks across all contracts?&rdquo;) and <em>multi-hop</em> questions (&ldquo;which suppliers share a parent company with the vendor in incident 42?&rdquo;).</p><ul><li><strong>GraphRAG:</strong> an LLM extracts entities and relations into a knowledge graph, detects communities, and pre-summarises each. Local questions traverse neighbours; global questions use community summaries.</li><li><strong>RAPTOR style trees:</strong> recursively cluster and summarise chunks, then retrieve at the right level of abstraction.</li><li><strong>When worth it:</strong> relationship-heavy domains (legal, supply chain, healthcare, security), or whole-corpus questions. The ingest cost is high because many LLM calls are needed, so measure the gain on your own questions before committing.</li><li><strong>Stores:</strong> Neo4j, Neptune, Cosmos DB Gremlin, TigerGraph, or a graph layer on Postgres.</li></ul>
+    </section>
+    <section class="lesson" id="agentic">
+      <h2>Agentic and corrective RAG</h2><p>In agentic RAG the model is given retrieval as a tool and decides how to use it: reformulate, search several sources, read results, retry, then answer. This handles ambiguous or multi-step questions, at the price of latency, cost and less predictable behaviour.</p><pre><code>loop (max 4 steps):
+    plan   = LLM("what do I still need to know?")
+    docs   = retrieve(plan.query, source=plan.source)
+    grade  = LLM("are these docs sufficient and relevant?")
+    if grade.sufficient: break
+    # else rewrite query / switch source / web fallback
+answer = LLM(question, context=all_relevant_docs)   # with citations</code></pre><p>Keep a hard step budget, log every tool call, and use a simple pipeline when it is good enough. Most enterprise questions do not need an agent.</p>
+    </section>
+    <section class="lesson" id="multimodal">
+      <h2>Multimodal and structured sources</h2><ul><li><strong>Documents with figures and layouts:</strong> either parse to text with a vision-language model or embed page images directly with late-interaction models, retrieve pages, and answer with a vision-capable LLM.</li><li><strong>Tables and databases:</strong> use text-to-SQL with a curated semantic layer (descriptions, join keys, metrics), read-only credentials, and result validation. Do not embed rows.</li><li><strong>Audio and video:</strong> transcribe with timestamps, chunk by scene or speaker turn, and keep timecodes as metadata.</li><li><strong>Code:</strong> chunk by syntax (functions, classes), add symbol and dependency graph metadata, and combine lexical search with embeddings.</li></ul>
+    </section>
+    <section class="lesson" id="diagnose">
+      <h2>Diagnose by symptom</h2><table><thead><tr><th>Symptom</th><th>Likely cause</th><th>First fix</th></tr></thead><tbody><tr><td>Answer is wrong but the right document exists</td><td>Retrieval missed it</td><td>Hybrid search, then reranking; check parsing</td></tr><tr><td>Right chunk retrieved, model ignores it</td><td>Prompt or context order</td><td>Put best chunks first or last; stricter instruction; fewer chunks</td></tr><tr><td>Answer lacks surrounding detail</td><td>Chunks too small</td><td>Parent-child or larger chunks</td></tr><tr><td>Exact codes and names not found</td><td>Dense-only search</td><td>Add BM25 or sparse vectors</td></tr><tr><td>Follow-up questions fail</td><td>No query rewriting</td><td>Conversation-aware rewrite</td></tr><tr><td>Old policy returned</td><td>No freshness handling</td><td>Version metadata and date filters; delete on update</td></tr><tr><td>Users see documents they should not</td><td>Post-filtering or missing ACLs</td><td>Pre-filter by caller identity inside the index</td></tr><tr><td>Slow responses</td><td>Too many candidates, big reranker, long prompts</td><td>Lower candidate counts, smaller reranker, compression, caching</td></tr><tr><td>Global or aggregate questions fail</td><td>Chunk retrieval cannot aggregate</td><td>GraphRAG, summaries, or SQL tools</td></tr></tbody></table><div class="callout"><strong>Rule of thumb</strong>Add one technique at a time and measure on the golden question set. A reranker plus hybrid search plus a good parser solves most problems; the exotic strategies are for the remainder.</div>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Take the step 04 example and add BM25, RRF and a reranker. Measure recall@5 before and after.</li><li>Add conversation rewriting and test five follow-up questions.</li><li>Pick three questions that fail and map each to a row in the symptom table.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noreferrer">Anthropic: Contextual Retrieval</a> &mdash; contextual chunks with BM25 and reranking</li><li><a href="https://microsoft.github.io/graphrag/" target="_blank" rel="noreferrer">Microsoft GraphRAG</a> &mdash; graph-based RAG</li><li><a href="https://arxiv.org/abs/2401.18059" target="_blank" rel="noreferrer">RAPTOR paper</a> &mdash; recursive abstractive tree retrieval</li><li><a href="https://arxiv.org/abs/2407.01449" target="_blank" rel="noreferrer">ColPali paper</a> &mdash; visual document retrieval</li><li><a href="https://langchain-ai.github.io/langgraph/" target="_blank" rel="noreferrer">LangGraph</a> &mdash; build agentic and corrective RAG graphs</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-04-rag-basics-handbook.html">&larr; Previous: RAG Basics</a><a class="lesson-link" href="genai-06-context-engineering-handbook.html">Next lesson: Context Engineering &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

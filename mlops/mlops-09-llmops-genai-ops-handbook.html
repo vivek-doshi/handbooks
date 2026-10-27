@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: how MLOps changes for LLM applications and small language models: prompt and model versioning, evaluation datasets, tracing with LangSmith and others, fine-tuning pipelines, GPU serving and cost.">
+  <title>09. LLMOps: Operating GenAI and SLMs | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">09 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-08-monitoring-drift-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-10-platform-standards-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 09 &middot; Intermediate &middot; What changes for LLMs</div>
+      <h1>LLMOps: Operating GenAI and SLMs</h1>
+      <p class="lede">LLM systems keep the lifecycle but swap the artifacts: prompts, retrieval indexes, adapters and evaluation sets become the things you version, test and monitor.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">LLMOps</span><span class="badge">Tracing and evals</span></div>
+    </section>
+    <section class="lesson" id="diff">
+      <h2>What changes</h2><table><thead><tr><th>MLOps</th><th>LLMOps</th></tr></thead><tbody><tr><td>Train from your data</td><td>Mostly adapt or prompt a foundation model</td></tr><tr><td>Metrics like accuracy</td><td>Rubrics, LLM judges, groundedness, human review</td></tr><tr><td>Feature store</td><td>Retrieval index, context assembly</td></tr><tr><td>Model versions</td><td>Model + prompt + adapter + index versions together</td></tr><tr><td>Latency in ms</td><td>Seconds, streaming, token cost</td></tr><tr><td>Drift in features</td><td>Drift in user queries, documents and provider model updates</td></tr><tr><td>Security</td><td>Plus prompt injection, data leakage, tool permissions</td></tr></tbody></table><p>For the application side see the <a href="../gen-ai/genai-10-evaluation-guardrails-handbook.html">Gen-AI evaluation and guardrails</a> and <a href="../gen-ai/genai-12-architecture-decisions-handbook.html">architecture decisions</a> handbooks.</p>
+    </section>
+    <section class="lesson" id="versions">
+      <h2>What to version</h2><ul><li>Prompts and templates with ids in a registry; log the prompt version on every call.</li><li>Model identifiers (pinned provider versions) and adapter versions.</li><li>Retrieval index version, embedding model and chunking config.</li><li>Evaluation datasets and judge prompts.</li><li>Tool schemas and guardrail policies.</li></ul>
+    </section>
+    <section class="lesson" id="trace">
+      <h2>Tracing and evaluation</h2><pre><code>from langsmith import traceable, Client
+from langsmith.evaluation import evaluate
+
+@traceable(name="rag_answer")
+def rag_answer(question: str) -&gt; str:
+    ctx = retrieve(question)
+    return generate(question, ctx)
+
+def grounded(run, example):           # custom evaluator
+    return {"key": "grounded", "score": judge_grounded(run.outputs["output"], example.inputs)}
+
+evaluate(lambda inp: {"output": rag_answer(inp["question"])},
+         data="support-golden-v3", evaluators=[grounded], experiment_prefix="prompt-v12")</code></pre><ul><li>LangSmith, Langfuse, Arize Phoenix, MLflow GenAI and W&B Weave provide tracing, datasets, experiments and online evaluation.</li><li>Run the golden set in CI; sample production traces for online scoring and human review.</li><li>OpenTelemetry GenAI conventions make traces portable.</li></ul>
+    </section>
+    <section class="lesson" id="ft">
+      <h2>Fine-tuning as a pipeline</h2><pre><code>curate data (versioned) -&gt; filter + dedupe -&gt; split -&gt; train (LoRA/QLoRA) -&gt; eval vs prompted baseline + regression
+ -&gt; register adapter + model card -&gt; deploy (vLLM multi-LoRA) -&gt; canary -&gt; monitor -&gt; collect feedback -&gt; next data version</code></pre><p>The method details are in <a href="../gen-ai/genai-07-fine-tuning-fundamentals-handbook.html">fine-tuning fundamentals</a> and <a href="../gen-ai/genai-08-fine-tuning-practice-handbook.html">in practice</a>. Use case 4 in step 13 shows the full MLOps pipeline for an SLM.</p>
+    </section>
+    <section class="lesson" id="ops">
+      <h2>Operations</h2><ul><li>Pin provider model versions and re-run evals before upgrading; providers deprecate models on a schedule.</li><li>Gateway with budgets, rate limits, fallbacks and caching.</li><li>Cost per resolved task as the main efficiency metric.</li><li>Red-team and guardrail tests as release gates.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Add tracing to an LLM app and find the most expensive span.</li><li>Build a 30-example golden set and run it on two prompt versions.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://docs.smith.langchain.com" target="_blank" rel="noreferrer">LangSmith</a> &mdash; tracing, datasets, evaluation</li><li><a href="https://langfuse.com/docs" target="_blank" rel="noreferrer">Langfuse</a> &mdash; open-source LLM engineering</li><li><a href="https://mlflow.org/docs/latest/genai/" target="_blank" rel="noreferrer">MLflow GenAI</a> &mdash; tracing and evaluation</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-08-monitoring-drift-handbook.html">&larr; Previous: Monitoring and Drift</a><a class="lesson-link" href="mlops-10-platform-standards-handbook.html">Next lesson: Platform and Standards &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-28">
+  <meta name="description" content="Intermediate: container networking, Kubernetes network model, Services, DNS, CNI, Ingress vs Gateway API, NetworkPolicy, service mesh, and troubleshooting.">
+  <title>06. Networking for Docker and Kubernetes | DevOps Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
+    <span class="path-progress">06 / 13 · Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="devops-05-kubernetes-handbook.html">← Previous</a><a href="../index.html">All handbooks</a><a href="devops-07-local-kubernetes-cli-handbook.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 06 · Intermediate · From IP and DNS basics to CNI, ingress, Gateway API, policy, and service mesh</div>
+      <h1>Networking for Docker and Kubernetes</h1>
+      <p class="lede">Most production incidents in containerized systems are network problems in disguise. This step builds the model from IP, DNS, and ports up through Docker networks, the Kubernetes network model, traffic entry, and zero-trust policy.</p>
+      <div class="hero-meta"><span class="badge">IP and DNS</span><span class="badge">Docker networks</span><span class="badge">CNI</span><span class="badge">Gateway API</span><span class="badge">NetworkPolicy</span><span class="badge">Service mesh</span></div>
+    </section>
+    <section class="lesson" id="basics">
+      <h2>1. Fundamentals you will use daily</h2>
+<ul><li>OSI/TCP-IP layers: most issues sit at L3/L4 (routing, ports) or L7 (HTTP, TLS, DNS).</li><li>CIDR planning: pod, service, and node ranges must not overlap with each other or with VPC/on-prem ranges you will peer with.</li><li>DNS first: when something "cannot connect", check name resolution and TTLs before anything else.</li></ul>
+    </section>
+    <section class="lesson" id="docker">
+      <h2>2. Docker networking</h2>
+<table><thead><tr><th>Driver</th><th>Use</th></tr></thead><tbody>
+<tr><td>bridge (user-defined)</td><td>Default for single-host apps; built-in DNS between named containers</td></tr>
+<tr><td>host</td><td>No isolation; max performance or special cases</td></tr>
+<tr><td>overlay</td><td>Multi-host (Swarm); rarely needed with Kubernetes</td></tr>
+<tr><td>macvlan / none</td><td>Direct LAN presence / full isolation</td></tr></tbody></table>
+<p>Use user-defined networks (not the default bridge) so Compose services resolve each other by name. <code>-p host:container</code> publishes a port; <code>EXPOSE</code> is documentation only.</p>
+    </section>
+    <section class="lesson" id="model">
+      <h2>3. The Kubernetes network model</h2>
+<p>Three rules: every pod gets its own IP; pods can reach all other pods without NAT; agents on a node can reach that node's pods. A <strong>CNI plugin</strong> implements this (Cilium, Calico, cloud-native VPC CNIs, Flannel). Cilium uses eBPF and can replace kube-proxy and provide L7-aware policy and observability. Pick the CNI before building the cluster because changing it later is disruptive.</p>
+<ul><li><strong>Service types:</strong> ClusterIP (internal), NodePort, LoadBalancer (cloud LB), ExternalName. Headless Services give per-pod DNS for StatefulSets.</li><li><strong>CoreDNS</strong> serves <code>svc.namespace.svc.cluster.local</code>; mind <code>ndots</code> and DNS caching (NodeLocal DNSCache) for latency.</li></ul>
+    </section>
+    <section class="lesson" id="entry">
+      <h2>4. Getting traffic in: Ingress and Gateway API</h2>
+<p><strong>Gateway API</strong> (GatewayClass, Gateway, HTTPRoute, and GRPCRoute) is the successor to Ingress, with role-oriented resources, richer routing, and portable features across implementations (Envoy Gateway, Cilium, Istio, cloud gateways). Ingress still works but is frozen in feature scope, and the widely used community <code>ingress-nginx</code> controller has been announced for retirement, so choose Gateway API for new clusters and plan migrations. Terminate TLS with cert-manager and automate certificates.</p>
+    </section>
+    <section class="lesson" id="policy">
+      <h2>5. Zero trust inside the cluster</h2>
+<ul><li>Start with a <strong>default-deny</strong> NetworkPolicy per namespace, then allow only needed ingress and egress (including DNS).</li><li>NetworkPolicies need a CNI that enforces them; test them with connectivity checks in CI.</li><li>Add mTLS and identity-based authorization with a <strong>service mesh</strong> (Istio, including ambient mode without sidecars, or Linkerd) when you need uniform encryption, retries, traffic shifting, and telemetry across many services. Do not add a mesh for a handful of services.</li></ul><div class="callout"><strong>See real snippets in the DevOps Playbook</strong> Ready-to-use NetworkPolicy, Gateway/HTTPRoute, and cert-manager manifests are included in the Kubernetes templates. Open the <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook code template browser</a> to read and copy complete, working files.</div>
+    </section>
+    <section class="lesson" id="trouble">
+      <h2>6. Troubleshooting ladder</h2>
+<ol><li>Pod to pod by IP (CNI).</li><li>Pod to Service ClusterIP and endpoints (kube-proxy or eBPF, selectors, readiness).</li><li>DNS lookup.</li><li>Ingress or Gateway to Service.</li><li>Policy and mesh authorization.</li><li>External load balancer and security groups.</li></ol>
+<p>Tools: <code>kubectl port-forward</code>, a <code>netshoot</code> debug pod, <code>kubectl get endpointslices</code>, <code>hubble observe</code> (Cilium), and packet capture on the node as a last resort.</p>
+<div class="exercise"><strong>Practice</strong>Apply a default-deny policy to a namespace, confirm the app breaks, then add the minimal allow rules (frontend to backend, backend to DNS and database) and verify each with a debug pod.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+<ul class="reading-list">
+<li><a href="https://kubernetes.io/docs/concepts/services-networking/" target="_blank" rel="noreferrer">Kubernetes services and networking</a> — model, Services, DNS, policy.</li>
+<li><a href="https://gateway-api.sigs.k8s.io/" target="_blank" rel="noreferrer">Gateway API</a> — specification and implementations.</li>
+<li><a href="https://docs.cilium.io/" target="_blank" rel="noreferrer">Cilium docs</a> — eBPF networking, policy, Hubble.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="devops-05-kubernetes-handbook.html">← Previous: Kubernetes Core</a><a class="lesson-link" href="devops-07-local-kubernetes-cli-handbook.html">Next lesson: Local Kubernetes and CLI →</a></div>
+    <footer class="site-footer">DevOps learning path · Updated 2026-10-28 · Real templates: <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a></footer>
+  </main>
+</body>
+</html>

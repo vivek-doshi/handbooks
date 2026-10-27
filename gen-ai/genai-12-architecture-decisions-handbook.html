@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Advanced: a decision framework for prompting versus RAG versus fine-tuning versus agents, RAG strategy selection by data scale and type, model selection and hosting, and cost break-even analysis.">
+  <title>12. GenAI Architecture: Decisions | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">12 / 16 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-11-architecture-components-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-13-serving-scale-cost-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 12 &middot; Advanced &middot; Fine-tune, RAG or neither</div>
+      <h1>GenAI Architecture: Decisions</h1>
+      <p class="lede">This is the architecture decision handbook. Given a requirement, it tells you whether to prompt, retrieve, fine-tune or combine them, which RAG strategy suits your data, and how to justify the choice with numbers.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">Decision ladder</span><span class="badge">RAG strategy by scale</span></div>
+    </section>
+    <section class="lesson" id="ladder">
+      <h2>The decision ladder</h2><p>Climb one rung at a time, and move up only when evaluation on your golden set proves the current rung is not enough.</p><table><thead><tr><th>Rung</th><th>Technique</th><th>Move up when</th></tr></thead><tbody><tr><td>1</td><td>Better prompt, examples, structured output, a stronger or reasoning model</td><td>Quality gaps are about missing knowledge or consistent behaviour</td></tr><tr><td>2</td><td>Add tools and context: RAG, SQL, search, APIs</td><td>Retrieval is decent but behaviour, format or cost is wrong</td></tr><tr><td>3</td><td>Improve retrieval: parsing, hybrid, rerank, query rewriting, parent-child, graph (step 05)</td><td>Retrieval metrics are good and answers are still off in style, or the model is too big or slow</td></tr><tr><td>4</td><td>Fine-tune the generator with SFT and preference tuning (steps 07 and 08)</td><td>You need to specialise further or shrink the model</td></tr><tr><td>5</td><td>Fine-tune embedder and reranker on your query and passage pairs</td><td>Domain vocabulary defeats general retrieval models</td></tr><tr><td>6</td><td>Distil a large teacher into a small student</td><td>Volume is high and a cheaper model must match the teacher on a narrow task</td></tr><tr><td>7</td><td>Continued pretraining or training from scratch</td><td>New language or domain at huge scale; rare, expensive, usually unjustified</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="compare">
+      <h2>Prompting, RAG and fine-tuning compared</h2><table><thead><tr><th>Need</th><th>Prompt</th><th>RAG</th><th>Fine-tune</th><th>Best choice</th></tr></thead><tbody><tr><td>Answer from private or large knowledge</td><td>Poor</td><td>Excellent</td><td>Poor</td><td>RAG</td></tr><tr><td>Knowledge that changes daily</td><td>Poor</td><td>Excellent</td><td>Poor</td><td>RAG</td></tr><tr><td>Citations and provenance</td><td>Medium</td><td>Excellent</td><td>Poor</td><td>RAG</td></tr><tr><td>Per-user access control</td><td>Poor</td><td>Excellent</td><td>Poor</td><td>RAG with ACL filters</td></tr><tr><td>Consistent tone, persona, format</td><td>Good</td><td>Poor</td><td>Excellent</td><td>Prompt first, then fine-tune</td></tr><tr><td>Strict structured output or tool schemas</td><td>Good</td><td>Poor</td><td>Excellent</td><td>Structured outputs; fine-tune for reliability at small size</td></tr><tr><td>Domain skill (classification, extraction, code style)</td><td>Medium</td><td>Medium</td><td>Excellent</td><td>Fine-tune</td></tr><tr><td>Lower latency and cost at high volume</td><td>Poor</td><td>Medium</td><td>Excellent</td><td>Fine-tuned small model, optionally with RAG</td></tr><tr><td>Private, offline or edge deployment</td><td>Poor</td><td>Medium</td><td>Excellent</td><td>Small fine-tuned model</td></tr><tr><td>Hard multi-step reasoning</td><td>Reasoning model</td><td>Helps with facts</td><td>RL fine-tuning (advanced)</td><td>Reasoning model plus tools</td></tr><tr><td>Fastest to ship and iterate</td><td>Excellent</td><td>Good</td><td>Slow</td><td>Prompt, then RAG</td></tr></tbody></table><div class="callout"><strong>The one-line rule</strong>RAG for knowledge, fine-tuning for behaviour, prompts for everything first. Most strong systems combine them: a small fine-tuned model that follows your format, fed by hybrid retrieval over fresh data.</div>
+    </section>
+    <section class="lesson" id="when-ft">
+      <h2>When to fine-tune: a checklist</h2><p>Fine-tune when at least three of these are true, and the prompted baseline has been measured:</p><ul><li>The behaviour you need is stable and well defined (a format, a label set, a style).</li><li>Few-shot examples make prompts long and expensive, and you run millions of requests.</li><li>You have or can build 1,000 or more high-quality examples, with a held-out test set.</li><li>A smaller or open model must replace a large one for cost, latency, privacy or edge reasons.</li><li>You need reliable tool calls or strict schemas from a small model.</li><li>RAG already supplies the facts, and the remaining errors are about how the model responds.</li><li>You can operate the pipeline: data versioning, evaluation, registry, serving, retraining when the base model or data changes.</li></ul><p>Do <strong>not</strong> fine-tune to inject frequently changing facts, to avoid building retrieval, or before you have an evaluation set.</p>
+    </section>
+    <section class="lesson" id="combine">
+      <h2>Combining RAG and fine-tuning</h2><table><thead><tr><th>Pattern</th><th>Description</th><th>Example</th></tr></thead><tbody><tr><td>RAG + prompted frontier model</td><td>Default starting architecture</td><td>Policy assistant</td></tr><tr><td>RAG + fine-tuned small generator</td><td>Tuned to use context faithfully, cite and refuse</td><td>High-volume support answers at lower cost</td></tr><tr><td>Fine-tuned embedder and reranker + RAG</td><td>Better retrieval in specialised vocabulary</td><td>Legal, medical, engineering part numbers</td></tr><tr><td>Retrieval-aware fine-tuning (RAFT style)</td><td>Train with retrieved passages including distractors, so the model learns to ignore irrelevant context</td><td>Noisy corpora</td></tr><tr><td>Router + specialists</td><td>Small classifier routes to tuned models or a frontier model</td><td>Mixed workload with cost targets</td></tr><tr><td>Distilled student + frontier fallback</td><td>Cheap model handles most traffic; hard cases escalate</td><td>Large-scale classification and extraction</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="rag-select">
+      <h2>Choosing a RAG strategy by data and scale</h2><table><thead><tr><th>Situation</th><th>Recommended strategy</th><th>Why</th></tr></thead><tbody><tr><td>Up to ~1M chunks, one domain, one team</td><td>pgvector or one managed store; hybrid search; reranker</td><td>Simplest operations; most quality comes from parsing and hybrid search</td></tr><tr><td>10M to 100M chunks, many sources and teams</td><td>Dedicated vector engine (Qdrant, Milvus, OpenSearch), sharded; metadata and ACL filters; quantised vectors; two-stage retrieval</td><td>Memory and filter performance dominate</td></tr><tr><td>Billions of chunks or multi-tenant SaaS</td><td>Tenant-partitioned indexes, tiered storage (hot in RAM, cold on SSD or object store), Matryoshka or binary first pass with rescoring, DiskANN or IVF-PQ families</td><td>RAM cost and tail latency at scale</td></tr><tr><td>Highly structured or relational data</td><td>Text-to-SQL or knowledge graph with a semantic layer</td><td>Chunk retrieval cannot aggregate or join</td></tr><tr><td>Whole-corpus, thematic or investigative questions</td><td>GraphRAG or hierarchical summaries, often precomputed</td><td>Needs global structure</td></tr><tr><td>Heterogeneous sources and ambiguous questions</td><td>Router plus agentic RAG with budgets</td><td>Needs adaptive search</td></tr><tr><td>Visual documents, slides, scans</td><td>Layout-aware parsing or page-image retrieval with a vision model</td><td>Text extraction loses figures and tables</td></tr><tr><td>Fast-changing data</td><td>Streaming ingestion (CDC, Kafka), incremental updates, TTL, freshness metadata; consider live tool calls instead of indexing</td><td>Stale indexes cause confident wrong answers</td></tr><tr><td>Strict compliance or per-user permissions</td><td>ACLs enforced inside the index, with an audit trail and citations</td><td>Leakage is a security incident</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="models">
+      <h2>Model selection and hosting</h2><table><thead><tr><th>Decision</th><th>Options and guidance</th></tr></thead><tbody><tr><td>Frontier API versus open weights</td><td>Start with a frontier API for speed and quality. Move to open weights when data cannot leave your boundary, unit economics demand it, you need fine-tuning control, or you need offline operation.</td></tr><tr><td>Hosted versus self-hosted</td><td>Self-hosting needs GPUs, a serving stack, autoscaling and on-call. It tends to pay off at sustained high utilisation; otherwise managed endpoints and per-token pricing win.</td></tr><tr><td>Single model versus routing</td><td>Route by difficulty: small model by default, escalate on low confidence or complex intent. Typical savings are large when most traffic is easy.</td></tr><tr><td>Reasoning versus standard models</td><td>Use reasoning models for planning, maths and code; standard models for retrieval Q&A, extraction and chat. Cap reasoning effort.</td></tr><tr><td>Context length</td><td>Pay for long context only when needed; prefer retrieval and caching.</td></tr><tr><td>Multimodal needs</td><td>Choose models with native vision or audio when inputs are images, charts or calls; otherwise parse first.</td></tr><tr><td>Licences and residency</td><td>Check commercial terms of open models, regional availability, and provider data-use policies.</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="cost">
+      <h2>Cost break-even: a worked example</h2><p>Illustrative numbers only; substitute current prices and your measured token counts.</p><pre><code>Workload: 20M requests / month
+Option A: frontier model, 3,000-token prompt (instructions + few-shot examples), 300 output tokens
+Option B: fine-tuned 8B model, 400-token prompt (behaviour is baked in), 300 output tokens
+
+Cost per request = in_tokens * price_in + out_tokens * price_out
+Assume A: $2.50 / 1M in, $10 / 1M out  -&gt; 3000*2.5e-6 + 300*10e-6 = $0.0105 -&gt; $210,000 / month
+Assume B self-hosted: 8B on 4 GPUs at ~$3 / GPU-hour, always on:
+        4 * 3 * 730 = $8,760 / month (+ ops, evaluation, retraining ~ $15,000 / month)
+        capacity check: 20M req / 2.6M s = ~7.7 req/s average, ~25 req/s peak -&gt; verify one GPU's tokens/s
+Break-even: fine-tuning project cost (data + training + eval ~ $30,000) is recovered in weeks.
+Caveat: B must match A's quality on the golden set; if it does not, the saving is not real.</code></pre><p>Break-even drivers: request volume, prompt-length reduction, quality parity on your eval set, GPU utilisation, and engineering cost. Below roughly a few hundred thousand requests a month, API usage usually wins; above tens of millions, specialised small models usually win for narrow tasks.</p>
+    </section>
+    <section class="lesson" id="adr">
+      <h2>Record the decision</h2><pre><code>ADR-007: Support assistant knowledge and behaviour
+Context:   2.4M tickets + 300k KB articles, 40 languages, 20M requests / month, EU data residency.
+Options:   (1) frontier model + RAG  (2) fine-tuned 8B + RAG  (3) fine-tuned 8B only
+Evidence:  golden set of 400 questions: recall@10 = 0.93 with hybrid + rerank;
+           frontier+RAG answer accuracy 0.88 at $0.0105/req; tuned 8B + RAG 0.87 at $0.0012/req.
+Decision:  Option 2, frontier model as fallback for low-confidence and long-tail intents (8 percent).
+Risks:     retraining when policies change; mitigated by RAG for facts, retrain quarterly for behaviour.
+Review:    in 6 months or when the base model changes.</code></pre>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Take a real requirement and walk the decision ladder, recording the metric that justifies each rung.</li><li>Compute break-even for your volume with current prices.</li><li>Write an ADR for your choice.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://arxiv.org/abs/2403.10131" target="_blank" rel="noreferrer">RAFT paper</a> &mdash; retrieval-aware fine-tuning</li><li><a href="https://learn.microsoft.com/en-us/azure/developer/ai/augment-llm-rag-fine-tuning" target="_blank" rel="noreferrer">Microsoft: RAG versus fine-tuning</a> &mdash; decision guidance</li><li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noreferrer">Anthropic: Building effective agents</a> &mdash; start simple advice</li><li><a href="../cloud/cloud-13-arch-classic-handbook.html" target="_blank" rel="noreferrer">Cloud path case studies</a> &mdash; applying decisions to cloud architectures</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-11-architecture-components-handbook.html">&larr; Previous: Architecture Components</a><a class="lesson-link" href="genai-13-serving-scale-cost-handbook.html">Next lesson: Serving, Scale and Cost &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

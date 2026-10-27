@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: continuous training, pipeline design, orchestrators (Airflow, Kubeflow Pipelines, Argo, Dagster, Prefect, cloud services), caching, distributed training and hyperparameter search.">
+  <title>04. Training Pipelines and Orchestration | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">04 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-03-experiment-tracking-registry-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="mlops-05-devops-for-ml-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 04 &middot; Intermediate &middot; Automate training</div>
+      <h1>Training Pipelines and Orchestration</h1>
+      <p class="lede">A training pipeline turns versioned data into a validated, registered model with no manual steps. This step covers design rules and the orchestrator landscape, including Kubeflow.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">Kubeflow</span><span class="badge">Distributed training</span></div>
+    </section>
+    <section class="lesson" id="stages">
+      <h2>Anatomy of a training pipeline</h2><pre><code>ingest -&gt; validate data -&gt; split -&gt; feature transform -&gt; train -&gt; evaluate -&gt; validate model (gates)
+   -&gt; register -&gt; (trigger deployment pipeline)
+
+Every stage: pure inputs -&gt; versioned outputs, containerised, idempotent, logged to tracking</code></pre><ul><li><strong>Idempotent and cached:</strong> re-running with the same inputs gives the same outputs and can reuse results.</li><li><strong>Parameterised:</strong> dates, dataset version and hyperparameters are arguments, not edits.</li><li><strong>Same code path</strong> for local, CI and cluster runs.</li><li><strong>Fail early:</strong> data validation before expensive GPU stages.</li></ul>
+    </section>
+    <section class="lesson" id="triggers">
+      <h2>Triggers for continuous training</h2><table><thead><tr><th>Trigger</th><th>Use</th></tr></thead><tbody><tr><td>Schedule</td><td>Predictable data refresh (nightly, weekly)</td></tr><tr><td>New data arrival</td><td>Event on a bucket or table commit</td></tr><tr><td>Drift or performance alert</td><td>Monitoring shows decay (step 08)</td></tr><tr><td>Code or config change</td><td>CI after merging pipeline changes</td></tr><tr><td>Manual</td><td>Ad-hoc research or backfills</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="orch">
+      <h2>Orchestrator landscape</h2><table><thead><tr><th>Tool</th><th>Model</th><th>Pick when</th></tr></thead><tbody><tr><td>Airflow</td><td>Scheduled DAGs in Python</td><td>Existing data platform; batch heavy</td></tr><tr><td>Kubeflow Pipelines</td><td>Containerised components compiled to a Kubernetes workflow</td><td>Kubernetes-first ML platform, GPU jobs</td></tr><tr><td>Argo Workflows</td><td>Kubernetes-native YAML workflows</td><td>General container workflows, GitOps</td></tr><tr><td>Dagster and Prefect</td><td>Asset or flow oriented Python, good dev experience</td><td>Teams wanting modern DX and lineage</td></tr><tr><td>Metaflow, ZenML, Flyte</td><td>ML-focused frameworks with local-to-cloud parity</td><td>Data scientist friendly pipelines</td></tr><tr><td>SageMaker Pipelines, Vertex AI Pipelines, Azure ML pipelines, Databricks Workflows</td><td>Managed</td><td>You are committed to one cloud</td></tr><tr><td>DVC pipelines</td><td>Local reproducible DAG</td><td>Small projects, repo-centred</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="kfp">
+      <h2>Kubeflow Pipelines example</h2><pre><code>from kfp import dsl, compiler
+
+@dsl.component(base_image="python:3.11", packages_to_install=["scikit-learn", "pandas"])
+def train(data_uri: str, n_estimators: int, model: dsl.Output[dsl.Model], metrics: dsl.Output[dsl.Metrics]):
+    import pandas as pd, joblib
+    from sklearn.ensemble import RandomForestClassifier
+    df = pd.read_parquet(data_uri)
+    X, y = df.drop(columns="label"), df["label"]
+    clf = RandomForestClassifier(n_estimators=n_estimators).fit(X, y)
+    metrics.log_metric("train_acc", float(clf.score(X, y)))
+    joblib.dump(clf, model.path)
+
+@dsl.pipeline(name="churn-train")
+def pipeline(data_uri: str, n_estimators: int = 300):
+    train(data_uri=data_uri, n_estimators=n_estimators).set_caching_options(True)
+
+compiler.Compiler().compile(pipeline, "churn.yaml")   # then submit to the KFP server</code></pre><p>Kubeflow is a set of projects: Pipelines, the Training Operator (PyTorchJob, TFJob and others for distributed training), Katib (hyperparameter search), KServe (serving) and a model registry. Install only the parts you need, and expect real Kubernetes operations work.</p>
+    </section>
+    <section class="lesson" id="dist">
+      <h2>Distributed training and tuning</h2><ul><li><strong>Data parallel (DDP):</strong> replicate the model, shard the batch. Default for models that fit one GPU.</li><li><strong>FSDP or DeepSpeed ZeRO:</strong> shard weights and optimiser state for large models.</li><li><strong>Gang scheduling and queues:</strong> Kueue, Volcano or Slurm so jobs get all GPUs or none.</li><li><strong>Checkpoint often</strong> to object storage; use spot GPUs with automatic resume.</li><li><strong>Hyperparameter search:</strong> Optuna, Ray Tune, Katib or W&B sweeps; use early stopping and budget caps.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Convert a notebook into three pipeline stages with explicit inputs and outputs.</li><li>Run it twice and confirm caching skips unchanged stages.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://www.kubeflow.org/docs/" target="_blank" rel="noreferrer">Kubeflow docs</a> &mdash; pipelines, trainer, katib, kserve</li><li><a href="https://airflow.apache.org/docs/" target="_blank" rel="noreferrer">Apache Airflow</a> &mdash; orchestration</li><li><a href="https://docs.dagster.io" target="_blank" rel="noreferrer">Dagster</a> &mdash; asset based orchestration</li><li><a href="https://docs.metaflow.org" target="_blank" rel="noreferrer">Metaflow</a> &mdash; ML workflows</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-03-experiment-tracking-registry-handbook.html">&larr; Previous: Tracking and Registry</a><a class="lesson-link" href="mlops-05-devops-for-ml-handbook.html">Next lesson: DevOps for ML &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

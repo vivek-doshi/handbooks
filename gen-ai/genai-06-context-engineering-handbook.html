@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: designing what goes into the context window, token budgets, conversation memory, prompt caching, long context versus RAG, and compression.">
+  <title>06. Context Engineering | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">06 / 16 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-05-advanced-rag-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-07-fine-tuning-fundamentals-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 06 &middot; Intermediate &middot; Manage what the model sees</div>
+      <h1>Context Engineering</h1>
+      <p class="lede">Context engineering is the discipline of deciding what information the model sees, in what order, at each step. As applications grow from single prompts into agents with tools and memory, this becomes the main quality, cost and latency lever.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">Token budgets</span><span class="badge">Memory and caching</span></div>
+    </section>
+    <section class="lesson" id="what">
+      <h2>From prompts to context</h2><p>The context is everything in the request: system instructions, tool definitions, retrieved documents, conversation history, memory, examples and the user's message. Quality depends on giving the model the <em>smallest set of high-signal tokens</em> that makes the right answer likely.</p><table><thead><tr><th>Move</th><th>Meaning</th><th>Examples</th></tr></thead><tbody><tr><td>Write</td><td>Persist information outside the window</td><td>Scratchpads, notes files, long-term memory stores</td></tr><tr><td>Select</td><td>Pull in only what is relevant, just in time</td><td>RAG, tool-loaded files, memory lookup</td></tr><tr><td>Compress</td><td>Shrink what is already there</td><td>Summaries, trimming tool output, compaction</td></tr><tr><td>Isolate</td><td>Keep contexts separate</td><td>Sub-agents with their own window, sandboxed tools</td></tr></tbody></table><div class="callout"><strong>Context rot</strong>More tokens do not mean better answers. Long, noisy contexts dilute attention, raise cost and make errors harder to trace. Treat the window as a scarce budget.</div>
+    </section>
+    <section class="lesson" id="budget">
+      <h2>Token budgeting</h2><pre><code>BUDGET = 32_000          # target per request, not the model maximum
+reserve_output = 2_000
+parts = {
+  "system + policies":   1_500,
+  "tool definitions":    2_000,
+  "memory / profile":    1_000,
+  "retrieved context":  16_000,
+  "conversation":        8_000,
+}
+assert sum(parts.values()) + reserve_output &lt;= BUDGET</code></pre><ul><li>Measure real token counts per component in your logs and set alerts when a component exceeds its share.</li><li>Large tool lists cost tokens on every call: expose only relevant tools per task or load them on demand.</li><li>Truncate tool outputs (rows, log lines) and return identifiers the model can ask to expand.</li></ul>
+    </section>
+    <section class="lesson" id="memory">
+      <h2>Conversation and long-term memory</h2><table><thead><tr><th>Pattern</th><th>How</th><th>Trade-off</th></tr></thead><tbody><tr><td>Sliding window</td><td>Keep the last N turns</td><td>Simple, loses early facts</td></tr><tr><td>Rolling summary</td><td>Summarise older turns and keep recent ones verbatim</td><td>Cheap, summaries can drop detail</td></tr><tr><td>Entity and fact memory</td><td>Extract user facts and preferences into a store, retrieve per turn</td><td>Personalisation across sessions; needs privacy controls and expiry</td></tr><tr><td>Episodic memory</td><td>Store past interactions or outcomes, retrieve similar ones</td><td>Helps agents learn from experience</td></tr><tr><td>Scratchpad or notes file</td><td>The agent writes plans and progress to external storage</td><td>Survives context resets in long tasks</td></tr></tbody></table><p>Treat memory as personal data: let users view and delete it, scope it per tenant, and never store secrets in it.</p>
+    </section>
+    <section class="lesson" id="caching">
+      <h2>Prompt caching</h2><p>Providers cache the computed state (the KV cache) of repeated prompt prefixes, giving large discounts and lower latency on cache hits. Self-hosted engines such as vLLM and SGLang offer automatic prefix caching. To benefit:</p><ul><li>Put stable content first (system prompt, tool definitions, reference documents) and variable content last.</li><li>Never inject timestamps, request ids or user names into the stable prefix.</li><li>Keep the order of tools and examples deterministic.</li><li>Track the cache hit rate as a first-class metric. A low rate usually means the prefix is being changed unintentionally.</li></ul>
+    </section>
+    <section class="lesson" id="long">
+      <h2>Long context versus RAG</h2><table><thead><tr><th>Factor</th><th>Long context (with caching)</th><th>RAG</th></tr></thead><tbody><tr><td>Corpus size</td><td>Up to roughly a few hundred pages per request</td><td>Millions of documents and beyond</td></tr><tr><td>Setup</td><td>None</td><td>Parsing, chunking, index, evaluation</td></tr><tr><td>Cost per query</td><td>High unless the prefix is cached</td><td>Low, only retrieved chunks are sent</td></tr><tr><td>Recall on needle facts</td><td>Good but degrades with length</td><td>Depends on retrieval quality</td></tr><tr><td>Freshness and ACLs</td><td>Awkward</td><td>Natural: update the index, filter by identity</td></tr><tr><td>Whole-document reasoning</td><td>Strong (summaries, contract review)</td><td>Weak unless the document is retrieved whole</td></tr></tbody></table><p>A common hybrid: use RAG to find the right documents, then load those documents whole into a long context for analysis.</p>
+    </section>
+    <section class="lesson" id="compress">
+      <h2>Compression techniques</h2><ul><li><strong>Compaction:</strong> when the window nears a threshold, summarise the history, keep decisions, open issues and recent turns, and restart.</li><li><strong>Tool result clearing:</strong> drop old raw tool outputs once their conclusions are recorded.</li><li><strong>Extractive compression:</strong> keep only sentences relevant to the question, using a small model or a reranker score.</li><li><strong>Structured state:</strong> keep a compact JSON of known facts and open tasks instead of replaying the whole transcript.</li><li><strong>Sub-agent isolation:</strong> let a worker read 50 files and return a 300-token report to the parent.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Log token counts by component for one real conversation and find the biggest consumer.</li><li>Reorder a prompt so the stable prefix comes first and measure the cache hit rate or latency change.</li><li>Implement a rolling summary and test that key facts survive 30 turns.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noreferrer">Anthropic: Effective context engineering for agents</a> &mdash; write, select, compress, isolate</li><li><a href="https://platform.openai.com/docs/guides/prompt-caching" target="_blank" rel="noreferrer">OpenAI prompt caching</a> &mdash; prefix caching rules</li><li><a href="https://docs.vllm.ai/en/latest/features/automatic_prefix_caching.html" target="_blank" rel="noreferrer">vLLM prefix caching</a> &mdash; self-hosted equivalent</li><li><a href="https://arxiv.org/abs/2307.03172" target="_blank" rel="noreferrer">Lost in the Middle</a> &mdash; position effects in long contexts</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-05-advanced-rag-handbook.html">&larr; Previous: RAG Strategies</a><a class="lesson-link" href="genai-07-fine-tuning-fundamentals-handbook.html">Next lesson: Fine-Tuning Fundamentals &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Advanced: an end-to-end MLOps pipeline for fine-tuning a small language model, and a computer vision platform with edge deployment, each at large data scale.">
+  <title>13. Use Cases 4 and 5: SLM Fine-Tuning and Computer Vision | MLOps Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>MLOps Path</span> / Handbooks</a>
+    <span class="path-progress">13 / 13 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="mlops-12-usecases-tabular-scale-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 13 &middot; Advanced &middot; GPU-heavy pipelines</div>
+      <h1>Use Cases 4 and 5: SLM Fine-Tuning and Computer Vision</h1>
+      <p class="lede">The fine-tuning case shows the LLMOps pipeline end to end, from data curation to adapter serving and the feedback flywheel. The vision case adds labelling operations and edge fleets.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">SLM fine-tuning</span><span class="badge">Edge and vision</span></div>
+    </section>
+    <section class="lesson" id="uc4">
+      <h2>Use case 4: Fine-tuning a small language model</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Goal</td><td>A tuned 8B model that replaces a frontier API for support classification, extraction and reply drafting</td></tr><tr><td>Data</td><td>400 M tickets and chats (about 300 B tokens); 2 M curated candidates for tuning; PII-heavy</td></tr><tr><td>Traffic</td><td>150 M calls a month, p95 under 2 s</td></tr><tr><td>Cadence</td><td>Retrain monthly and on policy change; one adapter per business line (12)</td></tr><tr><td>Constraints</td><td>Data stays in region, audit, rollback within minutes</td></tr></tbody></table><div class="callout"><strong>Decision first</strong>Fine-tune only after a prompted baseline plus retrieval has been measured and the gap is behaviour, cost or latency (see the GenAI decision ladder). This use case assumes that proof exists.</div>
+    </section>
+    <section class="lesson" id="uc4-arch">
+      <h2>UC4 pipeline</h2><pre><code>Raw tickets (lake, Iceberg snapshot id) -&gt; PII redaction + consent filter -&gt; dedupe (MinHash) -&gt; quality filter (CSAT, resolved, no escalation)
+ -&gt; label/augment: teacher LLM drafts, humans verify 5 percent -&gt; split by time and customer -&gt; DVC/lakeFS version "sft-2026-10"
+ -&gt; Train (orchestrator job on GPU pool): QLoRA or LoRA on 8B, 4 x 80 GB GPUs FSDP, bf16, checkpoints to object storage, tracked in MLflow/W&amp;B
+ -&gt; Evaluate: golden set 1,500, task metrics, LLM judge calibrated on human labels, safety + regression suite, latency/throughput benchmark
+ -&gt; Gates: &gt;= prompted baseline - 1 pt, no slice regression, safety pass, cost per call target
+ -&gt; Register adapter + model card + data version; sign artifact
+ -&gt; Deploy: vLLM with multi-LoRA (12 adapters on a shared base), GitOps rollout: shadow -&gt; canary 5 percent -&gt; full; frontier fallback for low confidence
+ -&gt; Monitor: traces, judge scores on sampled traffic, refusal and escalation rate, cost per resolved ticket, drift in query mix
+ -&gt; Feedback: agent edits and ratings -&gt; next data version</code></pre><ul><li><strong>Compute:</strong> 2 M examples x 800 tokens = 1.6 B tokens per epoch; at about 5,000 tokens per second per GPU on 4 GPUs that is roughly 22 hours per epoch, so a run is 1 to 2 days. Use spot with checkpoints; cache tokenised data.</li><li><strong>Serving capacity:</strong> 150 M calls a month is about 60 per second on average, 200 at peak, at about 1,200 input and 150 output tokens; plan a vLLM pool measured against that, with autoscaling on queue depth.</li><li><strong>Lineage:</strong> a deployed adapter links to the data snapshot, base model hash, code SHA and eval report; required for audit.</li><li><strong>Base model upgrades</strong> force re-training and re-evaluation; keep the pipeline fully automated so this is a config change.</li><li><strong>Risks:</strong> memorised PII, forgetting, template mismatch, judge bias. Mitigate with redaction, regression suites, identical chat templates and human calibration.</li></ul>
+    </section>
+    <section class="lesson" id="uc5">
+      <h2>Use case 5: Computer vision quality inspection</h2><table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody><tr><td>Scale</td><td>400 factories, 6,000 cameras, 40 images a second each, 1 PB of new images a month</td></tr><tr><td>Goal</td><td>Detect defects in real time at the line; update models weekly as products change</td></tr><tr><td>Latency</td><td>Under 50 ms at the edge, works offline</td></tr><tr><td>Constraints</td><td>Intermittent connectivity, scarce defect labels, fleet of heterogeneous devices</td></tr></tbody></table><pre><code>Edge device: camera -&gt; preprocessing -&gt; optimised detector (TensorRT/ONNX, INT8) -&gt; reject signal (local, offline-safe)
+   -&gt; uploads: all defects + uncertain + 0.5 percent random samples (active-learning selection) -&gt; object storage
+Cloud: ingest -&gt; dedupe + metadata (line, product, lighting) -&gt; labelling queue (CVAT/Label Studio, active learning picks hard cases)
+   -&gt; versioned dataset (DVC/lakeFS) -&gt; train (GPU, mixed precision; pretrained backbone fine-tuned) -&gt; eval per product + per site
+   -&gt; gates incl. recall on rare defects, false-reject cost, edge latency on target hardware
+   -&gt; convert + quantise + sign -&gt; OTA rollout by ring: lab line -&gt; 1 factory -&gt; 10 percent -&gt; all; auto-rollback on KPI drop
+Monitoring: per-device latency, confidence distribution, reject rate drift, human audit sample accuracy, camera health</code></pre><ul><li><strong>Data engine:</strong> the value is the loop: edge sampling, active learning, labelling, retraining. Budget labelling and storage as first-class costs; keep hot data 30 days and tier older data cold.</li><li><strong>Storage:</strong> 1 PB a month needs lifecycle rules, thumbnails for browsing, and sampling policies so only informative images are kept long term.</li><li><strong>Edge fleet ops:</strong> device registry, versioned model per device, staged OTA updates, remote health, secure boot and signed models.</li><li><strong>Evaluation:</strong> metrics per defect class and site; test on new lighting and camera conditions; synthetic augmentation for rare defects.</li><li><strong>Risks:</strong> distribution shift per factory, silent camera degradation, false rejects stopping the line. Mitigate with shadow mode first, per-site thresholds, and automatic fallback to the previous model.</li></ul>
+    </section>
+    <section class="lesson" id="compare">
+      <h2>Comparing the five cases</h2><table><thead><tr><th>Case</th><th>Scale driver</th><th>Key MLOps challenge</th></tr></thead><tbody><tr><td>1 Fraud</td><td>25k QPS, 80 TB</td><td>Streaming features, delayed labels, latency</td></tr><tr><td>2 Recommendations</td><td>300 M users, 20 B events a month</td><td>Multi-stage serving, embedding refresh, A/B evaluation</td></tr><tr><td>3 Forecasting</td><td>200 M series</td><td>Parallel training, backtesting, nightly batch cost</td></tr><tr><td>4 SLM tuning</td><td>300 B tokens, 150 M calls a month</td><td>Data curation, GPU training, adapter serving, lineage</td></tr><tr><td>5 Vision at edge</td><td>1 PB images a month, 6,000 devices</td><td>Data engine, edge rollout, labelling operations</td></tr></tbody></table><ul><li>Version data, features, models and prompts together.</li><li>Gate every release on slices, cost and latency, not one aggregate metric.</li><li>Close the loop: production feedback becomes the next training set.</li><li>Keep a safe fallback for every automated decision.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>For UC4 compute GPU-days for three epochs on 3 M examples of 1,000 tokens.</li><li>For UC5, design the rollout rings and rollback condition for a new model.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="../gen-ai/genai-08-fine-tuning-practice-handbook.html" target="_blank" rel="noreferrer">GenAI: fine-tuning in practice</a> &mdash; TRL, Unsloth, QLoRA recipes</li><li><a href="../gen-ai/genai-13-serving-scale-cost-handbook.html" target="_blank" rel="noreferrer">GenAI: serving, scale and cost</a> &mdash; vLLM capacity maths</li><li><a href="https://docs.vllm.ai/en/latest/features/lora.html" target="_blank" rel="noreferrer">vLLM LoRA serving</a> &mdash; multi-adapter serving</li><li><a href="https://github.com/cvat-ai/cvat" target="_blank" rel="noreferrer">CVAT</a> &mdash; annotation platform</li><li><a href="https://developer.nvidia.com/tensorrt" target="_blank" rel="noreferrer">TensorRT</a> &mdash; edge optimisation</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="mlops-12-usecases-tabular-scale-handbook.html">&larr; Previous: Use Cases: Fraud, Recs, Forecast</a><a class="lesson-link" href="../index.html">Back to all handbooks &rarr;</a></div>
+    <footer class="site-footer">MLOps path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Beginner: Naive Bayes, Bayesian thinking, k-nearest neighbours and support vector machines, with how each works, when to use it, and how to tune it.">
+  <title>05. Naive Bayes, k-nearest neighbours and support vector machines | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">05 / 13 &middot; Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-04-linear-models-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-06-trees-ensembles-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 05 &middot; Beginner &middot; Three classic algorithms built on probability, similarity and margins</div>
+      <h1>Naive Bayes, k-nearest neighbours and support vector machines</h1>
+      <p class="lede">These three classic algorithms each rest on a different idea: probability (Naive Bayes), similarity (KNN) and margins (SVM). Knowing how each thinks tells you when it is the right tool, and when it is not.</p>
+      <div class="hero-meta"><span class="badge">Naive Bayes</span><span class="badge">Bayesian thinking</span><span class="badge">KNN</span><span class="badge">SVM</span><span class="badge">Comparison</span></div>
+    </section>
+    <section class="lesson" id="nb">
+      <h2>1. Naive Bayes</h2><h3>Naive Bayes classifier</h3><ul><li><strong>What it does:</strong> Classifies a row by computing the probability of each class given its features, using Bayes theorem (step 02).</li><li><strong>How it works:</strong> For each class it multiplies the class prior by the likelihood of every feature, <em>assuming features are independent given the class</em> (the &quot;naive&quot; part). That assumption is rarely true, yet predictions are often good. Training is just counting, so it is extremely fast.</li><li><strong>Use it when:</strong> Text classification (spam, sentiment, topic), very small datasets, high-dimensional sparse data, a quick baseline, or when you need fast online updating.</li><li><strong>Avoid it when:</strong> Features are strongly dependent and that matters, or you need well-calibrated probabilities (they tend to be extreme).</li><li><strong>Key settings:</strong> <code>alpha</code> (smoothing so unseen words do not zero the probability); pick the variant by feature type, below.</li></ul><table><thead><tr><th>Variant</th><th>Feature type</th><th>Typical use</th></tr></thead><tbody><tr><td><code>GaussianNB</code></td><td>Continuous numbers, assumed bell-shaped per class</td><td>Small numeric datasets</td></tr><tr><td><code>MultinomialNB</code></td><td>Counts or TF-IDF</td><td>Text classification</td></tr><tr><td><code>ComplementNB</code></td><td>Counts, imbalanced classes</td><td>Imbalanced text</td></tr><tr><td><code>BernoulliNB</code></td><td>Binary presence or absence</td><td>Short text, binary features</td></tr><tr><td><code>CategoricalNB</code></td><td>Categorical features</td><td>Tabular categories</td></tr></tbody></table><pre><code>from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import make_pipeline
+
+spam = make_pipeline(TfidfVectorizer(ngram_range=(1, 2), min_df=2), MultinomialNB(alpha=0.5))
+spam.fit(train_texts, train_labels)
+print(spam.predict(["Win a free prize now"]))</code></pre>
+    </section>
+    <section class="lesson" id="bayesian">
+      <h2>2. Bayesian thinking beyond Naive Bayes</h2><p>&quot;Bayesian&quot; is a wider idea than the Naive Bayes classifier: treat unknowns as probability distributions, start from a prior, and update with data.</p><ul><li><strong>Uncertainty:</strong> Bayesian models return a distribution (a plausible range), not just a single guess. Valuable with small data and high-stakes decisions.</li><li><strong>Priors as regularisation:</strong> ridge regression equals a Gaussian prior on weights, and lasso a Laplace prior. Regularisation is Bayesian thinking in disguise.</li><li><strong>Tools:</strong> scikit-learn offers <code>BayesianRidge</code> and Gaussian processes; probabilistic programming libraries such as PyMC and NumPyro build full custom models.</li><li><strong>Bayesian optimisation</strong> uses the same idea to choose hyperparameters efficiently (step 08).</li><li><strong>A/B testing</strong> can use Bayesian methods to say &quot;the probability that B is better is 94%&quot;.</li></ul>
+    </section>
+    <section class="lesson" id="knn">
+      <h2>3. k-nearest neighbours (KNN)</h2><h3>k-nearest neighbours</h3><ul><li><strong>What it does:</strong> Predicts by looking at the <em>k</em> most similar training rows and taking the majority class (classification) or average (regression).</li><li><strong>How it works:</strong> There is no training in the usual sense: it stores the data and, at prediction time, measures distance to every stored row (step 02). Closer neighbours can be weighted more.</li><li><strong>Use it when:</strong> Small to medium datasets, a simple non-parametric baseline, recommendation-like similarity, and when the decision boundary is irregular.</li><li><strong>Avoid it when:</strong> Large datasets (prediction is slow), many features (the curse of dimensionality makes all points look equally far), unscaled features, or noisy irrelevant features.</li><li><strong>Key settings:</strong> <code>n_neighbors</code> (small k overfits, large k underfits; try odd values 3 to 25), <code>weights</code> (<code>uniform</code> or <code>distance</code>), <code>metric</code> (euclidean, manhattan, cosine).</li></ul><pre><code>from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
+
+pipe = make_pipeline(StandardScaler(), KNeighborsClassifier())
+grid = GridSearchCV(pipe, {"kneighborsclassifier__n_neighbors": range(3, 26, 2),
+                           "kneighborsclassifier__weights": ["uniform", "distance"]}, cv=5)
+grid.fit(X_train, y_train)
+print(grid.best_params_, grid.best_score_)</code></pre><div class="callout"><strong>Scale first, always</strong>KNN compares raw distances, so a feature measured in thousands drowns out one measured in fractions. Standardise before fitting. For millions of rows or embeddings, use approximate nearest-neighbour search (see the <a href="../gen-ai/genai-03-embeddings-vector-search-handbook.html">vector database handbook</a>), which is KNN at scale.</div>
+    </section>
+    <section class="lesson" id="svm">
+      <h2>4. Support vector machines (SVM)</h2><h3>Support vector machine</h3><ul><li><strong>What it does:</strong> Finds the decision boundary that separates classes with the widest possible <strong>margin</strong>; only the few rows closest to the boundary (the support vectors) matter.</li><li><strong>How it works:</strong> Maximises the margin while allowing some mistakes, controlled by <code>C</code>. With a <strong>kernel</strong> it works in a richer implicit feature space, so it can draw curved boundaries without you building the features.</li><li><strong>Use it when:</strong> Small to medium datasets (up to tens of thousands of rows), high-dimensional data such as text or genomics, and clean problems where the classes are separable with a margin.</li><li><strong>Avoid it when:</strong> Very large datasets (training is slow and memory-heavy), heavy noise and overlapping classes, or when you need probabilities and interpretability.</li><li><strong>Key settings:</strong> <code>C</code> (large = fit training data tightly, small = wider margin), <code>kernel</code> (<code>linear</code>, <code>rbf</code>, <code>poly</code>), <code>gamma</code> (how far one point&#39;s influence reaches for rbf; large = wiggly boundary).</li></ul><pre><code>from sklearn.svm import SVC, LinearSVC, SVR
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+rbf = make_pipeline(StandardScaler(), SVC(kernel="rbf", C=1.0, gamma="scale", probability=True))
+fast_linear = make_pipeline(StandardScaler(), LinearSVC(C=1.0))     # use for large or text data
+rbf.fit(X_train, y_train)</code></pre><ul><li><strong>Kernels:</strong> linear for high-dimensional sparse data; RBF is the sensible default for general problems.</li><li><strong>Scaling is mandatory.</strong> Tune <code>C</code> and <code>gamma</code> together on a log scale (for example 0.01 to 100).</li><li><strong>Regression:</strong> <code>SVR</code> fits a tube around the data and ignores errors inside it (<code>epsilon</code>).</li><li><strong>Probabilities:</strong> <code>probability=True</code> adds an internal cross-validation and slows training; consider calibration instead (step 08).</li></ul>
+    </section>
+    <section class="lesson" id="compare">
+      <h2>5. Choosing between them</h2><table><thead><tr><th></th><th>Naive Bayes</th><th>KNN</th><th>SVM</th></tr></thead><tbody><tr><td>Core idea</td><td>Probability and Bayes theorem</td><td>Similarity to stored rows</td><td>Maximum-margin boundary</td></tr><tr><td>Training speed</td><td>Very fast</td><td>None (lazy)</td><td>Slow on large data</td></tr><tr><td>Prediction speed</td><td>Very fast</td><td>Slow on large data</td><td>Fast (few support vectors)</td></tr><tr><td>Needs scaling</td><td>No (for count-based)</td><td>Yes</td><td>Yes</td></tr><tr><td>Handles many features</td><td>Excellent</td><td>Poor</td><td>Very good</td></tr><tr><td>Interpretable</td><td>Reasonably</td><td>Show the neighbours</td><td>Hard (kernel), reasonable (linear)</td></tr><tr><td>Best fit</td><td>Text baseline, tiny data</td><td>Small data, irregular boundaries</td><td>Small to medium, high-dimensional</td></tr></tbody></table><p>In practice, once you reach tabular data of moderate size, gradient boosting (step 06) usually beats all three. These algorithms remain useful for text, small data, quick baselines and for teaching how different assumptions shape a model.</p><div class="exercise"><strong>Practice</strong><ol><li>Build a spam or sentiment classifier with TF-IDF and <code>MultinomialNB</code>, then try <code>LinearSVC</code> and logistic regression on the same features.</li><li>Fit KNN with and without scaling and compare scores.</li><li>Plot SVM decision boundaries for <code>gamma</code> = 0.01, 1 and 100 on a two-feature toy dataset to see underfitting and overfitting.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://scikit-learn.org/stable/modules/naive_bayes.html" target="_blank" rel="noreferrer">scikit-learn: Naive Bayes</a> &mdash; all variants and when to use them</li><li><a href="https://scikit-learn.org/stable/modules/neighbors.html" target="_blank" rel="noreferrer">scikit-learn: Nearest neighbours</a> &mdash; algorithms and metrics</li><li><a href="https://scikit-learn.org/stable/modules/svm.html" target="_blank" rel="noreferrer">scikit-learn: Support vector machines</a> &mdash; kernels, scaling and tips</li><li><a href="https://www.pymc.io/" target="_blank" rel="noreferrer">PyMC</a> &mdash; probabilistic programming for Bayesian models</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-04-linear-models-handbook.html">&larr; Previous: Linear Models</a><a class="lesson-link" href="ml-06-trees-ensembles-handbook.html">Next lesson: Trees and Ensembles &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

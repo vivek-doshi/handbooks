@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-28">
+  <meta name="description" content="Architect level: DevOps architecture for modular monoliths with module-aware CI, single artifact promotion, deployment strategies, observability, data migrations, and when to evolve.">
+  <title>12. Architecting DevOps for a modular monolith | DevOps Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
+    <span class="path-progress">12 / 13 · Architect</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="devops-11-platform-sre-finops-handbook.html">← Previous</a><a href="../index.html">All handbooks</a><a href="devops-13-devops-microservices-handbook.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 12 · Architect · One deployable, many modules: a lean delivery and operations design</div>
+      <h1>Architecting DevOps for a modular monolith</h1>
+      <p class="lede">A modular monolith needs less platform than a fleet of microservices, but it still needs a disciplined delivery system. This step designs it end to end, applying every earlier step with the minimum moving parts that stay safe, observable, and easy to evolve.</p>
+      <div class="hero-meta"><span class="badge">Single artifact</span><span class="badge">Module-aware CI</span><span class="badge">Zero-downtime</span><span class="badge">Observability</span><span class="badge">Evolution</span></div>
+    </section>
+    <section class="lesson" id="context">
+      <h2>1. Context and design principles</h2>
+<p>Assume one deployable application containing several domain modules (see Architecture path step 07), one primary database with module-owned schemas, a handful of teams, and a need for frequent releases. Principles: <strong>one repo, one pipeline, one artifact</strong>, modular boundaries enforced in code and in CI, and operational complexity added only when a measured problem demands it.</p>
+<table><thead><tr><th>Decision</th><th>Choice</th><th>Why</th></tr></thead><tbody>
+<tr><td>Repository</td><td>Single repo, CODEOWNERS per module</td><td>Atomic changes, simple tooling</td></tr>
+<tr><td>Branching</td><td>Trunk-based, short branches, feature flags</td><td>Best flow; flags decouple deploy from release</td></tr>
+<tr><td>Artifact</td><td>One signed container image tagged by commit SHA</td><td>Build once, promote everywhere</td></tr>
+<tr><td>Runtime</td><td>Managed container service or a small Kubernetes deployment</td><td>Match operational burden to team size</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="ci">
+      <h2>2. Pipeline design</h2>
+<ol><li><strong>Fast verify:</strong> build, unit tests, and architecture tests that fail on forbidden module dependencies. Use path-based test selection and build caching to keep runs short as the codebase grows.</li><li><strong>Integration:</strong> module and contract tests against Testcontainers or Compose-provisioned dependencies.</li><li><strong>Security:</strong> SCA, SAST, secret scan, image scan; generate SBOM and provenance (Step 10).</li><li><strong>Package:</strong> one multi-stage image, signed with cosign.</li><li><strong>Release:</strong> promote the identical image to staging, run smoke and end-to-end tests, then production with an approval and automatic verification.</li></ol><div class="callout"><strong>See real snippets in the DevOps Playbook</strong> Reusable CI workflows, a multi-stage Dockerfile, and deployment manifests that fit this one-artifact model are available there. Open the <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook code template browser</a> to read and copy complete, working files.</div>
+    </section>
+    <section class="lesson" id="deploy">
+      <h2>3. Deployment strategy</h2>
+<ul><li><strong>Rolling or blue/green</strong> on the runtime of choice; add canary when traffic and metrics justify it. Use readiness checks that exercise critical dependencies lightly.</li><li><strong>Feature flags</strong> for incomplete modules and risky behavior; clean flags up on a schedule.</li><li><strong>Database migrations</strong> use expand/contract: additive change first, deploy code that works with both shapes, then remove the old one. Run migrations as a controlled step (job or init), never as an uncoordinated side effect of app start in multi-replica deployments.</li><li>Keep rollback as "redeploy the previous image"; keep schema changes backwards compatible so it is always possible.</li></ul>
+    </section>
+    <section class="lesson" id="infra">
+      <h2>4. Infrastructure, config and secrets</h2>
+<ul><li>Provision with Terraform (Step 09): network, runtime, database with backups and point-in-time recovery, secret store, and registry; separate state per environment.</li><li>Environment parity: the same image and config shape in all environments; differences only in values.</li><li>Secrets from a managed store via workload identity; no secrets in images, repos, or pipeline variables where avoidable.</li><li>If using Kubernetes, adopt GitOps (Argo CD or Flux) with a small config repo; if using a managed container service, use pipeline deploys with environment approvals.</li></ul>
+    </section>
+    <section class="lesson" id="observe">
+      <h2>5. Observability tuned for modules</h2>
+<p>Instrument with OpenTelemetry. Tag every span, metric, and log with a <code>module</code> attribute so you can see per-module latency, error rate, and database time inside one process. Define SLOs for user journeys that cross modules, alert on burn rate, and add per-module dashboards for owning teams. Track DORA metrics for the single pipeline, and add module-level change failure attribution through CODEOWNERS.</p>
+    </section>
+    <section class="lesson" id="scale">
+      <h2>6. Scaling and when to evolve</h2>
+<table><thead><tr><th>Signal</th><th>First response</th><th>Consider extraction when</th></tr></thead><tbody>
+<tr><td>Hot module saturates CPU</td><td>Scale replicas, optimize, add caching or a read replica</td><td>Its scaling profile differs sharply and cost is material</td></tr>
+<tr><td>Release contention between teams</td><td>Better flags, test selection, ownership</td><td>Teams need independent release cadence that flags cannot give</td></tr>
+<tr><td>Data coupling</td><td>Enforce schema ownership, use contracts</td><td>A module needs an isolated store or compliance boundary</td></tr></tbody></table>
+<p>Extract one module at a time behind its contract (strangler pattern), reusing the same pipeline templates; Step 13 shows the target operating model if you grow into many services.</p>
+<div class="exercise"><strong>Practice</strong>Draw the pipeline from pull request to production for your monolith, mark each quality gate, and write the rollback and migration plan for one schema change.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+<ul class="reading-list">
+<li><a href="https://martinfowler.com/bliki/MonolithFirst.html" target="_blank" rel="noreferrer">Monolith First</a> — why to start simple.</li>
+<li><a href="https://www.thoughtworks.com/radar" target="_blank" rel="noreferrer">Thoughtworks Technology Radar</a> — current tooling trends.</li>
+<li><a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a> — templates for each piece of this design.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="devops-11-platform-sre-finops-handbook.html">← Previous: Platform Engineering, SRE and FinOps</a><a class="lesson-link" href="devops-13-devops-microservices-handbook.html">Next lesson: DevOps Architecture: 20 Microservices →</a></div>
+    <footer class="site-footer">DevOps learning path · Updated 2026-10-28 · Real templates: <a href="https://vivek-doshi.github.io/devops-playbook" target="_blank" rel="noreferrer">DevOps Playbook</a></footer>
+  </main>
+</body>
+</html>

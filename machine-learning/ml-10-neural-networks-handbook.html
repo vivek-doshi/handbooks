@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: how neural networks work, with perceptrons, activation functions, forward and backward propagation, loss functions, optimisers, regularisation, and a from-scratch NumPy example.">
+  <title>10. Neural networks from the ground up | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">10 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-09-sklearn-workflow-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-11-pytorch-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 10 &middot; Intermediate &middot; Neurons, layers, activations, backpropagation, optimisers and regularisation</div>
+      <h1>Neural networks from the ground up</h1>
+      <p class="lede">Deep learning is built from one repeating idea: stack simple units, measure the error, and nudge every weight to reduce it. This step explains each piece, runs a network by hand in NumPy, and gives you the training rules of thumb that prevent most failures.</p>
+      <div class="hero-meta"><span class="badge">Neurons and layers</span><span class="badge">Activations</span><span class="badge">Backpropagation</span><span class="badge">Optimisers</span><span class="badge">Regularisation</span><span class="badge">Debugging</span><span class="badge">NN or trees?</span></div>
+    </section>
+    <section class="lesson" id="neuron">
+      <h2>1. From a neuron to a network</h2><p>A <strong>neuron</strong> computes a weighted sum of its inputs plus a bias, then applies an <strong>activation function</strong>: <code>output = f(w . x + b)</code>. A <strong>layer</strong> is many neurons in parallel (a matrix multiplication, step 02). A <strong>multilayer perceptron (MLP)</strong> stacks layers, so each layer builds more abstract features from the one before.</p><table><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody><tr><td>Input layer</td><td>The features</td></tr><tr><td>Hidden layers</td><td>Learned intermediate representations; &quot;deep&quot; means many</td></tr><tr><td>Output layer</td><td>Prediction: one number (regression), one sigmoid unit (binary), or softmax over classes</td></tr><tr><td>Weights and biases</td><td>The parameters learned in training</td></tr><tr><td>Epoch</td><td>One full pass over the training data</td></tr><tr><td>Batch</td><td>The number of rows used for each weight update</td></tr><tr><td>Learning rate</td><td>The step size of each update</td></tr></tbody></table><p>Without a non-linear activation, any stack of layers collapses into one linear model. The activation is what lets a network represent curves, interactions and complex patterns.</p>
+    </section>
+    <section class="lesson" id="act">
+      <h2>2. Activation functions</h2><table><thead><tr><th>Function</th><th>Range</th><th>Use</th><th>Notes</th></tr></thead><tbody><tr><td>ReLU</td><td>0 to infinity</td><td>Default for hidden layers in MLPs and CNNs</td><td>Fast; units can &quot;die&quot; if stuck at zero</td></tr><tr><td>Leaky ReLU</td><td>Small slope below zero</td><td>When ReLU units die</td><td>Simple fix</td></tr><tr><td>GELU / SiLU (Swish)</td><td>Smooth, near ReLU</td><td>Transformers and modern architectures</td><td>Standard in current large models</td></tr><tr><td>Tanh</td><td>-1 to 1</td><td>Recurrent networks, some small nets</td><td>Saturates, so gradients can vanish</td></tr><tr><td>Sigmoid</td><td>0 to 1</td><td>Output for binary probability; gates in LSTMs</td><td>Avoid in deep hidden layers</td></tr><tr><td>Softmax</td><td>Probabilities that sum to 1</td><td>Output for multiclass</td><td>Pair with cross-entropy loss</td></tr></tbody></table><h3>Choose the output and loss together</h3><table><thead><tr><th>Task</th><th>Output layer</th><th>Loss</th></tr></thead><tbody><tr><td>Regression</td><td>Linear (no activation)</td><td>MSE, MAE or Huber</td></tr><tr><td>Binary classification</td><td>1 unit, sigmoid</td><td>Binary cross-entropy</td></tr><tr><td>Multiclass (one label)</td><td>K units, softmax</td><td>Cross-entropy</td></tr><tr><td>Multilabel (several labels)</td><td>K units, sigmoid each</td><td>Binary cross-entropy per label</td></tr></tbody></table><div class="callout"><strong>PyTorch detail</strong>Pass raw scores (<strong>logits</strong>) to <code>nn.CrossEntropyLoss</code> and <code>nn.BCEWithLogitsLoss</code>. They apply softmax or sigmoid internally in a numerically stable way, so do not add those layers yourself.</div>
+    </section>
+    <section class="lesson" id="backprop">
+      <h2>3. Forward pass and backpropagation</h2><ol><li><strong>Forward pass:</strong> push a batch through the layers to get predictions.</li><li><strong>Loss:</strong> compare predictions with targets to get a single number.</li><li><strong>Backward pass (backpropagation):</strong> apply the chain rule (step 02) from the loss backwards to find the gradient of the loss for every weight.</li><li><strong>Update:</strong> an optimiser moves each weight a small step against its gradient.</li><li>Repeat for every batch and epoch.</li></ol><p>Frameworks compute gradients automatically (<strong>autograd</strong>), but writing it once by hand removes the mystery. A tiny network learning XOR, which no linear model can:</p><pre><code>import numpy as np
+rng = np.random.default_rng(0)
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], float)
+y = np.array([[0], [1], [1], [0]], float)
+
+W1, b1 = rng.normal(0, 1, (2, 8)), np.zeros(8)
+W2, b2 = rng.normal(0, 1, (8, 1)), np.zeros(1)
+sigmoid = lambda z: 1 / (1 + np.exp(-z))
+lr = 0.5
+
+for epoch in range(5000):
+    h = np.tanh(X @ W1 + b1)              # forward: hidden layer
+    p = sigmoid(h @ W2 + b2)              # forward: output probability
+    dz2 = (p - y) / len(X)                # backward: d(loss)/d(logit) for binary cross-entropy
+    dW2, db2 = h.T @ dz2, dz2.sum(0)
+    dz1 = (dz2 @ W2.T) * (1 - h ** 2)     # chain rule through tanh
+    dW1, db1 = X.T @ dz1, dz1.sum(0)
+    W1 -= lr * dW1; b1 -= lr * db1        # update
+    W2 -= lr * dW2; b2 -= lr * db2
+
+print(p.round(3).ravel())                 # close to [0, 1, 1, 0]</code></pre><h3>Why deep networks are hard to train</h3><ul><li><strong>Vanishing gradients:</strong> gradients shrink as they pass back through many saturating layers, so early layers barely learn. ReLU-style activations, good initialisation, normalisation layers and residual connections address this.</li><li><strong>Exploding gradients:</strong> the opposite; fix with gradient clipping (<code>clip_grad_norm_</code>).</li><li><strong>Initialisation:</strong> use He initialisation for ReLU and Xavier for tanh and sigmoid (frameworks do this by default); never initialise all weights to the same value.</li></ul>
+    </section>
+    <section class="lesson" id="opt">
+      <h2>4. Optimisers, learning rate and batches</h2><table><thead><tr><th>Optimiser</th><th>Idea</th><th>When</th></tr></thead><tbody><tr><td>SGD (with momentum)</td><td>Plain gradient step plus a running average of past steps</td><td>Vision models with careful tuning; best generalisation when tuned</td></tr><tr><td>RMSprop</td><td>Scales steps by a running average of gradient size</td><td>Some recurrent networks</td></tr><tr><td>Adam</td><td>Momentum plus per-parameter adaptive step sizes</td><td>Strong default; start at lr 1e-3</td></tr><tr><td>AdamW</td><td>Adam with decoupled weight decay</td><td>The standard for transformers and most modern training</td></tr></tbody></table><ul><li><strong>Learning rate</strong> is the most important hyperparameter. Too high: the loss jumps or becomes NaN. Too low: training crawls.</li><li><strong>Schedules:</strong> warm up for the first steps, then decay (cosine or one-cycle). Almost every large model uses this.</li><li><strong>Batch size:</strong> 32 to 256 is typical; larger batches give smoother gradients and better hardware use, but may need a higher learning rate and can generalise slightly worse.</li><li><strong>Epochs:</strong> train until validation loss stops improving, and use <strong>early stopping</strong> to keep the best checkpoint.</li></ul>
+    </section>
+    <section class="lesson" id="reg">
+      <h2>5. Regularisation and normalisation</h2><table><thead><tr><th>Technique</th><th>What it does</th></tr></thead><tbody><tr><td>Weight decay (L2)</td><td>Penalises large weights; use AdamW&#39;s decoupled version</td></tr><tr><td>Dropout</td><td>Randomly zeroes activations during training, so units cannot over-rely on each other (typical 0.1 to 0.5)</td></tr><tr><td>Early stopping</td><td>Stops when validation loss stops improving</td></tr><tr><td>Batch normalisation</td><td>Normalises layer inputs per batch; speeds training in CNNs</td></tr><tr><td>Layer normalisation</td><td>Normalises per example; standard in transformers</td></tr><tr><td>Data augmentation</td><td>Creates varied training examples (flips, crops, noise, text perturbations)</td></tr><tr><td>Smaller model / more data</td><td>Often the real fix for overfitting</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="debug">
+      <h2>6. A training checklist that prevents most failures</h2><ol><li><strong>Overfit one small batch first.</strong> If the model cannot reach near-zero loss on 10 rows, there is a bug (wrong loss, labels, shapes or learning rate).</li><li>Check the starting loss: for K balanced classes it should be about <code>ln(K)</code>.</li><li>Confirm inputs are scaled or normalised and labels line up with inputs.</li><li>Watch <strong>both</strong> training and validation loss every epoch; the gap tells you overfitting from underfitting (step 08).</li><li>Change one thing at a time and log every run.</li><li>Set seeds and keep a simple baseline (linear model, gradient boosting) to compare against.</li></ol>
+    </section>
+    <section class="lesson" id="when">
+      <h2>7. Neural network or trees?</h2><table><thead><tr><th>Data</th><th>Better first choice</th></tr></thead><tbody><tr><td>Structured tabular data</td><td>Gradient boosting (step 06); a neural network rarely wins without lots of data and tuning</td></tr><tr><td>Images, video</td><td>CNN or vision transformer, ideally pretrained (steps 12 and 13)</td></tr><tr><td>Text, code</td><td>Pretrained transformer (step 13)</td></tr><tr><td>Audio, sensors, sequences</td><td>1D CNN, LSTM or transformer</td></tr><tr><td>Mixed inputs, embeddings, multi-task learning</td><td>Neural network</td></tr></tbody></table><div class="exercise"><strong>Practice</strong><ol><li>Run the XOR code and print the hidden activations. Then try with no hidden layer and see why it fails.</li><li>Change the learning rate to 5 and then 0.001 and record what happens to the loss.</li><li>Explain, in your own words, why removing the activation function turns a deep network into a linear model.</li></ol></div><h3>Glossary</h3><table><thead><tr><th>Term</th><th>Meaning</th></tr></thead><tbody><tr><td>Logit</td><td>Raw, unnormalised network output before sigmoid or softmax</td></tr><tr><td>Gradient</td><td>Direction and size of the steepest increase of the loss</td></tr><tr><td>Backpropagation</td><td>Efficient chain-rule computation of all gradients</td></tr><tr><td>Epoch / batch / iteration</td><td>Full pass / group of rows / one weight update</td></tr><tr><td>Hyperparameter</td><td>Learning rate, batch size, depth, dropout: chosen by you</td></tr><tr><td>Fine-tuning</td><td>Continuing training of a pretrained model on your data</td></tr><tr><td>Embedding</td><td>A learned dense vector that represents a discrete item</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://d2l.ai/" target="_blank" rel="noreferrer">Dive into Deep Learning</a> &mdash; interactive textbook with code</li><li><a href="https://www.deeplearningbook.org/" target="_blank" rel="noreferrer">Deep Learning (Goodfellow, Bengio, Courville)</a> &mdash; the reference text</li><li><a href="https://karpathy.github.io/2019/04/25/recipe/" target="_blank" rel="noreferrer">A Recipe for Training Neural Networks</a> &mdash; practical debugging advice from Andrej Karpathy</li><li><a href="https://playground.tensorflow.org/" target="_blank" rel="noreferrer">TensorFlow Playground</a> &mdash; visualise a small network learning</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-09-sklearn-workflow-handbook.html">&larr; Previous: Workflow and Chooser</a><a class="lesson-link" href="ml-11-pytorch-handbook.html">Next lesson: PyTorch &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

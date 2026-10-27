@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Advanced: RTO and RPO, recovery patterns, backups and immutability, data replication, recovery as code, communications, compliance (DORA, NIS2), chaos testing, and AI system recovery.">
+  <title>12. Resilience and disaster recovery | Cloud Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Cloud Path</span> / Handbooks</a>
+    <span class="path-progress">12 / 15 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="cloud-11-finops-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="cloud-13-arch-classic-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 12 &middot; Advanced &middot; Design for failure, recover predictably, and prove it with drills</div>
+      <h1>Resilience and disaster recovery</h1>
+      <p class="lede">Outages and attacks are certain; surprise is optional. This step turns resilience into engineering: targets, patterns, automation and regular proof.</p>
+      <div class="hero-meta"><span class="badge">RTO and RPO</span><span class="badge">Patterns</span><span class="badge">Immutable backups</span><span class="badge">Recovery as code</span><span class="badge">Compliance</span><span class="badge">Chaos drills</span></div>
+    </section>
+    <section class="lesson" id="targets">
+      <h2>1. Targets and tiers</h2><p>Define <strong>RTO</strong> (how long you can be down) and <strong>RPO</strong> (how much data you can lose) per service from business impact, then group services into tiers.</p><table><thead><tr><th>Tier</th><th>Example</th><th>Typical RTO / RPO</th><th>Pattern</th></tr></thead><tbody><tr><td>0</td><td>Payments, identity</td><td>Minutes / near zero</td><td>Active-active or hot standby</td></tr><tr><td>1</td><td>Core product</td><td>Under 1 hour / minutes</td><td>Warm standby</td></tr><tr><td>2</td><td>Internal tools</td><td>Hours / hours</td><td>Pilot light</td></tr><tr><td>3</td><td>Dev and batch</td><td>Days / a day</td><td>Backup and restore</td></tr></tbody></table><div class="callout"><strong>Dependencies</strong>A service is only as recoverable as its slowest dependency, including identity, DNS, secrets and CI/CD. Map and tier those too.</div>
+    </section>
+    <section class="lesson" id="fail">
+      <h2>2. Failure domains</h2><ul><li>Instance and process, availability zone, region, whole provider, and your own control plane (accounts, identity, pipelines).</li><li>Include logical failures: bad deploys, data corruption, deletion and ransomware. Replication copies mistakes; backups with history recover from them.</li><li>Design static stability: keep data planes working when control planes are impaired.</li></ul>
+    </section>
+    <section class="lesson" id="backup">
+      <h2>3. Backups and data protection</h2><ul><li>Follow <strong>3-2-1-1-0</strong>: three copies, two media types, one off-site, one immutable or air-gapped, zero restore errors after testing.</li><li>Use immutability (S3 Object Lock, Azure immutable blob storage, Cloud Storage retention and bucket lock) and a separate account or subscription with restricted access for the backup vault.</li><li>Cross-region and cross-account copies; encrypt with keys that are not controlled only by the production account.</li><li>Back up configuration and infrastructure state, identity data, secrets, and Kubernetes state (Velero or provider tools), not only databases.</li></ul>
+    </section>
+    <section class="lesson" id="repl">
+      <h2>4. Replication and consistency</h2><table><thead><tr><th>Need</th><th>Approach</th></tr></thead><tbody><tr><td>Zero data loss</td><td>Synchronous replication within a region; multi-region strongly consistent stores such as Spanner or Cosmos DB strong consistency, at latency cost</td></tr><tr><td>Low RPO</td><td>Asynchronous cross-region replicas (Aurora Global, Azure SQL geo-replication, Cloud SQL cross-region replicas)</td></tr><tr><td>Object data</td><td>Cross-region replication with versioning</td></tr><tr><td>Traffic failover</td><td>Health-checked DNS or global load balancing; avoid depending on a single control plane to fail over</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="code">
+      <h2>5. Recovery as code</h2><ul><li>Rebuild the environment from infrastructure as code and GitOps; keep pipelines, state and images available in the recovery region.</li><li>Runbooks as executable automation with manual approval at critical steps; version them next to the code.</li><li>Maintain a clean-room recovery environment for ransomware scenarios, with verified-clean backups and independent credentials.</li><li>Use provider tools (AWS Resilience Hub and Elastic Disaster Recovery, Azure Site Recovery and Backup, Google Backup and DR) where they fit.</li></ul>
+    </section>
+    <section class="lesson" id="comms">
+      <h2>6. Incident communications and compliance</h2><ul><li>Define severities, an incident commander role, a communication plan (internal, customers, regulators), and an out-of-band channel that does not depend on the affected systems.</li><li>Regulations raise the bar: <strong>DORA</strong> (EU financial entities, in force since January 2025) requires ICT risk management, resilience testing and third-party oversight; <strong>NIS2</strong> requires incident reporting and risk measures for essential entities.</li><li>Document exit and substitution plans for critical cloud providers.</li></ul>
+    </section>
+    <section class="lesson" id="test">
+      <h2>7. Testing and chaos engineering</h2><ul><li>Test restores on a schedule, not only backups. Measure actual RTO and RPO against targets.</li><li>Run game days and fault injection (AWS Fault Injection Service, Azure Chaos Studio, Chaos Mesh or Litmus on Kubernetes) starting in non-production, then limited production.</li><li>Practice zone loss, region loss, dependency failure, credential compromise and data corruption.</li><li>Feed findings into post-incident reviews with tracked actions.</li></ul>
+    </section>
+    <section class="lesson" id="ai">
+      <h2>8. Recovering AI systems</h2><ul><li>Version prompts, model identifiers, evaluation sets and guardrail configs in Git.</li><li>Replicate vector indexes or keep the ingestion pipeline able to rebuild them; test rebuild time.</li><li>Plan model fallbacks: secondary model, secondary region, or degraded non-AI path, and handle provider quota loss.</li><li>Back up fine-tuned weights and training data lineage.</li></ul><div class="exercise"><strong>Practice</strong>Pick a tier-1 service. Write its dependency map, set RTO and RPO, schedule a restore test, and record the measured result.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-workloads-on-aws.html" target="_blank" rel="noreferrer">AWS disaster recovery whitepaper</a> — Four DR strategies.</li><li><a href="https://learn.microsoft.com/azure/well-architected/reliability/" target="_blank" rel="noreferrer">Azure reliability guidance</a> — Resilience design.</li><li><a href="https://cloud.google.com/architecture/dr-scenarios-planning-guide" target="_blank" rel="noreferrer">Google Cloud DR planning guide</a> — Scenario planning.</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="cloud-11-finops-handbook.html">&larr; Previous: FinOps and Cost Governance</a><a class="lesson-link" href="cloud-13-arch-classic-handbook.html">Next lesson: Case Studies: Classic Systems &rarr;</a></div>
+    <footer class="site-footer">Cloud learning path &middot; Updated 2026-10-27 &middot; Check provider documentation for current limits and pricing</footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: function calling, workflow versus agent patterns, the agent loop with budgets and verifiers, the Model Context Protocol, multi-agent designs, and failure modes.">
+  <title>09. Tools, Agents and MCP | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">09 / 16 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-08-fine-tuning-practice-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-10-evaluation-guardrails-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 09 &middot; Intermediate &middot; Let the model act</div>
+      <h1>Tools, Agents and MCP</h1>
+      <p class="lede">Language models become systems when they can call tools. This step covers tool calling, the common workflow and agent patterns, MCP as the standard connector, and the engineering discipline (loops, budgets, verifiers) that keeps agents reliable.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">Function calling</span><span class="badge">MCP and loops</span></div>
+    </section>
+    <section class="lesson" id="tools">
+      <h2>Tool and function calling</h2><p>You describe tools with a name, description and JSON schema. The model replies with a structured request to call one; <em>your code</em> executes it and returns the result; the model continues. The model never runs anything itself.</p><pre><code>import json
+from openai import OpenAI
+client = OpenAI()
+
+tools = [{"type": "function", "function": {
+    "name": "get_order_status",
+    "description": "Look up the status of a customer order by id.",
+    "parameters": {"type": "object",
+                   "properties": {"order_id": {"type": "string"}},
+                   "required": ["order_id"], "additionalProperties": False}}}]
+
+def get_order_status(order_id): return {"order_id": order_id, "status": "shipped"}
+
+messages = [{"role": "user", "content": "Where is order A-1042?"}]
+for _ in range(5):                                       # hard step budget
+    r = client.chat.completions.create(model="MODEL_NAME", messages=messages, tools=tools)
+    msg = r.choices[0].message
+    if not msg.tool_calls:
+        print(msg.content); break
+    messages.append(msg)
+    for call in msg.tool_calls:
+        args = json.loads(call.function.arguments)
+        result = get_order_status(**args)                # validate args, check permissions here
+        messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(result)})</code></pre><ul><li>Write tool descriptions like documentation for a new colleague: when to use it, inputs, side effects.</li><li>Keep tools few, focused and non-overlapping. Fifty similar tools confuse the model.</li><li>Return concise, structured results with clear error messages the model can act on.</li><li>Enforce authorisation in the tool, using the end user's identity. Never rely on the prompt to restrict access.</li></ul>
+    </section>
+    <section class="lesson" id="patterns">
+      <h2>Workflows versus agents</h2><p>A <strong>workflow</strong> follows code-defined paths; an <strong>agent</strong> lets the model decide the next step in a loop. Start with the simplest design that works, because autonomy costs latency, money and predictability.</p><table><thead><tr><th>Pattern</th><th>How it works</th><th>Use when</th></tr></thead><tbody><tr><td>Single call with tools</td><td>One prompt, optional tool calls</td><td>Most assistants and Q&A</td></tr><tr><td>Prompt chaining</td><td>Fixed sequence, output of one step feeds the next, with checks between</td><td>Tasks that decompose cleanly (draft, critique, finalise)</td></tr><tr><td>Routing</td><td>Classify the input, send to a specialised prompt, model or tool</td><td>Mixed request types; cost control by sending easy requests to small models</td></tr><tr><td>Parallelisation</td><td>Run independent sub-tasks or votes simultaneously, then merge</td><td>Speed or confidence (multi-document analysis, guardrail checks)</td></tr><tr><td>Orchestrator and workers</td><td>A planner delegates dynamic sub-tasks to worker agents</td><td>Unpredictable decomposition (research, code changes across files)</td></tr><tr><td>Evaluator and optimiser</td><td>One model generates, another critiques, iterate</td><td>Clear quality criteria (translation, code with tests)</td></tr><tr><td>Autonomous agent loop</td><td>Model plans, acts, observes until done or budget hit</td><td>Open-ended problems with a verifiable outcome</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="loop">
+      <h2>The agent loop, engineered</h2><pre><code>while not done and steps &lt; MAX_STEPS and cost &lt; MAX_COST:
+    context = build_context(goal, memory, recent_observations)   # step 06
+    action  = model(context)                                     # tool call or final answer
+    result  = execute(action)           # sandboxed, least privilege, logged
+    verify(result)                      # tests, schema, policy check, second model
+    update(memory, result)
+    done = stop_condition(result)</code></pre><table><thead><tr><th>Block</th><th>Purpose</th><th>Practical rule</th></tr></thead><tbody><tr><td>Trigger</td><td>What starts the run: user, schedule, event, webhook</td><td>Make runs idempotent so retries are safe</td></tr><tr><td>Context</td><td>What the model sees each step</td><td>Compact state, not full transcripts</td></tr><tr><td>Tools</td><td>Actions the agent may take</td><td>Read-only by default; approval for writes</td></tr><tr><td>Verifier</td><td>Objective checks on progress</td><td>Prefer programmatic checks (tests, linters, schema) over self-assessment</td></tr><tr><td>Stop conditions and budgets</td><td>Max steps, tokens, cost, wall time, repeated-error detection</td><td>Always set all of them</td></tr><tr><td>Memory and skills</td><td>Persisted notes and reusable procedures</td><td>Write progress to files or a store so runs can resume</td></tr></tbody></table><div class="callout"><strong>Loop engineering</strong>Reliable agents come from the loop around the model, not from a cleverer prompt. Deterministic verifiers, small action spaces, checkpoints and clear exits turn an unpredictable generator into a controllable process.</div>
+    </section>
+    <section class="lesson" id="mcp">
+      <h2>Model Context Protocol (MCP)</h2><p>MCP is an open protocol that standardises how AI applications connect to tools and data. Instead of writing a custom integration per app and per service (an N times M problem), a service exposes one MCP server and any MCP-capable client can use it.</p><table><thead><tr><th>Piece</th><th>Role</th></tr></thead><tbody><tr><td>Host</td><td>The AI application (an IDE, a chat app, your agent) that manages connections and user consent</td></tr><tr><td>Client</td><td>A connector inside the host that talks to exactly one server</td></tr><tr><td>Server</td><td>Exposes capabilities: <strong>tools</strong> (actions), <strong>resources</strong> (readable data), <strong>prompts</strong> (templates)</td></tr><tr><td>Transports</td><td>stdio for local processes; Streamable HTTP for remote servers (with OAuth-based authorisation)</td></tr></tbody></table><pre><code>from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("orders")
+
+@mcp.tool()
+def get_order(order_id: str) -&gt; dict:
+    """Return status and line items for an order."""
+    return {"order_id": order_id, "status": "shipped"}
+
+@mcp.resource("policy://returns")
+def returns_policy() -&gt; str:
+    return "Returns accepted within 30 days."
+
+if __name__ == "__main__":
+    mcp.run()          # stdio by default; use a streamable HTTP transport for remote servers</code></pre><ul><li><strong>Enterprise pattern:</strong> publish internal MCP servers behind an API gateway with authentication, per-tool authorisation, rate limits and audit logs, and keep a registry of approved servers.</li><li><strong>Security:</strong> treat tool descriptions and results as untrusted input (tool poisoning and indirect injection are real); pin and review servers; avoid broad credentials; require user confirmation for sensitive actions.</li><li><strong>MCP versus plain function calling:</strong> function calling is how a model asks for a tool in one application; MCP is how tools are packaged and discovered across applications.</li><li><strong>Agent-to-agent:</strong> complementary protocols such as A2A address agents discovering and delegating to other agents across vendors.</li></ul>
+    </section>
+    <section class="lesson" id="multi">
+      <h2>Multi-agent systems</h2><table><thead><tr><th>Design</th><th>Description</th><th>Caution</th></tr></thead><tbody><tr><td>Supervisor and workers</td><td>One agent routes to specialists</td><td>Supervisor becomes a bottleneck; keep roles narrow</td></tr><tr><td>Hand-offs</td><td>Control moves between agents (triage to billing to support)</td><td>Pass state explicitly; avoid ping-pong loops</td></tr><tr><td>Parallel researchers</td><td>Many sub-agents explore in parallel and report back</td><td>Large token cost; cap fan-out</td></tr><tr><td>Debate or critic</td><td>Agents challenge each other's output</td><td>Diminishing returns; verify with tools, not opinion</td></tr></tbody></table><p>Multi-agent systems cost multiples of single-agent token usage and are harder to debug. Use them when sub-tasks are truly parallel or need isolated context, not as a default.</p>
+    </section>
+    <section class="lesson" id="frameworks">
+      <h2>Framework landscape</h2><table><thead><tr><th>Framework</th><th>Style</th></tr></thead><tbody><tr><td>LangGraph</td><td>Graph-based, stateful, durable execution, human-in-the-loop checkpoints</td></tr><tr><td>OpenAI Agents SDK</td><td>Lightweight agents, hand-offs, guardrails, tracing</td></tr><tr><td>Google Agent Development Kit (ADK)</td><td>Code-first agents, multi-agent, Vertex AI deployment</td></tr><tr><td>Claude Agent SDK</td><td>Agent loop, tools, MCP and sub-agents from Anthropic</td></tr><tr><td>Microsoft Agent Framework (successor to AutoGen and Semantic Kernel patterns)</td><td>Multi-agent and workflow orchestration on .NET and Python</td></tr><tr><td>CrewAI, LlamaIndex agents, Pydantic AI, smolagents</td><td>Role-based crews, data-centric agents, typed agents, minimal code agents</td></tr></tbody></table><p>Frameworks save boilerplate but hide behaviour. Understand the raw loop above first, and keep the ability to inspect every prompt and tool call.</p>
+    </section>
+    <section class="lesson" id="failures">
+      <h2>Failure modes and defences</h2><table><thead><tr><th>Failure</th><th>Defence</th></tr></thead><tbody><tr><td>Infinite or wandering loops</td><td>Step, token and time budgets; repeated-action detection</td></tr><tr><td>Wrong tool or bad arguments</td><td>Clear schemas, argument validation, fewer tools, few-shot examples</td></tr><tr><td>Compounding errors over many steps</td><td>Verifiers after steps, checkpoints, shorter chains</td></tr><tr><td>Excessive permissions</td><td>Least privilege, scoped tokens, human approval for irreversible actions</td></tr><tr><td>Indirect prompt injection via tool output</td><td>Treat results as data, isolate untrusted content, output checks</td></tr><tr><td>Cost surprises</td><td>Per-run budgets, model routing, caching, alerts</td></tr><tr><td>Hard-to-reproduce bugs</td><td>Full traces, deterministic seeds where possible, replay tools (step 10)</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>Add two tools to the loop example with schema validation and a step budget.</li><li>Wrap one in an MCP server and connect it from an MCP-capable client.</li><li>Add a verifier that rejects an answer when a tool call failed.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://modelcontextprotocol.io" target="_blank" rel="noreferrer">Model Context Protocol</a> &mdash; specification and SDKs</li><li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noreferrer">Anthropic: Building effective agents</a> &mdash; workflow and agent patterns</li><li><a href="https://platform.openai.com/docs/guides/function-calling" target="_blank" rel="noreferrer">OpenAI function calling</a> &mdash; tool schemas</li><li><a href="https://langchain-ai.github.io/langgraph/" target="_blank" rel="noreferrer">LangGraph</a> &mdash; stateful agent graphs</li><li><a href="https://google.github.io/adk-docs/" target="_blank" rel="noreferrer">Google ADK</a> &mdash; agent development kit</li><li><a href="../ai-frameworks/langgraph-handbook.html" target="_blank" rel="noreferrer">LangGraph handbook</a> &mdash; in this library</li><li><a href="../ai-frameworks/autogen-handbook.html" target="_blank" rel="noreferrer">AutoGen handbook</a> &mdash; in this library</li><li><a href="../ai-frameworks/adk-handbook.html" target="_blank" rel="noreferrer">ADK handbook</a> &mdash; in this library</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-08-fine-tuning-practice-handbook.html">&larr; Previous: Fine-Tuning in Practice</a><a class="lesson-link" href="genai-10-evaluation-guardrails-handbook.html">Next lesson: Evaluation and Guardrails &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

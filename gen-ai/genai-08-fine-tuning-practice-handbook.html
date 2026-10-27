@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: a QLoRA run with Hugging Face TRL and PEFT, Unsloth, DPO and GRPO, GPU memory sizing, multi-GPU options, merging, quantised export, and serving adapters.">
+  <title>08. Fine-Tuning in Practice | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">08 / 16 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-07-fine-tuning-fundamentals-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-09-agents-tools-mcp-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 08 &middot; Intermediate &middot; Run it end to end</div>
+      <h1>Fine-Tuning in Practice</h1>
+      <p class="lede">This step turns the theory into a repeatable recipe: choose the tooling, estimate GPU memory, train, evaluate, merge or serve adapters, and export for inference.</p>
+      <div class="hero-meta"><span class="badge">Intermediate</span><span class="badge">TRL and PEFT</span><span class="badge">Unsloth and GGUF</span></div>
+    </section>
+    <section class="lesson" id="tools">
+      <h2>Tooling choices</h2><table><thead><tr><th>Tool</th><th>Best for</th><th>Notes</th></tr></thead><tbody><tr><td>Hosted fine-tuning APIs (OpenAI, Google Vertex, Azure AI Foundry, Amazon Bedrock, Together, Fireworks)</td><td>Fastest path, no GPUs to manage</td><td>Limited control; data leaves your environment; check supported models</td></tr><tr><td>Hugging Face transformers + PEFT + TRL</td><td>Most flexible, the common standard</td><td>Code-first; works with FSDP and DeepSpeed</td></tr><tr><td>Unsloth</td><td>Fast, memory-efficient single-GPU LoRA, QLoRA, GRPO; GGUF export; has a web UI</td><td>Great for laptops, workstations and Colab-class GPUs</td></tr><tr><td>Axolotl, LLaMA-Factory, torchtune</td><td>Config-driven recipes and multi-GPU scale</td><td>YAML-based workflows for repeatability</td></tr><tr><td>Managed training (SageMaker, Vertex AI, Azure ML, Databricks)</td><td>Enterprise governance, large clusters</td><td>See the cloud path for service maps</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="sizing">
+      <h2>GPU memory estimate</h2><p>Rules of thumb for model weights: 16-bit needs 2 bytes per parameter, 8-bit 1 byte, 4-bit 0.5 byte. Full fine-tuning with Adam in mixed precision needs about 16 bytes per parameter for weights, gradients and optimiser state. LoRA adds activations and a small adapter on top of the frozen base.</p><table><thead><tr><th>Model</th><th>Inference 4-bit</th><th>QLoRA training (approx.)</th><th>Full fine-tune (approx.)</th></tr></thead><tbody><tr><td>3B</td><td>2 GB</td><td>6 to 8 GB</td><td>48 GB</td></tr><tr><td>8B</td><td>5 GB</td><td>12 to 16 GB</td><td>130 GB</td></tr><tr><td>14B</td><td>9 GB</td><td>20 to 24 GB</td><td>230 GB</td></tr><tr><td>32B</td><td>18 GB</td><td>40 to 48 GB</td><td>510 GB</td></tr><tr><td>70B</td><td>40 GB</td><td>48 to 80 GB</td><td>1.1 TB</td></tr></tbody></table><p>Activation memory depends on sequence length and batch size; gradient checkpointing and shorter sequences cut it. Treat the table as a starting estimate and measure.</p>
+    </section>
+    <section class="lesson" id="trl">
+      <h2>QLoRA with Hugging Face TRL</h2><pre><code>import torch
+from datasets import load_dataset
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from peft import LoraConfig
+from trl import SFTConfig, SFTTrainer
+
+base = "BASE_MODEL_ID"            # an instruct model you are licensed to use
+bnb = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                         bnb_4bit_compute_dtype=torch.bfloat16,
+                         bnb_4bit_use_double_quant=True)
+tok = AutoTokenizer.from_pretrained(base)
+model = AutoModelForCausalLM.from_pretrained(base, quantization_config=bnb,
+                                             torch_dtype=torch.bfloat16, device_map="auto")
+
+peft_cfg = LoraConfig(r=16, lora_alpha=32, lora_dropout=0.05, task_type="CAUSAL_LM",
+                      target_modules=["q_proj","k_proj","v_proj","o_proj",
+                                      "gate_proj","up_proj","down_proj"])
+
+ds = load_dataset("json", data_files={"train": "train.jsonl", "validation": "val.jsonl"})
+
+cfg = SFTConfig(output_dir="out", num_train_epochs=2, learning_rate=2e-4,
+                per_device_train_batch_size=4, gradient_accumulation_steps=8,
+                lr_scheduler_type="cosine", warmup_ratio=0.03, bf16=True,
+                gradient_checkpointing=True, logging_steps=10,
+                eval_strategy="steps", eval_steps=100, save_steps=100,
+                max_length=2048, assistant_only_loss=False)
+
+trainer = SFTTrainer(model=model, args=cfg, train_dataset=ds["train"],
+                     eval_dataset=ds["validation"], peft_config=peft_cfg,
+                     processing_class=tok)       # "messages" data gets the chat template
+trainer.train()
+trainer.save_model("out/adapter")</code></pre><p>Argument names in TRL and transformers change between releases (for example <code>max_length</code> versus <code>max_seq_length</code>, and <code>processing_class</code> versus <code>tokenizer</code>). Check the docs for the version you install. Set <code>assistant_only_loss=True</code> when your chat template supports it, so the loss ignores prompt tokens.</p>
+    </section>
+    <section class="lesson" id="unsloth">
+      <h2>The same job with Unsloth</h2><pre><code>from unsloth import FastLanguageModel
+from trl import SFTTrainer, SFTConfig
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name="unsloth/Llama-3.2-3B-Instruct", max_seq_length=2048, load_in_4bit=True)
+model = FastLanguageModel.get_peft_model(
+    model, r=16, lora_alpha=16, lora_dropout=0,
+    target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
+    use_gradient_checkpointing="unsloth")
+
+trainer = SFTTrainer(model=model, train_dataset=train_ds, processing_class=tokenizer,
+    args=SFTConfig(per_device_train_batch_size=2, gradient_accumulation_steps=8,
+                   num_train_epochs=2, learning_rate=2e-4, bf16=True, output_dir="out"))
+trainer.train()
+
+# Export for llama.cpp / Ollama / LM Studio
+model.save_pretrained_gguf("gguf_out", tokenizer, quantization_method="q4_k_m")</code></pre><p>Unsloth also ships a web UI (Unsloth Studio) for no-code fine-tuning, plus recipes for GRPO reinforcement learning and long-context training. Verify the model and notebook names against its current docs.</p>
+    </section>
+    <section class="lesson" id="align">
+      <h2>Preference tuning and reinforcement learning</h2><pre><code>from trl import DPOConfig, DPOTrainer
+
+# model: your SFT model (optionally with LoRA); data columns: prompt, chosen, rejected
+dpo = DPOTrainer(model=model,
+                 args=DPOConfig(output_dir="dpo-out", beta=0.1, learning_rate=5e-6,
+                                per_device_train_batch_size=2, gradient_accumulation_steps=8,
+                                num_train_epochs=1, bf16=True),
+                 train_dataset=pref_ds, processing_class=tok)
+dpo.train()</code></pre><ul><li><strong>DPO</strong> optimises directly from preference pairs without a separate reward model. Use a lower learning rate than SFT and keep beta around 0.1.</li><li><strong>GRPO and similar RLVR methods</strong> sample several answers per prompt, score them with a programmatic reward (unit tests, exact-match, schema validity) and push the model toward better ones. Use when you can verify correctness automatically.</li><li><strong>Order:</strong> SFT first to teach the format, then preference tuning or RL to refine. Re-run the regression suite after each stage.</li></ul>
+    </section>
+    <section class="lesson" id="scale">
+      <h2>Scaling training beyond one GPU</h2><table><thead><tr><th>Technique</th><th>What it does</th></tr></thead><tbody><tr><td>Data parallel (DDP)</td><td>Replicate the model, split the batch</td></tr><tr><td>FSDP and DeepSpeed ZeRO</td><td>Shard weights, gradients and optimiser state across GPUs so large models fit</td></tr><tr><td>Tensor and pipeline parallelism</td><td>Split layers or layer groups across devices (frameworks such as Megatron)</td></tr><tr><td>Gradient checkpointing and accumulation</td><td>Trade compute for memory</td></tr><tr><td>Sequence packing and Flash Attention</td><td>Remove padding waste and speed up long sequences</td></tr><tr><td>Spot or preemptible GPUs with checkpoints</td><td>Cut cost; save often and resume</td></tr></tbody></table><p>For experiment tracking use MLflow or Weights &amp; Biases, and version data and adapters together. See the MLOps handbooks in this library.</p>
+    </section>
+    <section class="lesson" id="deploy">
+      <h2>Merge, quantise and serve</h2><ul><li><strong>Merge:</strong> <code>merged = peft_model.merge_and_unload()</code> then save for a single standalone model. Merge into a 16-bit base, not a quantised one, then re-quantise.</li><li><strong>Serve adapters separately:</strong> vLLM and similar servers support many LoRA adapters on one base model (multi-tenant and per-customer variants share one GPU deployment).</li><li><strong>Quantise for inference:</strong> AWQ or GPTQ for GPU servers, FP8 on recent GPUs, GGUF (Q4_K_M and similar) for llama.cpp, Ollama and edge devices. Re-run evaluation after quantising.</li><li><strong>Release process:</strong> model registry entry, eval report, canary rollout, rollback to the previous adapter, and monitoring of production quality.</li></ul><pre><code># vLLM serving a base model with a LoRA adapter
+vllm serve BASE_MODEL_ID --enable-lora --lora-modules support=./out/adapter --max-lora-rank 64
+# client: model="support" selects the adapter</code></pre>
+    </section>
+    <section class="lesson" id="checklist">
+      <h2>Fine-tuning run checklist</h2><ul><li>Baseline: prompted and RAG results measured on the held-out set.</li><li>Data: cleaned, deduplicated, licensed, split before inspection.</li><li>Template: identical chat template and system prompt in training and serving.</li><li>Run: small pilot (1,000 examples) before the full run; log loss, eval and sample generations.</li><li>Regression: general-ability and safety checks pass.</li><li>Release: adapter versioned with data and code; canary and rollback plan ready.</li></ul>
+    </section>
+    <section class="lesson" id="exercise">
+      <h2>Practice</h2><div class="exercise"><strong>Practice</strong><ol><li>QLoRA a 3B to 8B instruct model on 1,000 examples of a narrow task and compare with the prompted baseline.</li><li>Export to GGUF and run it locally.</li><li>Serve the adapter on a vLLM instance and call it by name.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://huggingface.co/docs/trl/sft_trainer" target="_blank" rel="noreferrer">TRL SFTTrainer</a> &mdash; current arguments and chat-template handling</li><li><a href="https://docs.unsloth.ai" target="_blank" rel="noreferrer">Unsloth documentation</a> &mdash; notebooks, GRPO, GGUF export</li><li><a href="https://github.com/axolotl-ai-cloud/axolotl" target="_blank" rel="noreferrer">Axolotl</a> &mdash; config-driven fine-tuning</li><li><a href="https://docs.vllm.ai/en/latest/features/lora.html" target="_blank" rel="noreferrer">vLLM LoRA serving</a> &mdash; multi-adapter serving</li><li><a href="../mlops/mlops-03-experiment-tracking-registry-handbook.html" target="_blank" rel="noreferrer">MLflow handbook</a> &mdash; track and register runs</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-07-fine-tuning-fundamentals-handbook.html">&larr; Previous: Fine-Tuning Fundamentals</a><a class="lesson-link" href="genai-09-agents-tools-mcp-handbook.html">Next lesson: Tools, Agents and MCP &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-27 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

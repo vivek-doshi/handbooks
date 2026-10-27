@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="A decision-maker's guide to monoliths, modular monoliths, microservices, event-driven and serverless systems, and architecture tradeoffs.">
+  <title>04. Architecture Pattern Decisions | Architecture Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
+    <span class="path-progress">04 / 12 · Beginner</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="architecture-03-software-architecture.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-05-high-level-design.html">Next →</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 04 · Beginner · Decision maker's guide</div>
+      <h1>Choose architecture patterns by evidence</h1>
+      <p class="lede">Patterns are reusable tradeoff bundles, not maturity levels. This lesson compares the common deployment styles and gives a decision method for selecting a design that fits product needs, team ownership, and operating capability.</p>
+      <div class="hero-meta"><span class="badge">Monolith to microservices</span><span class="badge">Event-driven</span><span class="badge">Serverless</span><span class="badge">Decision matrix</span></div>
+    </section>
+    <section class="lesson" id="decision">
+      <h2>1. Ask the right questions first</h2>
+      <p>Write down the problem before naming the pattern. Determine:</p>
+      <ul>
+        <li>Which capabilities change together, and which teams need independent ownership?</li>
+        <li>What latency, availability, durability, and data-consistency behavior is required?</li>
+        <li>What needs independent scaling or release, based on evidence?</li>
+        <li>What operational skills, observability, deployment automation, and on-call coverage exist?</li>
+        <li>How reversible is the choice, and what is the cost of migrating later?</li>
+      </ul>
+      <p>Model the required quality attributes and use the smallest design that meets them with room for known change. "Scale" includes people, code, deployment, data, and operations—not only traffic volume.</p>
+    </section>
+    <section class="lesson" id="monoliths">
+      <h2>2. Monolith and modular monolith</h2>
+      <p>A monolith is one deployable application. It can be a sound design when one team can change and release the product coherently. A modular monolith adds explicit domain modules, narrow interfaces, and dependency rules while retaining one process and deployment unit.</p>
+      <div class="example"><strong>Choose this when</strong>the product is still discovering its domain, transactions span related capabilities, teams are small, or operations simplicity is valuable. Start with module boundaries and ownership so later extraction is based on evidence.</div>
+      <p>Costs include shared release cadence and the need to enforce boundaries. A "modular" label does not help if every module reaches into every other module's tables or internals.</p>
+    </section>
+    <section class="lesson" id="services">
+      <h2>3. Microservices</h2>
+      <p>A microservice is a boundary of independent ownership and deployment with a clear contract and data responsibility. It is not simply a small code repository or an HTTP endpoint.</p>
+      <p>Benefits can include independent releases, technology choice, team autonomy, and targeted scaling. Costs include remote-call failure, contract versioning, distributed transactions, cross-service tracing, local development friction, security policy, and higher platform/on-call burden.</p>
+      <div class="callout"><strong>Readiness test</strong>Can every proposed service have an accountable team, automated deployment, health and dependency telemetry, clear API ownership, and a tested data recovery plan? If not, create fewer, better modules first.</div>
+    </section>
+    <section class="lesson" id="async">
+      <h2>4. Event-driven architecture</h2>
+      <p>Event-driven systems communicate facts about things that already happened. They suit fan-out, independent consumers, workflow integration, and streaming. Commands ask a specific owner to do something; events notify interested parties of a committed fact.</p>
+      <p>Design for duplicate delivery, replay, schema evolution, consumer lag, and eventual consistency. Use an outbox or equivalent atomic-publish strategy where database state and event delivery must stay aligned. Use a saga or explicit workflow state for long-running business processes; do not imply that a broker provides a global transaction.</p>
+    </section>
+    <section class="lesson" id="serverless">
+      <h2>5. Serverless and function-as-a-service</h2>
+      <p>Serverless shifts provisioning and scaling responsibilities to a managed platform; it does not remove operations. It can suit event-triggered, bursty, or independently bounded workloads. Assess execution limits, cold-start behavior, local testing, concurrency, observability, state, regional options, pricing, and provider exit cost.</p>
+      <p>Keep business logic testable outside provider event handlers. Use idempotency keys and durable workflow state for retried invocations. Avoid a maze of tiny functions when one clear service would be easier to reason about.</p>
+    </section>
+    <section class="lesson" id="patterns">
+      <h2>6. Supporting patterns: BFF, CQRS, event sourcing, and layered design</h2>
+      <ul>
+        <li><strong>BFF:</strong> one API composition layer per distinct client need; keep business policy in its domain owner.</li>
+        <li><strong>CQRS:</strong> separate write and read models when access patterns or scale justify projection and consistency costs.</li>
+        <li><strong>Event sourcing:</strong> make an append-only event history authoritative when audit/reconstruction requirements justify replay and evolution complexity.</li>
+        <li><strong>Layered architecture:</strong> separate responsibilities, but avoid excessive pass-through layers.</li>
+        <li><strong>Hexagonal architecture:</strong> isolate policy behind ports and adapters when external dependencies need replaceable/testable boundaries.</li>
+      </ul>
+      <p>These patterns compose; they are not mutually exclusive and should not be added without a requirement.</p>
+    </section>
+    <section class="lesson" id="matrix">
+      <h2>7. Decision matrix</h2>
+      <table>
+        <thead><tr><th>Context</th><th>Good initial option</th><th>Revisit when</th></tr></thead>
+        <tbody>
+          <tr><td>New product, one team</td><td>Modular monolith</td><td>Independent ownership or scaling is demonstrated</td></tr>
+          <tr><td>Clear domains, coordinated releases acceptable</td><td>Layered or modular monolith</td><td>Release coupling becomes a measurable bottleneck</td></tr>
+          <tr><td>Independent teams and operational maturity</td><td>Microservices for selected boundaries</td><td>Coordination or reliability cost exceeds autonomy benefit</td></tr>
+          <tr><td>Fan-out, delayed work, or continuous event streams</td><td>Event-driven integration</td><td>Consumers need stronger request/response semantics</td></tr>
+          <tr><td>Burst-driven managed workloads</td><td>Serverless for suitable components</td><td>Runtime constraints, cost, or debugging dominate</td></tr>
+          <tr><td>Different read/write needs</td><td>Optimize one model first; consider CQRS selectively</td><td>Measured query or projection needs justify dual models</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="lesson" id="pitfalls">
+      <h2>8. Common pitfalls and a better decision record</h2>
+      <p>Avoid "microservices because Netflix does it," one service per database table, synchronous call chains with no timeout budget, shared databases with hidden ownership, and early event sourcing without replay requirements. Do not equate serverless with cost-free or zero operations.</p>
+      <h3>Decision record template</h3>
+      <pre><code>Context and constraints:
+Quality scenarios:
+Options considered:
+Decision and rationale:
+Consequences and risks:
+Migration / rollback:
+Signals that would trigger review:</code></pre>
+      <div class="exercise"><strong>Practice</strong>Apply the matrix to a growing ticketing product. Identify one boundary you would keep together and one you might split later. State the observable signal that would change your mind.</div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://dora.dev/guides/dora-metrics/" target="_blank" rel="noreferrer">DORA metrics</a> — current delivery measures and their interpretation.</li>
+        <li><a href="https://tag-app-delivery.cncf.io/whitepapers/platform-eng-maturity-model/" target="_blank" rel="noreferrer">CNCF Platform Engineering Maturity Model</a> — platform interfaces, operations, investment, adoption, and measurement.</li>
+        <li><a href="https://opentelemetry.io/docs/" target="_blank" rel="noreferrer">OpenTelemetry documentation</a> — vendor-neutral instrumentation and observability concepts.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="architecture-03-software-architecture.html">← Previous: Software architecture</a><a class="lesson-link" href="architecture-05-high-level-design.html">Next lesson: High-level design →</a></div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Prefer reversible decisions and revisit them with evidence.</footer>
+  </main>
+</body>
+</html>

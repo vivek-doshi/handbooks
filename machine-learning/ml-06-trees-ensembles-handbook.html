@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: decision trees, bagging, random forests, gradient boosting with XGBoost, LightGBM and CatBoost, voting and stacking, with tuning guidance and a chooser table.">
+  <title>06. Decision trees, random forests and boosting | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">06 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-05-bayes-knn-svm-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-07-unsupervised-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 06 &middot; Intermediate &middot; The workhorses of tabular machine learning, from a single tree to XGBoost, LightGBM and CatBoost</div>
+      <h1>Decision trees, random forests and boosting</h1>
+      <p class="lede">On structured, tabular data, tree ensembles are usually the strongest practical choice. This step builds from one tree to random forests and gradient boosting, and shows how to tune them without overfitting.</p>
+      <div class="hero-meta"><span class="badge">Decision trees</span><span class="badge">Random forest</span><span class="badge">Boosting</span><span class="badge">XGBoost, LightGBM, CatBoost</span><span class="badge">Stacking</span><span class="badge">Chooser</span></div>
+    </section>
+    <section class="lesson" id="tree">
+      <h2>1. Decision trees</h2><h3>Decision tree</h3><ul><li><strong>What it does:</strong> Learns a flowchart of if-then questions on features that ends in a prediction at each leaf.</li><li><strong>How it works:</strong> At each node it picks the feature and threshold that best separate the targets, measured by Gini impurity or entropy (classification) or variance reduction (regression), then repeats on each side until a stopping rule is met.</li><li><strong>Use it when:</strong> You need a model a non-expert can read, mixed numeric and categorical data, non-linear patterns with minimal preparation (no scaling needed), or as the building block of ensembles.</li><li><strong>Avoid it when:</strong> You want top accuracy on its own (a single tree is unstable and overfits), or smooth predictions (trees predict in steps and cannot extrapolate beyond the training range).</li><li><strong>Key settings:</strong> <code>max_depth</code>, <code>min_samples_leaf</code>, <code>min_samples_split</code>, <code>max_leaf_nodes</code>, and <code>ccp_alpha</code> (cost-complexity pruning). Unrestricted trees memorise the training data.</li></ul><pre><code>from sklearn.tree import DecisionTreeClassifier, plot_tree, export_text
+
+tree = DecisionTreeClassifier(max_depth=4, min_samples_leaf=20, random_state=0).fit(X_train, y_train)
+print(export_text(tree, feature_names=list(X_train.columns)))     # human-readable rules</code></pre><div class="callout"><strong>Why single trees overfit</strong>A tree grown to full depth gets 100% training accuracy by isolating every row. Small changes in the data produce a very different tree (high variance). Ensembles fix this by averaging many trees.</div>
+    </section>
+    <section class="lesson" id="rf">
+      <h2>2. Bagging and random forests</h2><h3>Random forest</h3><ul><li><strong>What it does:</strong> Trains many decision trees on different random samples and features, then averages (regression) or votes (classification).</li><li><strong>How it works:</strong> <strong>Bagging:</strong> each tree sees a bootstrap sample of the rows. <strong>Feature randomness:</strong> each split considers only a random subset of features. Averaging many different, decorrelated trees cuts variance without raising bias much.</li><li><strong>Use it when:</strong> A strong, low-tuning default on tabular data; noisy data; mixed feature types; you want out-of-bag error and feature importances for free.</li><li><strong>Avoid it when:</strong> You need the last bit of accuracy (boosting usually wins), very fast low-latency prediction on tiny hardware, or extrapolation beyond the training range.</li><li><strong>Key settings:</strong> <code>n_estimators</code> (more is better until it plateaus; 200 to 500), <code>max_features</code> (<code>sqrt</code> for classification), <code>max_depth</code>, <code>min_samples_leaf</code>, <code>class_weight</code>, <code>n_jobs=-1</code>.</li></ul><pre><code>from sklearn.ensemble import RandomForestClassifier
+
+rf = RandomForestClassifier(n_estimators=300, min_samples_leaf=3, n_jobs=-1,
+                            oob_score=True, class_weight="balanced_subsample", random_state=0)
+rf.fit(X_train, y_train)
+print("out-of-bag score:", rf.oob_score_)</code></pre><ul><li><strong>Out-of-bag (OOB) score:</strong> each tree is tested on the rows it did not see, giving a free validation estimate.</li><li><strong>Feature importance caveat:</strong> built-in impurity importance favours high-cardinality features. Prefer permutation importance or SHAP (step 08).</li><li><strong>Extra Trees</strong> (<code>ExtraTreesClassifier</code>) pick split thresholds at random: faster and sometimes more accurate.</li></ul>
+    </section>
+    <section class="lesson" id="boost">
+      <h2>3. Boosting</h2><p>Where bagging averages independent trees, <strong>boosting</strong> builds trees <em>sequentially</em>, each one correcting the mistakes of the ones before. It reduces bias and typically reaches the highest accuracy on tabular data.</p><table><thead><tr><th>Method</th><th>Idea</th></tr></thead><tbody><tr><td>AdaBoost</td><td>Re-weights rows so later learners focus on previously misclassified ones</td></tr><tr><td>Gradient boosting</td><td>Each new small tree fits the gradient of the loss (the residual errors) of the current ensemble</td></tr><tr><td>Histogram-based gradient boosting</td><td>Bins feature values into histograms for much faster training; the modern basis of scikit-learn&#39;s <code>HistGradientBoosting*</code>, LightGBM and XGBoost</td></tr></tbody></table><h3>The three parameters that matter most</h3><ul><li><strong>learning_rate</strong> (shrinkage): small values (0.03 to 0.1) generalise better but need more trees.</li><li><strong>n_estimators</strong> (number of trees): set high and use <strong>early stopping</strong> on a validation set to pick the best count automatically.</li><li><strong>Tree complexity</strong> (<code>max_depth</code> 3 to 8 or <code>num_leaves</code>): shallow trees are safer.</li></ul><p>Also tune <code>subsample</code> and <code>colsample_bytree</code> (0.6 to 1.0), <code>min_child_weight</code> or <code>min_data_in_leaf</code>, and L1/L2 regularisation. Boosting overfits noisy labels more readily than random forests, so validate carefully.</p>
+    </section>
+    <section class="lesson" id="libs">
+      <h2>4. XGBoost, LightGBM, CatBoost and scikit-learn</h2><table><thead><tr><th>Library</th><th>Strengths</th><th>Notes</th></tr></thead><tbody><tr><td><code>HistGradientBoosting*</code> (scikit-learn)</td><td>No extra dependency, native missing values and categoricals, early stopping</td><td>Great first boosting model</td></tr><tr><td>XGBoost</td><td>Mature, accurate, GPU support, wide ecosystem</td><td>Strong default; many deployment options</td></tr><tr><td>LightGBM</td><td>Very fast on large data, leaf-wise growth, native categoricals</td><td>Watch overfitting on small data; tune <code>num_leaves</code></td></tr><tr><td>CatBoost</td><td>Best-in-class native handling of categorical features, robust defaults</td><td>Slower to train; excellent with little tuning</td></tr></tbody></table><pre><code>import lightgbm as lgb
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.metrics import roc_auc_score
+
+# scikit-learn: nothing extra to install
+hgb = HistGradientBoostingClassifier(learning_rate=0.06, max_iter=1000,
+        early_stopping=True, validation_fraction=0.15, n_iter_no_change=30, random_state=0)
+hgb.fit(X_train, y_train)
+
+# LightGBM with an explicit validation set and early stopping
+model = lgb.LGBMClassifier(n_estimators=5000, learning_rate=0.03, num_leaves=31,
+                           subsample=0.8, subsample_freq=1, colsample_bytree=0.8)
+model.fit(X_train, y_train, eval_set=[(X_val, y_val)],
+          callbacks=[lgb.early_stopping(100), lgb.log_evaluation(0)])
+print(roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]))</code></pre><p>XGBoost (<code>xgboost.XGBClassifier</code>) and CatBoost (<code>catboost.CatBoostClassifier</code>) follow the same fit and predict pattern, so you can swap them in and compare on identical cross-validation folds.</p>
+    </section>
+    <section class="lesson" id="stack">
+      <h2>5. Voting and stacking</h2><ul><li><strong>Voting:</strong> average the predictions of different model types (<code>VotingClassifier</code>). Simple, and helps when models make different errors.</li><li><strong>Stacking:</strong> train a final model on the out-of-fold predictions of base models (<code>StackingClassifier</code>). Can add a small gain, at the cost of complexity and training time.</li><li><strong>Rule of thumb:</strong> tune one good boosting model first; ensemble only if you need the extra fraction of a percent and can afford to maintain it.</li></ul><pre><code>from sklearn.ensemble import StackingClassifier, RandomForestClassifier, HistGradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+
+stack = StackingClassifier(
+    estimators=[("rf", RandomForestClassifier(300, n_jobs=-1)),
+                ("hgb", HistGradientBoostingClassifier())],
+    final_estimator=LogisticRegression(max_iter=1000), cv=5)</code></pre>
+    </section>
+    <section class="lesson" id="choose">
+      <h2>6. Which tree model should I use?</h2><table><thead><tr><th>Need</th><th>Choose</th></tr></thead><tbody><tr><td>Explain a decision step by step</td><td>Shallow decision tree</td></tr><tr><td>Solid result with almost no tuning</td><td>Random forest</td></tr><tr><td>Best accuracy on tabular data</td><td>Gradient boosting: HistGradientBoosting, LightGBM, XGBoost or CatBoost</td></tr><tr><td>Many high-cardinality categorical columns</td><td>CatBoost or LightGBM with native categoricals</td></tr><tr><td>Millions of rows, speed critical</td><td>LightGBM or XGBoost (histogram, GPU)</td></tr><tr><td>Very small dataset (hundreds of rows)</td><td>Regularised linear model or a small forest; consider tabular foundation models such as TabPFN as an emerging option</td></tr><tr><td>Extrapolating a trend beyond the training range</td><td>Linear model or a model of the trend plus a tree on the residuals</td></tr></tbody></table><div class="callout"><strong>Reality check on tabular data</strong>Gradient-boosted trees remain the strongest general default for structured data, and deep learning rarely beats them without large data or heavy tuning (step 10). Reach for a neural network when your inputs are images, text, audio or sequences.</div><div class="exercise"><strong>Practice</strong><ol><li>Fit a decision tree with depths 1, 3, 6, 12 and unlimited; plot train vs validation score to see overfitting appear.</li><li>Compare random forest, <code>HistGradientBoostingClassifier</code> and LightGBM with the same 5-fold cross-validation.</li><li>Rank features by impurity importance and by permutation importance. Do they agree?</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://scikit-learn.org/stable/modules/ensemble.html" target="_blank" rel="noreferrer">scikit-learn: Ensembles</a> &mdash; forests, boosting, stacking and voting</li><li><a href="https://xgboost.readthedocs.io/" target="_blank" rel="noreferrer">XGBoost documentation</a> &mdash; parameters and tutorials</li><li><a href="https://lightgbm.readthedocs.io/" target="_blank" rel="noreferrer">LightGBM documentation</a> &mdash; parameter tuning guide</li><li><a href="https://catboost.ai/docs/" target="_blank" rel="noreferrer">CatBoost documentation</a> &mdash; categorical features and defaults</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-05-bayes-knn-svm-handbook.html">&larr; Previous: Bayes, KNN and SVM</a><a class="lesson-link" href="ml-07-unsupervised-handbook.html">Next lesson: Unsupervised Learning &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>

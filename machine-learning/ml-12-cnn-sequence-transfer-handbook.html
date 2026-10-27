@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-10-27">
+  <meta name="description" content="Intermediate: convolutional neural networks, data augmentation, RNNs, LSTMs and GRUs, time series, embeddings, autoencoders, and transfer learning and fine-tuning with pretrained models.">
+  <title>12. CNNs, sequence models and transfer learning | Machine Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>ML Path</span> / Handbooks</a>
+    <span class="path-progress">12 / 13 &middot; Intermediate</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="ml-11-pytorch-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="ml-13-attention-transformers-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 12 &middot; Intermediate &middot; Convolutions for images, LSTMs for sequences, embeddings, and reusing pretrained models</div>
+      <h1>CNNs, sequence models and transfer learning</h1>
+      <p class="lede">Different data needs different architectures. This step covers the families that dominated before transformers and still matter: CNNs for images, recurrent models for sequences, embeddings, and above all transfer learning, which is how most real projects start.</p>
+      <div class="hero-meta"><span class="badge">CNNs</span><span class="badge">Vision tasks</span><span class="badge">Sequence models</span><span class="badge">Embeddings</span><span class="badge">Transfer learning</span><span class="badge">Which architecture?</span></div>
+    </section>
+    <section class="lesson" id="cnn">
+      <h2>1. Convolutional neural networks (CNNs)</h2><p>Images have local structure: nearby pixels relate, and a pattern is the same wherever it appears. A <strong>convolution</strong> slides a small learned filter over the image to detect an edge, texture or shape. Stacked layers detect increasingly complex patterns.</p><table><thead><tr><th>Concept</th><th>Meaning</th></tr></thead><tbody><tr><td>Filter / kernel</td><td>A small grid of learned weights (for example 3 x 3)</td></tr><tr><td>Feature map</td><td>The filter&#39;s output across the image</td></tr><tr><td>Stride and padding</td><td>Step size of the filter; border handling that preserves size</td></tr><tr><td>Pooling</td><td>Downsamples feature maps (max or average), adding small shift tolerance</td></tr><tr><td>Receptive field</td><td>How much of the input one unit can &quot;see&quot;; grows with depth</td></tr><tr><td>Parameter sharing</td><td>The same filter is reused everywhere, so far fewer weights than a dense layer</td></tr></tbody></table><pre><code>import torch.nn as nn
+
+class SmallCNN(nn.Module):                      # for 28 x 28 grey images
+    def __init__(self, n_classes=10):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(1, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(), nn.MaxPool2d(2),   # 14 x 14
+            nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(), nn.MaxPool2d(2))  # 7 x 7
+        self.head = nn.Sequential(nn.Flatten(), nn.Linear(64 * 7 * 7, 128), nn.ReLU(),
+                                  nn.Dropout(0.3), nn.Linear(128, n_classes))
+    def forward(self, x):
+        return self.head(self.features(x))</code></pre><ul><li><strong>Landmark architectures:</strong> ResNet (residual connections make very deep networks trainable), EfficientNet and ConvNeXt (efficient, modern CNN designs). Vision transformers (step 13) are now equally common.</li><li><strong>Augmentation</strong> is essential: random crops, flips, rotations, colour jitter and normalisation using the pretrained model&#39;s statistics.</li><li>Always evaluate on images from the real deployment conditions (lighting, camera, population).</li></ul>
+    </section>
+    <section class="lesson" id="vision">
+      <h2>2. Common vision and audio tasks</h2><table><thead><tr><th>Task</th><th>Output</th><th>Typical approach</th></tr></thead><tbody><tr><td>Classification</td><td>One label per image</td><td>Pretrained CNN or ViT, fine-tuned</td></tr><tr><td>Object detection</td><td>Boxes and labels</td><td>YOLO family, DETR-style detectors</td></tr><tr><td>Segmentation</td><td>A label for every pixel</td><td>U-Net, Mask R-CNN, promptable segmentation models</td></tr><tr><td>Similarity / retrieval</td><td>Embedding vectors</td><td>Contrastive models such as CLIP; vector search</td></tr><tr><td>Audio</td><td>Labels or text</td><td>Spectrogram CNNs; pretrained speech models</td></tr></tbody></table>
+    </section>
+    <section class="lesson" id="seq">
+      <h2>3. Sequence models: RNNs, LSTMs and GRUs</h2><p>A <strong>recurrent neural network</strong> processes a sequence one step at a time, carrying a hidden state forward as memory. Plain RNNs struggle with long sequences because gradients vanish over many steps (step 10).</p><table><thead><tr><th>Model</th><th>How it helps</th><th>Notes</th></tr></thead><tbody><tr><td>LSTM</td><td>Gates control what to remember, forget and output</td><td>Handles longer dependencies; slower to train because it is sequential</td></tr><tr><td>GRU</td><td>Simpler gated unit, fewer parameters</td><td>Often matches LSTM</td></tr><tr><td>Bidirectional RNN</td><td>Reads the sequence both ways</td><td>Use when the whole sequence is available</td></tr><tr><td>1D CNN / temporal CNN</td><td>Convolutions over time</td><td>Fast, parallel; strong for sensors and short-range patterns</td></tr></tbody></table><pre><code>class LSTMClassifier(nn.Module):
+    def __init__(self, vocab, emb=128, hidden=128, n_classes=2):
+        super().__init__()
+        self.emb = nn.Embedding(vocab, emb, padding_idx=0)
+        self.lstm = nn.LSTM(emb, hidden, batch_first=True, bidirectional=True)
+        self.fc = nn.Linear(2 * hidden, n_classes)
+    def forward(self, tokens):                   # tokens: (batch, seq_len) of ids
+        out, _ = self.lstm(self.emb(tokens))
+        return self.fc(out.mean(dim=1))</code></pre><div class="callout"><strong>Where things stand</strong>Transformers (step 13) have replaced RNNs for language and most sequence tasks because they train in parallel and capture long-range context. LSTMs, GRUs and temporal CNNs remain practical for small time-series and on-device problems, and newer state-space models revisit recurrence for efficiency.</div><p><strong>Time series</strong> is often best handled first with a seasonal baseline and gradient boosting on lag and calendar features (steps 06 and 09). Use deep models when you have many related series, long histories or exogenous signals. Validate with time-based splits only.</p>
+    </section>
+    <section class="lesson" id="emb">
+      <h2>4. Embeddings and autoencoders</h2><ul><li><strong>Embeddings</strong> map discrete items (words, products, users) to dense vectors where similar items are close. They can be learned inside your network (<code>nn.Embedding</code>) or taken from a pretrained model.</li><li>Use them for similarity search, recommendations, clustering and as compact features for other models (see the <a href="../gen-ai/genai-03-embeddings-vector-search-handbook.html">vector database handbook</a>).</li><li><strong>Autoencoders</strong> compress inputs through a bottleneck and reconstruct them. The compressed code is a learned, non-linear alternative to PCA; large reconstruction error flags anomalies (step 07).</li><li><strong>Generative models</strong> (variational autoencoders, GANs and diffusion models) learn to create new samples; diffusion models underlie most current image generators.</li></ul>
+    </section>
+    <section class="lesson" id="transfer">
+      <h2>5. Transfer learning and fine-tuning</h2><p>Training a large network from scratch needs huge data and compute. <strong>Transfer learning</strong> starts from a model pretrained on a large dataset and adapts it to your task, so you get strong results with a few thousand examples. It is the default approach for images and text.</p><table><thead><tr><th>Approach</th><th>How</th><th>Use when</th></tr></thead><tbody><tr><td>Feature extraction</td><td>Freeze the pretrained network; train only a new output head</td><td>Very little data, quick baseline</td></tr><tr><td>Partial fine-tuning</td><td>Unfreeze the last blocks with a small learning rate</td><td>Moderate data; similar domain</td></tr><tr><td>Full fine-tuning</td><td>Train everything with a small learning rate</td><td>Plenty of data; different domain</td></tr><tr><td>Parameter-efficient fine-tuning (LoRA)</td><td>Train small adapter matrices only</td><td>Large models; limited GPU memory (see the fine-tuning handbooks)</td></tr></tbody></table><pre><code>import torch, torch.nn as nn
+from torchvision import models
+
+weights = models.ResNet18_Weights.DEFAULT
+model = models.resnet18(weights=weights)
+preprocess = weights.transforms()                 # the exact preprocessing the model expects
+
+for p in model.parameters():
+    p.requires_grad = False                       # freeze the backbone
+model.fc = nn.Linear(model.fc.in_features, 5)     # new head for 5 classes
+opt = torch.optim.AdamW(model.fc.parameters(), lr=1e-3)
+
+# Stage 2: unfreeze the last block with a much smaller learning rate
+for p in model.layer4.parameters():
+    p.requires_grad = True
+opt = torch.optim.AdamW([
+    {"params": model.layer4.parameters(), "lr": 1e-4},
+    {"params": model.fc.parameters(), "lr": 1e-3}])</code></pre><ul><li>Use the pretrained model&#39;s own preprocessing and input size.</li><li>Hold out a validation set from your own domain; ImageNet accuracy is not your accuracy.</li><li>Hugging Face provides pretrained models for images, text and audio through one API (step 13); see the <a href="../gen-ai/genai-08-fine-tuning-practice-handbook.html">Hugging Face fine-tuning handbook</a>.</li></ul>
+    </section>
+    <section class="lesson" id="choose">
+      <h2>6. Which architecture for which data?</h2><table><thead><tr><th>Data</th><th>Default</th><th>Alternative</th></tr></thead><tbody><tr><td>Images</td><td>Pretrained CNN or ViT, fine-tuned</td><td>Train a small CNN from scratch only with lots of data</td></tr><tr><td>Short numeric sequences or sensors</td><td>1D CNN or gradient boosting on engineered features</td><td>LSTM or GRU</td></tr><tr><td>Long sequences, text</td><td>Transformer</td><td>Embeddings plus a linear classifier as a baseline</td></tr><tr><td>Tabular</td><td>Gradient boosting</td><td>MLP with embeddings for categoricals</td></tr><tr><td>Many items and users (recommendation)</td><td>Embeddings plus a ranking model</td><td>Matrix factorisation baseline</td></tr></tbody></table><div class="exercise"><strong>Practice</strong><ol><li>Fine-tune a pretrained ResNet on a small image dataset (your own photos or a public one) first as a frozen feature extractor, then with <code>layer4</code> unfrozen. Compare validation accuracy.</li><li>Train the <code>SmallCNN</code> from scratch on the same data. How much worse is it with few images?</li><li>Train a bidirectional LSTM or 1D CNN on a sensor dataset and compare with gradient boosting on lag features.</li></ol></div>
+    </section>
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2><ul class="reading-list"><li><a href="https://pytorch.org/vision/stable/models.html" target="_blank" rel="noreferrer">torchvision models</a> &mdash; pretrained image models and weights</li><li><a href="https://cs231n.github.io/" target="_blank" rel="noreferrer">Stanford CS231n notes</a> &mdash; convolutional networks for visual recognition</li><li><a href="https://colah.github.io/posts/2015-08-Understanding-LSTMs/" target="_blank" rel="noreferrer">Understanding LSTM Networks</a> &mdash; the classic illustrated explanation</li><li><a href="https://huggingface.co/learn" target="_blank" rel="noreferrer">Hugging Face Learn</a> &mdash; courses on pretrained models</li></ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="ml-11-pytorch-handbook.html">&larr; Previous: PyTorch</a><a class="lesson-link" href="ml-13-attention-transformers-handbook.html">Next lesson: Transformers &rarr;</a></div>
+    <footer class="site-footer">Machine learning path &middot; Updated 2026-10-27 &middot; Library APIs change; check the official documentation for your installed versions</footer>
+  </main>
+</body>
+</html>
