@@ -35,6 +35,71 @@
       </ul>
       <h3>Event anatomy</h3>
       <p>Include a stable event type and version, unique event ID, occurrence time, producer/source, aggregate or entity ID, correlation/trace context, and the minimal payload consumers require. Distinguish event time from processing time; avoid secrets and unnecessary personal data.</p>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 960 440" role="img" aria-labelledby="events-diagram-title events-diagram-description">
+            <title id="events-diagram-title">Event-driven order workflow</title>
+            <desc id="events-diagram-description">The Order service writes order state and an outbox record in one transaction. A relay publishes OrderPlaced events to a broker. Inventory and read-model consumers process events idempotently; retries and a dead-letter queue support failure handling.</desc>
+            <defs>
+              <marker id="events-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path>
+              </marker>
+              <marker id="events-retry-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#f0bf74"></path>
+              </marker>
+            </defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#events-arrow)">
+              <path d="M 240 225 H 300"></path>
+              <path d="M 445 225 H 500"></path>
+              <path d="M 665 200 C 700 160 700 130 730 130"></path>
+              <path d="M 665 245 H 730"></path>
+              <path d="M 665 285 C 700 320 700 355 730 355"></path>
+            </g>
+            <g fill="none" stroke="#f0bf74" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#events-retry-arrow)">
+              <path d="M 815 300 V 325"></path>
+            </g>
+            <g fill="#a7b5ca" font-family="Segoe UI, sans-serif" font-size="14" text-anchor="middle">
+              <text x="270" y="207">Atomic commit</text>
+              <text x="472" y="207">Publish</text>
+              <text x="690" y="151">Subscribe</text>
+              <text x="690" y="233">Subscribe</text>
+              <text x="835" y="317">Retry / quarantine</text>
+            </g>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <rect x="20" y="135" width="220" height="180" rx="16" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="130" y="169" fill="#e8eef8" font-size="19" font-weight="700">Order service</text>
+              <rect x="45" y="190" width="170" height="48" rx="9" fill="#121a2c" stroke="#38516a"></rect>
+              <text x="130" y="220" fill="#d7e8ff" font-size="15">Order state</text>
+              <rect x="45" y="250" width="170" height="42" rx="9" fill="#121a2c" stroke="#77d7c2"></rect>
+              <text x="130" y="277" fill="#d7e8ff" font-size="15">Outbox record</text>
+              <text x="130" y="337" fill="#a7b5ca" font-size="13">Same local transaction</text>
+
+              <rect x="300" y="180" width="145" height="90" rx="13" fill="#172b3b" stroke="#77d7c2" stroke-width="2"></rect>
+              <text x="372" y="216" fill="#e8eef8" font-size="17" font-weight="700">Outbox relay</text>
+              <text x="372" y="244" fill="#a7b5ca" font-size="14">Publishes pending events</text>
+
+              <rect x="500" y="135" width="165" height="180" rx="16" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="582" y="172" fill="#e8eef8" font-size="19" font-weight="700">Message broker</text>
+              <text x="582" y="210" fill="#d7e8ff" font-size="15">OrderPlaced v1</text>
+              <text x="582" y="238" fill="#a7b5ca" font-size="14">Durable · replayable</text>
+              <text x="582" y="276" fill="#a7b5ca" font-size="14">Delivery may repeat</text>
+
+              <rect x="730" y="75" width="210" height="82" rx="12" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="835" y="109" fill="#e8eef8" font-size="17" font-weight="700">Inventory consumer</text>
+              <text x="835" y="136" fill="#a7b5ca" font-size="14">Idempotent reservation</text>
+
+              <rect x="730" y="200" width="210" height="82" rx="12" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="835" y="234" fill="#e8eef8" font-size="17" font-weight="700">Read projection</text>
+              <text x="835" y="261" fill="#a7b5ca" font-size="14">Eventually consistent</text>
+
+              <rect x="730" y="325" width="210" height="62" rx="12" fill="#172238" stroke="#f0bf74" stroke-width="2"></rect>
+              <text x="835" y="352" fill="#e8eef8" font-size="16" font-weight="700">Retry / dead-letter</text>
+              <text x="835" y="374" fill="#a7b5ca" font-size="13">Alert · inspect · safe replay</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>Transactional publication and independent consumers. Assume delivery can repeat; make consumer effects idempotent and monitor retry and dead-letter paths.</figcaption>
+      </figure>
     </section>
     <section class="lesson" id="patterns">
       <h2>2. Pub/sub, event sourcing, and CQRS</h2>
