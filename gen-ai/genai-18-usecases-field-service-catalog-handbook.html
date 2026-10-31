@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v1">
+  <meta name="last-updated" content="2026-10-31">
+  <meta name="description" content="Advanced: two complete GenAI designs, a safety-critical field-service assistant built on multimodal RAG and a high-volume catalog enrichment pipeline built on a fine-tuned small model, with decision paths, diagrams, capacity and cost.">
+  <title>18. Use Cases 6 and 7: Field Service Assistant and Catalog Enrichment | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">18 / 19 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-17-architecture-case-studies-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-19-usecases-regulatory-incident-handbook.html">Next &rarr;</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 18 &middot; Advanced &middot; Two complete designs and the reasoning behind each</div>
+      <h1>Use Cases 6 and 7: Field Service Assistant and Catalog Enrichment</h1>
+      <p class="lede">The first design is a safety-critical RAG assistant for field technicians, where the hard problems are exact identifiers, document versions and verifiable answers. The second is a high-volume extraction pipeline where retrieval is not the answer and a fine-tuned small model is. Each case shows how the approach was reached, not only what it is.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">Multimodal RAG</span><span class="badge">Fine-tuned SLM</span><span class="badge">Decision paths</span></div>
+    </section>
+
+    <section class="lesson" id="intro">
+      <h2>How to read these designs</h2>
+      <p>Every case answers the same questions in the same order, so you can reuse the method on your own problem.</p>
+      <ol>
+        <li><strong>What is a wrong answer worth?</strong> Cosmetic, costly or harmful errors lead to different designs.</li>
+        <li><strong>Where does the knowledge live, and how fast does it change?</strong> Frozen behaviour, private documents and live data call for different levers (step 12).</li>
+        <li><strong>What do the real inputs look like?</strong> Identifiers, tables, images and volume decide retrieval and model choices.</li>
+        <li><strong>What context do we already have?</strong> Known context (asset, tenant, category) is the cheapest way to improve quality.</li>
+        <li><strong>Which failures hurt most, and can code catch them?</strong> Programmatic verifiers beat asking a model to check itself.</li>
+        <li><strong>What does it cost at the real volume?</strong> Compare against the obvious alternative with numbers.</li>
+      </ol>
+      <div class="callout"><strong>About the numbers</strong>All prices, throughput and volume figures are illustrative planning numbers used to show the method. Prices below assume $0.50 per million input tokens and $2.00 per million output tokens for a mid-size hosted model, and $2.50 per GPU-hour. Replace them with measured token counts, current prices and benchmarks for your own stack.</div>
+    </section>
+
+    <section class="lesson" id="uc6-req">
+      <h2>Use case 6: Field service assistant (RAG)</h2>
+      <table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody>
+        <tr><td>Business</td><td>Industrial equipment maker (pumps, compressors, controllers); 12,000 field technicians in 60 countries</td></tr>
+        <tr><td>Content</td><td>About 400,000 pages of manuals, service bulletins, wiring diagrams and parts catalogues; roughly 3 million text chunks and 600,000 figures; 25 languages</td></tr>
+        <tr><td>Change rate</td><td>Weekly manual updates; urgent safety bulletins that must be searchable within hours</td></tr>
+        <tr><td>Questions</td><td>Part numbers, error codes such as <code>E-4417</code>, repair procedures, torque and pressure values, and photos of a nameplate or a fault display</td></tr>
+        <tr><td>Volume</td><td>About 180,000 questions a day, roughly 5 a second over working hours and 15 a second at peak</td></tr>
+        <tr><td>Risk</td><td>A wrong torque value, a missing lockout step or a superseded procedure can injure a person or damage equipment</td></tr>
+        <tr><td>Environment</td><td>Mobile devices, patchy connectivity on site, first token within about 2 seconds when online</td></tr>
+      </tbody></table>
+      <div class="callout"><strong>Where the difficulty is</strong>The corpus is small enough for one modest index. The difficulty is correctness: exact identifiers, the right document version for the right machine, complete procedures with their warnings, and answers a technician can trust with a wrench in hand.</div>
+    </section>
+
+    <section class="lesson" id="uc6-reach">
+      <h2>UC6 decision path: how the approach was reached</h2>
+      <ol>
+        <li><strong>Start from the cost of an error.</strong> Because a wrong number can hurt someone, every statement must be traceable to a document the technician can open. That rules out answering from model memory, so the design must be grounded and must refuse when evidence is missing.</li>
+        <li><strong>Ask how fast knowledge changes.</strong> Manuals change weekly and safety bulletins within hours, and a fine-tuned model would be stale on release. Knowledge belongs in an index, so this is a RAG system (rung 2 of the ladder in step 12). Fine-tuning is held back for behaviour only if evaluation later shows a gap.</li>
+        <li><strong>Look at what people actually type.</strong> Many queries are exact tokens such as part numbers and error codes, which embeddings handle poorly, while others are natural-language symptoms. Retrieval therefore has to be hybrid: keyword for identifiers and dense vectors for meaning.</li>
+        <li><strong>Notice the context we already have.</strong> A work order or a nameplate photo identifies the machine: model, serial range and firmware. Filtering by that context before searching shrinks the candidate pool from millions of chunks to a few thousand. This is the largest quality and cost lever in the design.</li>
+        <li><strong>Look at the documents, not just the text.</strong> Procedures have ordered steps and warnings, torque values live in tables, and key information sits in diagrams. A plain text splitter would cut steps in half and drop figures, so parsing must be layout-aware and retrieval must return the whole procedure with its warnings (parent-child, step 05).</li>
+        <li><strong>List the failures that hurt and let code catch them.</strong> Wrong version, wrong number and missing warning are all checkable: filter superseded documents, verify that every number in the answer appears in the cited text, and always attach warning blocks verbatim. These checks are deterministic and cheaper and more reliable than asking a second model.</li>
+        <li><strong>Check the environment.</strong> Connectivity is unreliable, so a device bundle supports keyword and vector search over the technician's assigned equipment and shows cited passages without any generation.</li>
+        <li><strong>Test the obvious alternative with numbers.</strong> Putting whole manuals in a long context looks simple, but it costs about 22 times more at this volume (see capacity) and still risks the wrong version and missed details.</li>
+      </ol>
+    </section>
+
+    <section class="lesson" id="uc6-decide">
+      <h2>UC6 decisions</h2>
+      <table><thead><tr><th>Question</th><th>Decision</th><th>Reason</th></tr></thead><tbody>
+        <tr><td>RAG, fine-tuning or both?</td><td>RAG first; no fine-tuning at launch</td><td>Knowledge changes weekly and needs citations; behaviour is controlled by the prompt and verifiers</td></tr>
+        <tr><td>Retrieval method</td><td>Hybrid BM25 plus dense, normalised part numbers, cross-encoder rerank</td><td>Identifiers need exact match; symptoms need semantic match</td></tr>
+        <tr><td>Pre-filtering</td><td>Filter by model, serial range, firmware, language and effective date from the asset context</td><td>Prevents the right procedure for the wrong variant, and shrinks the search space</td></tr>
+        <tr><td>Parsing and chunking</td><td>Layout-aware parser; chunk by procedure step; return the full procedure and its warnings as the parent</td><td>Partial procedures are unsafe</td></tr>
+        <tr><td>Tables</td><td>Convert to rows that carry their column headers and units</td><td>A torque value without its header is meaningless</td></tr>
+        <tr><td>Figures</td><td>Index caption plus a vision-model description at ingest; return the page image with the answer</td><td>Makes diagrams searchable without storing late-interaction vectors for every page</td></tr>
+        <tr><td>Languages</td><td>Multilingual embedding model; answer in the technician's language; cite the source text</td><td>One index instead of 25; translated safety text is always shown next to its source</td></tr>
+        <tr><td>Generation model</td><td>Mid-size vision-capable model, low temperature, instructed to quote steps and values</td><td>Task is grounded extraction and summarisation, not open reasoning</td></tr>
+        <tr><td>Verification</td><td>Programmatic: numbers appear in cited text, warnings present, no superseded source</td><td>Deterministic and cheap; fails closed</td></tr>
+        <tr><td>No evidence</td><td>Refuse, show the nearest documents and route to remote support</td><td>An honest gap is safer than a plausible guess</td></tr>
+        <tr><td>Tools</td><td>Read-only work-order and parts-availability lookups</td><td>Least privilege; the assistant never changes records</td></tr>
+        <tr><td>Offline</td><td>Per-asset device bundle with keyword and int8 vector search, no generation</td><td>Useful without a connection, and never invents an answer</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="lesson" id="uc6-arch">
+      <h2>UC6 architecture: the answer path</h2>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1100 430" role="img" aria-labelledby="fs-run-title fs-run-description">
+            <title id="fs-run-title">Field service assistant answer path</title>
+            <desc id="fs-run-description">A technician sends text, voice or a photo. An asset resolver identifies the machine from a work order or nameplate. Hybrid retrieval filters by asset and effective date, a reranker orders candidates, and the parent procedure with warnings is expanded. A vision-capable model writes the answer, a verifier checks numbers, warnings and document versions, and the technician receives a cited answer with the page image. Offline mode and a refusal path support poor connectivity and missing evidence.</desc>
+            <defs><marker id="fs-run-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker></defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#fs-run-arrow)">
+              <path d="M 190 80 H 220"></path><path d="M 400 80 H 430"></path><path d="M 620 80 H 650"></path><path d="M 830 80 H 860"></path><path d="M 970 120 V 190"></path><path d="M 860 230 H 800"></path><path d="M 520 230 H 105 V 122"></path>
+            </g>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="20" y="40" width="170" height="80" rx="12"></rect><rect x="220" y="40" width="180" height="80" rx="12"></rect><rect x="650" y="40" width="180" height="80" rx="12"></rect><rect x="520" y="190" width="280" height="80" rx="12"></rect></g>
+              <g fill="#172b3b" stroke="#77d7c2" stroke-width="2"><rect x="430" y="40" width="190" height="80" rx="12"></rect><rect x="860" y="40" width="220" height="80" rx="12"></rect><rect x="860" y="190" width="220" height="80" rx="12"></rect></g>
+              <g fill="#172238" stroke="#f0bf74" stroke-width="2"><rect x="20" y="320" width="500" height="80" rx="12"></rect><rect x="560" y="320" width="520" height="80" rx="12"></rect></g>
+              <g fill="#e8eef8" font-size="15" font-weight="700"><text x="105" y="76">Technician app</text><text x="310" y="76">Asset resolver</text><text x="525" y="76">Hybrid retrieval</text><text x="740" y="76">Rerank + expand</text><text x="970" y="76">Answer model</text><text x="970" y="226">Verifier</text><text x="660" y="226">Cited answer</text><text x="270" y="356" fill="#f0bf74">Offline mode</text><text x="820" y="356" fill="#f0bf74">No evidence found</text></g>
+              <g fill="#a7b5ca" font-size="12"><text x="105" y="98">Text · voice · photo</text><text x="310" y="98">Work order or nameplate OCR</text><text x="525" y="98">BM25 + dense · asset filter</text><text x="740" y="98">Whole procedure + warnings</text><text x="970" y="98">Vision-capable · quotes steps</text><text x="970" y="244">Numbers match cited text</text><text x="970" y="260">Superseded sources blocked</text><text x="660" y="244">Steps · warnings · citations</text><text x="660" y="260">Page image shown</text><text x="270" y="378">Per-asset bundle: keyword + int8 vectors</text><text x="270" y="394">Shows cited passages, no generation</text><text x="820" y="378">Refuse, show nearest documents</text><text x="820" y="394">Route to remote support</text></g>
+            </g>
+          </svg>
+        </div>
+        <figcaption>Asset context narrows the search before retrieval, and the verifier fails closed: an answer with an unsupported number or a superseded source is not shown.</figcaption>
+      </figure>
+      <h3>One request, step by step</h3>
+      <ol>
+        <li>The app sends the question with the work order. If there is a nameplate photo, OCR and a vision model extract model and serial, which are checked against the asset register.</li>
+        <li>The resolver produces filters: model family, serial range, firmware, language and today's date for the effective-date check.</li>
+        <li>Hybrid search returns about 50 keyword and 50 dense candidates, fused by reciprocal rank, then a cross-encoder reranks them (step 05).</li>
+        <li>The top six hits expand to their parent procedures with the mandatory warnings attached.</li>
+        <li>The model answers using only that context, quoting steps and values and naming the source page.</li>
+        <li>The verifier checks every number, unit and part ID against the cited text and confirms that warnings are present and sources are current. A failure triggers one regeneration, then a refusal.</li>
+      </ol>
+    </section>
+
+    <section class="lesson" id="uc6-ingest">
+      <h2>UC6 ingestion and freshness</h2>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1100 350" role="img" aria-labelledby="fs-ingest-title fs-ingest-description">
+            <title id="fs-ingest-title">Field service ingestion and freshness pipeline</title>
+            <desc id="fs-ingest-description">Documents from product lifecycle, content management and a bulletin feed are parsed with a layout-aware parser, enriched with table rows, figure descriptions and normalised part numbers, then embedded and indexed with metadata. A safety bulletin fast path publishes urgent changes within an hour and supersedes old versions. New index versions are built blue-green and released only after a golden-set gate.</desc>
+            <defs><marker id="fs-ingest-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker></defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#fs-ingest-arrow)">
+              <path d="M 190 80 H 220"></path><path d="M 390 80 H 420"></path><path d="M 620 80 H 650"></path><path d="M 830 80 H 860"></path><path d="M 740 190 V 122"></path><path d="M 970 190 V 122"></path>
+            </g>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="20" y="40" width="170" height="80" rx="12"></rect><rect x="220" y="40" width="170" height="80" rx="12"></rect><rect x="420" y="40" width="200" height="80" rx="12"></rect><rect x="650" y="40" width="180" height="80" rx="12"></rect><rect x="860" y="40" width="220" height="80" rx="12"></rect><rect x="20" y="190" width="370" height="80" rx="12"></rect></g>
+              <g fill="#172b3b" stroke="#77d7c2" stroke-width="2"><rect x="860" y="190" width="220" height="80" rx="12"></rect></g>
+              <g fill="#172238" stroke="#f0bf74" stroke-width="2"><rect x="420" y="190" width="410" height="80" rx="12"></rect><rect x="20" y="290" width="1060" height="40" rx="12"></rect></g>
+              <g fill="#e8eef8" font-size="15" font-weight="700"><text x="105" y="76">Sources</text><text x="305" y="76">Layout-aware parse</text><text x="520" y="76">Enrich</text><text x="740" y="76">Index build</text><text x="970" y="76">Serving stores</text><text x="205" y="226">Refresh cadence</text><text x="625" y="226" fill="#f0bf74">Safety bulletin fast path</text><text x="970" y="226">Release gate</text></g>
+              <g fill="#a7b5ca" font-size="12"><text x="105" y="98">PLM · CMS · bulletin feed</text><text x="305" y="98">Sections · tables · figures</text><text x="520" y="98">Table rows with headers</text><text x="520" y="114">VLM figure text · part IDs</text><text x="740" y="98">Embed · BM25 · metadata</text><text x="970" y="98">Hybrid index · page images</text><text x="970" y="114">Per-asset offline bundles</text><text x="205" y="248">Nightly delta, weekly full rebuild</text><text x="625" y="248">Event to searchable within one hour</text><text x="625" y="264">Supersede and tombstone old versions</text><text x="970" y="248">Blue-green build, golden set</text><text x="970" y="264">Alias swap, instant rollback</text></g>
+              <text x="550" y="316" fill="#e8eef8" font-family="Segoe UI, sans-serif" font-size="13" text-anchor="middle">Metadata on every chunk: model · serial range · firmware · language · effective date · superseded-by · document type</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>Freshness is an engineering feature: a separate fast path for safety bulletins and tombstones for superseded text prevent a technician from seeing an outdated procedure.</figcaption>
+      </figure>
+      <ul>
+        <li><strong>Parsing quality caps answer quality.</strong> Measure parse accuracy on a sample of scanned and table-heavy pages before tuning retrieval.</li>
+        <li><strong>Part numbers:</strong> normalise hyphens, spaces and case in both the index and the query, and keep the original string for display.</li>
+        <li><strong>Figures:</strong> a vision model writes a short description and extracts labels once at ingest. If evaluation shows diagram questions still fail, add late-interaction page-image retrieval for those documents only, since storing multi-vector page embeddings for everything is expensive.</li>
+        <li><strong>Language:</strong> never replace the source text with a translation; show the translation beside the cited original for safety content.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc6-cap">
+      <h2>UC6 capacity and cost</h2>
+      <pre><code>Traffic: 180,000 questions/day  -&gt; ~5 req/s average over 10 working hours, ~15 req/s peak
+Per question: ~3,500 input tokens (6 parent procedures + prompt), ~250 output tokens
+Daily tokens: 630 M input + 45 M output
+Daily cost at $0.50 / $2.00 per M tokens: $315 + $90 = ~$405/day  (~$12,000/month, ~$0.002 per question)
+
+Peak quota: 15 req/s * 3,500 = ~52,500 input tokens/s (~3.2 M tokens/min) - request a quota above this
+Rerank:     15 q/s * 100 candidates = ~1,500 pairs/s  -&gt; one GPU or a managed reranker
+Index:      3.6 M items (chunks + figure descriptions) * 1024 dims
+            float32 ~14.7 GB, HNSW overhead ~+30% = ~19 GB; int8 ~3.7 GB  -&gt; one node plus a replica
+Ingest:     600,000 figures * (~1,500 in + ~150 out tokens) ~ 0.9 B in + 0.09 B out = ~$630 one time
+
+Long-context alternative: ~100,000 tokens per question (a whole manual)
+            180,000 * 100,000 = 18 B input tokens/day = ~$9,000/day  -&gt; about 22 times the RAG design</code></pre>
+      <ul>
+        <li><strong>Largest cost drivers:</strong> generation tokens and evaluation labour, not the index. Prompt caching helps only for the short system prefix, so the main saving is sending six well-chosen procedures instead of whole manuals.</li>
+        <li><strong>Latency budget:</strong> asset resolution 100 ms, retrieval and rerank 300 ms, first token about 1 second, verification 100 ms, which fits the 2-second target when online.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc6-eval">
+      <h2>UC6 evaluation, security and risks</h2>
+      <table><thead><tr><th>Gate</th><th>How it is measured</th><th>Rule</th></tr></thead><tbody>
+        <tr><td>Retrieval</td><td>800-question golden set stratified by equipment family, language, query type and image or text</td><td>Recall of the required procedure and warnings above an agreed threshold, reported per language</td></tr>
+        <tr><td>Exact identifiers</td><td>Part-number and error-code lookups with spelling variants</td><td>Exact-match accuracy tracked separately from semantic questions</td></tr>
+        <tr><td>Numeric faithfulness</td><td>Compare every number and unit in the answer to the cited text</td><td>Must be 100 percent; any miss blocks release</td></tr>
+        <tr><td>Version correctness</td><td>Traps: superseded bulletins, wrong firmware, wrong serial range</td><td>Zero wrong-version answers</td></tr>
+        <tr><td>Refusal quality</td><td>Questions with no valid source</td><td>High refusal precision with a helpful fallback</td></tr>
+        <tr><td>Field pilot</td><td>Expert review of a sample of safety-class answers; technician feedback</td><td>Expand only after review findings are closed</td></tr>
+      </tbody></table>
+      <ul>
+        <li><strong>Risks:</strong> OCR errors in parts catalogues, translated safety steps that change meaning, stale offline bundles, and supplier PDFs that contain unexpected instructions.</li>
+        <li><strong>Mitigations:</strong> show the bundle date and warn when it is old, keep source text beside translations, treat document text as data and not instructions (step 02), and retain traces for incident review.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc6-alt">
+      <h2>UC6 alternatives considered</h2>
+      <table><thead><tr><th>Alternative</th><th>Why it was not chosen</th><th>Reconsider when</th></tr></thead><tbody>
+        <tr><td>Fine-tune a model on the manuals</td><td>Stale within a week, no citations, and cannot prove which version it learned</td><td>Evaluation shows a stable behaviour gap such as terminology or format</td></tr>
+        <tr><td>Put whole manuals in a long context</td><td>About 22 times the cost, weaker on details in long prompts, version risk</td><td>Corpus per asset is small and cost is secondary</td></tr>
+        <tr><td>Dense-only retrieval</td><td>Part numbers and codes are missed or confused</td><td>Never for this content; hybrid is the baseline</td></tr>
+        <tr><td>Page-image embeddings for every page</td><td>High storage and engineering cost for a problem that captions solve for most figures</td><td>Diagram-heavy queries remain below the quality gate</td></tr>
+        <tr><td>Autonomous agent with write access to work orders</td><td>Adds risk without improving answer quality</td><td>A narrow, approved write action has a clear owner and audit trail</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="lesson" id="uc7-req">
+      <h2>Use case 7: Catalog enrichment with a fine-tuned small model</h2>
+      <table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody>
+        <tr><td>Business</td><td>Marketplace with 200,000 sellers and 60 million existing listings</td></tr>
+        <tr><td>Task</td><td>From a messy title and description, assign one of about 15,000 categories and extract attributes (brand, size, colour, material, compatibility, identifiers) into that category's schema</td></tr>
+        <tr><td>Volume</td><td>One backfill of 60 million items, then about 1.5 million new or edited listings a day: roughly 17 a second on average and 60 a second at peak</td></tr>
+        <tr><td>Latency</td><td>New listings enriched within about 5 minutes; no human waiting on a single item</td></tr>
+        <tr><td>Quality</td><td>High precision on key attributes; output <code>unknown</code> rather than guess; every value traceable to a model version</td></tr>
+        <tr><td>Constraints</td><td>Seller text may contain personal data; prohibited-item decisions are not delegated to this model</td></tr>
+      </tbody></table>
+      <div class="callout"><strong>Where the scale is</strong>Everything the model needs is inside the listing itself. There is no private knowledge to retrieve, so the scale problem is cost, throughput and consistency across millions of near-identical calls.</div>
+    </section>
+
+    <section class="lesson" id="uc7-reach">
+      <h2>UC7 decision path: how the approach was reached</h2>
+      <ol>
+        <li><strong>Decide whether retrieval belongs.</strong> The facts to extract are in the input, so RAG over documents adds nothing. Retrieval is used only to shortlist category candidates, because 15,000 labels cannot fit in a prompt.</li>
+        <li><strong>Start with the strongest model to learn what is possible.</strong> A frontier model with the schema and structured output is the quickest way to get good labels and to find the hard cases. This also acts as the teacher and as a fallback.</li>
+        <li><strong>Price the obvious design at real volume.</strong> Frontier-only costs about $35,000 for the backfill and about $26,500 a month afterwards (see capacity). The task is narrow and repetitive, which is the case where a small model fine-tuned on teacher labels can match quality at much lower cost (distillation, steps 07 and 12).</li>
+        <li><strong>Decide where quality is measured from.</strong> Teacher labels are noisy, so a separate human-labelled gold set is held out and never trained on. Gates are set on that gold set, not on agreement with the teacher.</li>
+        <li><strong>Make uncertainty a first-class output.</strong> The model abstains and reports confidence. Low-confidence items escalate to the teacher and then to people, so the small model only commits where it is reliable.</li>
+        <li><strong>Constrain the output.</strong> Schema-constrained decoding and validators catch malformed JSON, impossible units and invalid identifiers before they reach the catalog.</li>
+        <li><strong>Check the volume threshold.</strong> At 100,000 items a day the API would cost about $1,800 a month, so the frontier-only design would win on simplicity. Fine-tuning pays only above a volume where the savings exceed the cost of building and operating it.</li>
+      </ol>
+    </section>
+
+    <section class="lesson" id="uc7-decide">
+      <h2>UC7 decisions</h2>
+      <table><thead><tr><th>Question</th><th>Decision</th><th>Reason</th></tr></thead><tbody>
+        <tr><td>Need RAG?</td><td>No, except an embedding shortlist of about 20 candidate categories per item</td><td>Information is in the input; label space is too large for a prompt</td></tr>
+        <tr><td>Model approach</td><td>Frontier teacher, then fine-tune an 8B-class open-weight instruct model with LoRA; test smaller sizes</td><td>Narrow task, high volume, tolerance for a small model once distilled</td></tr>
+        <tr><td>Training data</td><td>200,000 stratified listings labelled by the teacher twice; keep items where runs agree and validators pass; add human corrections</td><td>Agreement filters noise cheaply</td></tr>
+        <tr><td>Evaluation data</td><td>10,000 human-labelled gold items, split by seller and product family, never used in training</td><td>Prevents leakage from near-duplicate listings</td></tr>
+        <tr><td>Schema handling</td><td>Put the category schema in the prompt rather than baking it into weights</td><td>New categories and attributes work without retraining</td></tr>
+        <tr><td>Output control</td><td>Constrained JSON decoding and an explicit <code>unknown</code> value</td><td>Valid structure and honest gaps</td></tr>
+        <tr><td>Confidence</td><td>Token log-probabilities plus validator results, calibrated per attribute on the gold set</td><td>Thresholds can differ for brand and for compatibility</td></tr>
+        <tr><td>Routing</td><td>Small model first; about 15 percent of items escalate to the teacher; uncertain high-value items go to review</td><td>Cascade keeps quality while cutting cost</td></tr>
+        <tr><td>Serving</td><td>vLLM or SGLang with prefix caching for the shared schema prefix; separate interactive and batch pools</td><td>Backfill must not starve new listings</td></tr>
+        <tr><td>Governance</td><td>Strip personal data before labelling and training; version datasets and models; store model version with every value</td><td>Auditability and rollback</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="lesson" id="uc7-pipeline">
+      <h2>UC7 architecture: build pipeline</h2>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1100 400" role="img" aria-labelledby="cat-build-title cat-build-description">
+            <title id="cat-build-title">Catalog enrichment model build pipeline</title>
+            <desc id="cat-build-description">A stratified sample of listings is labelled by a frontier teacher model with a schema. Labels are filtered by run agreement, validators and human checks to form a versioned, deduplicated training set. A small model is fine-tuned and evaluated against a held-out human-labelled gold set. A release gate decides promotion, and a monthly loop adds seller edits, returns and new brands.</desc>
+            <defs><marker id="cat-build-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker><marker id="cat-build-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#77d7c2"></path></marker></defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#cat-build-arrow)">
+              <path d="M 200 80 H 230"></path><path d="M 440 80 H 470"></path><path d="M 670 80 H 700"></path><path d="M 870 80 H 900"></path><path d="M 990 120 V 200"></path><path d="M 860 240 H 820"></path><path d="M 970 280 V 320"></path>
+            </g>
+            <path d="M 270 320 V 290 H 110 V 122" fill="none" stroke="#77d7c2" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#cat-build-loop)"></path>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="20" y="40" width="180" height="80" rx="12"></rect><rect x="230" y="40" width="210" height="80" rx="12"></rect><rect x="470" y="40" width="200" height="80" rx="12"></rect><rect x="700" y="40" width="170" height="80" rx="12"></rect><rect x="560" y="200" width="260" height="80" rx="12"></rect></g>
+              <g fill="#172b3b" stroke="#77d7c2" stroke-width="2"><rect x="900" y="40" width="180" height="80" rx="12"></rect><rect x="860" y="200" width="220" height="80" rx="12"></rect></g>
+              <g fill="#172238" stroke="#f0bf74" stroke-width="2"><rect x="860" y="320" width="220" height="60" rx="12"></rect><rect x="20" y="320" width="500" height="60" rx="12"></rect></g>
+              <g fill="#e8eef8" font-size="15" font-weight="700"><text x="110" y="76">Sample listings</text><text x="335" y="76">Teacher labels</text><text x="570" y="76">Filter + verify</text><text x="785" y="76">SFT dataset</text><text x="990" y="76">Fine-tune SLM</text><text x="690" y="236">Gold set</text><text x="970" y="236">Evaluate</text><text x="970" y="356" fill="#f0bf74">Release gate</text><text x="270" y="346" fill="#f0bf74">Monthly retrain loop</text></g>
+              <g fill="#a7b5ca" font-size="12"><text x="110" y="98">200k stratified</text><text x="110" y="114">category · seller · language</text><text x="335" y="98">Frontier model + schema</text><text x="335" y="114">Structured output, two runs</text><text x="570" y="98">Validators · run agreement</text><text x="570" y="114">Human check on 10k</text><text x="785" y="98">Versioned · deduplicated</text><text x="785" y="114">Split by seller / family</text><text x="990" y="98">LoRA on 8B-class model</text><text x="990" y="114">Schema in the prompt</text><text x="690" y="254">10k human-labelled, held out</text><text x="690" y="270">Never used for training</text><text x="970" y="254">Precision and recall per attribute</text><text x="970" y="270">Abstain calibration</text><text x="970" y="372">Precision gate · canary · rollback</text><text x="270" y="366">Seller edits · returns · new brands · drift</text></g>
+            </g>
+          </svg>
+        </div>
+        <figcaption>The teacher produces training labels cheaply, but release decisions come from a held-out human gold set, so the student is never graded by the model it learned from.</figcaption>
+      </figure>
+      <ul>
+        <li><strong>Mix the data on purpose:</strong> stratify by category, seller, language and difficulty, and oversample rare categories and tricky attributes so the model does not only learn the common cases.</li>
+        <li><strong>Guard against leakage:</strong> near-duplicate listings from one seller or product family must stay in one split, otherwise evaluation overstates quality.</li>
+        <li><strong>Training compute is small:</strong> about 200,000 examples of roughly 820 tokens for two epochs is on the order of 20 to 40 GPU-hours on one modern GPU. The real cost is labelling, evaluation and operating the pipeline.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc7-serve">
+      <h2>UC7 architecture: serving cascade</h2>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1100 390" role="img" aria-labelledby="cat-serve-title cat-serve-description">
+            <title id="cat-serve-title">Catalog enrichment serving cascade</title>
+            <desc id="cat-serve-description">Listing events are cleaned, and an embedding search shortlists candidate categories and loads their attribute schema. A fine-tuned small model on vLLM produces constrained JSON with a confidence score. Validators and a confidence gate send reliable results to the catalog store and uncertain items to a frontier teacher model, then to human review if still uncertain. Reviewed values return to the catalog.</desc>
+            <defs><marker id="cat-serve-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker></defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#cat-serve-arrow)">
+              <path d="M 170 150 H 200"></path><path d="M 400 150 H 430"></path><path d="M 620 150 H 650"></path><path d="M 830 150 H 860"></path><path d="M 740 190 V 250"></path><path d="M 830 290 H 860"></path><path d="M 970 250 V 190"></path>
+            </g>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="20" y="110" width="150" height="80" rx="12"></rect><rect x="200" y="110" width="200" height="80" rx="12"></rect><rect x="650" y="110" width="180" height="80" rx="12"></rect><rect x="560" y="250" width="270" height="80" rx="12"></rect><rect x="860" y="250" width="220" height="80" rx="12"></rect></g>
+              <g fill="#172b3b" stroke="#77d7c2" stroke-width="2"><rect x="430" y="110" width="190" height="80" rx="12"></rect><rect x="860" y="110" width="220" height="80" rx="12"></rect></g>
+              <rect x="20" y="250" width="500" height="80" rx="12" fill="#172238" stroke="#f0bf74" stroke-width="2"></rect>
+              <g fill="#e8eef8" font-size="15" font-weight="700"><text x="95" y="146">Listing events</text><text x="300" y="146">Prepare</text><text x="525" y="146">Fine-tuned SLM</text><text x="740" y="146">Validators</text><text x="970" y="146">Catalog store</text><text x="695" y="286">Teacher model</text><text x="970" y="286">Human review queue</text><text x="270" y="286" fill="#f0bf74">Feedback to training</text></g>
+              <g fill="#a7b5ca" font-size="12"><text x="95" y="164">New or edited</text><text x="300" y="164">Clean · top-20 categories</text><text x="300" y="180">Load attribute schema</text><text x="525" y="164">vLLM · constrained JSON</text><text x="525" y="180">Confidence score</text><text x="740" y="164">Schema · units · identifiers</text><text x="740" y="180">Confidence gate</text><text x="970" y="164">Attributes + provenance</text><text x="970" y="180">Model version on every value</text><text x="695" y="304">Frontier model, about 15% of items</text><text x="695" y="320">Handles uncertain cases</text><text x="970" y="304">High-value or still uncertain</text><text x="970" y="320">Corrections flow back</text><text x="270" y="306">Seller edits · reviewer fixes · returns</text><text x="270" y="322">Next training set and gold-set refresh</text></g>
+              <text x="550" y="368" fill="#77d7c2" font-family="Segoe UI, sans-serif" font-size="13" text-anchor="middle">High confidence goes straight to the catalog; low confidence escalates to the teacher, then to people if still uncertain</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>The small model handles the bulk of traffic; the expensive model and people see only the items where the small model is not reliable.</figcaption>
+      </figure>
+    </section>
+
+    <section class="lesson" id="uc7-cap">
+      <h2>UC7 capacity and cost</h2>
+      <pre><code>Per item: ~700 input tokens (title + description + candidate categories + schema), ~120 output tokens (JSON)
+Backfill: 60 M items -&gt; 42 B input + 7.2 B output tokens
+Daily:    1.5 M items -&gt; 1.05 B input + 0.18 B output tokens  (~17 items/s average, ~60/s peak)
+
+A) Frontier-only API at $0.50 / $2.00 per M tokens
+   Backfill: 42,000 M * $0.50 + 7,200 M * $2.00 = $21,000 + $14,400 = $35,400 one time
+   Ongoing:  $525 + $360 = $885/day = ~$26,500/month
+
+B) Fine-tuned 8B-class model on vLLM (measure on your own GPUs)
+   Assume ~10 items/s per GPU (prefill ~700 tokens + decode ~120 tokens, continuous batching)
+   Peak 60/s -&gt; 6 GPUs * 1.3 headroom = ~8 GPUs; baseline 4 always-on GPUs + autoscaled burst
+   Ongoing GPUs: 4 * 720 h * $2.50 = ~$7,200/month (+ burst)
+   Teacher cascade: 15% of items = 0.15 * $26,550 = ~$4,000/month
+   Total: ~$11,500/month  (about 55% lower than A)
+   Backfill: 60 M / 10 per s = 6 M GPU-seconds = ~1,700 GPU-hours = ~$4,200 on a spot batch pool
+
+One-time: teacher labels for 200k items, two runs ~ $240; fine-tuning ~20-40 GPU-hours (~$100); the human gold set is the main cost
+
+Break-even check: at 100,000 items/day the API is ~$1,800/month, so building and operating a custom model does not pay</code></pre>
+      <ul>
+        <li><strong>Throughput must be measured:</strong> the 10 items per second per GPU figure is an assumption. Benchmark with the real prompt mix, engine and quantisation, then size replicas as in step 13.</li>
+        <li><strong>Autoscale on queue depth and time to first token,</strong> and keep backfill on a separate low-priority pool so it never delays new listings.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc7-eval">
+      <h2>UC7 evaluation, rollout and risks</h2>
+      <table><thead><tr><th>Stage</th><th>What happens</th><th>Pass condition</th></tr></thead><tbody>
+        <tr><td>Offline gate</td><td>Score on the 10,000-item gold set: per-attribute precision and recall, category accuracy, abstain rate and calibration</td><td>Precision at or above the agreed target for each key attribute, at the chosen abstain rate</td></tr>
+        <tr><td>Student versus teacher</td><td>Compare on the same items, including hard slices (rare categories, other languages, short titles)</td><td>No important slice materially worse than the teacher</td></tr>
+        <tr><td>Shadow mode</td><td>Run beside the existing rules and compare on live traffic without writing</td><td>Disagreements reviewed and explained</td></tr>
+        <tr><td>Canary</td><td>Write to a small share of listings with automatic rollback</td><td>Seller edit rate and return rate do not rise</td></tr>
+        <tr><td>Ongoing</td><td>Sample live outputs for human audit; watch abstain rate, drift and category mix</td><td>Alerts trigger review or retraining</td></tr>
+      </tbody></table>
+      <ul>
+        <li><strong>Risks:</strong> confident wrong values on compatibility claims, drift from new brands and seasonal products, noisy teacher labels, and bias toward categories with many examples.</li>
+        <li><strong>Mitigations:</strong> abstain on safety- or compatibility-critical attributes unless validated, retrain monthly on corrections, audit slices, and keep the previous model deployable.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc7-alt">
+      <h2>UC7 alternatives considered</h2>
+      <table><thead><tr><th>Alternative</th><th>Why it was not chosen</th><th>Reconsider when</th></tr></thead><tbody>
+        <tr><td>Frontier model for everything</td><td>About $26,500 a month and rate-limit exposure at peak for a repetitive task</td><td>Volume is low, as at about 100,000 items a day or less</td></tr>
+        <tr><td>Prompt-only small model, no fine-tuning</td><td>Usually misses schema conventions and rare cases; accuracy gap on the gold set</td><td>A new small model passes the gate without tuning</td></tr>
+        <tr><td>Rules and regular expressions</td><td>Precise for simple patterns but brittle across 15,000 categories and many languages</td><td>As validators and fast pre-filters in front of the model</td></tr>
+        <tr><td>Token-classification (BERT-style) model</td><td>Cheap and fast, but needs per-attribute training data and a fixed schema</td><td>Core attributes are stable and volume is very high</td></tr>
+        <tr><td>RAG over catalog documents</td><td>The facts are already in the listing; retrieval adds latency without information</td><td>Sellers provide references to external specification sheets</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="lesson" id="compare">
+      <h2>Compare the two designs</h2>
+      <table><thead><tr><th>Dimension</th><th>UC6 field service (RAG)</th><th>UC7 catalog (fine-tuned SLM)</th></tr></thead><tbody>
+        <tr><td>Where knowledge lives</td><td>In a versioned index with citations</td><td>In the input and in model behaviour learned from labels</td></tr>
+        <tr><td>Dominant risk</td><td>Wrong version or wrong value causing harm</td><td>Silent wrong attributes at huge scale</td></tr>
+        <tr><td>Main quality lever</td><td>Asset context, hybrid search, verifiers</td><td>Label quality, held-out gold set, abstention</td></tr>
+        <tr><td>Main cost lever</td><td>Send a few right procedures, not whole manuals</td><td>Distil to a small model and cascade uncertain cases</td></tr>
+        <tr><td>Failure behaviour</td><td>Refuse and escalate</td><td>Abstain, escalate, then review</td></tr>
+        <tr><td>Where it would change</td><td>Add page-image retrieval if diagrams fail</td><td>Fall back to the frontier model if volume drops</td></tr>
+      </tbody></table>
+      <div class="exercise"><strong>Practice</strong>Pick a workload you know and answer the six questions in the introduction. Estimate tokens per request and requests per day, price a frontier-only design, then decide whether retrieval, fine-tuning, both or neither is justified. Write the one number that would change your mind.</div>
+    </section>
+
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noreferrer">Anthropic: Contextual Retrieval</a> &mdash; adding context to chunks and combining dense and keyword retrieval.</li>
+        <li><a href="https://docs.vllm.ai/" target="_blank" rel="noreferrer">vLLM documentation</a> &mdash; serving, batching, prefix caching and structured outputs.</li>
+        <li><a href="https://huggingface.co/docs/trl" target="_blank" rel="noreferrer">Hugging Face TRL</a> &mdash; supervised fine-tuning and preference tuning.</li>
+        <li><a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/" target="_blank" rel="noreferrer">OpenTelemetry GenAI semantic conventions</a> &mdash; telemetry for model calls; conventions are evolving.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-17-architecture-case-studies-handbook.html">&larr; Previous: Architecture Case Studies</a><a class="lesson-link" href="genai-19-usecases-regulatory-incident-handbook.html">Next lesson: Regulatory RAG and Incident Agent &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-31 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>
