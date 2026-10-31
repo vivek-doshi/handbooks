@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v1">
+  <meta name="last-updated" content="2026-10-31">
+  <meta name="description" content="Two worked architecture case studies showing how requirements, constraints, tradeoffs, and failure modes lead to a design.">
+  <title>13. Architecture Case Studies | Architecture Learning Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
+    <span class="path-progress">13 / 13 · Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="architecture-12-togaf.html">← Previous</a><a href="../index.html">All handbooks</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 13 · Advanced · From problem to architecture</div>
+      <h1>Architecture case studies: from use case to design</h1>
+      <p class="lede">There is no universally "good" architecture. A good design fits the business outcome, quality requirements, constraints, and operating capability—and makes its important tradeoffs and failure behavior explicit. These two examples show how to get from a use case to a defensible design.</p>
+      <div class="hero-meta"><span class="badge">Requirements first</span><span class="badge">Two worked use cases</span><span class="badge">Flow diagrams</span><span class="badge">Tradeoffs and failure paths</span></div>
+    </section>
+
+    <section class="lesson" id="approach">
+      <h2>1. A repeatable way to reach an architecture</h2>
+      <p>Start with the decision the system must support, not a preferred technology or diagram. The solution below each case is good only under the stated assumptions; change the workload, risk, team, or business constraint and the design may change.</p>
+      <ol>
+        <li><strong>Frame the use case:</strong> name the users, trigger, desired outcome, and system boundary.</li>
+        <li><strong>Make quality needs concrete:</strong> prioritize correctness, latency, throughput, availability, recovery, privacy, and cost. Use measurable targets when stakeholders can supply them.</li>
+        <li><strong>Write invariants and constraints:</strong> identify what must never happen, data owners, compliance needs, existing systems, team skills, and delivery limits.</li>
+        <li><strong>Trace the normal and failure flows:</strong> show synchronous calls, durable state, retries, timeouts, duplicates, and recovery.</li>
+        <li><strong>Compare the simplest viable options:</strong> state why an option fits, what it costs, and what evidence would justify a different one.</li>
+        <li><strong>Validate and revisit:</strong> test risky assumptions with a prototype, load test, threat review, operational exercise, or production evidence.</li>
+      </ol>
+      <div class="callout"><strong>Useful design test</strong>Can another engineer explain who owns each piece of data, what happens when a dependency fails, how the system recovers, and which assumption would trigger a redesign?</div>
+      <p>These are architecture examples, not blueprints. Do not copy their components without checking whether the requirements that justify them exist in your own system.</p>
+    </section>
+
+    <section class="lesson" id="case-one">
+      <h2>2. Use case one: place an order when payment can be slow</h2>
+      <h3>Problem and design drivers</h3>
+      <p>A customer checks out with several items. The system must prevent duplicate orders when a customer retries, must never mark an order paid without provider confirmation, and should let the customer see progress if payment takes time. A payment provider can time out or be temporarily unavailable. Assume one product team, moderate initial traffic, and no requirement for every domain to deploy independently.</p>
+      <table>
+        <thead><tr><th>Concern</th><th>Requirement / invariant</th><th>Architecture consequence</th></tr></thead>
+        <tbody>
+          <tr><td>Order correctness</td><td>One logical order per checkout idempotency key</td><td>Persist the key with a uniqueness constraint and return the prior result on retry</td></tr>
+          <tr><td>Payment truth</td><td>Only confirmed provider outcomes change payment state</td><td>Model pending, authorized, failed, and unknown outcomes explicitly; reconcile uncertainty</td></tr>
+          <tr><td>Provider outage</td><td>Do not lose an accepted order or hold a request open indefinitely</td><td>Persist order intent, process payment asynchronously, and expose order status</td></tr>
+          <tr><td>Team and operations</td><td>Small team; avoid unnecessary distributed operations</td><td>Start with a modular application and a durable outbox, not a fleet of microservices</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Chosen flow</h3>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1200 510" role="img" aria-labelledby="order-diagram-title order-diagram-description">
+            <title id="order-diagram-title">Order and payment architecture flow</title>
+            <desc id="order-diagram-description">The customer submits an idempotent checkout request through the API. A modular application stores a pending order and outbox record in one database transaction. An outbox relay publishes a payment-requested message; a payment worker calls the provider. A verified callback or reconciliation updates payment and order status, which the customer can query.</desc>
+            <defs>
+              <marker id="order-flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path>
+              </marker>
+              <marker id="order-return-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#77d7c2"></path>
+              </marker>
+            </defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#order-flow-arrow)">
+              <path d="M 170 150 H 215"></path>
+              <path d="M 365 150 H 410"></path>
+              <path d="M 545 280 V 330"></path>
+              <path d="M 680 380 H 720"></path>
+              <path d="M 850 380 H 890"></path>
+              <path d="M 1020 380 V 275"></path>
+              <path d="M 1085 215 L 1100 195"></path>
+              <path d="M 1100 150 C 1150 110 1145 110 680 110"></path>
+            </g>
+            <g fill="none" stroke="#77d7c2" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#order-return-arrow)">
+              <path d="M 1020 190 C 1020 65 680 65 680 145"></path>
+            </g>
+            <g fill="#a7b5ca" font-family="Segoe UI, sans-serif" font-size="13" text-anchor="middle">
+              <text x="192" y="137">Checkout + key</text>
+              <text x="387" y="137">Create pending order</text>
+              <text x="570" y="309">Same DB transaction</text>
+              <text x="700" y="363">Relay</text>
+              <text x="870" y="363">Publish</text>
+              <text x="1045" y="318">Consume</text>
+              <text x="828" y="53">Verified callback / reconciliation updates payment state</text>
+              <text x="853" y="93">Provider outcome</text>
+            </g>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <rect x="20" y="110" width="150" height="80" rx="13" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="95" y="145" fill="#e8eef8" font-size="17" font-weight="700">Customer</text>
+              <text x="95" y="169" fill="#a7b5ca" font-size="14">Checkout / status</text>
+
+              <rect x="215" y="110" width="150" height="80" rx="13" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="290" y="145" fill="#e8eef8" font-size="17" font-weight="700">API edge</text>
+              <text x="290" y="169" fill="#a7b5ca" font-size="14">Auth · size · limits</text>
+
+              <rect x="410" y="90" width="270" height="190" rx="15" fill="#172b3b" stroke="#77d7c2" stroke-width="2.5"></rect>
+              <text x="545" y="122" fill="#77d7c2" font-size="18" font-weight="700">Modular application</text>
+              <text x="545" y="158" fill="#e8eef8" font-size="15">Order module</text>
+              <text x="545" y="187" fill="#e8eef8" font-size="15">Payment module</text>
+              <text x="545" y="225" fill="#a7b5ca" font-size="13">One deployable; explicit contracts</text>
+              <text x="545" y="251" fill="#a7b5ca" font-size="13">Return pending + order ID</text>
+
+              <rect x="410" y="330" width="270" height="100" rx="13" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="545" y="363" fill="#e8eef8" font-size="16" font-weight="700">Transactional database</text>
+              <text x="545" y="390" fill="#d7e8ff" font-size="14">Order + payment state</text>
+              <text x="545" y="413" fill="#d7e8ff" font-size="14">Outbox + unique idempotency key</text>
+
+              <rect x="720" y="340" width="130" height="80" rx="12" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="785" y="373" fill="#e8eef8" font-size="15" font-weight="700">Outbox relay</text>
+              <text x="785" y="397" fill="#a7b5ca" font-size="13">Retry publication</text>
+
+              <rect x="890" y="340" width="130" height="80" rx="12" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="955" y="373" fill="#e8eef8" font-size="15" font-weight="700">Message broker</text>
+              <text x="955" y="397" fill="#a7b5ca" font-size="13">PaymentRequested</text>
+
+              <rect x="955" y="190" width="130" height="85" rx="12" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="1020" y="224" fill="#e8eef8" font-size="15" font-weight="700">Payment worker</text>
+              <text x="1020" y="249" fill="#a7b5ca" font-size="13">Idempotent attempt</text>
+
+              <rect x="1100" y="150" width="90" height="80" rx="12" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="1145" y="183" fill="#e8eef8" font-size="14" font-weight="700">Provider</text>
+              <text x="1145" y="206" fill="#a7b5ca" font-size="11">External system</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>Solid arrows show the durable work path; the dashed return path represents a verified provider callback or reconciliation. Customers query the order API for the latest status.</figcaption>
+      </figure>
+
+      <h3>How the design follows from the requirements</h3>
+      <ol>
+        <li><strong>Begin with correctness:</strong> order state and the outbox event are committed together, so a saved order cannot silently lose its payment work. A unique idempotency key makes a repeated checkout request return the original order.</li>
+        <li><strong>Decouple the unreliable boundary:</strong> payment is asynchronous because the provider is outside the system's control. The API can acknowledge a pending order without pretending payment succeeded.</li>
+        <li><strong>Keep operations proportional:</strong> order and payment modules share one deployable and database initially. The outbox and worker add only the async mechanism required for reliable handoff.</li>
+        <li><strong>Make uncertainty visible:</strong> a timeout is not proof that a charge failed. Use provider idempotency where supported, persist attempt identifiers, process callbacks idempotently, and reconcile unknown outcomes before retrying a charge.</li>
+        <li><strong>Protect the customer experience:</strong> expose explicit states such as <code>pending_payment</code>, <code>paid</code>, <code>payment_failed</code>, and <code>review_required</code>; do not use a generic success status for unresolved payment.</li>
+      </ol>
+      <table>
+        <thead><tr><th>Alternative considered</th><th>Why not first</th><th>Revisit when</th></tr></thead>
+        <tbody>
+          <tr><td>Synchronous checkout calls the payment provider before saving the order</td><td>Provider latency/outages lengthen checkout and can leave the outcome ambiguous after a timeout</td><td>The provider has a dependable latency/availability contract and the business requires an immediate decision</td></tr>
+          <tr><td>Separate microservice for every module</td><td>Independent deployment is not a stated need; it adds network, deployment, and on-call failure modes</td><td>Teams, scale, isolation, or release requirements demonstrate real independent ownership</td></tr>
+          <tr><td>Distributed transaction across order DB, broker, and provider</td><td>These systems do not share one practical atomic transaction; model the workflow with durable state and idempotent steps instead</td><td>Not a normal revisit; reconsider the business workflow or provider contract if its invariants cannot be met</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Validate before launch:</strong> test duplicate checkout, relay restarts, duplicate/out-of-order messages, provider timeouts after acceptance, invalid callbacks, and reconciliation. Alert on old pending orders and outbox/consumer lag. Define refund/compensation and manual review ownership.</p>
+    </section>
+
+    <section class="lesson" id="case-two">
+      <h2>3. Use case two: live product analytics for many tenants</h2>
+      <h3>Problem and design drivers</h3>
+      <p>Many customer applications send usage events. Product teams need near-real-time dashboards and longer-term analysis. Traffic arrives in bursts, one event may be delivered more than once, and analytics can tolerate a short delay. Assume events are append-oriented, dashboard reads are much more common than corrections, and losing a small number of events is unacceptable.</p>
+      <table>
+        <thead><tr><th>Concern</th><th>Requirement / invariant</th><th>Architecture consequence</th></tr></thead>
+        <tbody>
+          <tr><td>Ingestion bursts</td><td>Absorb spikes without making every producer wait for aggregation</td><td>Accept and durably buffer events before stream processing</td></tr>
+          <tr><td>Delivery</td><td>Duplicates are possible; accepted events must be recoverable</td><td>Stable event IDs, at-least-once delivery, idempotent aggregation, replayable retention</td></tr>
+          <tr><td>Freshness</td><td>Dashboards can lag briefly but need predictable updates</td><td>Stream aggregates with an explicit freshness/SLO target and visible lag</td></tr>
+          <tr><td>Privacy and cost</td><td>Tenant separation, bounded retention, and controlled query cost</td><td>Authenticate producers, minimize payloads, apply tenant-aware access and retention policies</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Chosen flow</h3>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1100 475" role="img" aria-labelledby="analytics-diagram-title analytics-diagram-description">
+            <title id="analytics-diagram-title">Event analytics ingestion and query flow</title>
+            <desc id="analytics-diagram-description">Tenant applications send authenticated events to an ingestion API, which validates and batches them into a durable partitioned event log. Stream processors deduplicate by event ID and write raw events to object storage and aggregates to an analytics store. A dashboard API serves authorized queries. Invalid or repeatedly failing records go to a monitored dead-letter path.</desc>
+            <defs>
+              <marker id="analytics-flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path>
+              </marker>
+              <marker id="analytics-retry-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#f0bf74"></path>
+              </marker>
+            </defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#analytics-flow-arrow)">
+              <path d="M 175 190 H 220"></path>
+              <path d="M 370 190 H 415"></path>
+              <path d="M 605 190 H 650"></path>
+              <path d="M 820 165 C 850 135 865 120 890 120"></path>
+              <path d="M 820 215 C 850 260 865 300 890 300"></path>
+              <path d="M 965 300 V 215"></path>
+              <path d="M 965 165 V 120"></path>
+            </g>
+            <g fill="none" stroke="#f0bf74" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#analytics-retry-arrow)">
+              <path d="M 735 245 V 350"></path>
+            </g>
+            <g fill="#a7b5ca" font-family="Segoe UI, sans-serif" font-size="13" text-anchor="middle">
+              <text x="198" y="176">Batch + send</text>
+              <text x="392" y="176">Validate + accept</text>
+              <text x="627" y="176">Consume</text>
+              <text x="858" y="104">Raw retention</text>
+              <text x="860" y="283">Aggregates</text>
+              <text x="991" y="250">Query</text>
+              <text x="766" y="306">Invalid / repeated failures</text>
+            </g>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <rect x="20" y="150" width="155" height="80" rx="13" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="97" y="184" fill="#e8eef8" font-size="16" font-weight="700">Tenant apps</text>
+              <text x="97" y="208" fill="#a7b5ca" font-size="13">Stable event IDs</text>
+
+              <rect x="220" y="150" width="150" height="80" rx="13" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="295" y="184" fill="#e8eef8" font-size="16" font-weight="700">Ingestion API</text>
+              <text x="295" y="208" fill="#a7b5ca" font-size="13">Auth · schema · limits</text>
+
+              <rect x="415" y="125" width="190" height="130" rx="14" fill="#172b3b" stroke="#77d7c2" stroke-width="2"></rect>
+              <text x="510" y="161" fill="#e8eef8" font-size="17" font-weight="700">Durable event log</text>
+              <text x="510" y="190" fill="#d7e8ff" font-size="14">Partition by tenant / key</text>
+              <text x="510" y="220" fill="#a7b5ca" font-size="13">Retention enables replay</text>
+
+              <rect x="650" y="145" width="170" height="100" rx="14" fill="#172b3b" stroke="#38516a" stroke-width="2"></rect>
+              <text x="735" y="181" fill="#e8eef8" font-size="16" font-weight="700">Stream processor</text>
+              <text x="735" y="207" fill="#a7b5ca" font-size="13">Deduplicate · aggregate</text>
+              <text x="735" y="229" fill="#a7b5ca" font-size="13">Checkpoint progress</text>
+
+              <rect x="650" y="350" width="170" height="65" rx="12" fill="#172238" stroke="#f0bf74" stroke-width="2"></rect>
+              <text x="735" y="379" fill="#e8eef8" font-size="15" font-weight="700">Dead-letter queue</text>
+              <text x="735" y="401" fill="#a7b5ca" font-size="12">Alert · inspect · replay safely</text>
+
+              <rect x="890" y="80" width="150" height="80" rx="13" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="965" y="114" fill="#e8eef8" font-size="15" font-weight="700">Object storage</text>
+              <text x="965" y="138" fill="#a7b5ca" font-size="13">Raw, governed events</text>
+
+              <rect x="890" y="265" width="150" height="80" rx="13" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="965" y="299" fill="#e8eef8" font-size="15" font-weight="700">Analytics store</text>
+              <text x="965" y="323" fill="#a7b5ca" font-size="13">Tenant-scoped views</text>
+
+              <rect x="890" y="385" width="150" height="65" rx="12" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="965" y="413" fill="#e8eef8" font-size="15" font-weight="700">Dashboard API</text>
+              <text x="965" y="435" fill="#a7b5ca" font-size="12">Auth · query budgets</text>
+              <path d="M 965 385 V 345" fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#analytics-flow-arrow)"></path>
+
+              <rect x="20" y="350" width="230" height="65" rx="12" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+              <text x="135" y="378" fill="#e8eef8" font-size="15" font-weight="700">Product dashboard</text>
+              <text x="135" y="400" fill="#a7b5ca" font-size="13">Shows data freshness</text>
+              <path d="M 250 382 H 850 Q 870 382 890 417" fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#analytics-flow-arrow)"></path>
+            </g>
+          </svg>
+        </div>
+        <figcaption>Ingestion is separated from query serving. The durable log absorbs bursts and enables replay; dashboards read tenant-scoped aggregates rather than scanning the event stream.</figcaption>
+      </figure>
+
+      <h3>How the design follows from the requirements</h3>
+      <ol>
+        <li><strong>Buffer bursts:</strong> the ingestion API validates identity, schema, size, and quota, then acknowledges only after the configured durable-acceptance condition is met. Stream processing can scale separately from producers.</li>
+        <li><strong>Preserve recoverability:</strong> retain an immutable event envelope with a stable event ID, event time, schema version, tenant, and trace context. Choose partition keys to balance tenant isolation, ordering needs, and hot-partition risk.</li>
+        <li><strong>Handle duplicates and poison records:</strong> assume at-least-once delivery; make aggregate updates idempotent or deduplicate by event ID. Bound retries, quarantine invalid events, alert, and provide controlled replay.</li>
+        <li><strong>Serve the actual read pattern:</strong> store raw governed events for permitted replay/analysis and materialize dashboard aggregates for fast queries. Make freshness and late-event correction behavior visible.</li>
+        <li><strong>Protect tenants and data:</strong> authenticate producers, enforce tenant scoping at ingestion and query time, minimize sensitive payloads, and define deletion, retention, encryption, and audit controls.</li>
+      </ol>
+      <table>
+        <thead><tr><th>Alternative considered</th><th>Why not first</th><th>Revisit when</th></tr></thead>
+        <tbody>
+          <tr><td>Write each event synchronously to a dashboard database</td><td>Couples ingestion availability and burst handling to query-store capacity; raw-event replay is harder</td><td>Traffic is small and stable, and the simpler design meets measured freshness and recovery needs</td></tr>
+          <tr><td>Use a globally ordered stream</td><td>Global ordering limits parallelism and usually exceeds the business requirement</td><td>A documented invariant truly requires total ordering across all tenants and events</td></tr>
+          <tr><td>Build a large streaming platform immediately</td><td>Operational cost and specialized on-call ownership may exceed current value</td><td>Measured throughput, retention, replay, or latency requirements exceed a managed/simple queue design</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Validate before launch:</strong> load-test bursts and large tenants; test broker outages, lag, duplicate and late events, schema changes, replay, and dead-letter growth. Set explicit ingestion durability, dashboard freshness, retention, and recovery targets. Do not claim exactly-once business outcomes from a broker guarantee alone.</p>
+    </section>
+
+    <section class="lesson" id="compare">
+      <h2>4. Compare the designs and review the decision</h2>
+      <table>
+        <thead><tr><th>Dimension</th><th>Order and payment</th><th>Product analytics</th></tr></thead>
+        <tbody>
+          <tr><td>Primary risk</td><td>Incorrect or duplicate financial/order state</td><td>Lost, late, duplicated, or cross-tenant events</td></tr>
+          <tr><td>Consistency</td><td>Strong local transaction for order + outbox; asynchronous external payment state</td><td>Eventual consistency for aggregates, with freshness monitoring</td></tr>
+          <tr><td>Core boundary</td><td>Domain modules and authoritative order/payment state</td><td>Ingestion, durable log, processors, and read projections</td></tr>
+          <tr><td>Why async?</td><td>Isolate a slow and independently failing payment provider</td><td>Absorb bursts and decouple producers from processing and queries</td></tr>
+          <tr><td>What to keep simple</td><td>One application boundary until independent deployment is justified</td><td>Managed storage/streaming choices until scale and replay needs demand more</td></tr>
+        </tbody>
+      </table>
+      <h3>Architecture review questions</h3>
+      <ul>
+        <li>Which requirement or invariant justifies each major component?</li>
+        <li>What is the source of truth, and who owns each state transition?</li>
+        <li>What is acknowledged to a caller, and when is work actually durable?</li>
+        <li>What happens on timeout, duplicate delivery, partial failure, and replay?</li>
+        <li>How are authentication, tenant isolation, privacy, retention, and audit enforced?</li>
+        <li>Can the team operate the system, detect degradation, and recover within its goals?</li>
+        <li>What measurable evidence would justify the next architectural step?</li>
+      </ul>
+      <div class="exercise"><strong>Practice</strong>Choose a use case from your own work. Write three quality scenarios and two invariants, draw the normal and failure flows, compare a simple design with one alternative, then ask a reviewer to challenge each component that has no stated reason to exist.</div>
+    </section>
+
+    <div class="lesson-footer"><a class="lesson-link" href="architecture-12-togaf.html">← Previous: TOGAF</a></div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-10-31 · A good design is justified by requirements and validated by evidence.</footer>
+  </main>
+</body>
+</html>

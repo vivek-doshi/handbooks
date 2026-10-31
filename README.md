@@ -56,6 +56,7 @@ Learning path (beginner → advanced; follow the numbered sequence in `architect
 10. Advanced — architecture-10-graphql.html: schema design, federation, authorization, security, and performance.
 11. Advanced — architecture-11-api-gateway.html: edge security, traffic policy, resilience, and AI gateway patterns.
 12. Advanced — architecture-12-togaf.html: TOGAF Standard 10th Edition, ADM, artifacts, and enterprise governance.
+13. Advanced — architecture-13-case-studies.html: two worked use cases showing requirements, architecture flows, design rationale, tradeoffs, and failure handling.
 
 ### Frontend
 - angular-20-handbook.html — Angular 20 Handbook
@@ -119,6 +120,7 @@ Learning path (beginner → architect; follow the numbered sequence in `devops/`
 11. Advanced — devops-11-platform-sre-finops-handbook.html: platforms, OpenTelemetry, SLOs, incidents, and FinOps.
 12. Architect — devops-12-devops-modular-monolith-handbook.html: lean delivery architecture for a modular monolith.
 13. Architect — devops-13-devops-microservices-handbook.html: opinionated reference architecture for 20 microservices.
+14. Architect — devops-14-pipeline-case-studies-handbook.html: enterprise paved-road and standards-informed regulated pipeline case studies, with diagrams and design rationale.
 
 ### Cloud
 Learning path (beginner → architect; follow the numbered sequence in `cloud/`): cloud basics, AWS/Azure/GCP core and AI tracks, then governance, FinOps, resilience, and worked reference architectures.
