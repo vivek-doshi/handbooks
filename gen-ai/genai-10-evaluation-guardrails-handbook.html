@@ -13,7 +13,7 @@
   <a class="skip-link" href="#main">Skip to lesson</a>
   <header class="course-header">
     <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
-    <span class="path-progress">10 / 16 &middot; Intermediate</span>
+    <span class="path-progress">10 / 17 &middot; Intermediate</span>
     <nav class="course-nav" aria-label="Learning path"><a href="genai-09-agents-tools-mcp-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-11-architecture-components-handbook.html">Next &rarr;</a></nav>
   </header>
   <main class="course" id="main">
@@ -45,7 +45,27 @@ faithful = every claim in the answer is supported by the context.
    PII redaction              schema validation        allow-listed tools
    injection/jailbreak        grounding check          human approval
    topic and policy filter    moderation               rate and spend limits
-   auth and quota             citation check           sandboxed execution</code></pre><table><thead><tr><th>Control</th><th>Examples</th></tr></thead><tbody><tr><td>Input</td><td>PII detection and masking, prompt-injection classifiers, off-topic filters, size limits</td></tr><tr><td>Output</td><td>JSON schema validation, content moderation, groundedness checks, banned-content and secret scanners</td></tr><tr><td>Action</td><td>Least-privilege tools, human-in-the-loop for payments, deletions and external messages, sandboxed code execution</td></tr><tr><td>Products</td><td>Llama Guard and similar safety models, NVIDIA NeMo Guardrails, Guardrails AI, cloud content filters (Azure AI Content Safety, Bedrock Guardrails, Google Model Armor)</td></tr></tbody></table><p>Layer cheap deterministic checks first and model-based checks second, and measure the false-positive rate, since over-blocking harms the product as much as under-blocking.</p>
+   auth and quota             citation check           sandboxed execution</code></pre><figure class="architecture-diagram">
+  <div class="architecture-diagram-scroll">
+    <svg viewBox="0 0 960 310" role="img" aria-labelledby="guardrail-layers-title guardrail-layers-description">
+      <title id="guardrail-layers-title">Layered GenAI guardrails</title>
+      <desc id="guardrail-layers-description">A request passes input guardrails, then the model or agent. Its output passes output guardrails, and any proposed action passes action guardrails before reaching a user or external system. Observability and evaluation span all layers.</desc>
+      <defs><marker id="guardrail-layers-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker></defs>
+      <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#guardrail-layers-arrow)"><path d="M 150 100 H 170"></path><path d="M 310 100 H 330"></path><path d="M 470 100 H 490"></path><path d="M 630 100 H 650"></path><path d="M 790 100 H 810"></path></g>
+      <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+        <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="10" y="50" width="140" height="100" rx="12"></rect><rect x="810" y="50" width="140" height="100" rx="12"></rect></g>
+        <g fill="#172b3b" stroke="#77d7c2" stroke-width="2"><rect x="170" y="50" width="140" height="100" rx="12"></rect><rect x="490" y="50" width="140" height="100" rx="12"></rect><rect x="650" y="50" width="140" height="100" rx="12"></rect></g>
+        <rect x="330" y="50" width="140" height="100" rx="12" fill="#172238" stroke="#38516a" stroke-width="2"></rect>
+        <g fill="#e8eef8" font-size="15" font-weight="700"><text x="80" y="95">Request</text><text x="240" y="85">Input</text><text x="400" y="95">Model / agent</text><text x="560" y="85">Output</text><text x="720" y="85">Action</text><text x="880" y="95">User / system</text></g>
+        <g fill="#a7b5ca" font-size="12"><text x="240" y="108">Auth · PII</text><text x="240" y="126">Injection checks</text><text x="560" y="108">Schema · grounding</text><text x="560" y="126">Moderation</text><text x="720" y="108">Allow-list · approval</text><text x="720" y="126">Sandbox · limits</text><text x="400" y="118">Least privilege</text></g>
+        <rect x="10" y="190" width="940" height="85" rx="12" fill="#172238" stroke="#f0bf74" stroke-width="2"></rect>
+        <text x="480" y="222" fill="#e8eef8" font-size="15" font-weight="700">Observe and evaluate every layer</text>
+        <text x="480" y="248" fill="#a7b5ca" font-size="13">Trace · false positives · false negatives · red-team cases · incident review · golden-set updates</text>
+      </g>
+    </svg>
+  </div>
+  <figcaption>Layer cheap deterministic controls first, then model-based checks; measure over-blocking as well as missed harm.</figcaption>
+</figure><table><thead><tr><th>Control</th><th>Examples</th></tr></thead><tbody><tr><td>Input</td><td>PII detection and masking, prompt-injection classifiers, off-topic filters, size limits</td></tr><tr><td>Output</td><td>JSON schema validation, content moderation, groundedness checks, banned-content and secret scanners</td></tr><tr><td>Action</td><td>Least-privilege tools, human-in-the-loop for payments, deletions and external messages, sandboxed code execution</td></tr><tr><td>Products</td><td>Llama Guard and similar safety models, NVIDIA NeMo Guardrails, Guardrails AI, cloud content filters (Azure AI Content Safety, Bedrock Guardrails, Google Model Armor)</td></tr></tbody></table><p>Layer cheap deterministic checks first and model-based checks second, and measure the false-positive rate, since over-blocking harms the product as much as under-blocking.</p>
     </section>
     <section class="lesson" id="observe">
       <h2>Observability</h2><ul><li><strong>Trace everything:</strong> one trace per request with spans for retrieval, reranking, each model call and tool call, including prompts, versions, token counts, latency and cost. OpenTelemetry GenAI semantic conventions are the emerging standard.</li><li><strong>Redact before storing:</strong> traces contain user data; apply PII masking and retention limits.</li><li><strong>Dashboards and alerts:</strong> latency, error and refusal rates, cost per tenant, cache hit rate, retrieval-empty rate, guardrail triggers, user thumbs-up and down.</li><li><strong>Feedback loop:</strong> sample failures into a review queue, label them, add them to the golden set, and use them for fine-tuning or retrieval fixes.</li><li><strong>Drift:</strong> watch for changes in input mix, document corpus, provider model updates and cost.</li></ul>

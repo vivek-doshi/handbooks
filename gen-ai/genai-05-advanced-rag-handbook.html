@@ -13,7 +13,7 @@
   <a class="skip-link" href="#main">Skip to lesson</a>
   <header class="course-header">
     <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
-    <span class="path-progress">05 / 16 &middot; Intermediate</span>
+    <span class="path-progress">05 / 17 &middot; Intermediate</span>
     <nav class="course-nav" aria-label="Learning path"><a href="genai-04-rag-basics-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a><a href="genai-06-context-engineering-handbook.html">Next &rarr;</a></nav>
   </header>
   <main class="course" id="main">
@@ -27,7 +27,23 @@
       <h2>Strategy map</h2><table><thead><tr><th>Strategy</th><th>What it does</th><th>Fixes this symptom</th><th>Cost</th></tr></thead><tbody><tr><td>Hybrid search (dense + BM25)</td><td>Merge semantic and keyword results</td><td>Misses exact terms, ids, names</td><td>Low</td></tr><tr><td>Reranking (cross-encoder)</td><td>Re-score top 50 to 200 candidates with a precise model</td><td>Right chunk retrieved but ranked low</td><td>Medium (adds 50 to 300 ms)</td></tr><tr><td>Query rewriting and multi-query</td><td>LLM rewrites or expands the question</td><td>Short, vague or conversational queries</td><td>Low to medium</td></tr><tr><td>HyDE</td><td>Embed a hypothetical answer instead of the query</td><td>Query and document vocabulary differ</td><td>Medium</td></tr><tr><td>Query decomposition</td><td>Split a complex question into sub-questions</td><td>Multi-part questions</td><td>Medium</td></tr><tr><td>Parent-child (small-to-big)</td><td>Match on small chunks, return the larger section</td><td>Matches are precise but answers lack context</td><td>Low</td></tr><tr><td>Contextual chunks</td><td>LLM adds a one-line situating summary to every chunk before embedding</td><td>Chunks lose meaning out of context</td><td>Medium at ingest</td></tr><tr><td>Metadata filtering and self-query</td><td>Translate the question to filters (date, product, owner)</td><td>Right document, wrong version or tenant</td><td>Low</td></tr><tr><td>Context compression</td><td>Extract or summarise only the relevant parts</td><td>Prompts too long or noisy</td><td>Medium</td></tr><tr><td>GraphRAG and hierarchical summaries</td><td>Build entity graphs or summary trees for global questions</td><td>Questions about themes, relationships and multi-hop links</td><td>High at ingest</td></tr><tr><td>Agentic RAG</td><td>An agent decides what, where and whether to retrieve, iterating</td><td>Heterogeneous sources, ambiguous or research-style questions</td><td>High, variable latency</td></tr><tr><td>Corrective and self-reflective RAG</td><td>Grade retrieval, retry or fall back to web or another index</td><td>Low-quality retrieval silently passed to the model</td><td>Medium</td></tr><tr><td>Multimodal RAG</td><td>Retrieve page images, charts and tables (for example ColPali style late interaction)</td><td>Answers live in figures, slides and scans</td><td>High</td></tr><tr><td>Text-to-SQL and structured retrieval</td><td>Generate and run queries on tables and graphs</td><td>Aggregations, counts, joins</td><td>Medium</td></tr></tbody></table>
     </section>
     <section class="lesson" id="hybrid">
-      <h2>Hybrid search with reranking</h2><p>The most reliable upgrade for most systems is hybrid retrieval followed by a cross-encoder reranker. The bi-encoder embeds query and document separately (fast, approximate); the cross-encoder reads them together (slow, accurate), so it is applied only to the shortlist.</p><pre><code>from sentence_transformers import CrossEncoder
+      <h2>Hybrid search with reranking</h2><p>The most reliable upgrade for most systems is hybrid retrieval followed by a cross-encoder reranker. The bi-encoder embeds query and document separately (fast, approximate); the cross-encoder reads them together (slow, accurate), so it is applied only to the shortlist.</p><figure class="architecture-diagram">
+  <div class="architecture-diagram-scroll">
+    <svg viewBox="0 0 1000 280" role="img" aria-labelledby="hybrid-rag-title hybrid-rag-description">
+      <title id="hybrid-rag-title">Hybrid retrieval with reranking</title>
+      <desc id="hybrid-rag-description">A query is searched in parallel by dense vector search and BM25 keyword search. Reciprocal rank fusion merges the candidate lists. A cross-encoder reranker scores the shortlist, and the best few chunks are placed into the model context.</desc>
+      <defs><marker id="hybrid-rag-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker></defs>
+      <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#hybrid-rag-arrow)"><path d="M 170 125 L 230 80"></path><path d="M 170 155 L 230 200"></path><path d="M 400 80 L 450 120"></path><path d="M 400 200 L 450 160"></path><path d="M 600 140 H 650"></path><path d="M 820 140 H 860"></path></g>
+      <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+        <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="20" y="105" width="150" height="70" rx="12"></rect><rect x="230" y="40" width="170" height="80" rx="12"></rect><rect x="230" y="160" width="170" height="80" rx="12"></rect><rect x="860" y="105" width="120" height="70" rx="12"></rect></g>
+        <g fill="#172b3b" stroke="#77d7c2" stroke-width="2"><rect x="450" y="100" width="150" height="80" rx="12"></rect><rect x="650" y="100" width="170" height="80" rx="12"></rect></g>
+        <g fill="#e8eef8" font-size="15" font-weight="700"><text x="95" y="137">Query</text><text x="315" y="75">Dense search</text><text x="315" y="195">BM25 keyword</text><text x="525" y="135">RRF fusion</text><text x="735" y="135">Cross-encoder</text><text x="920" y="137">LLM</text></g>
+        <g fill="#a7b5ca" font-size="12"><text x="95" y="157">Rewritten + filtered</text><text x="315" y="97">Top 50 · meaning</text><text x="315" y="217">Top 50 · exact terms</text><text x="525" y="157">Merge ranked lists</text><text x="735" y="157">Rerank shortlist</text><text x="920" y="157">Top 5–8 chunks</text></g>
+      </g>
+    </svg>
+  </div>
+  <figcaption>Cheap parallel retrieval widens recall; the slower reranker spends precision only on the shortlist.</figcaption>
+</figure><pre><code>from sentence_transformers import CrossEncoder
 
 def rrf(rankings, k=60):
     """Reciprocal Rank Fusion over several ranked lists of ids."""

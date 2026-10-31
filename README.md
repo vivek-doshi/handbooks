@@ -147,7 +147,7 @@ Learning path (beginner → architect; follow the numbered sequence in `cloud/`)
 - smolagents-handbook.html — SmolAgents Handbook
 
 ### Generative AI
-Learning path (beginner to advanced; follow the numbered sequence in `gen-ai/`): LLM foundations, prompting, embeddings and vector search, RAG and advanced RAG strategies, context engineering, fine-tuning, tools, agents and MCP, evaluation and guardrails, then GenAI architecture: components, fine-tune versus RAG decisions, serving and cost, and five large-scale use cases.
+Learning path (beginner to advanced; follow the numbered sequence in `gen-ai/`): LLM foundations, prompting, embeddings and vector search, RAG and advanced RAG strategies, context engineering, fine-tuning, tools, agents and MCP, evaluation and guardrails, then GenAI architecture: components, fine-tune versus RAG decisions, serving and cost, five large-scale use cases, and two architecture case studies.
 1. Beginner - genai-01-llm-foundations-handbook.html: Beginner: what large language models are, tokens and context windows, sampling settings, the model landscape, known limitations, and your first API call.
 2. Beginner - genai-02-prompting-handbook.html: Beginner: roles, clear instructions, few-shot examples, reasoning prompts, structured outputs, prompt injection basics, and how to version and test prompts.
 3. Beginner - genai-03-embeddings-vector-search-handbook.html: Beginner: embeddings, similarity metrics, approximate nearest neighbour indexes, choosing a vector database, hybrid search, and memory sizing.
@@ -164,7 +164,7 @@ Learning path (beginner to advanced; follow the numbered sequence in `gen-ai/`):
 14. Advanced - genai-14-usecases-knowledge-support-handbook.html: Advanced: architecting an enterprise knowledge assistant over a billion chunks and a customer support platform handling tens of millions of conversations, with data scale, RAG strategy, fine-tuning decisions, capacity and cost.
 15. Advanced - genai-15-usecases-documents-code-handbook.html: Advanced: architecting a document extraction pipeline processing tens of millions of documents a month and a code intelligence platform over billions of lines of code.
 16. Advanced - genai-16-usecase-analytics-agent-handbook.html: Advanced: architecting a natural-language analytics agent over a multi-petabyte lakehouse, then a cross-case comparison, a production-readiness checklist and where to go next.
-
+17. Advanced - genai-17-architecture-case-studies-handbook.html: Advanced: an enterprise GenAI platform and a standards-aligned assistant for a high-impact process, with flow diagrams, design rationale, tradeoffs and validation.
 ### Tooling
 - claude-code-handbook.html — Claude Code Handbook
 - dev-containers-handbook.html — Dev Containers Handbook

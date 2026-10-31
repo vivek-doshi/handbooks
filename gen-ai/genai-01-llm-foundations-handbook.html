@@ -13,7 +13,7 @@
   <a class="skip-link" href="#main">Skip to lesson</a>
   <header class="course-header">
     <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
-    <span class="path-progress">01 / 16 &middot; Beginner</span>
+    <span class="path-progress">01 / 17 &middot; Beginner</span>
     <nav class="course-nav" aria-label="Learning path"><a href="../index.html">All handbooks</a><a href="genai-02-prompting-handbook.html">Next &rarr;</a></nav>
   </header>
   <main class="course" id="main">
@@ -24,7 +24,25 @@
       <div class="hero-meta"><span class="badge">Beginner</span><span class="badge">Tokens and context</span><span class="badge">First API call</span></div>
     </section>
     <section class="lesson" id="what">
-      <h2>What an LLM is</h2><p>A large language model (LLM) is a neural network, almost always a decoder-only transformer, trained to predict the next token given the tokens before it. Generating text is just repeating that step: predict a token, append it, predict again. Everything else (chat, code, reasoning, tool use) is behaviour layered on that loop.</p><table><thead><tr><th>Training stage</th><th>What happens</th><th>Result</th></tr></thead><tbody><tr><td>Pretraining</td><td>Next-token prediction over trillions of tokens of web, books, code and licensed data</td><td>A base model that continues text but does not follow instructions</td></tr><tr><td>Supervised fine-tuning (SFT)</td><td>Train on curated instruction and answer pairs</td><td>An instruction-following model</td></tr><tr><td>Preference and RL tuning</td><td>RLHF, DPO and reinforcement learning with verifiable rewards</td><td>Helpful, safer, and (for reasoning models) better at multi-step problems</td></tr><tr><td>Reasoning training</td><td>RL teaches the model to produce long hidden chains of thought before answering</td><td>Reasoning models that trade latency and cost for accuracy</td></tr></tbody></table><div class="callout"><strong>Why this matters for architecture</strong>Knowledge is frozen at pretraining time, behaviour is shaped by fine-tuning, and everything else you add (retrieval, tools, guardrails) happens around the model at run time. Most of this handbook is about choosing which of those levers to pull.</div>
+      <h2>What an LLM is</h2><p>A large language model (LLM) is a neural network, almost always a decoder-only transformer, trained to predict the next token given the tokens before it. Generating text is just repeating that step: predict a token, append it, predict again. Everything else (chat, code, reasoning, tool use) is behaviour layered on that loop.</p><figure class="architecture-diagram">
+  <div class="architecture-diagram-scroll">
+    <svg viewBox="0 0 960 250" role="img" aria-labelledby="llm-loop-title llm-loop-description">
+      <title id="llm-loop-title">How an LLM generates text</title>
+      <desc id="llm-loop-description">Prompt text is split into tokens and passed through a transformer, which produces a probability distribution over the next token. A sampling step selects one token. That token is appended to the context and the loop repeats until a stop condition, then tokens are decoded into the output text.</desc>
+      <defs><marker id="llm-loop-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker><marker id="llm-loop-return" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#77d7c2"></path></marker></defs>
+      <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#llm-loop-arrow)"><path d="M 150 90 H 170"></path><path d="M 310 90 H 330"></path><path d="M 470 90 H 490"></path><path d="M 630 90 H 650"></path><path d="M 790 90 H 810"></path></g>
+      <path d="M 720 130 V 190 H 400 V 132" fill="none" stroke="#77d7c2" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#llm-loop-return)"></path>
+      <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+        <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="10" y="50" width="140" height="80" rx="12"></rect><rect x="170" y="50" width="140" height="80" rx="12"></rect><rect x="490" y="50" width="140" height="80" rx="12"></rect><rect x="650" y="50" width="140" height="80" rx="12"></rect><rect x="810" y="50" width="140" height="80" rx="12"></rect></g>
+        <rect x="330" y="50" width="140" height="80" rx="12" fill="#172b3b" stroke="#77d7c2" stroke-width="2.5"></rect>
+        <g fill="#e8eef8" font-size="15" font-weight="700"><text x="80" y="87">Prompt</text><text x="240" y="87">Tokenizer</text><text x="400" y="87">Transformer</text><text x="560" y="87">Probabilities</text><text x="720" y="87">Sampling</text><text x="880" y="87">Output text</text></g>
+        <g fill="#a7b5ca" font-size="12"><text x="80" y="109">System + user text</text><text x="240" y="109">Text to token ids</text><text x="400" y="109">Attends to context</text><text x="560" y="109">Over the vocabulary</text><text x="720" y="109">Temperature · top_p</text><text x="880" y="109">Detokenize at stop</text></g>
+        <text x="560" y="214" fill="#77d7c2" font-size="14" font-weight="700">Append the chosen token to the context and predict again</text>
+      </g>
+    </svg>
+  </div>
+  <figcaption>Generation is one repeated step. Tokens, context length and sampling settings are the levers that drive cost, latency and variability.</figcaption>
+</figure><table><thead><tr><th>Training stage</th><th>What happens</th><th>Result</th></tr></thead><tbody><tr><td>Pretraining</td><td>Next-token prediction over trillions of tokens of web, books, code and licensed data</td><td>A base model that continues text but does not follow instructions</td></tr><tr><td>Supervised fine-tuning (SFT)</td><td>Train on curated instruction and answer pairs</td><td>An instruction-following model</td></tr><tr><td>Preference and RL tuning</td><td>RLHF, DPO and reinforcement learning with verifiable rewards</td><td>Helpful, safer, and (for reasoning models) better at multi-step problems</td></tr><tr><td>Reasoning training</td><td>RL teaches the model to produce long hidden chains of thought before answering</td><td>Reasoning models that trade latency and cost for accuracy</td></tr></tbody></table><div class="callout"><strong>Why this matters for architecture</strong>Knowledge is frozen at pretraining time, behaviour is shaped by fine-tuning, and everything else you add (retrieval, tools, guardrails) happens around the model at run time. Most of this handbook is about choosing which of those levers to pull.</div>
     </section>
     <section class="lesson" id="tokens">
       <h2>Tokens, cost and the context window</h2><p>Models do not read words; they read tokens, sub-word pieces produced by a tokenizer such as byte-pair encoding. In English one token is roughly 4 characters or 0.75 words; code, numbers and non-English text use more tokens per word. You pay per token (input and output are priced separately, output costs more) and latency grows with output tokens.</p><pre><code>import tiktoken
