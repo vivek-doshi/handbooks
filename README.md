@@ -72,6 +72,8 @@ Learning path (beginner → advanced; follow the numbered sequence in `architect
 ### Data Engineering
 - data-engineering-core-concepts-python-handbook.html — Data Engineering Core Concepts
 - pandas-handbook.html — Pandas Handbook
+- elt-handbook.html — ETL Handbook
+- etl-handbook.html — ETL Handbook
 
 ### Machine Learning
 Learning path (beginner to intermediate; follow the numbered sequence in `machine-learning/`): foundations, math, data, the classic algorithms (regression, Bayes, k-nearest neighbours, SVM, trees, ensembles, clustering), evaluation, then neural networks, PyTorch, CNNs, sequence models, and transformers.
@@ -177,6 +179,27 @@ Learning path (beginner to advanced; follow the numbered sequence in `gen-ai/`):
 ### Platform
 - palantir-foundry-developer-handbook.html — Palantir Foundry Handbook
 
+### Security
+- security-concepts-handbook.html — Security Concepts Handbook
+- ai-security-and-adversarial-handbook.html — AI Security and Adversarial Handbook
+- software-supply-chain-security-handbook.html — Software Supply Chain Security Handbook
+- zero-trust-architecture-handbook.html — Zero Trust Architecture Handbook
+- secops-handbook.html — SecOps Handbook
+
+### AI Governance
+- ai-guardrails-handbook.html — AI Guardrails & Safety Handbook
+- ai-harness-engineering-handbook.html — AI Harness Engineering Handbook
+- llm-evaluation-and-testing-handbook.html — LLM Evaluation and Testing Handbook
+
+### Observability & Reliability
+- opentelemetry-handbook.html — OpenTelemetry Handbook
+- distributed-tracing-handbook.html — Distributed Tracing Handbook
+- chaos-engineering-handbook.html — Chaos Engineering Handbook
+
+### Networking
+- networking-handbook.html — Networking Handbook
+- cloud-networking-handbook.html — Cloud Networking Handbook
+
 Shared assets:
 
 - styles/
@@ -278,26 +301,10 @@ This repository is a collection of quick handbooks and reference documents that 
 
 ## Upcoming Handbooks
 
+These are planned handbooks not yet created in the repository:
+
 ### Security
-- devsecops-handbook.html — Shifting security left (SAST, DAST, SCA in CI/CD). - done
-- software-supply-chain-security-handbook.html — SBOMs (Software Bill of Materials), Sigstore, and securing dependencies (crucial in the AI era where we pull unknown packages) - done
-- zero-trust-architecture-handbook.html — Beyond VPNs. Identity-based access, micro-segmentation, and Zero Trust network paradigms. - done 
-- ai-security-and-adversarial-handbook.html — Prompt injection defense, data leakage prevention in LLMs, and AI red-teaming. - done 
+- devsecops-handbook.html — Shifting security left (SAST, DAST, SCA in CI/CD).
 
-### AI Production & Governance
-- llm-evaluation-and-testing-handbook.html — Frameworks like RAGAS, TruLens, DeepEval. How do we mathematically prove our RAG system is getting better? - done 
-- ai-guardrails-handbook.html — NeMo Guardrails, Llama Guard. Keeping agents within operational boundaries. - done 
-- vector-databases-enterprise-handbook.html — You have Advanced RAG, but we need a dedicated refresher on Pinecone, Milvus, Qdrant, and pgvector internals. Vector DBs are the new Relational DBs. done 
-
-### Observability & Reliability
-- opentelemetry-handbook.html — The industry standard for traces, metrics, and logs. If an engineer doesn't know OTel, they can't debug modern systems. - done 
-- distributed-tracing-handbook.html — Jaeger, Zipkin. Following a request across 8 microservices and 3 LLM calls.  done
-- chaos-engineering-handbook.html — Gremlin, Litmus. How we intentionally break things to prove resilience. - done 
-
-### Architecture
-- Rewritten as the 12-step beginner-to-advanced learning path documented above.
-
-### AI Governance
-- ai-guardrails-handbook.html — AI Guardrails & Safety Handbook
-- ai-harner-engineering-handbook.html — AI Harness Engineering Handbook
-- llm-evaluation-and-testing-handbook.html — LLM Evaluation and Testing Handbook
+### Vector Databases (Enterprise)
+- vector-databases-enterprise-handbook.html — You have Advanced RAG, but we need a dedicated refresher on Pinecone, Milvus, Qdrant, and pgvector internals. Vector DBs are the new Relational DBs.
