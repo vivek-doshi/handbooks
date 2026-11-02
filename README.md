@@ -56,6 +56,7 @@ Learning path (beginner → advanced; follow the numbered sequence in `architect
 10. Advanced — architecture-10-graphql.html: schema design, federation, authorization, security, and performance.
 11. Advanced — architecture-11-api-gateway.html: edge security, traffic policy, resilience, and AI gateway patterns.
 12. Advanced — architecture-12-togaf.html: TOGAF Standard 10th Edition, ADM, artifacts, and enterprise governance.
+13. Advanced — architecture-13-case-studies.html: two worked use cases showing requirements, architecture flows, design rationale, tradeoffs, and failure handling.
 
 ### Frontend
 - angular-20-handbook.html — Angular 20 Handbook
@@ -119,6 +120,7 @@ Learning path (beginner → architect; follow the numbered sequence in `devops/`
 11. Advanced — devops-11-platform-sre-finops-handbook.html: platforms, OpenTelemetry, SLOs, incidents, and FinOps.
 12. Architect — devops-12-devops-modular-monolith-handbook.html: lean delivery architecture for a modular monolith.
 13. Architect — devops-13-devops-microservices-handbook.html: opinionated reference architecture for 20 microservices.
+14. Architect — devops-14-pipeline-case-studies-handbook.html: enterprise paved-road and standards-informed regulated pipeline case studies, with diagrams and design rationale.
 
 ### Cloud
 Learning path (beginner → architect; follow the numbered sequence in `cloud/`): cloud basics, AWS/Azure/GCP core and AI tracks, then governance, FinOps, resilience, and worked reference architectures.
@@ -145,7 +147,7 @@ Learning path (beginner → architect; follow the numbered sequence in `cloud/`)
 - smolagents-handbook.html — SmolAgents Handbook
 
 ### Generative AI
-Learning path (beginner to advanced; follow the numbered sequence in `gen-ai/`): LLM foundations, prompting, embeddings and vector search, RAG and advanced RAG strategies, context engineering, fine-tuning, tools, agents and MCP, evaluation and guardrails, then GenAI architecture: components, fine-tune versus RAG decisions, serving and cost, and five large-scale use cases.
+Learning path (beginner to advanced; follow the numbered sequence in `gen-ai/`): LLM foundations, prompting, embeddings and vector search, RAG and advanced RAG strategies, context engineering, fine-tuning, tools, agents and MCP, evaluation and guardrails, then GenAI architecture: components, fine-tune versus RAG decisions, serving and cost, five large-scale use cases, and architecture case studies with four further complete use-case designs.
 1. Beginner - genai-01-llm-foundations-handbook.html: Beginner: what large language models are, tokens and context windows, sampling settings, the model landscape, known limitations, and your first API call.
 2. Beginner - genai-02-prompting-handbook.html: Beginner: roles, clear instructions, few-shot examples, reasoning prompts, structured outputs, prompt injection basics, and how to version and test prompts.
 3. Beginner - genai-03-embeddings-vector-search-handbook.html: Beginner: embeddings, similarity metrics, approximate nearest neighbour indexes, choosing a vector database, hybrid search, and memory sizing.
@@ -162,7 +164,9 @@ Learning path (beginner to advanced; follow the numbered sequence in `gen-ai/`):
 14. Advanced - genai-14-usecases-knowledge-support-handbook.html: Advanced: architecting an enterprise knowledge assistant over a billion chunks and a customer support platform handling tens of millions of conversations, with data scale, RAG strategy, fine-tuning decisions, capacity and cost.
 15. Advanced - genai-15-usecases-documents-code-handbook.html: Advanced: architecting a document extraction pipeline processing tens of millions of documents a month and a code intelligence platform over billions of lines of code.
 16. Advanced - genai-16-usecase-analytics-agent-handbook.html: Advanced: architecting a natural-language analytics agent over a multi-petabyte lakehouse, then a cross-case comparison, a production-readiness checklist and where to go next.
-
+17. Advanced - genai-17-architecture-case-studies-handbook.html: Advanced: an enterprise GenAI platform and a standards-aligned assistant for a high-impact process, with flow diagrams, design rationale, tradeoffs and validation.
+18. Advanced - genai-18-usecases-field-service-catalog-handbook.html: Advanced: a safety-critical multimodal RAG assistant for field technicians and a high-volume catalog enrichment pipeline on a fine-tuned small model, with decision paths, diagrams, capacity and cost.
+19. Advanced - genai-19-usecases-regulatory-incident-handbook.html: Advanced: a temporal and citation-aware RAG assistant for regulatory research and a bounded incident-response agent with human approval, with decision paths, diagrams, capacity and cost.
 ### Tooling
 - claude-code-handbook.html — Claude Code Handbook
 - dev-containers-handbook.html — Dev Containers Handbook

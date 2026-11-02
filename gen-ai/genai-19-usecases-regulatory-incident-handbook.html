@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="handbook-version" content="v1">
+  <meta name="last-updated" content="2026-10-31">
+  <meta name="description" content="Advanced: two complete GenAI designs, a regulatory research assistant built on temporal and citation-aware RAG and an incident-response agent with a bounded tool loop and human approval, with decision paths, diagrams, capacity and cost.">
+  <title>19. Use Cases 8 and 9: Regulatory Research Assistant and Incident Response Agent | Generative AI Path</title>
+  <link rel="stylesheet" href="learning-path.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to lesson</a>
+  <header class="course-header">
+    <a class="brand" href="../index.html"><span>GenAI Path</span> / Handbooks</a>
+    <span class="path-progress">19 / 19 &middot; Advanced</span>
+    <nav class="course-nav" aria-label="Learning path"><a href="genai-18-usecases-field-service-catalog-handbook.html">&larr; Previous</a><a href="../index.html">All handbooks</a></nav>
+  </header>
+  <main class="course" id="main">
+    <section class="hero">
+      <div class="eyebrow">Step 19 &middot; Advanced &middot; Two complete designs and the reasoning behind each</div>
+      <h1>Use Cases 8 and 9: Regulatory Research Assistant and Incident Response Agent</h1>
+      <p class="lede">The first design is a RAG system where the hard problems are time and structure: which version of a rule was valid on a date, and which other articles it depends on. The second is an agent that investigates production incidents, where the hard problems are safety, untrusted telemetry and trust. Each case explains how the approach was reached.</p>
+      <div class="hero-meta"><span class="badge">Advanced</span><span class="badge">Temporal and citation RAG</span><span class="badge">Bounded agent</span><span class="badge">Decision paths</span></div>
+    </section>
+
+    <section class="lesson" id="intro">
+      <h2>How to read these designs</h2>
+      <p>These cases use the same six questions as step 18: what a wrong answer is worth, where knowledge lives and how fast it changes, what the real inputs look like, what context is already known, which failures can code catch, and what it costs at real volume. The decision path in each case shows how those answers produced the design.</p>
+      <div class="callout"><strong>About the numbers</strong>All figures are illustrative planning numbers. Prices assume $3 per million input tokens and $12 per million output tokens for a frontier reasoning model (output includes reasoning tokens), and $0.50 and $2.00 for a mid-size model. Replace them with measured token counts, current prices and benchmarks for your own stack.</div>
+    </section>
+
+    <section class="lesson" id="uc8-req">
+      <h2>Use case 8: Regulatory research assistant (RAG)</h2>
+      <table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody>
+        <tr><td>Business</td><td>Global bank; about 1,500 compliance and legal staff covering 40 jurisdictions</td></tr>
+        <tr><td>Content</td><td>About 1.2 million documents (laws, regulations, regulator guidance, enforcement decisions, internal policies), roughly 15 million legal units, 14 languages</td></tr>
+        <tr><td>Change rate</td><td>About 2,000 documents a day are new, amended or repealed; some amendments take effect on a future date</td></tr>
+        <tr><td>Questions</td><td>&ldquo;What are the reporting duties for X in country Y as of date D?&rdquo;, cross-jurisdiction comparisons, &ldquo;what changed since last quarter?&rdquo;, definitions</td></tr>
+        <tr><td>Volume</td><td>About 18,000 questions a day: roughly 0.5 a second on average and 3 a second at peak; about 30 percent need multi-step research</td></tr>
+        <tr><td>Quality</td><td>Every claim cited to a pinpoint unit that was valid on the stated date; quotes verifiable; abstain when unsupported</td></tr>
+        <tr><td>Risk</td><td>A wrong or outdated reading can cause a regulatory breach; queries are confidential and may be privileged</td></tr>
+        <tr><td>Latency</td><td>Simple answers in about 15 seconds; research answers stream progress and may take up to 90 seconds</td></tr>
+      </tbody></table>
+      <div class="callout"><strong>Where the difficulty is</strong>Not the volume or the model, but the shape of the content. Legal text is hierarchical, versioned over time and full of cross-references. A system that treats it as flat, undated chunks returns confident answers from the wrong version.</div>
+    </section>
+
+    <section class="lesson" id="uc8-reach">
+      <h2>UC8 decision path: how the approach was reached</h2>
+      <ol>
+        <li><strong>Start from the users and the cost of error.</strong> Users are experts who put answers into memos for decisions with legal consequences. Fluency is worthless without verifiability, so the design must be evidence-first, cite precisely and prefer abstaining to guessing.</li>
+        <li><strong>Ask where the knowledge lives.</strong> It is external, changes daily and must be quoted. A fine-tuned model would be stale, cannot cite and cannot prove what it learned, so this is RAG, with the model used to read and synthesise rather than to remember.</li>
+        <li><strong>Look at the structure of the content.</strong> Legal documents already have a hierarchy and numbering (act, part, article, paragraph). Chunking by legal unit rather than by token count keeps each unit meaningful and makes the unit path (for example <code>Reg X &rsaquo; Art 12 &rsaquo; (3)(b)</code>) the citation itself.</li>
+        <li><strong>Look at the time dimension.</strong> The question usually has an as-of date, but similarity search ignores dates and returns the closest wording, whatever its validity. This is the most common source of confident, wrong legal answers. Validity is therefore modelled as data: each unit has valid-from and valid-to, amendments are new versions, and the as-of date is a required input that filters retrieval.</li>
+        <li><strong>Look at relationships.</strong> The answer often depends on a definition or a referenced article that does not resemble the question. We compared an LLM-extracted knowledge graph (GraphRAG, step 05) with a graph built from the citations that are already written in the text. Explicit citations are deterministic, auditable and free to build, while an LLM-built graph costs more and can invent edges. We use the citation graph and expand one or two hops at query time.</li>
+        <li><strong>Match effort to the question.</strong> Many questions are single lookups; others need decomposition by jurisdiction and issue. A router sends simple questions down a single-pass path and research questions into a bounded agentic loop of at most five retrieval rounds (step 09).</li>
+        <li><strong>Verify with code first.</strong> Each claim must carry a unit ID and a quote. Code checks that the quote appears verbatim in that unit and that the unit was valid on the as-of date. A second model checks entailment, and unsupported claims are removed or flagged.</li>
+        <li><strong>Treat confidentiality as architecture.</strong> Document-level access control, regional processing, no provider retention or training on queries, and an audit log are part of the design from the start.</li>
+        <li><strong>Price it per query.</strong> Research questions cost about ten times a simple lookup, so routing is the main cost lever (see capacity).</li>
+      </ol>
+    </section>
+
+    <section class="lesson" id="uc8-decide">
+      <h2>UC8 decisions</h2>
+      <table><thead><tr><th>Question</th><th>Decision</th><th>Reason</th></tr></thead><tbody>
+        <tr><td>RAG, fine-tuning or both?</td><td>RAG; consider fine-tuning the embedder and reranker later, not the generator</td><td>Knowledge must be current and cited; legal vocabulary may justify tuned retrieval if evaluation shows a gap</td></tr>
+        <tr><td>Chunking</td><td>One chunk per legal unit (article, paragraph), with hierarchical path, jurisdiction, language and validity</td><td>Units are the natural, citable granularity</td></tr>
+        <tr><td>Chunk context</td><td>Prefix built from structure: path, title, jurisdiction and validity, with no LLM calls</td><td>Contextual chunks help retrieval; deterministic prefixes avoid about $8,000 of LLM calls on 15 million units and a re-run on every amendment</td></tr>
+        <tr><td>Time model</td><td>Bitemporal metadata: valid-from, valid-to, published date; the as-of date is a required query parameter, defaulting to today</td><td>Prevents superseded text appearing as current law</td></tr>
+        <tr><td>Retrieval</td><td>Hybrid BM25 and dense, filters on jurisdiction, document type and validity, cross-encoder rerank</td><td>Legal terms of art need keyword matching; paraphrases need embeddings</td></tr>
+        <tr><td>Relationships</td><td>Citation graph from parsed cross-references; expand one or two hops for definitions and referenced articles</td><td>Deterministic, auditable, cheap</td></tr>
+        <tr><td>Orchestration</td><td>Router: single-pass for lookups, bounded planner loop (maximum five rounds) for research</td><td>Cost and latency follow the question's difficulty</td></tr>
+        <tr><td>Models</td><td>Small model for query rewriting and routing; reasoning model for planning, synthesis and entailment</td><td>Spend reasoning tokens only where they matter</td></tr>
+        <tr><td>Verification</td><td>Verbatim quote check, validity check, entailment check; remove or flag unsupported claims</td><td>Blocks hallucinated citations and stale law</td></tr>
+        <tr><td>Languages</td><td>Multilingual embeddings; answer in the user's language; show the original text with any machine translation labelled</td><td>Avoids relying on a translation as the legal source</td></tr>
+        <tr><td>Security</td><td>Document ACLs enforced at retrieval, regional processing, no provider training on data, audit log with retention</td><td>Privileged queries and internal policies must stay protected</td></tr>
+        <tr><td>Output</td><td>Memo-style: conclusion, basis with pinpoint citations, conflicts and uncertainty, as-of date, reviewer sign-off</td><td>Keeps a person accountable for the legal opinion</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="lesson" id="uc8-ingest">
+      <h2>UC8 architecture: structure, time and citations</h2>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1100 400" role="img" aria-labelledby="reg-ingest-title reg-ingest-description">
+            <title id="reg-ingest-title">Regulatory corpus ingestion with versions and citations</title>
+            <desc id="reg-ingest-description">Regulator feeds are parsed into legal units with hierarchical paths. A version resolver assigns valid-from and valid-to dates and links amendments. A citation extractor turns cross-references into graph edges. Units go to a hybrid index, a citation graph and a verbatim store. Each unit record carries identity, path, jurisdiction, validity, supersession, text and citations. Access control, residency and freshness rules apply, and embedding text is built from structure without LLM calls.</desc>
+            <defs><marker id="reg-ingest-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker></defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#reg-ingest-arrow)">
+              <path d="M 190 80 H 220"></path><path d="M 410 80 H 440"></path><path d="M 630 80 H 660"></path><path d="M 850 80 H 880"></path><path d="M 535 190 V 122"></path>
+            </g>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="20" y="40" width="170" height="80" rx="12"></rect><rect x="220" y="40" width="190" height="80" rx="12"></rect><rect x="660" y="40" width="190" height="80" rx="12"></rect><rect x="880" y="40" width="200" height="80" rx="12"></rect></g>
+              <rect x="440" y="40" width="190" height="80" rx="12" fill="#172b3b" stroke="#77d7c2" stroke-width="2.5"></rect>
+              <rect x="220" y="190" width="630" height="110" rx="12" fill="#172b3b" stroke="#77d7c2" stroke-width="2"></rect>
+              <g fill="#172238" stroke="#f0bf74" stroke-width="2"><rect x="20" y="190" width="170" height="110" rx="12"></rect><rect x="880" y="190" width="200" height="110" rx="12"></rect><rect x="20" y="330" width="1060" height="44" rx="12"></rect></g>
+              <g fill="#e8eef8" font-size="15" font-weight="700"><text x="105" y="76">Regulator feeds</text><text x="315" y="76">Structure parser</text><text x="535" y="76" fill="#77d7c2">Version resolver</text><text x="755" y="76">Citation extractor</text><text x="980" y="76">Serving stores</text><text x="535" y="222" fill="#77d7c2" font-size="16">Each legal unit is one record</text><text x="105" y="222" fill="#f0bf74">Access</text><text x="980" y="222" fill="#f0bf74">Freshness</text></g>
+              <g fill="#a7b5ca" font-size="12"><text x="105" y="98">XML · PDF · HTML</text><text x="315" y="98">Act › article › paragraph</text><text x="535" y="98">Valid from and to</text><text x="535" y="114">Amendments linked</text><text x="755" y="98">Cross-references</text><text x="755" y="114">become graph edges</text><text x="980" y="98">Unit index · citation graph</text><text x="980" y="114">Verbatim text store</text><text x="535" y="250">id · path "Reg X › Art 12 › (3)(b)" · jurisdiction · language</text><text x="535" y="270">valid_from · valid_to · supersedes · source version · ACL</text><text x="535" y="290">text · cites[ ] · defined terms[ ]</text><text x="105" y="250">Document ACLs</text><text x="105" y="268">Residency tags</text><text x="105" y="286">Privileged data isolated</text><text x="980" y="250">Daily deltas</text><text x="980" y="268">Priority jurisdictions in 4 h</text><text x="980" y="286">Future-dated amendments kept</text></g>
+              <text x="550" y="357" fill="#e8eef8" font-family="Segoe UI, sans-serif" font-size="13" text-anchor="middle">Embedding text = path + title + jurisdiction + validity prefix, built from structure with no LLM calls</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>Time and structure are modelled as data: a unit carries its own validity interval, its path and its references, so retrieval and verification can enforce them.</figcaption>
+      </figure>
+      <ul>
+        <li><strong>Amendments:</strong> keep every version of a unit and link them. &ldquo;Repealed&rdquo; or &ldquo;replaced&rdquo; becomes a validity end date, not a deletion, so questions about the past still work.</li>
+        <li><strong>Parser quality:</strong> measure how often unit boundaries and cross-references are parsed correctly per source format and jurisdiction, because errors here silently corrupt citations.</li>
+        <li><strong>Dates:</strong> store the document's published date as well as its effective period, since &ldquo;as of&rdquo; can mean either in practice. Ask the user when it matters.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc8-query">
+      <h2>UC8 architecture: answering and verifying</h2>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1100 450" role="img" aria-labelledby="reg-query-title reg-query-description">
+            <title id="reg-query-title">Regulatory research query flow</title>
+            <desc id="reg-query-description">An analyst asks a question with an as-of date and jurisdictions. A router chooses a single-pass or research path. A planner using a reasoning model decomposes the question and runs a retrieval loop of hybrid search, validity filtering, reranking and citation-graph expansion, repeating up to five rounds. Synthesis produces claims with quotes and unit identifiers. A verifier checks quotes, validity and entailment. The result is a memo-style answer, an audit log is written, and an abstain path handles missing evidence.</desc>
+            <defs><marker id="reg-query-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker><marker id="reg-query-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#77d7c2"></path></marker></defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#reg-query-arrow)">
+              <path d="M 170 80 H 200"></path><path d="M 360 80 H 390"></path><path d="M 590 80 H 620"></path><path d="M 840 80 H 870"></path><path d="M 975 120 V 220"></path><path d="M 700 265 H 660"></path><path d="M 890 310 V 350"></path>
+            </g>
+            <path d="M 730 120 V 170 H 490 V 122" fill="none" stroke="#77d7c2" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#reg-query-loop)"></path>
+            <text x="610" y="162" fill="#77d7c2" font-family="Segoe UI, sans-serif" font-size="13" text-anchor="middle">Need more evidence? (max 5 rounds)</text>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="20" y="40" width="150" height="80" rx="12"></rect><rect x="200" y="40" width="160" height="80" rx="12"></rect><rect x="870" y="40" width="210" height="80" rx="12"></rect><rect x="700" y="350" width="380" height="80" rx="12"></rect></g>
+              <g fill="#172b3b" stroke="#77d7c2" stroke-width="2"><rect x="390" y="40" width="200" height="80" rx="12"></rect><rect x="620" y="40" width="220" height="80" rx="12"></rect><rect x="700" y="220" width="380" height="90" rx="12"></rect></g>
+              <g fill="#172238" stroke="#f0bf74" stroke-width="2"><rect x="20" y="220" width="640" height="90" rx="12"></rect><rect x="20" y="350" width="640" height="80" rx="12"></rect></g>
+              <g fill="#e8eef8" font-size="15" font-weight="700"><text x="95" y="76">Analyst</text><text x="280" y="76">Router</text><text x="490" y="76">Planner</text><text x="730" y="76">Retrieval loop</text><text x="975" y="76">Synthesis</text><text x="890" y="250">Verification</text><text x="890" y="386">Memo-style answer</text><text x="340" y="250" fill="#f0bf74">Audit log</text><text x="340" y="386" fill="#f0bf74">Abstain path</text></g>
+              <g fill="#a7b5ca" font-size="12"><text x="95" y="98">Question · as-of date</text><text x="95" y="114">Jurisdictions</text><text x="280" y="98">Simple or research</text><text x="490" y="98">Reasoning model</text><text x="490" y="114">Decompose by issue</text><text x="730" y="98">Hybrid · validity filter · rerank</text><text x="730" y="114">Citation-graph expansion</text><text x="975" y="98">Claim + quote + unit id</text><text x="890" y="272">Quote verbatim in cited unit · unit valid at as-of date</text><text x="890" y="290">Entailment check · remove or flag unsupported claims</text><text x="890" y="408">Conclusion · pinpoint citations · conflicts</text><text x="890" y="424">As-of date · reviewer sign-off</text><text x="340" y="272">Question · as-of date · units retrieved</text><text x="340" y="290">Model versions · verification outcome</text><text x="340" y="408">No valid unit found: say so</text><text x="340" y="424">Suggest sources, never improvise</text></g>
+            </g>
+          </svg>
+        </div>
+        <figcaption>The agentic loop is bounded and used only for research questions. Verification sits after generation and uses code before it uses another model.</figcaption>
+      </figure>
+      <h3>One research question, step by step</h3>
+      <ol>
+        <li>The analyst asks, &ldquo;What incident-reporting deadlines apply to a payment outage in country Y, as of 1 March?&rdquo; The as-of date and jurisdiction become filters.</li>
+        <li>The router classifies this as research. The planner decomposes it: which regulations apply, what counts as a reportable incident, and what the deadlines are.</li>
+        <li>Each round runs hybrid search with the validity and jurisdiction filters, reranks, and expands the citation graph for definitions and referenced articles.</li>
+        <li>The planner stops when each sub-question has supporting units or when five rounds are used, in which case the gap is reported.</li>
+        <li>Synthesis writes claims, each with a unit ID and a quote. The verifier checks quotes, validity and entailment, and drops or flags what it cannot support.</li>
+        <li>The memo shows the answer, pinpoint citations, any conflicts between sources, and the as-of date. The audit log records the run.</li>
+      </ol>
+    </section>
+
+    <section class="lesson" id="uc8-cap">
+      <h2>UC8 capacity and cost</h2>
+      <pre><code>Traffic: 18,000 questions/day -&gt; ~0.5 req/s average, ~3 req/s peak
+Mix:     70% simple (12,600/day), 30% research (5,400/day)
+
+Simple question:   ~5,000 input tokens, ~500 output tokens
+  cost = 5,000 * $3/M + 500 * $12/M = $0.015 + $0.006 = ~$0.021
+Research question: ~6 model calls, ~40,000 input tokens, ~7,000 output tokens (including reasoning)
+  cost = 40,000 * $3/M + 7,000 * $12/M = $0.120 + $0.084 = ~$0.204
+
+Daily:   12,600 * $0.021 + 5,400 * $0.204 = $265 + $1,102 = ~$1,366  (~$41,000/month, ~$0.076 per question)
+Levers:  route rewriting to a small model, cache the stable prompt prefix, cap rounds,
+         answer repeated questions from reviewed memos with an as-of check
+
+Index:   15 M units * 1024 dims
+         float32 ~61 GB (SSD for rescoring); int8 ~15 GB, with HNSW overhead ~20 GB in RAM
+         2 shards * 2 replicas of memory-optimised nodes; keyword index alongside
+Rerank:  3 q/s * 100 candidates = ~300 pairs/s -&gt; one GPU or a managed reranker
+Ingest:  ~2,000 documents/day -&gt; trivial embedding load; parse quality is the real cost
+Avoided: LLM-written chunk prefixes on 15 M units ~ 10.5 B input tokens = ~$8,000 once, plus reruns on amendments</code></pre>
+      <ul>
+        <li><strong>Cost sits in research mode:</strong> 30 percent of questions create about 80 percent of spend ($1,102 of $1,366), so a good router and a round cap matter more than the index size.</li>
+        <li><strong>Cost is small against value:</strong> about $27 per user per month is low compared with researcher time, but the budget still needs a per-team limit and monitoring.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc8-eval">
+      <h2>UC8 evaluation, security and risks</h2>
+      <table><thead><tr><th>Gate</th><th>How it is measured</th><th>Rule</th></tr></thead><tbody>
+        <tr><td>Golden set</td><td>600 questions written by lawyers across jurisdictions and dates, including 100 multi-hop and 50 unanswerable</td><td>Reviewed and versioned like code</td></tr>
+        <tr><td>Retrieval</td><td>Recall of the required units at 20, by jurisdiction and language</td><td>Above an agreed threshold per slice</td></tr>
+        <tr><td>Temporal correctness</td><td>100 traps: superseded versions, future-dated amendments, repealed rules</td><td>Zero wrong-version answers</td></tr>
+        <tr><td>Citation quality</td><td>Every citation supports its claim; every quote verbatim in the unit</td><td>Quote check must pass; citation precision above threshold</td></tr>
+        <tr><td>Abstention</td><td>Unanswerable questions</td><td>Abstains rather than improvises</td></tr>
+        <tr><td>Expert review</td><td>Blind comparison with a researcher's memo; time saved</td><td>Release scope grows only as findings are closed</td></tr>
+      </tbody></table>
+      <ul>
+        <li><strong>Risks:</strong> parser errors in unit boundaries or cross-references, conflicting rules across jurisdictions, over-reliance by reviewers, and leakage of privileged queries.</li>
+        <li><strong>Mitigations:</strong> parser metrics per source, explicit conflict display, mandatory sign-off before export, access isolation and audit, regional processing, and no provider retention.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc8-alt">
+      <h2>UC8 alternatives considered</h2>
+      <table><thead><tr><th>Alternative</th><th>Why it was not chosen</th><th>Reconsider when</th></tr></thead><tbody>
+        <tr><td>Plain RAG on token-based chunks</td><td>Ignores validity and structure; produces confident answers from superseded text</td><td>Content is a small, current, flat set of documents</td></tr>
+        <tr><td>LLM-extracted knowledge graph (GraphRAG)</td><td>Costly to build, can invent relationships, and explicit citations already provide the edges</td><td>Important relationships are implicit and not written as references</td></tr>
+        <tr><td>Fine-tune a model on the regulations</td><td>Stale, cannot cite, hard to prove what it learned</td><td>Only for retrieval models or style, and only after evaluation shows a gap</td></tr>
+        <tr><td>Long context with whole statutes</td><td>Single instruments run to hundreds of thousands of tokens, with lost-in-the-middle risk and high cost; better used for synthesis over retrieved units</td><td>The relevant instrument is small and stable</td></tr>
+        <tr><td>Fully agentic research for every question</td><td>Roughly ten times the cost and latency for questions that need one lookup</td><td>Not recommended; keep the router</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="lesson" id="uc9-req">
+      <h2>Use case 9: Incident response agent</h2>
+      <table><thead><tr><th>Item</th><th>Requirement</th></tr></thead><tbody>
+        <tr><td>Business</td><td>Platform with about 800 microservices, 60 engineering teams and 24/7 on-call</td></tr>
+        <tr><td>Task</td><td>When an incident pages, gather context, rank root-cause hypotheses with evidence, propose a mitigation and keep a timeline. People decide and approve</td></tr>
+        <tr><td>Volume</td><td>About 400 paged incidents a day after grouping; storms can produce 50 within five minutes</td></tr>
+        <tr><td>Time</td><td>First useful summary within two minutes of the page</td></tr>
+        <tr><td>Data</td><td>Metrics, logs, traces, deploy history, feature flags, a service catalogue, and about 20,000 runbooks and postmortems (roughly 300,000 chunks)</td></tr>
+        <tr><td>Safety</td><td>No uncontrolled production changes; telemetry may contain personal data and attacker-controlled text; the model never holds credentials</td></tr>
+        <tr><td>Success</td><td>Lower time to mitigate, correct evidence, and an honest &ldquo;cannot determine&rdquo; when the data does not support a conclusion</td></tr>
+      </tbody></table>
+      <div class="callout"><strong>Where the difficulty is</strong>The model is the easy part. The difficulty is giving it useful, small, trustworthy context from huge telemetry, and making sure it can never do harm, even when logs contain hostile instructions.</div>
+    </section>
+
+    <section class="lesson" id="uc9-reach">
+      <h2>UC9 decision path: how the approach was reached</h2>
+      <ol>
+        <li><strong>Ask whether an agent is warranted.</strong> The first minutes are always the same: recent deploys, SLO burn, top error signatures, dependency health and similar past incidents. That is a fixed workflow and needs no model. The next step depends on what was found, which is an open-ended investigation and is where a loop earns its place (workflows versus agents, step 09). So the design is a deterministic context pack followed by a bounded agent.</li>
+        <li><strong>Ask what the worst failure is.</strong> A wrong or unsafe change in production, and hostile text in logs steering the model. The model therefore never executes anything. It proposes actions; a policy engine validates them; a person approves; deterministic automation runs only allow-listed actions within bounds.</li>
+        <li><strong>Do the context arithmetic.</strong> Raw logs for a busy service can be millions of lines. Code clusters errors into signatures, takes time-windowed samples and summarises them before the model sees anything, so each tool result is a few hundred tokens of evidence rather than a dump (context engineering, step 06).</li>
+        <li><strong>Place RAG where it belongs.</strong> Runbooks and postmortems are a modest knowledge base, so retrieval over them is one tool among several, not the architecture.</li>
+        <li><strong>Make claims checkable.</strong> Every hypothesis must cite the query and result that support it, and every query must pass programmatic limits (time window, service scope, row cap). The model may say it cannot determine a cause.</li>
+        <li><strong>Choose models by job.</strong> A reasoning model ranks hypotheses and plans investigation; a small model summarises logs. Compute the cost per run to confirm that it is small against the cost of an hour of outage.</li>
+        <li><strong>Earn trust in stages.</strong> Replay historical incidents, run in shadow mode, then assist in the incident channel, and only then enable a few approved, reversible actions.</li>
+        <li><strong>Operate the agent as a system.</strong> Trace every run, enforce budgets, keep a kill switch and protect the observability backend from query storms.</li>
+      </ol>
+    </section>
+
+    <section class="lesson" id="uc9-decide">
+      <h2>UC9 decisions</h2>
+      <table><thead><tr><th>Question</th><th>Decision</th><th>Reason</th></tr></thead><tbody>
+        <tr><td>Agent or workflow?</td><td>Deterministic context pack, then a bounded agent loop of at most 8 steps</td><td>Fixed work is cheaper and more reliable as code; open-ended investigation needs a loop</td></tr>
+        <tr><td>Granularity</td><td>One run per grouped incident, not per alert; storm mode caps concurrency and uses a lightweight summary</td><td>Prevents a cost and quota spike during outages</td></tr>
+        <tr><td>Tools</td><td>MCP servers behind one tool gateway: metrics, logs, traces, deploys, flags, topology, runbook search</td><td>One place to enforce limits, redaction and audit</td></tr>
+        <tr><td>Credentials</td><td>Short-lived read-only workload identity per run; the model never sees secrets</td><td>Least privilege</td></tr>
+        <tr><td>Context handling</td><td>Cluster log signatures and summarise in code; return evidence snippets with query IDs</td><td>Keeps the window small and evidence traceable</td></tr>
+        <tr><td>Models</td><td>Reasoning model for planning and hypotheses; small model for log summarisation</td><td>Match capability to task</td></tr>
+        <tr><td>Verification</td><td>Hypotheses must cite evidence; queries and proposals are validated against policy</td><td>Programmatic checks beat self-assessment</td></tr>
+        <tr><td>Actions</td><td>Agent only proposes; policy engine checks blast radius and change freeze; human approves; deterministic executor runs rollback, bounded scale or flag toggle</td><td>The model never holds write authority</td></tr>
+        <tr><td>Untrusted data</td><td>Treat all logs, alert text, tickets and runbook content as data; cap size, strip control text and keep instructions separate</td><td>Mitigates prompt injection through telemetry</td></tr>
+        <tr><td>Budgets</td><td>Per run: 8 steps, about 120,000 tokens, 3 minutes, a fixed number of queries; global kill switch</td><td>Stops loops and runaway cost</td></tr>
+        <tr><td>Rollout</td><td>Replay, shadow, assist, then limited approved actions</td><td>Trust is earned with evidence</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="lesson" id="uc9-flow">
+      <h2>UC9 architecture: system flow</h2>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1100 470" role="img" aria-labelledby="ir-flow-title ir-flow-description">
+            <title id="ir-flow-title">Incident response agent system flow</title>
+            <desc id="ir-flow-description">Alerts are correlated into one incident. A deterministic context pack gathers deploys, SLO burn and error signatures. A bounded agent loop calls tools through a gateway with read-only credentials and redaction, reaching observability data, deploy and topology data, and runbook search. The agent posts hypotheses, evidence and a proposed action to the incident channel. A person approves through a policy check and a deterministic executor performs allow-listed actions. Every run is traced and auditable.</desc>
+            <defs><marker id="ir-flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker></defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#ir-flow-arrow)">
+              <path d="M 170 80 H 200"></path><path d="M 370 80 H 400"></path><path d="M 610 80 H 640"></path><path d="M 840 80 H 870"></path><path d="M 700 120 V 190"></path><path d="M 780 190 V 122"></path><path d="M 975 120 V 190"></path><path d="M 300 270 V 320"></path><path d="M 530 270 V 320"></path><path d="M 750 270 V 320"></path><path d="M 975 270 V 320"></path>
+            </g>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="20" y="40" width="150" height="80" rx="12"></rect><rect x="200" y="40" width="170" height="80" rx="12"></rect><rect x="870" y="40" width="210" height="80" rx="12"></rect><rect x="870" y="190" width="210" height="80" rx="12"></rect><rect x="200" y="320" width="200" height="80" rx="12"></rect><rect x="430" y="320" width="200" height="80" rx="12"></rect><rect x="660" y="320" width="180" height="80" rx="12"></rect></g>
+              <g fill="#172b3b" stroke="#77d7c2" stroke-width="2"><rect x="400" y="40" width="210" height="80" rx="12"></rect><rect x="640" y="40" width="200" height="80" rx="12"></rect><rect x="200" y="190" width="640" height="80" rx="12"></rect><rect x="870" y="320" width="210" height="80" rx="12"></rect></g>
+              <rect x="20" y="425" width="1060" height="40" rx="12" fill="#172238" stroke="#f0bf74" stroke-width="2"></rect>
+              <g fill="#e8eef8" font-size="15" font-weight="700"><text x="95" y="76">Alert source</text><text x="285" y="76">Correlator</text><text x="505" y="76">Context pack</text><text x="740" y="76">Agent loop</text><text x="975" y="76">Incident channel</text><text x="520" y="226">Tool gateway (MCP)</text><text x="975" y="226">Human approval</text><text x="300" y="356">Metrics · logs · traces</text><text x="530" y="356">Deploys · flags · topology</text><text x="750" y="356">Runbook search</text><text x="975" y="356">Executor</text></g>
+              <g fill="#a7b5ca" font-size="12"><text x="95" y="98">Pager · metrics</text><text x="285" y="98">One incident per cause group</text><text x="505" y="98">No LLM · parallel fetch</text><text x="505" y="114">Deploys · SLO burn · errors</text><text x="740" y="98">Reasoning model</text><text x="740" y="114">Maximum 8 steps</text><text x="975" y="98">Hypotheses · evidence</text><text x="975" y="114">Proposed action</text><text x="520" y="246">Read-only credentials · time windows · row caps · redaction</text><text x="975" y="246">One click · policy check</text><text x="300" y="378">Error signature clusters</text><text x="530" y="378">Service catalogue</text><text x="750" y="378">RAG over runbooks</text><text x="975" y="378">Deterministic automation</text><text x="975" y="394">Rollback · scale · flag</text></g>
+              <text x="550" y="450" fill="#e8eef8" font-family="Segoe UI, sans-serif" font-size="13" text-anchor="middle">Trace and audit every run: prompts, tool calls, evidence, approvals, cost · kill switch and per-run budgets</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>Fixed work runs as code, investigation runs as a bounded loop, and anything that changes production crosses a human and a deterministic executor.</figcaption>
+      </figure>
+      <h3>One incident, step by step</h3>
+      <ol>
+        <li>Several alerts fire for the same cause. The correlator groups them and opens one incident, so one run starts, not twenty.</li>
+        <li>The context pack runs in parallel with no model: deploys in the last two hours, SLO burn rate, top error signatures, dependency health and the three most similar past incidents. The result is about 6,000 tokens of facts.</li>
+        <li>The agent reads the pack and decides what to check next. Each tool call goes through the gateway, which enforces time windows, service scope and row caps, redacts personal data and returns a compact result with a query ID.</li>
+        <li>After at most eight steps, or when it has a supported answer, the agent posts ranked hypotheses with evidence links, what it ruled out, its confidence, and, if useful, a proposed action.</li>
+        <li>A person may ask follow-up questions in the channel. To act, they approve the proposal; the policy engine checks blast radius and change freeze; the executor performs the action and logs it.</li>
+        <li>After resolution, the agent drafts the timeline and postmortem outline from the recorded evidence for people to edit.</li>
+      </ol>
+    </section>
+
+    <section class="lesson" id="uc9-trust">
+      <h2>UC9 architecture: trust boundaries</h2>
+      <figure class="architecture-diagram">
+        <div class="architecture-diagram-scroll">
+          <svg viewBox="0 0 1100 370" role="img" aria-labelledby="ir-trust-title ir-trust-description">
+            <title id="ir-trust-title">Incident agent trust boundaries and controls</title>
+            <desc id="ir-trust-description">Untrusted telemetry and text pass through a tool gateway that caps size, strips control text and marks content as data. A context builder keeps instructions apart from data and uses signatures instead of raw lines. The agent has read-only tools. A policy engine validates proposals against an allow-list, blast radius and change freeze, then a person approves and a deterministic executor runs the action. A kill switch, budgets and replay tests with injected instructions protect the whole system.</desc>
+            <defs><marker id="ir-trust-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker></defs>
+            <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#ir-trust-arrow)">
+              <path d="M 175 95 H 205"></path><path d="M 355 95 H 385"></path><path d="M 535 95 H 565"></path><path d="M 715 95 H 745"></path><path d="M 895 95 H 925"></path>
+            </g>
+            <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+              <g fill="#172238" stroke="#f0bf74" stroke-width="2"><rect x="25" y="50" width="150" height="90" rx="12"></rect></g>
+              <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="385" y="50" width="150" height="90" rx="12"></rect><rect x="565" y="50" width="150" height="90" rx="12"></rect><rect x="925" y="50" width="150" height="90" rx="12"></rect></g>
+              <g fill="#172b3b" stroke="#77d7c2" stroke-width="2"><rect x="205" y="50" width="150" height="90" rx="12"></rect><rect x="745" y="50" width="150" height="90" rx="12"></rect></g>
+              <g fill="#e8eef8" font-size="14" font-weight="700"><text x="100" y="85">Untrusted data</text><text x="280" y="85">Tool gateway</text><text x="460" y="85">Context builder</text><text x="640" y="85">Agent</text><text x="820" y="85">Policy engine</text><text x="1000" y="85">Human + executor</text></g>
+              <g fill="#a7b5ca" font-size="12"><text x="100" y="106">Logs · alert text</text><text x="100" y="124">Tickets · runbooks</text><text x="280" y="106">Cap size · strip control</text><text x="280" y="124">Mark as DATA</text><text x="460" y="106">Signatures, not raw lines</text><text x="460" y="124">Instructions kept apart</text><text x="640" y="106">Read-only tools</text><text x="640" y="124">No write access</text><text x="820" y="106">Allow-listed actions</text><text x="820" y="124">Blast radius · freeze</text><text x="1000" y="106">Approve, then</text><text x="1000" y="124">deterministic run</text></g>
+              <g fill="none" stroke="#f0bf74" stroke-width="2" stroke-dasharray="6 5"><rect x="25" y="180" width="150" height="80" rx="12"></rect><rect x="385" y="180" width="150" height="80" rx="12"></rect><rect x="565" y="180" width="150" height="80" rx="12"></rect><rect x="745" y="180" width="150" height="80" rx="12"></rect></g>
+              <g fill="#e8eef8" font-size="13" font-weight="700"><text x="100" y="208">Threat</text><text x="460" y="208">Control</text><text x="640" y="208">Threat</text><text x="820" y="208">Control</text></g>
+              <g fill="#a7b5ca" font-size="12"><text x="100" y="230">Instructions hidden</text><text x="100" y="248">in log lines</text><text x="460" y="230">Data and instruction</text><text x="460" y="248">separation</text><text x="640" y="230">Wrong hypothesis,</text><text x="640" y="248">loops, runaway cost</text><text x="820" y="230">Bounded, approved</text><text x="820" y="248">actions only</text></g>
+              <rect x="25" y="295" width="1050" height="50" rx="12" fill="#172238" stroke="#77d7c2" stroke-width="2"></rect>
+              <text x="550" y="326" fill="#e8eef8" font-size="14" font-weight="700">Kill switch · per-run budgets (steps, tokens, wall time, queries) · replay tests with injected instructions</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>No single control is trusted: the gateway sanitises, the builder separates, the agent lacks write tools, and approval plus a deterministic executor sit between a proposal and production.</figcaption>
+      </figure>
+    </section>
+
+    <section class="lesson" id="uc9-cap">
+      <h2>UC9 capacity and cost</h2>
+      <pre><code>Runs: ~400 per day (one per grouped incident); storms: up to 50 in 5 minutes
+Per run: context pack ~6,000 tokens; ~6 agent steps, each adding ~2,500 tokens of tool results
+  input tokens ~ 6 * 6,000 + 2,500 * (0+1+2+3+4+5) = 36,000 + 37,500 = ~74,000
+  output tokens ~ 6 * 600 (incl. reasoning) + 1,500 final report = ~5,100
+  cost = 74,000 * $3/M + 5,100 * $12/M = $0.222 + $0.061 = ~$0.28 per run (before prefix-cache discounts)
+
+Daily:   400 * $0.28 = ~$113  (~$3,400/month)
+Storm:   50 runs * 74,000 = 3.7 M tokens in 3 minutes = ~20,000 input tokens/s
+         -&gt; cap concurrency at ~10 runs (~4,000 tokens/s) and queue the rest with a lightweight summary
+Backend: ~30 queries per run * 400 = ~12,000 queries/day; protect the observability store with per-run quotas and a query cache
+Runbook RAG: ~300,000 chunks -&gt; a small index; not a scaling concern</code></pre>
+      <ul>
+        <li><strong>Cost is not the constraint:</strong> about $0.28 a run is small next to an engineer-hour. Trust, safety and rate limits are the real constraints.</li>
+        <li><strong>Latency budget:</strong> context pack under 30 seconds in parallel, agent steps of 10 to 15 seconds each, so a useful summary arrives in under two minutes with the first hypotheses posted early.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc9-eval">
+      <h2>UC9 evaluation, rollout and risks</h2>
+      <table><thead><tr><th>Stage</th><th>What happens</th><th>Pass condition</th></tr></thead><tbody>
+        <tr><td>Replay</td><td>Run 300 historical incidents against recorded telemetry in a sandbox with known root causes</td><td>Root cause appears in the top three hypotheses at a rate set from the human baseline; evidence is correct</td></tr>
+        <tr><td>Safety tests</td><td>Logs and tickets containing injected instructions; proposals that violate policy</td><td>Zero unsafe proposals and zero executed injected instructions</td></tr>
+        <tr><td>Efficiency</td><td>Tool calls per run, tokens per run, time to first useful summary</td><td>Within budgets</td></tr>
+        <tr><td>Shadow mode</td><td>Run alongside on-call for several weeks without posting</td><td>Reviewed outcomes agree with responders' findings</td></tr>
+        <tr><td>Assist mode</td><td>Post summaries in the channel; responders rate usefulness</td><td>Positive ratings and no harmful suggestions</td></tr>
+        <tr><td>Limited actions</td><td>Enable one reversible action, such as rollback of the last deploy, with approval</td><td>Audit shows correct use before adding more</td></tr>
+      </tbody></table>
+      <ul>
+        <li><strong>Risks:</strong> prompt injection through telemetry, a plausible but wrong hypothesis anchoring responders, alert storms, stale runbooks, and personal data in logs.</li>
+        <li><strong>Mitigations:</strong> the controls in the trust diagram, evidence links and an explicit confidence and ruled-out list in every report, concurrency caps, runbook freshness checks, and redaction at the gateway.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="uc9-alt">
+      <h2>UC9 alternatives considered</h2>
+      <table><thead><tr><th>Alternative</th><th>Why it was not chosen</th><th>Reconsider when</th></tr></thead><tbody>
+        <tr><td>Put all telemetry into one large prompt</td><td>Huge cost, noisy context and a bigger injection surface</td><td>Never at this scale; summarise and cluster first</td></tr>
+        <tr><td>Fully autonomous remediation</td><td>Model errors or injected text could change production without oversight</td><td>For narrow, reversible, well-tested actions with strong guardrails and an audit record</td></tr>
+        <tr><td>Deterministic runbook automation only</td><td>Excellent for known failure modes but cannot investigate novel ones</td><td>Keep it for known issues and trigger it from the agent's proposal</td></tr>
+        <tr><td>Chat copilot with no tool access</td><td>Humans still run every query, which removes much of the benefit</td><td>As a first step before building the tool gateway</td></tr>
+        <tr><td>One agent run per alert</td><td>Storms multiply cost and quota use and produce duplicate noise</td><td>Not recommended; group first</td></tr>
+      </tbody></table>
+    </section>
+
+    <section class="lesson" id="compare">
+      <h2>Compare the two designs</h2>
+      <table><thead><tr><th>Dimension</th><th>UC8 regulatory research (RAG)</th><th>UC9 incident agent</th></tr></thead><tbody>
+        <tr><td>Core difficulty</td><td>Time, structure and verifiable citations</td><td>Small trusted context and safe action</td></tr>
+        <tr><td>Where the model helps</td><td>Reading and synthesising retrieved units</td><td>Choosing the next investigation step and ranking hypotheses</td></tr>
+        <tr><td>Where code does the critical work</td><td>Validity filters, citation graph, quote checks</td><td>Context pack, gateway limits, policy engine, executor</td></tr>
+        <tr><td>Role of RAG</td><td>The architecture</td><td>One tool over runbooks</td></tr>
+        <tr><td>Main cost lever</td><td>Routing simple versus research questions</td><td>Grouping incidents and compact tool results</td></tr>
+        <tr><td>Human role</td><td>Reviews and signs the memo</td><td>Approves any production change</td></tr>
+        <tr><td>Failure behaviour</td><td>Abstain and suggest sources</td><td>Say it cannot determine; take no action</td></tr>
+      </tbody></table>
+      <h3>Patterns seen across steps 14 to 19</h3>
+      <ul>
+        <li>Use known context (asset, jurisdiction, as-of date, incident) to narrow the problem before any model call.</li>
+        <li>Put critical checks in code and use models for the parts that need language or judgement.</li>
+        <li>Give the system a way to say it does not know, and design what happens next.</li>
+        <li>Price the obvious alternative with real volume numbers before choosing a more complex design.</li>
+      </ul>
+      <div class="exercise"><strong>Practice</strong>Choose a use case from your own work and write its decision path in the same form: cost of error, where knowledge lives, input shape, known context, checkable failures and cost. Then draw one diagram of the normal path and one of the trust or failure path.</div>
+    </section>
+
+    <section class="lesson" id="sources">
+      <h2>Further reading</h2>
+      <ul class="reading-list">
+        <li><a href="https://eur-lex.europa.eu/eli-register/about.html" target="_blank" rel="noreferrer">European Legislation Identifier (ELI)</a> &mdash; a standard way to identify legislation and its versions.</li>
+        <li><a href="https://owasp.org/www-project-top-10-for-large-language-model-applications/" target="_blank" rel="noreferrer">OWASP Top 10 for LLM Applications</a> &mdash; injection, excessive agency and related risks; confirm the current edition.</li>
+        <li><a href="https://modelcontextprotocol.io/" target="_blank" rel="noreferrer">Model Context Protocol</a> &mdash; standard tool integration and authorisation guidance.</li>
+        <li><a href="https://sre.google/sre-book/table-of-contents/" target="_blank" rel="noreferrer">Google SRE book</a> &mdash; incident management and postmortem practice.</li>
+        <li><a href="https://opentelemetry.io/docs/specs/semconv/gen-ai/" target="_blank" rel="noreferrer">OpenTelemetry GenAI semantic conventions</a> &mdash; tracing model and tool calls; conventions are evolving.</li>
+      </ul>
+    </section>
+    <div class="lesson-footer"><a class="lesson-link" href="genai-18-usecases-field-service-catalog-handbook.html">&larr; Previous: Field Service and Catalog Use Cases</a><a class="lesson-link" href="../index.html">Back to all handbooks &rarr;</a></div>
+    <footer class="site-footer">Generative AI path &middot; Updated 2026-10-31 &middot; Models, prices and APIs change quickly; verify against official documentation and measure on your own data</footer>
+  </main>
+</body>
+</html>

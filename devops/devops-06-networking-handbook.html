@@ -13,7 +13,7 @@
   <a class="skip-link" href="#main">Skip to lesson</a>
   <header class="course-header">
     <a class="brand" href="../index.html"><span>DevOps Path</span> / Handbooks</a>
-    <span class="path-progress">06 / 13 · Intermediate</span>
+    <span class="path-progress">06 / 14 · Intermediate</span>
     <nav class="course-nav" aria-label="Learning path"><a href="devops-05-kubernetes-handbook.html">← Previous</a><a href="../index.html">All handbooks</a><a href="devops-07-local-kubernetes-cli-handbook.html">Next →</a></nav>
   </header>
   <main class="course" id="main">
@@ -40,6 +40,25 @@
       <h2>3. The Kubernetes network model</h2>
 <p>Three rules: every pod gets its own IP; pods can reach all other pods without NAT; agents on a node can reach that node's pods. A <strong>CNI plugin</strong> implements this (Cilium, Calico, cloud-native VPC CNIs, Flannel). Cilium uses eBPF and can replace kube-proxy and provide L7-aware policy and observability. Pick the CNI before building the cluster because changing it later is disruptive.</p>
 <ul><li><strong>Service types:</strong> ClusterIP (internal), NodePort, LoadBalancer (cloud LB), ExternalName. Headless Services give per-pod DNS for StatefulSets.</li><li><strong>CoreDNS</strong> serves <code>svc.namespace.svc.cluster.local</code>; mind <code>ndots</code> and DNS caching (NodeLocal DNSCache) for latency.</li></ul>
+<figure class="architecture-diagram">
+  <div class="architecture-diagram-scroll">
+    <svg viewBox="0 0 1000 300" role="img" aria-labelledby="network-path-title network-path-description">
+      <title id="network-path-title">Kubernetes application traffic path</title>
+      <desc id="network-path-description">External client traffic passes through a cloud load balancer and Gateway API listener, then a Kubernetes Service routes to ready application pods over the CNI dataplane. DNS resolves service names, while NetworkPolicy controls allowed pod traffic.</desc>
+      <defs><marker id="network-path-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9dc5ff"></path></marker></defs>
+      <g fill="none" stroke="#9dc5ff" stroke-width="2.5" marker-end="url(#network-path-arrow)"><path d="M 165 115 H 215"></path><path d="M 380 115 H 430"></path><path d="M 585 115 H 635"></path><path d="M 785 115 H 835"></path></g>
+      <g font-family="Segoe UI, sans-serif" text-anchor="middle">
+        <g fill="#172238" stroke="#38516a" stroke-width="2"><rect x="20" y="75" width="145" height="80" rx="12"></rect><rect x="215" y="75" width="165" height="80" rx="12"></rect><rect x="430" y="75" width="155" height="80" rx="12"></rect><rect x="635" y="75" width="150" height="80" rx="12"></rect><rect x="835" y="75" width="145" height="80" rx="12"></rect></g>
+        <g fill="#e8eef8" font-size="15" font-weight="700"><text x="92" y="108">Client</text><text x="297" y="108">Load balancer</text><text x="507" y="108">Gateway / route</text><text x="710" y="108">Service</text><text x="907" y="108">Ready pods</text></g>
+        <g fill="#a7b5ca" font-size="12"><text x="92" y="132">HTTPS · DNS</text><text x="297" y="132">TLS entry</text><text x="507" y="132">Host / path / TLS</text><text x="710" y="132">Stable virtual IP</text><text x="907" y="132">Pod IPs via CNI</text></g>
+        <rect x="270" y="205" width="250" height="60" rx="11" fill="#172238" stroke="#77d7c2" stroke-width="2"></rect><text x="395" y="230" fill="#d7e8ff" font-size="14">CoreDNS resolves Services</text><text x="395" y="251" fill="#a7b5ca" font-size="12">service.namespace.svc</text>
+        <rect x="575" y="205" width="280" height="60" rx="11" fill="#172238" stroke="#77d7c2" stroke-width="2"></rect><text x="715" y="230" fill="#d7e8ff" font-size="14">CNI dataplane + NetworkPolicy</text><text x="715" y="251" fill="#a7b5ca" font-size="12">Connectivity and allowed flows</text>
+        <path d="M 520 235 H 575" stroke="#77d7c2" stroke-width="2.5" stroke-dasharray="6 5"></path>
+      </g>
+    </svg>
+  </div>
+  <figcaption>Follow each hop when debugging: name resolution, external routing, Service endpoints, CNI reachability, and policy are distinct checks.</figcaption>
+</figure>
     </section>
     <section class="lesson" id="entry">
       <h2>4. Getting traffic in: Ingress and Gateway API</h2>
