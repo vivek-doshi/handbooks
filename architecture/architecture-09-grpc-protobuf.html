@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="handbook-version" content="v2">
-  <meta name="last-updated" content="2026-10-27">
-  <meta name="description" content="An engineering guide to gRPC and Protocol Buffers: service definitions, HTTP/2, RPC modes, schema evolution, security, and operations.">
+  <meta name="last-updated" content="2026-11-21">
+  <meta name="description" content="An advanced engineering guide to gRPC and Protocol Buffers: service definitions, HTTP/2 multiplexing, streaming modes, Buf tooling, load balancing, and performance tuning.">
   <title>09. gRPC and Protocol Buffers | Architecture Learning Path</title>
   <link rel="stylesheet" href="learning-path.css">
 </head>
@@ -14,19 +14,45 @@
   <header class="course-header">
     <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
     <span class="path-progress">09 / 13 · Advanced</span>
-    <nav class="course-nav" aria-label="Learning path"><a href="architecture-08-event-driven-systems.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-10-graphql.html">Next →</a></nav>
+    <nav class="course-nav" aria-label="Learning path">
+      <a href="architecture-08-event-driven-systems.html">← Previous</a>
+      <a href="../index.html">All handbooks</a>
+      <a href="architecture-10-graphql.html">Next →</a>
+    </nav>
   </header>
   <main class="course" id="main">
     <section class="hero">
       <div class="eyebrow">Step 09 · Advanced · Service contracts</div>
       <h1>gRPC and Protocol Buffers</h1>
-      <p class="lede">gRPC offers generated, strongly typed remote procedure calls; Protocol Buffers (Protobuf) define compact, language-neutral messages and services. Together they are useful for controlled service-to-service contracts where streaming or generated clients matter.</p>
-      <div class="hero-meta"><span class="badge">HTTP/2</span><span class="badge">Four RPC modes</span><span class="badge">Schema evolution</span><span class="badge">Security and telemetry</span></div>
+      <p class="lede">gRPC delivers strongly typed, code-generated remote procedure calls over HTTP/2. Paired with Protocol Buffers for compact binary serialization, it provides high-performance, low-latency inter-service communication for microservice architectures.</p>
+      <div class="hero-meta">
+        <span class="badge">Protobuf &amp; Editions</span>
+        <span class="badge">HTTP/2 Multiplexing</span>
+        <span class="badge">Four RPC Modes</span>
+        <span class="badge">Buf Tooling &amp; Linting</span>
+        <span class="badge">Load Balancing &amp; Envoy</span>
+      </div>
     </section>
-    <section class="lesson" id="fundamentals">
-      <h2>1. What gRPC is and when to choose it</h2>
-      <p>Define a service and messages in an interface definition language, generate client/server code, and exchange typed messages over a transport. gRPC is a strong fit for internal APIs, low-latency service communication, streaming, and polyglot teams with contract tooling.</p>
-      <p>REST/JSON may be a simpler public-web contract with broad browser and debugging support. Browser clients may use gRPC-Web through a compatible proxy. Compare compatibility, tooling, observability, load balancing, proxy support, and consumer needs; binary serialization alone does not guarantee faster end-to-end behavior.</p>
+
+    <section class="lesson" id="comparison">
+      <h2>1. Architectural Comparison: gRPC vs. REST vs. GraphQL</h2>
+      <table>
+        <thead><tr><th>Dimension</th><th>gRPC (Protobuf)</th><th>REST (JSON)</th><th>GraphQL</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Serialization Format</strong></td><td>Compact binary wire encoding</td><td>Human-readable JSON text</td><td>JSON text over HTTP</td></tr>
+          <tr><td><strong>Contract Enforcement</strong></td><td>Strict <code>.proto</code> IDL; compile-time types</td><td>OpenAPI / Swagger (optional)</td><td>Strict GraphQL Schema definition</td></tr>
+          <tr><td><strong>Transport Protocol</strong></td><td>HTTP/2 (multiplexed binary frames)</td><td>HTTP/1.1 or HTTP/2</td><td>HTTP/1.1 or HTTP/2</td></tr>
+          <tr><td><strong>Streaming Support</strong></td><td>Native Bidirectional, Client, &amp; Server</td><td>Server-Sent Events / WebSockets</td><td>Subscriptions (WebSocket / SSE)</td></tr>
+          <tr><td><strong>Browser Ergonomics</strong></td><td>Requires gRPC-Web proxy or Connect</td><td>Native first-class browser support</td><td>Native browser query execution</td></tr>
+          <tr><td><strong>CPU &amp; Bandwidth Efficiency</strong></td><td>Extremely High (up to 7x faster than JSON)</td><td>Moderate (string parsing overhead)</td><td>Moderate (large query parsing cost)</td></tr>
+          <tr><td><strong>Primary Sweet Spot</strong></td><td>Internal microservices, real-time telemetry</td><td>Public developer APIs, web clients</td><td>Client-driven BFFs, diverse mobile apps</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <strong>The Connect Protocol Alternative:</strong> Built by Buf, Connect allows services to speak standard gRPC, gRPC-Web, and a simple JSON-over-HTTP protocol using the exact same Protobuf service definitions—allowing browser clients to call gRPC services with standard <code>fetch()</code> without an Envoy proxy.
+      </div>
+
       <figure class="architecture-diagram">
         <div class="architecture-diagram-scroll">
           <svg viewBox="0 0 960 430" role="img" aria-labelledby="grpc-diagram-title grpc-diagram-description">
@@ -86,75 +112,166 @@
         <figcaption>The Protobuf contract drives generated client and server code. Deadlines, cancellation, authentication, and resource authorization remain explicit responsibilities of the call path.</figcaption>
       </figure>
     </section>
+
     <section class="lesson" id="protobuf">
-      <h2>2. Protobuf syntax, field types, and binary encoding</h2>
+      <h2>2. Protocol Buffers Deep Dive</h2>
+      <p>Protobuf serializes messages into a binary format where fields are identified strictly by <strong>integer tag numbers</strong> (1 to \(2^{29}-1\)), never by field names. Tags 1–15 take only 1 byte to encode on the wire; reserve them for high-frequency fields.</p>
+
+      <h3>Advanced Protobuf Definition</h3>
       <pre><code>syntax = "proto3";
 
-package inventory.v1;
+package commerce.v1;
 
-message GetItemRequest {
-  string item_id = 1;
+import "google/protobuf/timestamp.proto";
+
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0; // Protobuf enum 0 must always be UNSPECIFIED
+  ORDER_STATUS_PENDING = 1;
+  ORDER_STATUS_CONFIRMED = 2;
+  ORDER_STATUS_FAILED = 3;
 }
 
-message Item {
-  string item_id = 1;
-  string display_name = 2;
-  int64 available_quantity = 3;
+message OrderItem {
+  string sku = 1;
+  int32 quantity = 2;
+  int64 price_cents = 3;
 }
 
-service InventoryService {
-  rpc GetItem(GetItemRequest) returns (Item);
+message CreateOrderRequest {
+  string customer_id = 1;
+  repeated OrderItem items = 2;
+  
+  // Polymorphic payment selection
+  oneof payment_method {
+    string credit_card_token = 3;
+    string crypto_wallet_address = 4;
+    string bank_account_id = 5;
+  }
+
+  map&lt;string, string&gt; metadata = 6;
+  google.protobuf.Timestamp client_timestamp = 7;
+}
+
+message OrderResponse {
+  string order_id = 1;
+  OrderStatus status = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
+
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (OrderResponse);
+  rpc WatchOrderStatus(OrderResponse) returns (stream OrderResponse); // Server stream
 }</code></pre>
-      <p>Messages contain numbered fields with scalar, enum, message, repeated, map, or oneof types. Protobuf encodes field numbers and wire types rather than field names, which keeps the wire format compact. Field numbers are part of the compatibility contract.</p>
-      <div class="callout"><strong>Schema evolution rule</strong>Never reuse a deleted field number or name. Mark deleted numbers and names as <code>reserved</code>. Add fields compatibly and test old/new reader-writer combinations. Review the current Protobuf Editions guide as well as proto3: Editions are the current evolution path described by the official documentation.</div>
+
+      <h3>Rules for Safe Schema Evolution</h3>
+      <ol>
+        <li><strong>Never change an existing field's tag number.</strong> Doing so completely corrupts binary deserialization.</li>
+        <li><strong>Never reuse deleted field numbers.</strong> Mark removed fields as <code>reserved</code>:
+          <pre><code>message OrderItem {
+  reserved 4, 8 to 12;
+  reserved "tax_amount", "discount_code";
+}</code></pre>
+        </li>
+        <li>New fields must be optional. Old clients reading new payloads will simply skip unknown tags without crashing.</li>
+      </ol>
     </section>
-    <section class="lesson" id="transport">
-      <h2>3. HTTP/2, metadata, and the four RPC modes</h2>
-      <p>gRPC uses HTTP/2 framing in its conventional transport, with headers, streams, and flow control. A single connection can carry multiple RPC streams. Proxies and load balancers must support the relevant HTTP/2 behavior and long-lived streams.</p>
+
+    <section class="lesson" id="tooling">
+      <h2>3. Modern Tooling: The Buf Ecosystem</h2>
+      <p>Rather than managing messy native <code>protoc</code> installations with scattered plugins, modern teams adopt <strong>Buf</strong>:</p>
+      <ul>
+        <li><strong>Buf Lint:</strong> Enforces universal style guides (camelCase field names, package naming, enum zero-value checks).</li>
+        <li><strong>Buf Breaking Change Detection:</strong> Runs in CI against git main branch to prevent any PR from merging backward-incompatible schema changes.</li>
+        <li><strong>Buf Schema Registry (BSR):</strong> A centralized repository that generates and publishes client libraries (npm, Maven, Go modules) automatically upon commit.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="modes">
+      <h2>4. The Four RPC Modes and HTTP/2 Transport</h2>
       <table>
-        <thead><tr><th>Mode</th><th>Message flow</th><th>Example</th></tr></thead>
+        <thead><tr><th>RPC Mode</th><th>Client Request</th><th>Server Response</th><th>Architecture Use Cases</th></tr></thead>
         <tbody>
-          <tr><td>Unary</td><td>One request, one response</td><td>Get a customer profile</td></tr>
-          <tr><td>Server streaming</td><td>One request, response stream</td><td>Watch inventory updates</td></tr>
-          <tr><td>Client streaming</td><td>Request stream, one response</td><td>Upload a batch or telemetry window</td></tr>
-          <tr><td>Bidirectional streaming</td><td>Independent request and response streams</td><td>Interactive session or live feed</td></tr>
+          <tr>
+            <td><strong>Unary RPC</strong></td>
+            <td>Single Message</td>
+            <td>Single Message</td>
+            <td>Standard CRUD operations (e.g., GetUser, CreateOrder).</td>
+          </tr>
+          <tr>
+            <td><strong>Server Streaming</strong></td>
+            <td>Single Message</td>
+            <td>Stream of Messages</td>
+            <td>Real-time financial ticker prices, log tailing, order status notifications.</td>
+          </tr>
+          <tr>
+            <td><strong>Client Streaming</strong></td>
+            <td>Stream of Messages</td>
+            <td>Single Message</td>
+            <td>High-volume IoT sensor uploads, chunked multi-part file uploads.</td>
+          </tr>
+          <tr>
+            <td><strong>Bidirectional Streaming</strong></td>
+            <td>Stream of Messages</td>
+            <td>Stream of Messages</td>
+            <td>Interactive gaming sessions, real-time audio/video negotiation, collaborative editing.</td>
+          </tr>
         </tbody>
       </table>
-      <p>Metadata carries cross-cutting values such as authentication credentials, request IDs, or tracing context; do not treat it as an unbounded payload. Set deadlines on calls and propagate cancellation. A client timeout does not guarantee server work stopped unless cancellation is handled.</p>
+
+      <h3>HTTP/2 Multiplexing and Flow Control</h3>
+      <p>In HTTP/1.1, each concurrent request requires a separate physical TCP connection (head-of-line blocking). HTTP/2 multiplexes hundreds of independent bidirectional RPC streams over a <strong>single long-lived TCP connection</strong> using binary frames (HEADERS, DATA, RST_STREAM). This eliminates repeated TCP handshakes and TLS renegotiation latency.</p>
     </section>
-    <section class="lesson" id="reliability">
-      <h2>4. Errors, interceptors, and load balancing</h2>
-      <p>Use canonical gRPC status codes and structured details where appropriate. Define retry policy only for safe, transient failures; set an overall deadline so retries do not multiply latency. Mutating methods need idempotency semantics before automatic retries.</p>
-      <p>Interceptors implement cross-cutting concerns such as authentication, logging, metrics, and tracing. Keep them predictable and avoid swallowing errors. Load balancing may be client-side or proxy/service-mesh managed; verify name resolution, health checking, endpoint discovery, connection reuse, and streaming behavior in the chosen environment.</p>
+
+    <section class="lesson" id="load-balancing">
+      <h2>5. Load Balancing: Why L4 Load Balancers Fail with gRPC</h2>
+      <p>Because gRPC opens a single persistent HTTP/2 TCP connection, traditional Layer-4 load balancers (AWS NLB, standard IP round-robin) route all subsequent RPC requests across that connection to the <strong>exact same backend pod</strong>. One backend server gets overwhelmed while others sit at 0% CPU.</p>
+
+      <h3>Solutions for gRPC Load Balancing</h3>
+      <ul>
+        <li><strong>L7 Proxy Load Balancing (Recommended):</strong> Use an HTTP/2-aware proxy (Envoy, Traefik, Nginx). The proxy terminates the HTTP/2 connection and load-balances individual RPC requests across backend instances.</li>
+        <li><strong>Client-Side Load Balancing:</strong> The gRPC client stub resolves backend IP addresses directly from DNS or Kubernetes endpoints and balances RPCs locally across instances using <code>round_robin</code>.</li>
+        <li><strong>Service Mesh (Istio / Linkerd):</strong> Envoy sidecars intercept all inter-pod gRPC traffic and provide transparent L7 load balancing, mTLS, and distributed telemetry.</li>
+      </ul>
     </section>
-    <section class="lesson" id="security">
-      <h2>5. TLS, authentication, and authorization</h2>
-      <p>Use TLS for transport confidentiality and integrity. Use mutual TLS when workload identity and two-way authentication are required, with managed certificate rotation. Authenticate the caller and authorize each method/resource; network location alone is not authorization. Keep tokens out of logs and metadata dumps.</p>
-      <p>Apply message-size limits, rate limits, deadlines, and validation. Treat reflection as an operational/debugging feature with access controls; do not expose service inventory unnecessarily on public endpoints.</p>
+
+    <section class="lesson" id="resilience">
+      <h2>6. Production Resilience: Deadlines and Cancellation</h2>
+      <p>In distributed systems, a caller must <strong>always</strong> specify a deadline. In gRPC, deadlines propagate across downstream hops:</p>
+      <pre><code>// Client sets a strict 500ms deadline
+Context ctx = Context.current().withDeadlineAfter(500, TimeUnit.MILLISECONDS);
+orderService.createOrder(ctx, request);
+
+// On server: If client cancels or deadline expires, abort expensive work!
+if (Context.current().isCancelled()) {
+  logger.warn("Client canceled RPC, aborting database query");
+  return;
+}</code></pre>
     </section>
-    <section class="lesson" id="operations">
-      <h2>6. Observability, compatibility, and rollout</h2>
-      <p>Instrument RPC count, status, duration, request/response size, deadlines, retries, and active streams. Propagate W3C trace context or supported metadata across calls. Use OpenTelemetry conventions supported by your language SDK and exporter; avoid sensitive or high-cardinality labels.</p>
+
+    <section class="lesson" id="practice">
+      <h2>7. Practical Exercises</h2>
       <ol>
-        <li>Publish contract changes and compatibility policy.</li>
-        <li>Run breaking-change checks and generate clients in CI.</li>
-        <li>Deploy servers that accept old and new clients before rolling clients forward.</li>
-        <li>Monitor error codes and version adoption; remove old fields only after consumers migrate.</li>
-        <li>Test deadline, cancellation, stream backpressure, and network interruption.</li>
+        <li><strong>Protobuf Schema Design:</strong> Write a production-ready <code>.proto</code> contract for a ride-hailing dispatch service. Define a unary <code>RequestRide</code> RPC and a server-streaming <code>StreamDriverLocations</code> RPC. Use enums with explicit 0-value defaults and field timestamps.</li>
+        <li><strong>Backward Compatibility Validation:</strong> Given a proto message with fields 1, 2, and 3: Can you safely rename field 2 from <code>user_name</code> to <code>full_name</code>? Can you change field 3 from <code>int32</code> to <code>int64</code>? Justify your answers using binary wire encoding rules.</li>
+        <li><strong>Envoy gRPC Configuration:</strong> Sketch the Envoy proxy configuration needed to accept gRPC-Web from a browser client and forward it to a backend gRPC service on port 50051.</li>
       </ol>
-      <div class="exercise"><strong>Practice</strong>Define a unary <code>ReserveStock</code> RPC and a server-streaming <code>WatchStock</code> RPC. Specify idempotency, deadlines, authorization, error mapping, and how an old client behaves after adding a response field.</div>
     </section>
+
     <section class="lesson" id="sources">
       <h2>Further reading</h2>
       <ul class="reading-list">
-        <li><a href="https://grpc.io/docs/what-is-grpc/core-concepts/" target="_blank" rel="noreferrer">gRPC core concepts and RPC lifecycle</a> — official transport and call behavior.</li>
-        <li><a href="https://protobuf.dev/programming-guides/proto3/" target="_blank" rel="noreferrer">Protobuf proto3 guide</a> — syntax, field numbers, and compatibility.</li>
-        <li><a href="https://protobuf.dev/programming-guides/editions/" target="_blank" rel="noreferrer">Protobuf Editions guide</a> — current schema evolution direction.</li>
-        <li><a href="https://opentelemetry.io/docs/specs/semconv/rpc/" target="_blank" rel="noreferrer">OpenTelemetry RPC semantic conventions</a> — standard RPC telemetry concepts.</li>
+        <li><a href="https://grpc.io/docs/what-is-grpc/core-concepts/" target="_blank" rel="noreferrer">Official gRPC Core Concepts</a> — lifecycle, status codes, and streaming.</li>
+        <li><a href="https://protobuf.dev/" target="_blank" rel="noreferrer">Protocol Buffers Documentation</a> — wire formats, encoding, and editions.</li>
+        <li><a href="https://buf.build/docs" target="_blank" rel="noreferrer">Buf Documentation</a> — modern protobuf linting, breaking change detection, and BSR.</li>
+        <li><a href="https://connectrpc.com/" target="_blank" rel="noreferrer">Connect Protocol</a> — simple, reliable RPC for browsers and backend services.</li>
       </ul>
     </section>
-    <div class="lesson-footer"><a class="lesson-link" href="architecture-08-event-driven-systems.html">← Previous: Event-driven systems</a><a class="lesson-link" href="architecture-10-graphql.html">Next lesson: GraphQL →</a></div>
-    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Verify transport and language-specific behavior against current gRPC docs.</footer>
+
+    <div class="lesson-footer">
+      <a class="lesson-link" href="architecture-08-event-driven-systems.html">← Previous: Event-driven systems</a>
+      <a class="lesson-link" href="architecture-10-graphql.html">Next lesson: GraphQL →</a>
+    </div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-11-21 · Strongly typed contracts prevent cross-service breakage.</footer>
   </main>
 </body>
 </html>

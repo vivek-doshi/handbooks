@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="handbook-version" content="v2">
-  <meta name="last-updated" content="2026-10-27">
-  <meta name="description" content="A practical low-level design guide to responsibilities, SOLID, interfaces, data models, UML, design patterns, examples, and review.">
+  <meta name="last-updated" content="2026-11-21">
+  <meta name="description" content="A comprehensive low-level design guide: SOLID, GRASP, design patterns, concurrency, resilience, API versioning, database normalization, and testing.">
   <title>06. Low-Level Design | Architecture Learning Path</title>
   <link rel="stylesheet" href="learning-path.css">
 </head>
@@ -14,108 +14,255 @@
   <header class="course-header">
     <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
     <span class="path-progress">06 / 13 · Intermediate</span>
-    <nav class="course-nav" aria-label="Learning path"><a href="architecture-05-high-level-design.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-07-modular-monolith.html">Next →</a></nav>
+    <nav class="course-nav" aria-label="Learning path">
+      <a href="architecture-05-high-level-design.html">← Previous</a>
+      <a href="../index.html">All handbooks</a>
+      <a href="architecture-07-modular-monolith.html">Next →</a>
+    </nav>
   </header>
   <main class="course" id="main">
     <section class="hero">
       <div class="eyebrow">Step 06 · Intermediate · Component-level design</div>
       <h1>Low-level design: make responsibilities explicit</h1>
-      <p class="lede">Low-level design (LLD) turns a system-level choice into implementable modules, contracts, state transitions, and tests. The objective is clarity at the seams—not a class diagram for every line of code.</p>
-      <div class="hero-meta"><span class="badge">SOLID</span><span class="badge">Interfaces and APIs</span><span class="badge">UML</span><span class="badge">Design patterns</span></div>
+      <p class="lede">Low-level design (LLD) transforms system-level architectural choices into clean, maintainable, thread-safe, and testable code structures. The objective is clarity at the component seams—not drawing class diagrams for every trivial line of code.</p>
+      <div class="hero-meta">
+        <span class="badge">SOLID &amp; GRASP</span>
+        <span class="badge">Design Patterns</span>
+        <span class="badge">Concurrency &amp; Threading</span>
+        <span class="badge">Schema Normalization</span>
+        <span class="badge">Worked LLD Systems</span>
+      </div>
     </section>
-    <section class="lesson" id="scope">
-      <h2>1. HLD vs. LLD and when to write one</h2>
-      <p>HLD establishes system responsibilities and cross-system behavior. LLD specifies the internal contracts needed to implement a bounded feature: module responsibilities, data model, validation rules, state transitions, error behavior, and test seams.</p>
-      <p>Write LLD when multiple engineers must coordinate, a domain invariant is subtle, an interface has compatibility consequences, or concurrency/failure behavior is easy to misunderstand. For routine local changes, code plus tests may be the better documentation.</p>
+
+    <section class="lesson" id="solid">
+      <h2>1. The SOLID Principles in Practice</h2>
+      <p>SOLID principles guide object-oriented design to minimize fragility, tight coupling, and rigidity as business rules evolve.</p>
+
+      <h3>S - Single Responsibility Principle (SRP)</h3>
+      <p><em>"A class should have one, and only one, reason to change."</em> Avoid "God Objects" that mix business calculations, database persistence, and presentation formatting.</p>
+      <pre><code>// VIOLATION: User handles domain logic, persistence, and email formatting
+class UserAccount {
+  public void calculateDiscount() { /* ... */ }
+  public void saveToDatabase() { /* SQL queries ... */ }
+  public void sendWelcomeEmail() { /* SMTP client ... */ }
+}
+
+// CORRECTION: Decompose into focused single-responsibility classes
+class UserDiscountCalculator { public BigDecimal calculate(User u) { /* ... */ } }
+class UserRepository { public void save(User u) { /* ... */ } }
+class NotificationService { public void sendWelcome(User u) { /* ... */ } }</code></pre>
+
+      <h3>O - Open/Closed Principle (OCP)</h3>
+      <p><em>"Software entities should be open for extension, but closed for modification."</em> Introduce new behaviors by adding new classes that implement an existing interface, rather than modifying existing switch statements.</p>
+      <pre><code>// VIOLATION: Adding a new payment type requires modifying this class
+class PaymentProcessor {
+  public void process(String type, BigDecimal amount) {
+    if (type.equals("CREDIT")) { /* ... */ }
+    else if (type.equals("PAYPAL")) { /* ... */ }
+    // Adding Crypto requires editing this method!
+  }
+}
+
+// CORRECTION: Strategy pattern with polymorphic extension
+interface PaymentStrategy { void pay(BigDecimal amount); }
+class CreditCardPayment implements PaymentStrategy { public void pay(BigDecimal a) { /* ... */ } }
+class PayPalPayment implements PaymentStrategy { public void pay(BigDecimal a) { /* ... */ } }
+class CryptoPayment implements PaymentStrategy { public void pay(BigDecimal a) { /* ... */ } }</code></pre>
+
+      <h3>L - Liskov Substitution Principle (LSP)</h3>
+      <p><em>"Subtypes must be substitutable for their base types without altering program correctness."</em> A subclass must honor all behavioral contracts, preconditions, and postconditions of its parent.</p>
+
+      <h3>I - Interface Segregation Principle (ISP)</h3>
+      <p><em>"Clients should not be forced to depend on interfaces they do not use."</em> Break bloated interfaces into small, cohesive, role-specific interfaces (e.g., separate <code>Readable</code>, <code>Writable</code>, and <code>Closeable</code> instead of a monolithic <code>StreamManager</code>).</p>
+
+      <h3>D - Dependency Inversion Principle (DIP)</h3>
+      <p><em>"High-level modules should not depend on low-level modules; both should depend on abstractions."</em> Domain business rules must not import concrete database drivers or vendor SDKs.</p>
     </section>
-    <section class="lesson" id="design">
-      <h2>2. Responsibilities, SOLID, and class design</h2>
-      <ul>
-        <li><strong>Single responsibility:</strong> keep a module focused on one reason to change.</li>
-        <li><strong>Open/closed:</strong> extend through a stable seam when variation is real; do not build speculative plugin frameworks.</li>
-        <li><strong>Liskov substitution:</strong> implementations must honor the behavioral contract callers rely on.</li>
-        <li><strong>Interface segregation:</strong> expose small interfaces aligned to client needs.</li>
-        <li><strong>Dependency inversion:</strong> keep policy independent from infrastructure details where the boundary pays for itself.</li>
-      </ul>
-      <p>Prefer composition for assembling behavior. Avoid public mutable state, global service locators, deep inheritance, and classes that own unrelated persistence, transport, and business rules. Name concepts in the business domain rather than naming classes after a framework.</p>
-    </section>
-    <section class="lesson" id="models">
-      <h2>3. APIs, interface contracts, and data models</h2>
-      <p>For each interface, define inputs, outputs, validation, authorization, errors, idempotency, pagination, concurrency, and compatibility. Use explicit error categories and stable client-facing semantics; do not leak implementation stack traces.</p>
-      <p>For persistence models, identify the aggregate or transaction boundary, invariants, uniqueness constraints, lifecycle, indexes, and migration strategy. Treat wire schemas and database schemas as contracts with readers and writers that may be on different versions during rollout.</p>
-      <pre><code>PlaceOrder
-  input: customerId, items[], idempotencyKey
-  validates: item availability, quantity limits, customer access
-  persists: order + outbox event atomically
-  returns: orderId + current status
-  retries: same key returns the original outcome</code></pre>
-    </section>
-    <section class="lesson" id="uml">
-      <h2>4. UML and other diagrams in LLD</h2>
-      <ul>
-        <li><strong>Class diagram:</strong> selected types, relationships, and ownership.</li>
-        <li><strong>Sequence diagram:</strong> calls, events, and error paths in one use case.</li>
-        <li><strong>State diagram:</strong> allowed states and transitions for an entity or workflow.</li>
-        <li><strong>Activity diagram:</strong> branching business logic where prose is ambiguous.</li>
-        <li><strong>ER diagram:</strong> persisted entities, keys, and relationships.</li>
-      </ul>
-      <p>Use the least formal notation that makes a decision reviewable. Keep diagrams small and update them alongside the relevant contract or code.</p>
-    </section>
-    <section class="lesson" id="patterns">
-      <h2>5. Design patterns and when they help</h2>
+
+    <section class="lesson" id="grasp">
+      <h2>2. GRASP Principles (General Responsibility Assignment)</h2>
+      <p>While SOLID focuses on class inheritance and interfaces, GRASP provides behavioral guidelines for assigning responsibilities to objects:</p>
       <table>
-        <thead><tr><th>Pattern</th><th>Useful when</th><th>Watch for</th></tr></thead>
+        <thead><tr><th>GRASP Pattern</th><th>Core Principle</th><th>Real-World Example</th></tr></thead>
         <tbody>
-          <tr><td>Strategy</td><td>Several interchangeable algorithms exist</td><td>Unnecessary abstraction for one stable algorithm</td></tr>
-          <tr><td>Factory</td><td>Construction has meaningful selection or validation</td><td>Factories that only rename constructors</td></tr>
-          <tr><td>Adapter</td><td>An external interface differs from an internal port</td><td>Leaking vendor types into domain policy</td></tr>
-          <tr><td>Decorator</td><td>Cross-cutting behavior composes around an implementation</td><td>Surprising order or hidden side effects</td></tr>
-          <tr><td>Repository</td><td>Domain code needs a collection-like persistence boundary</td><td>Generic CRUD abstractions hiding query needs</td></tr>
-          <tr><td>State machine</td><td>Legal lifecycle transitions must be enforced</td><td>States that omit failure, cancellation, or retry behavior</td></tr>
+          <tr>
+            <td><strong>Information Expert</strong></td>
+            <td>Assign responsibility to the class that holds the required data.</td>
+            <td><code>Order</code> calculates total price because it holds the collection of <code>OrderLines</code>.</td>
+          </tr>
+          <tr>
+            <td><strong>Creator</strong></td>
+            <td>Class B creates Class A if B contains, aggregates, or records A.</td>
+            <td><code>ShoppingCart</code> creates <code>CartItem</code> instances.</td>
+          </tr>
+          <tr>
+            <td><strong>Controller</strong></td>
+            <td>First non-UI object receiving and coordinating a system operation.</td>
+            <td><code>CheckoutController</code> coordinates between cart, pricing, and payment without holding domain logic.</td>
+          </tr>
+          <tr>
+            <td><strong>Low Coupling</strong></td>
+            <td>Minimize dependencies between classes to increase maintainability.</td>
+            <td>Use events or interfaces instead of concrete references between modules.</td>
+          </tr>
+          <tr>
+            <td><strong>High Cohesion</strong></td>
+            <td>Keep class responsibilities closely related and focused.</td>
+            <td>A <code>TaxCalculator</code> only computes tax; it does not format receipts or debit bank accounts.</td>
+          </tr>
         </tbody>
       </table>
     </section>
-    <section class="lesson" id="examples">
-      <h2>6. Worked examples: parking, library, and elevator systems</h2>
-      <h3>Parking lot</h3>
-      <p>Model a ticket, vehicle, spot, and payment. Define allocation policy separately from spot inventory. Make ticket close/idempotency and concurrent allocation invariants explicit. Persist the allocation transactionally or use a conditional update to prevent two vehicles claiming one spot.</p>
-      <h3>Library management</h3>
-      <p>Separate catalog search from circulation. A book title is not the same as a physical copy. Model loans with due date, renewal policy, holds, and overdue state. Define who may issue, renew, return, or reserve an item.</p>
-      <h3>Elevator controller</h3>
-      <p>Represent elevators, requests, current direction, and door state. Define safe transitions first; route optimization is secondary. A scheduler assigns requests while the controller enforces safety constraints and reports faults.</p>
+
+    <section class="lesson" id="patterns">
+      <h2>3. Core Design Patterns</h2>
+      <table>
+        <thead><tr><th>Category</th><th>Pattern</th><th>Intent &amp; Practical System Use Case</th><th>Watch Out For</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Creational</strong></td>
+            <td><strong>Factory Method</strong></td>
+            <td>Encapsulate complex object instantiation logic (e.g., creating database connection pools based on config).</td>
+            <td>Over-abstraction when a standard <code>new</code> constructor is sufficient.</td>
+          </tr>
+          <tr>
+            <td><strong>Creational</strong></td>
+            <td><strong>Builder</strong></td>
+            <td>Construct complex objects step-by-step with immutable state (e.g., HTTP Request or SQL Query builder).</td>
+            <td>Excessive boilerplate for simple data structures with 2–3 fields.</td>
+          </tr>
+          <tr>
+            <td><strong>Structural</strong></td>
+            <td><strong>Adapter</strong></td>
+            <td>Translate incompatible third-party interfaces into an internal domain port (e.g., Stripe API adapter).</td>
+            <td>Leaking vendor-specific types through the adapter interface.</td>
+          </tr>
+          <tr>
+            <td><strong>Structural</strong></td>
+            <td><strong>Decorator</strong></td>
+            <td>Attach cross-cutting behavior dynamically (e.g., adding caching, logging, or metrics around a Repository).</td>
+            <td>Ordering-dependent decorators causing unpredictable bugs.</td>
+          </tr>
+          <tr>
+            <td><strong>Behavioral</strong></td>
+            <td><strong>Strategy</strong></td>
+            <td>Define a family of interchangeable algorithms (e.g., dynamic pricing strategies: Surge, Holiday, Bulk).</td>
+            <td>Proliferation of tiny strategy classes for static algorithms.</td>
+          </tr>
+          <tr>
+            <td><strong>Behavioral</strong></td>
+            <td><strong>Observer / Pub-Sub</strong></td>
+            <td>One-to-many dependency notification (e.g., notifying analytics, inventory, and email upon <code>OrderPlaced</code>).</td>
+            <td>Memory leaks from uncollected listener references; unhandled subscriber exceptions.</td>
+          </tr>
+          <tr>
+            <td><strong>Behavioral</strong></td>
+            <td><strong>State Machine</strong></td>
+            <td>Model an entity whose behavior changes based on explicit state (e.g., Order: Placed → Paid → Shipped → Delivered).</td>
+            <td>Omitting error, cancellation, and timeout state transitions.</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
-    <section class="lesson" id="workflow">
-      <h2>7. Create an LLD step by step</h2>
-      <ol>
-        <li>Read the HLD and choose one bounded use case.</li>
-        <li>Write invariants and edge cases before choosing classes.</li>
-        <li>Identify domain concepts, ownership, and state transitions.</li>
-        <li>Define API and persistence contracts, including failure and retry semantics.</li>
-        <li>Draw only diagrams that resolve a real ambiguity.</li>
-        <li>Map tests to invariants, boundary conditions, and contract compatibility.</li>
-        <li>Review for security, concurrency, observability, and migration risks.</li>
-        <li>Update the design when implementation teaches you something new.</li>
-      </ol>
-      <h3>Common pitfalls and review checklist</h3>
+
+    <section class="lesson" id="concurrency">
+      <h2>4. Concurrency Design Patterns and Thread Safety</h2>
+      <p>Multi-threaded and asynchronous applications encounter race conditions, deadlocks, and thread pool starvation without deliberate concurrency design:</p>
       <ul>
-        <li>Can a new teammate implement the behavior without guessing invariants?</li>
-        <li>Do public interfaces hide internal representation and enforce authorization?</li>
-        <li>Are concurrency, retries, duplicate requests, and partial failures covered?</li>
-        <li>Are tests arranged around observable behavior, not private method layout?</li>
-        <li>Is a pattern or abstraction solving a demonstrated problem?</li>
+        <li><strong>Producer-Consumer Pattern:</strong> Decouple task generation from execution using a thread-safe bounded blocking queue (e.g., <code>ArrayBlockingQueue</code> in Java). Prevents slow consumers from blocking fast web servers.</li>
+        <li><strong>Reader-Writer Lock (Shared-Exclusive):</strong> Permits multiple concurrent reader threads while granting exclusive access to single writer threads. Ideal for read-heavy caches where writes occur infrequently.</li>
+        <li><strong>Thread Pool Management:</strong> Size thread pools according to workload characteristics:
+          <ul>
+            <li><em>CPU-Bound Tasks (Crypto, Compression, Image Processing):</em> Number of threads ≈ Number of CPU Cores (e.g., \(N_{\text{cpu}} + 1\)). Sizing larger causes severe thread context-switching overhead.</li>
+            <li><em>I/O-Bound Tasks (Database Queries, HTTP calls):</em> Number of threads ≈ \(N_{\text{cpu}} \times \left(1 + \frac{\text{Wait Time}}{\text{Compute Time}}\right)\). Threads sleep while awaiting I/O, allowing higher thread counts.</li>
+          </ul>
+        </li>
+        <li><strong>Deadlock Prevention:</strong> Always acquire multiple locks in a strict, globally ordered sequence (e.g., always lock Account with smaller ID first: <code>lock(min(idA, idB)); lock(max(idA, idB))</code>).</li>
       </ul>
-      <div class="exercise"><strong>Practice and interview tip</strong>Design a library checkout flow. First list invariants and edge cases, then define the API and data changes, and only then sketch types. In an interview, state assumptions, compare alternatives, and explain failure handling before optimizing for scale.</div>
     </section>
+
+    <section class="lesson" id="resilience-patterns">
+      <h2>5. Error Handling and Resilience Patterns</h2>
+      <ul>
+        <li><strong>Exponential Backoff with Jitter:</strong> When retrying failed network calls, double the delay interval after each attempt and add random jitter (e.g., \(T = 2^{\text{attempt}} \times 100\text{ms} + \text{random}(0, 50\text{ms})\)) to prevent retry storms from overwhelming recovering servers.</li>
+        <li><strong>Circuit Breaker State Machine:</strong>
+          <ul>
+            <li><em>Closed:</em> Normal operations; requests pass through. Failures are counted.</li>
+            <li><em>Open:</em> Failure threshold exceeded (e.g., 50% errors over 10s); all calls fail immediately with fallback without hitting the downstream dependency.</li>
+            <li><em>Half-Open:</em> After a trial sleep window (e.g., 30s), allow a limited probe request through. If it succeeds, reset to Closed; if it fails, return to Open.</li>
+          </ul>
+        </li>
+        <li><strong>Bulkhead Pattern:</strong> Isolate resource pools (thread pools, connection pools) per downstream service so that an outage in a non-critical analytics service cannot consume all web worker threads and take down core checkout.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="database-design">
+      <h2>6. Database Schema Design and Normalization</h2>
+      <p>Data modeling in LLD dictates performance, integrity, and future extensibility:</p>
+      <ul>
+        <li><strong>Normalization Levels:</strong>
+          <ul>
+            <li><em>1NF:</em> Atomic values; no repeating groups or arrays in columns.</li>
+            <li><em>2NF:</em> In 1NF and all non-key attributes are fully functionally dependent on the primary key (no partial key dependencies).</li>
+            <li><em>3NF:</em> In 2NF and no transitive dependencies (non-key attributes depend strictly on the primary key, nothing else).</li>
+          </ul>
+        </li>
+        <li><strong>Strategic Denormalization:</strong> In read-heavy production systems, carefully denormalize data (e.g., storing <code>user_name</code> alongside <code>order_id</code>) to eliminate costly multi-table SQL joins, using asynchronous event updates to keep copies consistent.</li>
+        <li><strong>Index Optimization:</strong>
+          <ul>
+            <li><em>Composite Indexes:</em> Order columns by highest cardinality and equality filters first, range filters last (Rule: <em>Equality, Sort, Range</em>).</li>
+            <li><em>Covering Indexes:</em> Include all query columns in the index itself (via <code>INCLUDE</code> clause) to satisfy queries entirely from the B-tree without touching the primary heap table.</li>
+          </ul>
+        </li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="worked-systems">
+      <h2>7. Worked Low-Level Designs</h2>
+
+      <h3>Case 1: Smart Parking Lot Management</h3>
+      <ul>
+        <li><strong>Entities:</strong> <code>ParkingLot</code>, <code>Floor</code>, <code>Spot</code> (Compact, Large, EV, Handicapped), <code>Vehicle</code>, <code>Ticket</code>, <code>Payment</code>.</li>
+        <li><strong>Allocation Strategy:</strong> Separate inventory from allocation logic using a <code>SpotAssignmentStrategy</code> (e.g., Nearest to Entrance, EV Priority).</li>
+        <li><strong>Concurrency Invariant:</strong> Prevent race conditions where two vehicles claim the last spot using optimistic concurrency locking:
+          <pre><code>UPDATE parking_spots 
+SET is_occupied = true, version = version + 1 
+WHERE id = :spotId AND is_occupied = false AND version = :version;</code></pre>
+        </li>
+      </ul>
+
+      <h3>Case 2: Elevator Controller System</h3>
+      <ul>
+        <li><strong>Entities:</strong> <code>ElevatorCar</code>, <code>Floor</code>, <code>InternalButton</code>, <code>ExternalCallButton</code>, <code>Door</code>, <code>Dispatcher</code>.</li>
+        <li><strong>Scheduler Algorithm:</strong> Implement the <em>LOOK (SCAN / Elevator) Algorithm</em>: The elevator continues traveling in its current direction (UP), serving all pending internal requests and external UP calls until no higher requests exist, then reverses direction (DOWN).</li>
+        <li><strong>State Machine:</strong> <code>Idle</code>, <code>MovingUp</code>, <code>MovingDown</code>, <code>DoorsOpening</code>, <code>DoorsOpen</code>, <code>EmergencyStop</code>. Safety interlocks enforce that doors cannot open while velocity &gt; 0.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="practice">
+      <h2>8. Practical Exercises</h2>
+      <ol>
+        <li><strong>Refactoring to SOLID:</strong> Review a monolithic 800-line class in your codebase that performs database queries, JSON parsing, and validation. Refactor it into 3 distinct classes applying Single Responsibility and Dependency Inversion.</li>
+        <li><strong>Thread-Safe Rate Limiter:</strong> Implement an in-memory Token Bucket rate limiter in your language of choice. Ensure it handles concurrent requests from 100 parallel threads safely without memory corruption or race conditions.</li>
+        <li><strong>Vending Machine LLD:</strong> Design an object-oriented Vending Machine handling item selection, money insertion (coins, notes, credit card), dispensing, and change calculation. Model states using the State Design Pattern.</li>
+      </ol>
+    </section>
+
     <section class="lesson" id="sources">
       <h2>Further reading</h2>
       <ul class="reading-list">
-        <li><a href="https://martinfowler.com/articles/practical-test-pyramid.html" target="_blank" rel="noreferrer">The Practical Test Pyramid</a> — a useful model for test scope and feedback time.</li>
-        <li><a href="https://c4model.com/" target="_blank" rel="noreferrer">C4 model</a> — complement implementation-level design with system context.</li>
-        <li><a href="https://www.rfc-editor.org/rfc/rfc9110" target="_blank" rel="noreferrer">RFC 9110: HTTP Semantics</a> — normative HTTP behavior for API design.</li>
+        <li><a href="https://refactoring.guru/design-patterns" target="_blank" rel="noreferrer">Refactoring.Guru: Design Patterns</a> — visual, modern guides to creational, structural, and behavioral patterns.</li>
+        <li><a href="https://martinfowler.com/articles/practical-test-pyramid.html" target="_blank" rel="noreferrer">The Practical Test Pyramid (Martin Fowler)</a> — optimal distribution of unit, integration, and UI tests.</li>
+        <li><a href="https://use-the-index-luke.com/" target="_blank" rel="noreferrer">Use The Index, Luke!</a> — essential guide to database indexing and query optimization.</li>
+        <li><a href="https://www.joshuakaplan.org/effective-java" target="_blank" rel="noreferrer">Effective Java (Joshua Bloch)</a> — classic rules for robust object-oriented API design.</li>
       </ul>
     </section>
-    <div class="lesson-footer"><a class="lesson-link" href="architecture-05-high-level-design.html">← Previous: High-level design</a><a class="lesson-link" href="architecture-07-modular-monolith.html">Next lesson: Modular monolith →</a></div>
-    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Design enough to make behavior clear; keep the code authoritative.</footer>
+
+    <div class="lesson-footer">
+      <a class="lesson-link" href="architecture-05-high-level-design.html">← Previous: High-level design</a>
+      <a class="lesson-link" href="architecture-07-modular-monolith.html">Next lesson: Modular monolith →</a>
+    </div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-11-21 · Clean seams and clear responsibilities make code resilient to change.</footer>
   </main>
 </body>
 </html>

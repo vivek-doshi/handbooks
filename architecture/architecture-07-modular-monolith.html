@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="handbook-version" content="v2">
-  <meta name="last-updated" content="2026-10-27">
-  <meta name="description" content="Design and operate a modular monolith with domain boundaries, module contracts, enforcement, platform examples, scaling, and migration options.">
+  <meta name="last-updated" content="2026-11-21">
+  <meta name="description" content="A comprehensive engineering guide to designing and operating a modular monolith: domain boundaries, module communication, database patterns, testing, and migration.">
   <title>07. Modular Monolith | Architecture Learning Path</title>
   <link rel="stylesheet" href="learning-path.css">
 </head>
@@ -14,19 +14,30 @@
   <header class="course-header">
     <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
     <span class="path-progress">07 / 13 · Intermediate</span>
-    <nav class="course-nav" aria-label="Learning path"><a href="architecture-06-low-level-design.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-08-event-driven-systems.html">Next →</a></nav>
+    <nav class="course-nav" aria-label="Learning path">
+      <a href="architecture-06-low-level-design.html">← Previous</a>
+      <a href="../index.html">All handbooks</a>
+      <a href="architecture-08-event-driven-systems.html">Next →</a>
+    </nav>
   </header>
   <main class="course" id="main">
     <section class="hero">
       <div class="eyebrow">Step 07 · Intermediate · Strong boundaries, simple operations</div>
       <h1>The modular monolith</h1>
-      <p class="lede">A modular monolith is one deployable system with explicit internal modules, owned data, and controlled dependencies. It combines local-call simplicity with boundaries that make change and future extraction more deliberate.</p>
-      <div class="hero-meta"><span class="badge">Domain boundaries</span><span class="badge">Module contracts</span><span class="badge">.NET and Angular layouts</span><span class="badge">Migration path</span></div>
+      <p class="lede">A modular monolith is a single deployable application with rigorously enforced domain boundaries, encapsulated data ownership, and explicit inter-module contracts. It captures the operational simplicity of in-process communication while preventing architectural rot.</p>
+      <div class="hero-meta">
+        <span class="badge">Domain Boundaries</span>
+        <span class="badge">In-Process Communication</span>
+        <span class="badge">Multi-Language Layouts (.NET, Spring, FastAPI)</span>
+        <span class="badge">Automated Boundary Enforcement</span>
+        <span class="badge">Strangler Extraction Path</span>
+      </div>
     </section>
+
     <section class="lesson" id="model">
-      <h2>1. What it is and why choose it</h2>
-      <p>Modules are logical units of ownership; the application is built and deployed together. This can be the right choice when a domain is evolving, one team or a small number of teams coordinate releases, transactions span related capabilities, or a distributed platform would add more cost than autonomy.</p>
-      <p>It is not a "monolith that will automatically become microservices." Most systems can remain modular monoliths successfully. Extraction is a later business and operational decision, not a required destination.</p>
+      <h2>1. Architectural Model and Core Value Proposition</h2>
+      <p>A modular monolith organizes business logic into cohesive, autonomous domain modules compiled into a single deployable unit. Modules interact through strictly defined public API contracts while encapsulating internal domain models, database queries, and private services.</p>
+
       <figure class="architecture-diagram">
         <div class="architecture-diagram-scroll">
           <svg viewBox="0 0 960 430" role="img" aria-labelledby="monolith-diagram-title monolith-diagram-description">
@@ -95,100 +106,184 @@
         <figcaption>One deployable with explicit internal contracts and module-owned data. Boundaries are enforced in code and tests—not by network calls.</figcaption>
       </figure>
     </section>
-    <section class="lesson" id="example">
-      <h2>2. E-commerce example: split by domain responsibility</h2>
-      <p>Possible modules include Catalog, Pricing, Orders, Payments, Inventory, and Fulfillment. Orders owns order lifecycle; Inventory owns stock reservations; Payments owns payment status. Other modules request actions through public contracts instead of updating each other's tables.</p>
+
+    <section class="lesson" id="layouts">
+      <h2>2. Concrete Architecture Layouts Across Ecosystems</h2>
+
+      <h3>.NET Enterprise Layout</h3>
       <pre><code>src/
-  Catalog/       public API + domain + persistence
-  Pricing/       public API + domain + persistence
-  Orders/        public API + domain + persistence
-  Inventory/     public API + domain + persistence
-  Payments/      public API + domain + persistence
-  Host/          composition root, transport, startup</code></pre>
-      <p>Choose module boundaries based on cohesive business rules and ownership, not a generic "controllers/services/repositories" tree alone. Keep cross-module workflows explicit.</p>
-    </section>
-    <section class="lesson" id="boundaries">
-      <h2>3. Domain-based vs. technical-module splits</h2>
-      <p>A domain-oriented split groups code and data around business capabilities. A technical split groups all controllers, services, and repositories by type; that can make cross-cutting changes easy but often hides ownership. A practical design may use technical subfolders inside each business module while keeping module APIs clear.</p>
-      <h3>Example .NET structure</h3>
+├── Modules/
+│   ├── Orders/
+│   │   ├── Orders.Contracts/       &lt;-- Public DTOs and Interfaces (Only this is referenced)
+│   │   ├── Orders.Domain/          &lt;-- Aggregates, Value Objects, Domain Events
+│   │   ├── Orders.Infrastructure/  &lt;-- EF Core DbContext, Repositories, Migrations
+│   │   └── Orders.Endpoints/       &lt;-- FastEndpoints / Minimal API Route definitions
+│   └── Payments/
+│       ├── Payments.Contracts/     &lt;-- IPaymentModule interface
+│       └── Payments.Core/
+├── AppHost/                        &lt;-- Composition Root, Program.cs, DI Container
+└── tests/
+    └── Architecture.Tests/         &lt;-- NetArchTest boundary verification rules</code></pre>
+
+      <h3>Java / Spring Boot (Gradle Multi-Project or Maven)</h3>
+      <pre><code>ecommerce-root/
+├── catalog-module/
+│   ├── src/main/java/com/app/catalog/api/       &lt;-- Public Service interfaces
+│   └── src/main/java/com/app/catalog/internal/  &lt;-- Package-private entities &amp; repos
+├── orders-module/
+│   ├── src/main/java/com/app/orders/api/
+│   └── src/main/java/com/app/orders/internal/
+└── app-server/                                  &lt;-- @SpringBootApplication runner</code></pre>
+
+      <h3>Python / FastAPI Layout</h3>
       <pre><code>src/
-  Orders/
-    Orders.Contracts/
-    Orders.Domain/
-    Orders.Infrastructure/
-  Inventory/
-    Inventory.Contracts/
-    Inventory.Domain/
-    Inventory.Infrastructure/
-  AppHost/
-tests/
-  Orders.Tests/
-  Architecture.Tests/</code></pre>
-      <h3>Example Angular structure</h3>
-      <pre><code>src/app/
-  orders/
-    public-api.ts
-    data-access/
-    feature-checkout/
-    ui/
-  catalog/
-    public-api.ts
-    data-access/
-    feature-search/
-    ui/
-  app.routes.ts</code></pre>
-      <p>These are examples, not mandatory framework layouts. Keep domain boundaries meaningful in the server and client; avoid leaking internal module paths into consumers.</p>
+├── app/
+│   ├── modules/
+│   │   ├── orders/
+│   │   │   ├── __init__.py           &lt;-- Explicit __all__ exposing OrderService interface
+│   │   │   ├── router.py             &lt;-- FastAPI APIRouter
+│   │   │   ├── schemas.py            &lt;-- Public Pydantic DTOs
+│   │   │   ├── _domain.py            &lt;-- Private business models
+│   │   │   └── _repository.py        &lt;-- Private SQLAlchemy session models
+│   │   └── inventory/
+│   └── main.py                       &lt;-- FastAPI app, includes routers, global middleware</code></pre>
     </section>
-    <section class="lesson" id="enforcement">
-      <h2>4. Enforce module boundaries</h2>
-      <ul>
-        <li>Expose a small public API for each module; keep implementation packages private.</li>
-        <li>Declare allowed dependency direction and prohibit cycles.</li>
-        <li>Give each module one owner for its schema and migrations.</li>
-        <li>Use architecture tests, package visibility, lint rules, or build graph checks to block forbidden references.</li>
-        <li>Inspect dependency graphs in code review and make violations visible.</li>
-      </ul>
-      <p>Use synchronous in-process calls when an immediate answer is required. Use domain events for meaningful decoupled reactions; avoid turning every method call into an event. Module boundaries should improve testability and ownership, not add ceremonial indirection.</p>
-    </section>
-    <section class="lesson" id="shared">
-      <h2>5. Shared kernel: keep it intentionally small</h2>
-      <p>A shared kernel contains concepts that truly have the same meaning and evolve together. Good candidates may include carefully governed value types or identity primitives. Avoid a "common" package that becomes the dumping ground for domain rules, database models, and utilities nobody owns.</p>
-      <p>When two modules need similar concepts with different semantics, duplicate a small value or define a translation at the boundary. Shared code creates shared change and release coupling.</p>
-    </section>
-    <section class="lesson" id="scale">
-      <h2>6. Scaling strategy and cost vs. microservices</h2>
-      <p>First optimize queries, indexes, caches, background jobs, connection pools, and horizontal scaling of the whole application. If a distinct workload needs different scaling, isolate the workload or worker before splitting domain ownership. Measure team coordination and bottlenecks rather than inferring them from an architecture diagram.</p>
+
+    <section class="lesson" id="communication">
+      <h2>3. Inter-Module Communication Patterns</h2>
       <table>
-        <thead><tr><th>Modular monolith</th><th>Microservices</th></tr></thead>
+        <thead><tr><th>Communication Mechanism</th><th>Coupling Level</th><th>When to Choose</th><th>Pitfall to Avoid</th></tr></thead>
         <tbody>
-          <tr><td>In-process calls, simpler transactions and local debugging</td><td>Independent deployment and targeted runtime boundaries</td></tr>
-          <tr><td>One release unit; internal boundaries need enforcement</td><td>Network contracts, partial failures, tracing, and platform ownership</td></tr>
-          <tr><td>Often lower operational overhead at small/medium scale</td><td>Can lower team coupling when autonomy is real and supported</td></tr>
+          <tr>
+            <td><strong>Direct Interface Calls (Sync)</strong></td>
+            <td>Medium (Typed Contract)</td>
+            <td>Caller strictly requires an immediate return value to proceed (e.g., validating customer credit balance).</td>
+            <td>Passing internal domain entity pointers; must use immutable DTOs.</td>
+          </tr>
+          <tr>
+            <td><strong>In-Process Mediator (MediatR)</strong></td>
+            <td>Low (Message Contract)</td>
+            <td>Decoupled command dispatching and query pipelines; cross-cutting middleware (validation, logging).</td>
+            <td>Treating mediator commands as magic global events; obscures call graphs.</td>
+          </tr>
+          <tr>
+            <td><strong>In-Process Domain Events (Async)</strong></td>
+            <td>Very Low (Event Contract)</td>
+            <td>Side effects where the primary transaction does not require immediate confirmation (e.g., send welcome email).</td>
+            <td>Assuming in-process events survive server crashes; critical events need an Outbox.</td>
+          </tr>
         </tbody>
       </table>
     </section>
-    <section class="lesson" id="migration">
-      <h2>7. Migration path when extraction is justified</h2>
+
+    <section class="lesson" id="data-strategies">
+      <h2>4. Data Ownership and Database Partitioning</h2>
+      <p>Modularity in code is useless if every module joins across every other module's database tables. Choose an intentional persistence isolation strategy:</p>
+      <table>
+        <thead><tr><th>Strategy</th><th>Isolation</th><th>Transactions</th><th>Operational Cost</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Schema-per-Module (Recommended)</strong></td>
+            <td>High (PostgreSQL schemas: <code>orders.*</code>, <code>inventory.*</code>)</td>
+            <td>Local ACID transactions possible if strictly necessary</td>
+            <td>Low (Single database instance to operate and back up)</td>
+          </tr>
+          <tr>
+            <td><strong>Table Prefix / Ownership Rules</strong></td>
+            <td>Medium (Single schema: <code>ord_orders</code>, <code>inv_stock</code>)</td>
+            <td>Simple ACID joins</td>
+            <td>Lowest (Enforced strictly via automated linter rules)</td>
+          </tr>
+          <tr>
+            <td><strong>Database-per-Module</strong></td>
+            <td>Complete (Separate physical database clusters)</td>
+            <td>Distributed transactions (Sagas required)</td>
+            <td>High (Multiplies connection pools, migrations, and infrastructure cost)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Handling Cross-Module Queries Without Foreign Keys</h3>
+      <p>When the Orders module needs customer name and email, it must <strong>never</strong> execute a cross-schema SQL <code>JOIN users ON orders.user_id = users.id</code>. Instead, use one of three clean architectural patterns:</p>
       <ol>
-        <li>Identify a concrete pain: release contention, isolation need, distinct scaling, or clear team ownership.</li>
-        <li>Strengthen the module contract and remove illegal internal access first.</li>
-        <li>Assign data ownership and define an integration API or event contract.</li>
-        <li>Extract with a strangler approach, routing a small slice to the new service.</li>
-        <li>Measure latency, reliability, delivery, and operational load before expanding.</li>
-        <li>Keep rollback and data reconciliation possible until the new boundary is proven.</li>
+        <li><strong>API Aggregation:</strong> Order module queries User module via public contract <code>userModule.getUserSummary(userId)</code>.</li>
+        <li><strong>Denormalization / Event Subscription:</strong> When a user updates their profile, User module emits <code>UserUpdated</code>; Orders module updates its own denormalized <code>order_customer_cache</code> table.</li>
+        <li><strong>CQRS Read Projections:</strong> A dedicated reporting/query module listens to domain events and populates a unified denormalized read-model optimized for UI presentation.</li>
       </ol>
-      <div class="exercise"><strong>Practice</strong>Draw an order module's allowed dependencies. Add a test that fails if the payment module reads the order module's tables directly. Decide which evidence—not a traffic forecast—would justify extracting Payments.</div>
     </section>
+
+    <section class="lesson" id="enforcement">
+      <h2>5. Automated Boundary Enforcement</h2>
+      <p>Architecture that depends on developer willpower inevitably degrades into a Big Ball of Mud. Automate boundary tests in CI:</p>
+
+      <h3>ArchUnit Test Example (Java / Kotlin)</h3>
+      <pre><code>@AnalyzeClasses(packages = "com.enterprise.app")
+public class ArchitectureRulesTest {
+  @ArchTest
+  public static final ArchRule orders_should_not_access_payments_internal =
+    noClasses().that().resideInAPackage("..modules.orders..")
+      .should().dependOnClassesThat()
+      .resideInAPackage("..modules.payments.internal..")
+      .because("Orders must interact with Payments exclusively through payments.api!");
+}</code></pre>
+
+      <h3>NetArchTest Example (C# / .NET)</h3>
+      <pre><code>[Fact]
+public void Orders_Should_Not_Reference_Inventory_Internal() {
+  var result = Types.InNamespace("MyApp.Modules.Orders")
+    .ShouldNot()
+    .HaveDependencyOn("MyApp.Modules.Inventory.Infrastructure")
+    .GetResult();
+  Assert.True(result.IsSuccessful);
+}</code></pre>
+    </section>
+
+    <section class="lesson" id="shared-kernel">
+      <h2>6. The Shared Kernel: Rules and Anti-Patterns</h2>
+      <p>The <strong>Shared Kernel</strong> contains only universal, cross-cutting primitives (e.g., <code>TenantId</code>, <code>Money</code>, <code>Currency</code>, base <code>Entity</code>). It must be governed strictly.</p>
+
+      <div class="callout">
+        <strong>The "Common Utility" Anti-Pattern</strong>
+        <p>Creating a generic <code>/common</code> or <code>/shared</code> directory is an architectural hazard. Over time, developers deposit domain entities, database models, and helper methods into "common", causing every module to depend on it. When "common" changes, every module re-tests and redeploys. <strong>Rule:</strong> It is better to duplicate a simple 5-line DTO across two modules than to create a shared coupling dependency.</p>
+      </div>
+    </section>
+
+    <section class="lesson" id="strangler">
+      <h2>7. Strangler Extraction: Migrating to a Microservice</h2>
+      <p>Because boundaries are already cleanly enforced in code, extracting a module into an independent microservice requires minimal refactoring:</p>
+      <ol>
+        <li><strong>Validate Seams:</strong> Run ArchUnit tests to verify zero illegal dependencies or cross-module database foreign keys exist.</li>
+        <li><strong>Replace In-Process Contract with Network Client:</strong> Swap the in-process interface implementation (<code>OrdersService</code>) with an HTTP/gRPC client implementation that calls an external URL.</li>
+        <li><strong>Split Database Schema:</strong> Migrate the module's private database schema to an independent managed database instance.</li>
+        <li><strong>Deploy Standalone Service:</strong> Deploy the extracted module as an independent container with its own CI/CD pipeline.</li>
+        <li><strong>Route via Gateway:</strong> Update the API Gateway to route traffic directly to the new microservice.</li>
+      </ol>
+    </section>
+
+    <section class="lesson" id="practice">
+      <h2>8. Practical Exercises</h2>
+      <ol>
+        <li><strong>Module Boundary Design:</strong> Take a streaming video platform (like Netflix). Identify 4 core modules (e.g., Billing, Video Catalog, Recommendation, Streaming Session). Define the public contracts and DTOs exchanged between Catalog and Recommendation.</li>
+        <li><strong>Automated Fitness Function Setup:</strong> Configure an automated architecture test using ArchUnit, NetArchTest, or ESLint boundaries that fails if any file in <code>/features/checkout</code> imports directly from <code>/features/inventory/db</code>.</li>
+        <li><strong>Data Boundary Refactoring:</strong> Given a legacy SQL query that joins <code>orders</code>, <code>customers</code>, and <code>shipping_providers</code> across 3 domain boundaries, refactor the flow using domain events and localized data caching.</li>
+      </ol>
+    </section>
+
     <section class="lesson" id="sources">
       <h2>Further reading</h2>
       <ul class="reading-list">
-        <li><a href="https://www.martinfowler.com/articles/modular-monolith.html" target="_blank" rel="noreferrer">Modular Monolith</a> — practical boundary concepts.</li>
-        <li><a href="https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures" target="_blank" rel="noreferrer">.NET application architecture guidance</a> — layering, deployment, and maintainability.</li>
-        <li><a href="https://nx.dev/features/enforce-module-boundaries" target="_blank" rel="noreferrer">Enforce module boundaries in Nx</a> — frontend workspace dependency rules.</li>
+        <li><a href="https://www.martinfowler.com/articles/modular-monolith.html" target="_blank" rel="noreferrer">Modular Monolith (Martin Fowler)</a> — foundational overview of module boundaries and trade-offs.</li>
+        <li><a href="https://www.archunit.org/" target="_blank" rel="noreferrer">ArchUnit: Unit Test Your Java Architecture</a> — testing architectural boundaries in CI/CD.</li>
+        <li><a href="https://github.com/BenMorris/NetArchTest" target="_blank" rel="noreferrer">NetArchTest for .NET</a> — fluent API for architectural rule enforcement in C#.</li>
+        <li><a href="https://nx.dev/features/enforce-module-boundaries" target="_blank" rel="noreferrer">Nx Module Boundary Enforcement</a> — architectural linting for TypeScript and monorepos.</li>
       </ul>
     </section>
-    <div class="lesson-footer"><a class="lesson-link" href="architecture-06-low-level-design.html">← Previous: Low-level design</a><a class="lesson-link" href="architecture-08-event-driven-systems.html">Next lesson: Event-driven systems →</a></div>
-    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Modularity pays off when boundaries are enforced and owned.</footer>
+
+    <div class="lesson-footer">
+      <a class="lesson-link" href="architecture-06-low-level-design.html">← Previous: Low-level design</a>
+      <a class="lesson-link" href="architecture-08-event-driven-systems.html">Next lesson: Event-driven systems →</a>
+    </div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-11-21 · Modularity pays dividends when boundaries are enforced by code and tests.</footer>
   </main>
 </body>
 </html>

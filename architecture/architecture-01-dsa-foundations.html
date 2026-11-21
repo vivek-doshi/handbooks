@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="handbook-version" content="v2">
-  <meta name="last-updated" content="2026-10-27">
-  <meta name="description" content="Beginner-friendly data structures and algorithms foundations for engineers learning system design and software architecture.">
+  <meta name="last-updated" content="2026-11-21">
+  <meta name="description" content="Comprehensive data structures, algorithms, memory models, and distributed structures for engineers learning system design and software architecture.">
   <title>01. Computer Science Foundations | Architecture Learning Path</title>
   <link rel="stylesheet" href="learning-path.css">
 </head>
@@ -24,89 +24,291 @@
       <div class="eyebrow">Step 01 · Beginner · Prerequisite for design work</div>
       <h1>Computer science foundations for architects</h1>
       <p class="lede">Architecture decisions become clearer when you can estimate the cost of the work a system performs. This lesson builds practical intuition for data structures, algorithms, memory, and the common problem-solving patterns behind production software.</p>
-      <div class="hero-meta"><span class="badge">Big-O</span><span class="badge">Data structures</span><span class="badge">Problem patterns</span><span class="badge">Practice: choose a data model</span></div>
+      <div class="hero-meta">
+        <span class="badge">Big-O &amp; Amortized Cost</span>
+        <span class="badge">Data Structures</span>
+        <span class="badge">Distributed Primitives</span>
+        <span class="badge">Problem Patterns</span>
+        <span class="badge">Practice: Data Modeling</span>
+      </div>
     </section>
+
     <section class="lesson" id="outcomes">
       <h2>What you will be able to do</h2>
       <ul>
-        <li>Compare algorithm costs as data grows without relying on one benchmark.</li>
-        <li>Select arrays, lists, queues, maps, trees, heaps, or graphs to fit access patterns.</li>
-        <li>Recognize sorting, searching, recursion, and dynamic-programming problems.</li>
-        <li>Explain how memory layout and data movement affect real systems.</li>
+        <li>Compare algorithm costs as data grows without relying on isolated, unrepresentative benchmarks.</li>
+        <li>Select arrays, lists, queues, maps, trees, heaps, or graphs to fit real production access patterns.</li>
+        <li>Evaluate modern architect-level structures: Tries, Bloom filters, Skip lists, B+ trees, and LSM trees.</li>
+        <li>Recognize sorting, searching, recursion, and dynamic-programming patterns in systems.</li>
+        <li>Explain how CPU cache locality, allocation overhead, and pointer chasing affect real latency.</li>
+        <li>Choose appropriate distributed algorithms and structures for partitioning, rate limiting, and consensus.</li>
       </ul>
-      <div class="callout"><strong>Why this belongs in an architecture path</strong>Capacity estimates, cache design, search indexes, queues, and graph traversals all depend on the same core tradeoffs.</div>
+      <div class="callout">
+        <strong>Why this belongs in an architecture path</strong>
+        Capacity estimates, cache design, search indexes, queues, distributed locks, database indexes, and graph traversals all depend on foundational computational and memory tradeoffs.
+      </div>
     </section>
+
     <section class="lesson" id="complexity">
-      <h2>1. Complexity and the memory model</h2>
-      <p>Big-O describes how resource use grows with input size, not an exact runtime. For an input of <code>n</code> items, common growth rates are:</p>
+      <h2>1. Complexity, Amortization, and the Memory Model</h2>
+      <p>Big-O describes how resource consumption grows asymptotically with input size, not an exact wall-clock runtime. For an input of <code>n</code> items, common growth rates define whether a feature scales gracefully or triggers cascading outages under load:</p>
       <table>
-        <thead><tr><th>Class</th><th>Example</th><th>Growth intuition</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th>Name</th>
+            <th>Example in Systems</th>
+            <th>Operations for n = 1,000,000</th>
+            <th>Growth Intuition</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr><td><code>O(1)</code></td><td>Array index lookup</td><td>One bounded operation</td></tr>
-          <tr><td><code>O(log n)</code></td><td>Binary search in sorted data</td><td>Each step removes a fraction</td></tr>
-          <tr><td><code>O(n)</code></td><td>Scan every record</td><td>Work grows with record count</td></tr>
-          <tr><td><code>O(n log n)</code></td><td>Comparison sorting</td><td>Divide, then combine</td></tr>
-          <tr><td><code>O(n²)</code></td><td>Compare every pair</td><td>Doubling input may quadruple work</td></tr>
+          <tr>
+            <td><code>O(1)</code></td>
+            <td>Constant</td>
+            <td>Hash table lookup, array index, push/pop stack</td>
+            <td>1 operation</td>
+            <td>Independent of dataset size</td>
+          </tr>
+          <tr>
+            <td><code>O(log n)</code></td>
+            <td>Logarithmic</td>
+            <td>B-tree index lookup, binary search</td>
+            <td>≈ 20 operations</td>
+            <td>Each step divides remaining search space by a factor</td>
+          </tr>
+          <tr>
+            <td><code>O(n)</code></td>
+            <td>Linear</td>
+            <td>Full table scan, unindexed search, string equality</td>
+            <td>1,000,000 operations</td>
+            <td>Work scales linearly with record volume</td>
+          </tr>
+          <tr>
+            <td><code>O(n log n)</code></td>
+            <td>Linearithmic</td>
+            <td>Merge sort, heap sort, indexing a bulk load</td>
+            <td>≈ 20,000,000 operations</td>
+            <td>Divide-and-conquer sorting and tree reconstruction</td>
+          </tr>
+          <tr>
+            <td><code>O(n²)</code></td>
+            <td>Quadratic</td>
+            <td>Nested loop join without index, all-pairs comparison</td>
+            <td>1,000,000,000,000 (1 trillion)</td>
+            <td>Doubling input quadruples work; dangerous in web requests</td>
+          </tr>
         </tbody>
       </table>
-      <p>Consider time and space separately. Also consider constants, cache locality, allocation, contention, I/O, and network calls: asymptotic complexity is a model, not a substitute for measuring a real workload.</p>
-      <h3>Memory and representation</h3>
-      <p>Arrays store items contiguously and are cache-friendly; linked nodes require pointer chasing and extra allocation. A hash table buys average constant-time lookup with extra memory and occasional resize cost. At a service boundary, serialization and copies can cost more than the in-process algorithm.</p>
+
+      <h3>Best, Average, and Worst Case</h3>
+      <p>Architects must design for the <strong>worst-case</strong> or high-percentile (p99/p99.9) behavior, not just sunny-day averages. A standard hash map offers <code>O(1)</code> average lookup, but degrades to <code>O(n)</code> if hash collisions spike (e.g., hash-collision DoS attacks). Quicksort averages <code>O(n log n)</code>, but degrades to <code>O(n²)</code> with poor pivot selection.</p>
+
+      <h3>Amortized Analysis</h3>
+      <p>An operation has an amortized cost <code>T</code> if a sequence of <code>k</code> operations takes at most <code>k × T</code> total time, even if occasional single operations take significantly longer.</p>
+      <div class="example">
+        <strong>Example: Dynamic Array Appends</strong>
+        When appending to a dynamic array (e.g., Python <code>list</code>, Java <code>ArrayList</code>, Go slice), most appends take <code>O(1)</code> time. When the underlying capacity is reached, the array allocates a new buffer of size <code>2N</code> and copies all <code>N</code> elements, costing <code>O(N)</code>. Because doublings occur only at powers of 2 (1, 2, 4, 8, 16...), the total copying cost for <code>N</code> insertions is \(N/2 + N/4 + \dots + 1 &lt; N\). The amortized cost per append remains strictly <code>O(1)</code>. However, in low-latency trading or real-time gaming, that single <code>O(N)</code> reallocation pause (p99.99 latency spike) may violate strict SLAs, requiring pre-allocated buffers.
+      </div>
+
+      <h3>Memory Hierarchy, Cache Locality, and Latency Numbers</h3>
+      <p>Modern CPUs process instructions in fractions of a nanosecond, but fetching data from main memory takes tens to hundreds of nanoseconds. Sequential memory access enables hardware prefetching and maximizes L1/L2/L3 cache line utilization (typically 64 bytes per line). Linked structures (linked lists, uncompacted trees) incur pointer-chasing cache misses, making them 5x to 50x slower in practice than contiguous arrays despite identical Big-O time complexity.</p>
+      <pre><code>Latency Numbers Every Architect Should Know:
+  L1 cache reference:            ~1 ns
+  Branch mispredict:             ~3 ns
+  L2 cache reference:            ~4 ns
+  Mutex lock/unlock:             ~17 ns
+  Main memory (RAM) reference:   ~100 ns
+  Compress 1KB with Snappy:      ~2,000 ns (2 µs)
+  Read 1 MB sequentially from memory: ~3,000 ns (3 µs)
+  Read 1 MB sequentially from NVMe SSD: ~50,000 ns (50 µs)
+  Round trip within same datacenter: ~500,000 ns (0.5 ms)
+  Read 1 MB sequentially from network (10Gbps): ~800,000 ns (0.8 ms)
+  Disk seek (HDD):               ~10,000,000 ns (10 ms)
+  Send packet CA to Netherlands & back: ~150,000,000 ns (150 ms)</code></pre>
     </section>
+
     <section class="lesson" id="structures">
-      <h2>2. Core data structures</h2>
+      <h2>2. Core and Advanced Data Structures</h2>
       <table>
         <thead><tr><th>Structure</th><th>Use it for</th><th>Tradeoff to remember</th></tr></thead>
         <tbody>
-          <tr><td>Array / dynamic array</td><td>Indexed access, iteration, append-heavy lists</td><td>Middle insertion shifts values; resizing may copy</td></tr>
-          <tr><td>Linked list</td><td>Frequent insert/remove at a known node</td><td>No fast random access; poor locality</td></tr>
-          <tr><td>Stack / queue / deque</td><td>Call frames, work scheduling, breadth-first traversal</td><td>Choose FIFO, LIFO, or both intentionally</td></tr>
-          <tr><td>Hash map / set</td><td>Key lookup, deduplication, membership tests</td><td>Requires suitable hashing; ordering is not implied</td></tr>
-          <tr><td>Tree / BST</td><td>Hierarchies and ordered lookup</td><td>Balance determines whether lookup stays logarithmic</td></tr>
-          <tr><td>Heap</td><td>Repeated minimum/maximum or priority scheduling</td><td>Efficient top element, not arbitrary ordered search</td></tr>
-          <tr><td>Graph</td><td>Dependencies, routes, social or service relationships</td><td>Traversal cost depends on vertices and edges</td></tr>
+          <tr><td>Array / dynamic array</td><td>Indexed access, sequential iteration, append-heavy workloads</td><td>Middle insertion shifts values <code>O(n)</code>; reallocations copy memory.</td></tr>
+          <tr><td>Linked list</td><td>Frequent insert/remove at known pointer; LRU cache list seams</td><td>Zero random access <code>O(n)</code>; poor CPU cache locality; pointer overhead.</td></tr>
+          <tr><td>Stack / queue / deque</td><td>Call frames, BFS/DFS traversal, sliding windows, buffer queues</td><td>Choose FIFO, LIFO, or double-ended intentionally; watch bounded capacity.</td></tr>
+          <tr><td>Hash map / set</td><td>Fast key lookup, deduplication, membership checks</td><td>Requires collision resistance; lacks ordering; memory overhead &gt; 2x data size.</td></tr>
+          <tr><td>Tree / BST / AVL / Red-Black</td><td>Hierarchies, ordered iteration, range queries</td><td>Rebalancing overhead; unoptimized trees can degrade to linked lists <code>O(n)</code>.</td></tr>
+          <tr><td>Heap / Priority Queue</td><td>Task scheduling, top-K tracking, rate-limit timers, Dijkstra</td><td>Efficient min/max access <code>O(1)</code>, but no arbitrary key search <code>O(n)</code>.</td></tr>
+          <tr><td>Graph (Adj. List / Matrix)</td><td>Social networks, dependency resolution, routing topologies</td><td>Adjacency list saves space; adjacency matrix offers <code>O(1)</code> edge lookup.</td></tr>
         </tbody>
       </table>
-      <div class="example"><strong>Example: choose the structure</strong>A job dispatcher that repeatedly selects the earliest deadline fits a min-heap. A deduplication pass needs a set. A dependency planner needs a directed graph and a cycle check.</div>
-    </section>
-    <section class="lesson" id="algorithms">
-      <h2>3. Sorting, searching, recursion, and problem patterns</h2>
-      <h3>Searching and sorting</h3>
-      <p>Linear search works on unsorted input in <code>O(n)</code>. Binary search needs a sorted or monotonic search space and runs in <code>O(log n)</code>. Sorting is not automatically beneficial: include its one-time cost and the number of later queries it enables.</p>
-      <h3>Recursion</h3>
-      <p>Recursive solutions reduce a problem to smaller instances. Confirm a terminating base case, progress toward it, and acceptable call-stack depth. For deep or untrusted input, use an explicit stack or iterative approach.</p>
-      <h3>Reusable problem patterns</h3>
+
+      <h3>Advanced Structures for Systems Architects</h3>
       <ul>
-        <li><strong>Two pointers / sliding window:</strong> contiguous ranges and pairwise scans.</li>
-        <li><strong>Hashing:</strong> fast membership, counts, and complements.</li>
-        <li><strong>Breadth-first / depth-first search:</strong> reachability, shortest unweighted paths, and component discovery.</li>
-        <li><strong>Binary search on answer:</strong> find a boundary in a monotonic predicate.</li>
-        <li><strong>Dynamic programming:</strong> overlapping subproblems and optimal substructure; define state, transition, base case, and evaluation order.</li>
+        <li><strong>Trie (Prefix Tree):</strong> Stores strings by shared prefixes. Key lookup takes <code>O(k)</code> where <code>k</code> is key length, independent of total stored items <code>n</code>. Ideal for autocomplete systems, IP routing tables (longest prefix match), and URL routing in web frameworks.</li>
+        <li><strong>Bloom Filter:</strong> A space-efficient probabilistic data structure based on bit arrays and multiple hash functions. Tests set membership with <em>zero false negatives</em> (if it says absent, it is definitely absent) and configurable <em>false positive rate</em> (e.g., 1%). Widely used in Cassandra/RocksDB to prevent expensive disk seeks for non-existent row keys, and in CDN web caches.</li>
+        <li><strong>Skip List:</strong> A probabilistic layered linked-list hierarchy that achieves <code>O(log n)</code> search, insertion, and deletion without complex tree rebalancing. Used internally by Redis Sorted Sets (ZSET) and LevelDB/RocksDB MemTables for concurrent lock-free reads.</li>
+        <li><strong>B-Tree and B+ Tree:</strong> Self-balancing search trees optimized for block storage. Nodes store hundreds or thousands of keys matching disk block sizes (e.g., 4KB-16KB). In a B+ tree, internal nodes store only routing keys, and all records are chained in leaf nodes, providing both <code>O(log n)</code> lookup and high-throughput sequential range scans in PostgreSQL, MySQL InnoDB, and file systems.</li>
+        <li><strong>LSM Tree (Log-Structured Merge-Tree):</strong> Transforms random writes into sequential disk writes by appending to an in-memory MemTable (skip list or red-black tree) backed by a write-ahead log (WAL). Periodically flushed to immutable disk SSTables and compacted in background tiers. Powers high-write stores like Apache Cassandra, ScyllaDB, Bigtable, and RocksDB.</li>
+      </ul>
+
+      <div class="example">
+        <strong>Structure Decision Guide: When you need X, use Y</strong>
+        <table>
+          <thead><tr><th>Access Pattern / Requirement</th><th>Recommended Structure</th><th>Primary Reason</th></tr></thead>
+          <tbody>
+            <tr><td>Fast exact key-value lookup</td><td>Hash Map</td><td><code>O(1)</code> average time</td></tr>
+            <tr><td>Ordered iteration and range queries (in memory)</td><td>Red-Black Tree / B-Tree</td><td><code>O(log n)</code> range search + ordered traversal</td></tr>
+            <tr><td>Disk-resident database indexing</td><td>B+ Tree</td><td>Block-aligned high fan-out, sequential leaf chaining</td></tr>
+            <tr><td>Write-heavy ingestion with occasional reads</td><td>LSM Tree</td><td>Appends turn random writes into sequential disk I/O</td></tr>
+            <tr><td>Fast prefix search / Autocomplete</td><td>Trie / Radix Tree</td><td>Lookup bound by query string length, not index size</td></tr>
+            <tr><td>Set membership test without memory explosion</td><td>Bloom Filter / Cuckoo Filter</td><td>Tiny memory footprint (bits per key); zero false negatives</td></tr>
+            <tr><td>Next-highest priority task execution</td><td>Binary / Fibonacci Min-Heap</td><td><code>O(1)</code> peek, <code>O(log n)</code> extract-min</td></tr>
+            <tr><td>Cyclic dependency or reachability detection</td><td>Directed Acyclic Graph (DAG)</td><td>Topological sorting and cycle detection</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="lesson" id="algorithms">
+      <h2>3. Sorting, Searching, and Core Problem Patterns</h2>
+
+      <h3>Searching &amp; Binary Search on Monotonic Spaces</h3>
+      <p>Linear search takes <code>O(n)</code>. Binary search cuts the search space in half at each step in <code>O(log n)</code>. In architecture, binary search is applied not just to arrays, but to monotonic predicates (e.g., capacity sizing, autoscaling thresholds, log timestamp indexing):</p>
+      <pre><code>// Safe Binary Search avoiding 32-bit integer overflow
+function binarySearch(arr, target) {
+  let low = 0;
+  let high = arr.length - 1;
+  while (low &lt;= high) {
+    // Avoid (low + high) / 2 which can overflow in 32-bit signed ints
+    const mid = low + Math.floor((high - low) / 2);
+    if (arr[mid] === target) return mid;
+    if (arr[mid] &lt; target) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return -1; // Not found
+}</code></pre>
+
+      <h3>BFS vs. DFS in Systems Architecture</h3>
+      <table>
+        <thead><tr><th>Algorithm</th><th>Traversal Order</th><th>Data Structure</th><th>Architecture Use Cases</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>BFS (Breadth-First)</strong></td>
+            <td>Level by level (nearest neighbors first)</td>
+            <td>FIFO Queue</td>
+            <td>Shortest path in unweighted graphs; network packet routing; web crawler crawl-depth limiting; peer discovery in P2P mesh.</td>
+          </tr>
+          <tr>
+            <td><strong>DFS (Depth-First)</strong></td>
+            <td>Down each branch to leaf before backtracking</td>
+            <td>LIFO Stack / Recursion</td>
+            <td>Dependency graph cycle detection; topological build orders; path finding in state machines; deadlock detection in databases.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Dynamic Programming: Memoization vs. Tabulation</h3>
+      <p>Dynamic programming applies when a problem exhibits <strong>optimal substructure</strong> and <strong>overlapping subproblems</strong>. In system architecture, DP underlies distributed cache eviction policies, rate-limit token bucket accounting, shortest-path calculation, and query execution plan cost optimizers.</p>
+      <pre><code>// Example: Minimum Coins / Token Allocation Problem
+// Memoization (Top-Down): Recursive with caching
+function minCoinsMemo(coins, amount, memo = {}) {
+  if (amount === 0) return 0;
+  if (amount &lt; 0) return Infinity;
+  if (memo[amount] !== undefined) return memo[amount];
+
+  let min = Infinity;
+  for (const c of coins) {
+    const res = minCoinsMemo(coins, amount - c, memo);
+    if (res !== Infinity) min = Math.min(min, res + 1);
+  }
+  memo[amount] = min;
+  return min;
+}
+
+// Tabulation (Bottom-Up): Iterative table building, avoids call-stack overflow
+function minCoinsTab(coins, amount) {
+  const dp = new Array(amount + 1).fill(Infinity);
+  dp[0] = 0;
+  for (let i = 1; i &lt;= amount; i++) {
+    for (const c of coins) {
+      if (i - c &gt;= 0) {
+        dp[i] = Math.min(dp[i], dp[i - c] + 1);
+      }
+    }
+  }
+  return dp[amount] === Infinity ? -1 : dp[amount];
+}</code></pre>
+
+      <h3>Core Graph Algorithms in Infrastructure</h3>
+      <ul>
+        <li><strong>Dijkstra's Algorithm:</strong> Finds single-source shortest paths on non-negative weighted graphs using a priority queue in <code>O((V + E) log V)</code>. Used in OSPF/IS-IS network routing and transit network cost routing.</li>
+        <li><strong>Topological Sort (Kahn's / DFS):</strong> Produces a linear ordering of vertices in a Directed Acyclic Graph (DAG) in <code>O(V + E)</code>. Used by task orchestrators (Apache Airflow, GitHub Actions, Terraform execution plans, Kubernetes resource initialization orders).</li>
+        <li><strong>Tarjan's / Kosaraju's Strongly Connected Components:</strong> Detects circular dependencies and component islands in microservice dependency graphs.</li>
       </ul>
     </section>
-    <section class="lesson" id="practice">
-      <h2>4. A repeatable way to solve a problem</h2>
-      <ol>
-        <li>Clarify input size, ordering, duplicates, limits, and required output.</li>
-        <li>Write a simple correct approach before optimizing it.</li>
-        <li>State the invariant or subproblem that makes the approach correct.</li>
-        <li>Estimate time and space complexity, including auxiliary structures.</li>
-        <li>Test empty, single-item, duplicate, boundary, and large inputs.</li>
-        <li>Benchmark representative data when the decision matters in production.</li>
-      </ol>
-      <div class="exercise"><strong>Practice</strong>For a service that stores user IDs and checks membership millions of times, compare scanning a list with a hash set. Then explain how memory overhead, ordering, persistence, and distributed deployment change the answer.</div>
-      <h3>Choosing the right structure</h3>
-      <p>Start from required operations, not a favorite structure. Write a small operation table (lookup, insert, delete, ordered iteration, range query), estimate frequency and scale, then choose the simplest structure that meets measured latency and memory goals.</p>
+
+    <section class="lesson" id="concurrent-distributed">
+      <h2>4. Concurrent and Distributed Data Structures</h2>
+      <p>Single-threaded data structures break down when accessed across multiple CPU cores or independent nodes. Distributed architectures rely on specialized primitives:</p>
+      <ul>
+        <li><strong>Compare-And-Swap (CAS) &amp; Lock-Free Queues:</strong> Modern multicore engines (e.g., LMAX Disruptor, Java <code>ConcurrentLinkedQueue</code>) eliminate lock contention by executing atomic hardware CPU instructions (e.g., <code>CMPXCHG</code> on x86), achieving millions of ops/second per core.</li>
+        <li><strong>Concurrent Hash Map (Striped Locks):</strong> Splits the key space into buckets or segments, allowing concurrent reads without locking and localized locks only on specific segments during writes.</li>
+        <li><strong>Write-Ahead Log (WAL):</strong> An append-only disk structure. Because sequential writes are orders of magnitude faster than random database updates, transactions are committed to the WAL first, ensuring crash-recovery durability (ACID) before updating B-trees or memory.</li>
+        <li><strong>Distributed Hash Table (DHT):</strong> Partitions keys across independent physical machines using consistent hashing (e.g., Chord, Dynamo, Kademlia in BitTorrent).</li>
+        <li><strong>Merkle Tree (Hash Tree):</strong> A tree where every leaf node is labeled with the cryptographic hash of a data block, and every parent is the hash of its children. Allows distributed replicas (Cassandra, Git, blockchain) to detect replica divergence and synchronize large datasets with minimal network transfer.</li>
+      </ul>
     </section>
+
+    <section class="lesson" id="systems-algorithms">
+      <h2>5. Essential Algorithms for System Architects</h2>
+      <ul>
+        <li><strong>Consistent Hashing:</strong> Traditional modulo hashing (<code>hash(key) % N</code>) remaps nearly all keys when node count <code>N</code> changes, causing cache invalidation storms. Consistent hashing places nodes and keys on a virtual ring (0 to \(2^{32}-1\)). When a node is added or removed, only \(K/N\) keys migrate on average. Virtual nodes balance skew and eliminate hotspots.</li>
+        <li><strong>Rate Limiting Algorithms:</strong>
+          <ul>
+            <li><em>Token Bucket:</em> Tokens are added at a fixed rate up to capacity; bursts up to bucket size are accepted. Ideal for API gateways.</li>
+            <li><em>Leaky Bucket:</em> Enforces smooth, constant egress rate; absorbs bursts up to queue depth.</li>
+            <li><em>Sliding Window Counter:</em> Combines weighted counts from previous and current time windows to prevent end-of-interval boundary traffic surges.</li>
+          </ul>
+        </li>
+        <li><strong>Leader Election &amp; Consensus (Raft / Paxos):</strong> Ensures a distributed cluster agrees on a single authoritative state machine leader despite node crashes and network partitions. Raft breaks consensus into leader election, log replication, and safety invariants.</li>
+        <li><strong>HyperLogLog (HLL):</strong> A probabilistic algorithm estimating cardinality (e.g., unique daily active users) of billions of items with standard error &lt; 1% using only ~1.5 KB of memory. Used heavily in Redis (<code>PFADD</code>, <code>PFCOUNT</code>) and analytics platforms.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="practice">
+      <h2>6. Practical Exercises and Architecture Decisions</h2>
+      <ol>
+        <li><strong>Membership vs. Scale:</strong> For a fraud service checking 500 million blacklisted IP addresses in &lt; 5 ms:
+          <ul>
+            <li>Compare an in-memory Hash Set vs. a Bloom Filter paired with an SSD-backed key-value store.</li>
+            <li>Calculate the RAM needed for a raw Hash Set (assume 16 bytes per entry + 24 bytes pointer overhead ≈ 20 GB RAM) vs. an 8-bit-per-key Bloom filter (≈ 500 MB RAM).</li>
+          </ul>
+        </li>
+        <li><strong>Cache with TTL and LRU Eviction:</strong> Design a thread-safe in-memory cache supporting <code>get(key)</code>, <code>set(key, value, ttl)</code>, and maximum capacity eviction in <code>O(1)</code> time. Which two data structures must be combined? (Hint: Doubly linked list for recency + Hash map for fast lookup + Min-heap or bucket wheel for TTL expiration).</li>
+        <li><strong>Distributed Task Scheduling:</strong> A system schedules 100,000 background jobs per minute with millisecond-exact execution times. Compare using a relational database table with <code>ORDER BY execution_time</code> vs. an in-memory Hierarchical Timing Wheel vs. a Redis Sorted Set.</li>
+      </ol>
+    </section>
+
     <section class="lesson" id="sources">
       <h2>Further reading</h2>
       <ul class="reading-list">
-        <li><a href="https://algs4.cs.princeton.edu/home/" target="_blank" rel="noreferrer">Princeton Algorithms, 4th edition resources</a> — algorithms, data structures, and exercises.</li>
-        <li><a href="https://cp-algorithms.com/" target="_blank" rel="noreferrer">CP-Algorithms</a> — practical algorithm explanations and implementations.</li>
+        <li><a href="https://algs4.cs.princeton.edu/home/" target="_blank" rel="noreferrer">Princeton Algorithms, 4th Edition (Sedgewick &amp; Wayne)</a> — authoritative reference on fundamental algorithms and analysis.</li>
+        <li><a href="https://cp-algorithms.com/" target="_blank" rel="noreferrer">CP-Algorithms</a> — detailed implementations of graphs, trees, and math algorithms.</li>
+        <li><a href="https://raft.github.io/" target="_blank" rel="noreferrer">The Raft Consensus Algorithm</a> — interactive visual guide to distributed log consensus.</li>
+        <li><a href="https://www.cs.cmu.edu/~dga/papers/cuckoo-conext14.pdf" target="_blank" rel="noreferrer">Cuckoo Filter: Practically Better Than Bloom</a> — modern probabilistic set membership.</li>
+        <li><a href="https://dataintensive.net/" target="_blank" rel="noreferrer">Designing Data-Intensive Applications (Martin Kleppmann)</a> — the definitive guide connecting data structures to storage engines.</li>
       </ul>
     </section>
-    <div class="lesson-footer"><a class="lesson-link" href="../index.html">← Back to index</a><a class="lesson-link" href="architecture-02-enterprise-foundations.html">Next lesson: Enterprise foundations →</a></div>
-    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Verify implementation details against your language and runtime documentation.</footer>
+
+    <div class="lesson-footer">
+      <a class="lesson-link" href="../index.html">← Back to index</a>
+      <a class="lesson-link" href="architecture-02-enterprise-foundations.html">Next lesson: Enterprise foundations →</a>
+    </div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-11-21 · Asymptotic analysis provides the baseline; real systems measure hardware, memory, and network limits.</footer>
   </main>
 </body>
 </html>

@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="handbook-version" content="v2">
-  <meta name="last-updated" content="2026-10-27">
-  <meta name="description" content="A practical high-level design handbook covering requirements, quality attributes, diagrams, capacity, security, operations, examples, and review.">
+  <meta name="last-updated" content="2026-11-21">
+  <meta name="description" content="A comprehensive high-level design guide: capacity estimation, SLOs, diagrams, STRIDE threat modeling, multi-region DR, traffic management, and worked commerce HLD.">
   <title>05. High-Level Design | Architecture Learning Path</title>
   <link rel="stylesheet" href="learning-path.css">
 </head>
@@ -14,109 +14,296 @@
   <header class="course-header">
     <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
     <span class="path-progress">05 / 13 · Intermediate</span>
-    <nav class="course-nav" aria-label="Learning path"><a href="architecture-04-pattern-decisions.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-06-low-level-design.html">Next →</a></nav>
+    <nav class="course-nav" aria-label="Learning path">
+      <a href="architecture-04-pattern-decisions.html">← Previous</a>
+      <a href="../index.html">All handbooks</a>
+      <a href="architecture-06-low-level-design.html">Next →</a>
+    </nav>
   </header>
   <main class="course" id="main">
     <section class="hero">
       <div class="eyebrow">Step 05 · Intermediate · System-level design</div>
       <h1>High-level design: turn requirements into a system</h1>
-      <p class="lede">A high-level design (HLD) communicates the system boundary, major components, data movement, external dependencies, and operational behavior. It is a shared model for decisions—not a promise that every implementation detail is already known.</p>
-      <div class="hero-meta"><span class="badge">HLD vs. LLD</span><span class="badge">Diagram toolkit</span><span class="badge">Capacity and failure</span><span class="badge">Worked commerce example</span></div>
+      <p class="lede">A high-level design (HLD) defines the system boundary, major subsystems, data movement, external integrations, operational behavior, and threat mitigations. It creates an actionable, reviewable contract across engineering, security, and product teams.</p>
+      <div class="hero-meta">
+        <span class="badge">Capacity Estimation</span>
+        <span class="badge">SLOs &amp; Error Budgets</span>
+        <span class="badge">STRIDE Threat Modeling</span>
+        <span class="badge">Multi-Region &amp; DR</span>
+        <span class="badge">Complete E-Commerce HLD</span>
+      </div>
     </section>
+
     <section class="lesson" id="scope">
-      <h2>1. What an HLD is—and when to write one</h2>
-      <p>Write or update an HLD when a change crosses teams or systems, introduces a new trust boundary, changes a critical data flow, has significant availability/cost consequences, or is expensive to reverse. Keep it proportional: a small change may need only an ADR and a sequence diagram.</p>
+      <h2>1. What an HLD Is—and When to Write One</h2>
+      <p>An HLD is required whenever an architectural initiative crosses multiple team boundaries, introduces a new trust boundary, impacts critical SLOs, or involves choices that are expensive to reverse.</p>
       <table>
-        <thead><tr><th>HLD</th><th>LLD</th></tr></thead>
+        <thead><tr><th>Dimension</th><th>High-Level Design (HLD)</th><th>Low-Level Design (LLD)</th></tr></thead>
         <tbody>
-          <tr><td>System scope, components, major contracts, data flows, runtime topology</td><td>Module/class responsibilities, schemas, method/API behavior, transaction details</td></tr>
-          <tr><td>Explains the "what" and major tradeoffs</td><td>Explains implementation-level "how"</td></tr>
-          <tr><td>Used by product, engineering, security, platform, and operations</td><td>Used mostly by implementing and reviewing engineers</td></tr>
+          <tr>
+            <td><strong>Focus &amp; Scope</strong></td>
+            <td>Subsystem boundaries, service topology, storage choices, external integrations, network protocols.</td>
+            <td>Class models, database schema indexes, algorithm details, method signatures, local transaction boundaries.</td>
+          </tr>
+          <tr>
+            <td><strong>Primary Audience</strong></td>
+            <td>Tech Leads, Security Architects, SREs, Product Managers, Staff Engineers.</td>
+            <td>Individual software engineers implementing and reviewing the pull request.</td>
+          </tr>
+          <tr>
+            <td><strong>Key Questions Answered</strong></td>
+            <td>"Where does data live? How do systems communicate? What happens when a dependency dies?"</td>
+            <td>"How are objects instantiated? What is the concurrency model? How do we handle edge-case validation?"</td>
+          </tr>
         </tbody>
       </table>
     </section>
-    <section class="lesson" id="requirements">
-      <h2>2. Gather requirements and define measurable qualities</h2>
-      <p>Capture goals, actors, use cases, dependencies, data classification, legal constraints, availability targets, recovery expectations, and explicit non-goals. Convert terms like "fast" or "highly available" into scenarios with a workload and measure.</p>
-      <div class="example"><strong>Quality scenario</strong>During a 10-minute payment-provider outage, order placement remains available, pending payments are visible, no order is marked paid without confirmation, and recovery is observable within the agreed recovery objective.</div>
-      <p>Estimate capacity from peak traffic, payload size, retention, read/write mix, fan-out, and growth assumptions. Show the assumptions and ranges. Avoid false precision; load test the design before treating estimates as facts.</p>
+
+    <section class="lesson" id="capacity">
+      <h2>2. Capacity Estimation and Back-of-the-Envelope Math</h2>
+      <p>Architecture decisions must be grounded in quantitative estimation. System sizing moves sequentially from <strong>Users → Requests → Throughput (QPS) → Storage → Memory / Cache → Bandwidth</strong>.</p>
+
+      <h3>Rules of Thumb and Constants</h3>
+      <pre><code>Constants for Quick Mental Calculations:
+  - Seconds in a day: 86,400 ≈ 100,000 (10^5) seconds for fast approximations.
+  - 1 Million requests / day ≈ 12 requests / second average.
+  - 10 Million requests / day ≈ 115 requests / second average.
+  - Peak QPS multiplier: Typically 2x to 5x average QPS (plan for 3x minimum).
+  - Storage multipliers: 1 Byte -> 1 KB (10^3) -> 1 MB (10^6) -> 1 GB (10^9) -> 1 TB (10^12) -> 1 PB (10^15).</code></pre>
+
+      <h3>Worked Example 1: URL Shortener (e.g., TinyURL)</h3>
+      <ul>
+        <li><strong>Traffic:</strong> 100 million new URLs created per month (~3.3M/day ≈ 40 writes/sec average; peak = 120 writes/sec). Read-to-write ratio is 100:1, so read traffic is 4,000 reads/sec (peak = 12,000 reads/sec).</li>
+        <li><strong>Storage:</strong> Each URL record stores: <code>short_hash</code> (7 bytes) + <code>original_url</code> (500 bytes) + <code>created_at</code> (8 bytes) + <code>user_id</code> (16 bytes) ≈ 600 bytes. With DB overhead and indexing, estimate 1 KB per record.<br>
+        Monthly storage = 100M × 1 KB = 100 GB/month. 5-year storage = 100 GB × 60 = <strong>6 TB</strong> (fits easily on modern SSD storage with replication).</li>
+        <li><strong>Cache Sizing (Pareto 80/20 Rule):</strong> 20% of URLs generate 80% of read traffic. Cache the top 20% daily read requests: 330M reads/day × 20% × 1 KB = <strong>66 GB RAM</strong> (achievable on a single modest Redis instance or small cluster).</li>
+        <li><strong>Network Bandwidth:</strong> Write egress: 120 writes/sec × 1 KB = 120 KB/sec. Read egress: 12,000 reads/sec × 1 KB = <strong>12 MB/sec</strong> (easily handled by standard 1 Gbps networking).</li>
+      </ul>
+
+      <h3>Worked Example 2: E-Commerce Product Catalog</h3>
+      <ul>
+        <li><strong>Items:</strong> 5 million active products; average JSON payload = 4 KB. Total raw catalog dataset = 20 GB.</li>
+        <li><strong>Traffic:</strong> 25,000 catalog page views/second at peak. Direct database queries would saturate relational connection pools.</li>
+        <li><strong>Caching Strategy:</strong> Cache complete catalog in a distributed Redis cluster with LRU eviction. Total cluster memory required with 2x safety factor = 20 GB × 2 = 40 GB. 99% cache hit ratio leaves only 250 QPS hitting the primary PostgreSQL database.</li>
+      </ul>
     </section>
-    <section class="lesson" id="contents">
-      <h2>3. What to include: a concise HLD template</h2>
-      <ol>
-        <li><strong>Summary:</strong> goal, scope, owners, status, reviewers, and decision links.</li>
-        <li><strong>Requirements:</strong> use cases, quality scenarios, constraints, and non-goals.</li>
-        <li><strong>Context:</strong> users, external systems, data owners, and trust boundaries.</li>
-        <li><strong>Design:</strong> components, responsibilities, interfaces, persistence, and key flows.</li>
-        <li><strong>Runtime:</strong> deployment, scaling, regions, dependencies, and environment assumptions.</li>
-        <li><strong>Risk controls:</strong> identity, authorization, privacy, threat mitigations, and audit.</li>
-        <li><strong>Operations:</strong> SLOs, telemetry, alerts, failure modes, backup, restore, and support ownership.</li>
-        <li><strong>Tradeoffs:</strong> alternatives, cost model, decisions, open questions, and revisit signals.</li>
-        <li><strong>Delivery:</strong> migration, rollout, rollback, compatibility, and acceptance tests.</li>
-      </ol>
+
+    <section class="lesson" id="slos">
+      <h2>3. Service Level Objectives (SLOs), SLIs, and Error Budgets</h2>
+      <p>Agile systems require clear definitions of operational reliability:</p>
+      <ul>
+        <li><strong>Service Level Indicator (SLI):</strong> A quantifiable metric measured over time (e.g., "HTTP status codes &lt; 500 divided by total requests").</li>
+        <li><strong>Service Level Objective (SLO):</strong> The target reliability goal agreed upon by engineering and product (e.g., "99.9% of requests succeed over any rolling 30-day window").</li>
+        <li><strong>Service Level Agreement (SLA):</strong> A contractual commitment to customers with financial or legal consequences if breached (typically looser than internal SLOs, e.g., 99.5%).</li>
+        <li><strong>Error Budget:</strong> The allowable unreliability (\(100\% - \text{SLO}\)). For a 99.9% SLO, the error budget is 0.1% (allowing ~43 minutes of downtime or failed requests per month). When error budget is exhausted, feature releases are paused to focus entirely on reliability engineering.</li>
+      </ul>
+
+      <h3>The 9s Table of Unavailability</h3>
+      <table>
+        <thead><tr><th>Target Availability</th><th>Downtime per Year</th><th>Downtime per Month</th><th>Downtime per Day</th></tr></thead>
+        <tbody>
+          <tr><td>99% ("Two Nines")</td><td>3.65 days</td><td>7.3 hours</td><td>14.4 minutes</td></tr>
+          <tr><td>99.9% ("Three Nines")</td><td>8.76 hours</td><td>43.8 minutes</td><td>1.44 minutes</td></tr>
+          <tr><td>99.99% ("Four Nines")</td><td>52.6 minutes</td><td>4.38 minutes</td><td>8.64 seconds</td></tr>
+          <tr><td>99.999% ("Five Nines")</td><td>5.26 minutes</td><td>26.3 seconds</td><td>0.86 seconds</td></tr>
+        </tbody>
+      </table>
     </section>
+
     <section class="lesson" id="diagrams">
-      <h2>4. Diagram types and when to use them</h2>
-      <ul>
-        <li><strong>System context:</strong> scope, users, and external dependencies.</li>
-        <li><strong>Container / deployment view:</strong> major applications, datastores, runtime, network, and trust zones.</li>
-        <li><strong>Component view:</strong> responsibilities inside one container, when that detail helps.</li>
-        <li><strong>Sequence diagram:</strong> time-ordered calls, retries, and error paths.</li>
-        <li><strong>Data-flow diagram:</strong> data origins, transformations, storage, classification, and deletion.</li>
-        <li><strong>State diagram:</strong> important lifecycle and transition invariants.</li>
-      </ul>
-      <p>Use a consistent legend, name each boundary, show direction and protocol where it matters, and annotate critical assumptions. A diagram that cannot be read without its author is not a useful design artifact.</p>
-      <pre><code>Customer → Storefront → Order API → Order DB
-                              │
-                              └─ outbox → Event broker
-                                           ├─ Payment workflow → Provider
-                                           └─ Fulfillment consumer → Warehouse</code></pre>
+      <h2>4. System Diagrams and Visual Modeling</h2>
+      <p>An architecture document without clear, standardized diagrams invites conflicting interpretations. Combine structural views (C4 Container), behavioral views (Sequence), and security views (Data Flow).</p>
+
+      <h3>Data Flow Diagram with PII and Trust Boundaries</h3>
+      <pre><code>[ Public Internet / Untrusted Client Zone ]
+                   │
+                   ▼  HTTPS (TLS 1.3)
+      [ API Gateway Edge / DMZ ] ──[ WAF / Rate Limiter ]
+                   │
+    ─────────────────────────────────────── Trust Boundary: Corporate VPC
+                   │  Internal mTLS
+                   ▼
+       [ Order Service Container ] ──[ Secret Store (Vault) ]
+             │                │
+             │ SQL (Encrypted)│ Async Event
+             ▼                ▼
+     [ Order Database ]   [ Kafka Broker (VPC Peered) ]
+     (Restricted PII)     (Encrypted At Rest)</code></pre>
+
+      <h3>Sequence Diagram: Failure and Retry Handling</h3>
+      <pre><code>Client           API Gateway        Order Service        Payment Provider
+  │                   │                   │                      │
+  │── POST /orders ──>│                   │                      │
+  │   (Idemp-Key: 123)│── Authenticate ──>│                      │
+  │                   │   Forward Req     │── Authorize (5s) ───>│
+  │                   │                   │   (Timeout / 504)    │
+  │                   │                   │   &lt;-- TIMEOUT! ──────│
+  │                   │                   │                      │
+  │                   │                   │ [Idempotent Poll]    │
+  │                   │                   │── Check Status ─────>│
+  │                   │                   │&lt;-- Status: UNKNOWN ──│
+  │                   │                   │                      │
+  │                   │                   │ [Save Pending Order] │
+  │                   │&lt;-- 202 Accepted ──│                      │
+  │&lt;-- 202 Accepted ──│    Status: PENDING│                      │
+  │   (Retry Poll)    │                   │                      │</code></pre>
     </section>
-    <section class="lesson" id="steps">
-      <h2>5. Step by step: create and validate an HLD</h2>
+
+    <section class="lesson" id="threats">
+      <h2>5. Threat Modeling Integration: STRIDE</h2>
+      <p>Incorporate security into the HLD from Day 1 using the Microsoft STRIDE methodology:</p>
+      <table>
+        <thead><tr><th>Threat Category</th><th>Security Property</th><th>Real-World System Vulnerability</th><th>Architectural Mitigation</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>S - Spoofing</strong></td>
+            <td>Authenticity</td>
+            <td>Attacker impersonates a legitimate customer or microservice.</td>
+            <td>OAuth 2.0 / OIDC with short-lived JWTs; internal mutual TLS (mTLS) with SPIFFE/SPIRE workload identities.</td>
+          </tr>
+          <tr>
+            <td><strong>T - Tampering</strong></td>
+            <td>Integrity</td>
+            <td>Attacker alters payload prices or database records in transit.</td>
+            <td>Strict TLS 1.3 everywhere; cryptographic HMAC signatures; database column encryption with HSM keys.</td>
+          </tr>
+          <tr>
+            <td><strong>R - Repudiation</strong></td>
+            <td>Non-repudiation</td>
+            <td>User denies making a high-value money transfer.</td>
+            <td>Immutable, append-only audit log with digital signatures stored in WORM (Write Once Read Many) storage.</td>
+          </tr>
+          <tr>
+            <td><strong>I - Info Disclosure</strong></td>
+            <td>Confidentiality</td>
+            <td>Customer PII or credit card numbers leaked in application error logs.</td>
+            <td>Log sanitization and masking pipelines; AES-256 field-level encryption; zero secrets in code repositories.</td>
+          </tr>
+          <tr>
+            <td><strong>D - Denial of Service</strong></td>
+            <td>Availability</td>
+            <td>Botnet floods checkout endpoint, exhausting database thread pools.</td>
+            <td>Distributed Cloudflare/AWS Shield DDoS protection; token bucket rate limiting; connection pool circuit breakers.</td>
+          </tr>
+          <tr>
+            <td><strong>E - Elevation of Privilege</strong></td>
+            <td>Authorization</td>
+            <td>Regular customer modifies URL parameter to access admin portal.</td>
+            <td>Role-Based (RBAC) and Attribute-Based Access Control (ABAC) enforced at every domain service boundary.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="lesson" id="multiregion">
+      <h2>6. Multi-Region Design and Disaster Recovery</h2>
+      <p>Disaster recovery strategies balance Recovery Point Objective (RPO: maximum acceptable data loss in time) and Recovery Time Objective (RTO: maximum acceptable downtime):</p>
+      <table>
+        <thead><tr><th>DR Strategy</th><th>RPO Target</th><th>RTO Target</th><th>Infrastructure Cost</th><th>Complexity</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Backup &amp; Restore</strong></td>
+            <td>Hours to 24 Hours</td>
+            <td>12 to 24 Hours</td>
+            <td>Lowest ($)</td>
+            <td>Simple nightly snapshots to cross-region S3; slow manual rebuild.</td>
+          </tr>
+          <tr>
+            <td><strong>Pilot Light</strong></td>
+            <td>Minutes</td>
+            <td>1 to 2 Hours</td>
+            <td>Low ($$)</td>
+            <td>Database continuously replicates cross-region; compute instances scaled to zero until disaster.</td>
+          </tr>
+          <tr>
+            <td><strong>Warm Standby</strong></td>
+            <td>Seconds to Minutes</td>
+            <td>Minutes</td>
+            <td>Moderate ($$$)</td>
+            <td>Full environment running in secondary region at 20% capacity; scaled up on DNS failover.</td>
+          </tr>
+          <tr>
+            <td><strong>Active-Active Multi-Region</strong></td>
+            <td>Near Zero (&lt; 1s)</td>
+            <td>Sub-second (Automatic)</td>
+            <td>Very High ($$$$$)</td>
+            <td>Traffic routed dynamically to nearest region; multi-primary databases with CRDT conflict resolution.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="lesson" id="traffic">
+      <h2>7. Traffic Management and Load Balancing</h2>
+      <ul>
+        <li><strong>L4 vs. L7 Load Balancing:</strong> Layer 4 balances raw TCP/UDP packets based on IP and port without inspecting payloads (extreme throughput, low CPU). Layer 7 inspects HTTP/HTTPS headers, paths, and cookies, enabling content-based routing, gRPC multiplexing, and SSL termination.</li>
+        <li><strong>Load Balancing Algorithms:</strong>
+          <ul>
+            <li><em>Round Robin / Weighted Round Robin:</em> Distributes requests evenly or proportional to instance capacity.</li>
+            <li><em>Least Connections:</em> Routes to the instance currently handling the fewest active requests (best for long-running RPCs).</li>
+            <li><em>Consistent Hashing:</em> Routes identical user sessions or tenant IDs to the same caching node to maximize cache hit rates.</li>
+          </ul>
+        </li>
+        <li><strong>Global Traffic Routing:</strong> Route traffic across continents using <strong>GeoDNS</strong> (resolves to closest regional IP) or <strong>BGP Anycast</strong> (single IP announced globally; internet routers find the shortest network hop).</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="worked-example">
+      <h2>8. Worked Example: Complete 9-Section E-Commerce HLD</h2>
       <ol>
-        <li>Write the problem statement, decision owner, stakeholders, and scope.</li>
-        <li>Map the current system and the business/data owners involved.</li>
-        <li>List functional requirements and rank quality scenarios.</li>
-        <li>Sketch two or more viable options and make constraints visible.</li>
-        <li>Choose component responsibilities and interface/data ownership.</li>
-        <li>Walk through normal, peak, degraded, security, and recovery paths.</li>
-        <li>Estimate cost and capacity; identify unknowns for prototype or test.</li>
-        <li>Record decisions, migration steps, observability, and accountable owners.</li>
-        <li>Review with implementation, security, data, platform, and operations peers.</li>
-        <li>Update the design from implementation and production evidence.</li>
+        <li><strong>Summary &amp; Scope:</strong> Enterprise checkout platform handling 2,000 orders/sec peak with global payment settlement and automated warehouse fulfillment.</li>
+        <li><strong>Requirements &amp; Non-Goals:</strong> Must support 99.99% checkout availability; zero duplicate charges under network partitions. Non-goals: Warehouse physical robot routing algorithms.</li>
+        <li><strong>System Context:</strong> Customers interact via Web/Mobile; external dependencies include Stripe Payment Gateway and DHL Shipping API.</li>
+        <li><strong>Component Design:</strong> Modular Monolith core running Order &amp; Inventory modules; PostgreSQL with Transactional Outbox; Apache Kafka event broker; asynchronous payment workers.</li>
+        <li><strong>Runtime &amp; Deployment:</strong> AWS EKS across 3 Availability Zones; multi-AZ Aurora PostgreSQL with synchronous replication.</li>
+        <li><strong>Security &amp; Threat Controls:</strong> TLS 1.3 everywhere; PCI-DSS Level 1 compliance; credit card tokens handled exclusively by Stripe Elements iframe (zero cardholder data touches internal servers).</li>
+        <li><strong>Operational Readiness &amp; SLOs:</strong> Checkout API p99 latency &lt; 350 ms; automated PagerDuty paging when error budget burn rate exceeds 14.4x over 1 hour.</li>
+        <li><strong>Tradeoffs Considered:</strong> Synchronous payment calls rejected due to third-party timeout cascading; pure microservices rejected due to team size of 8 developers.</li>
+        <li><strong>Delivery &amp; Rollout:</strong> Dark launching with feature flags; canary rollout starting at 1% of production traffic for 48 hours.</li>
       </ol>
     </section>
-    <section class="lesson" id="example">
-      <h2>6. Worked example: an e-commerce order flow</h2>
-      <p>Keep the order API responsible for order state. Persist an order and an outbox record in the same database transaction. A publisher delivers the event; payment and fulfillment workflows consume it independently. Each consumer is idempotent and reports progress. A status API exposes pending, paid, rejected, and fulfillment states.</p>
-      <p>Document what happens if payment times out after the provider accepted it, if an event is delivered twice, if the broker is unavailable, or if the customer retries checkout. Define the authoritative status, reconciliation process, and compensation for a failed workflow.</p>
-    </section>
-    <section class="lesson" id="review">
-      <h2>7. Pitfalls and review checklist</h2>
+
+    <section class="lesson" id="checklist">
+      <h2>9. Architecture Review Checklist</h2>
       <ul>
-        <li>Does every component have a responsibility and owner?</li>
-        <li>Are synchronous dependencies and timeout budgets bounded?</li>
-        <li>Are data ownership, consistency, retention, and deletion explicit?</li>
-        <li>Are authentication, authorization, secrets, and trust boundaries shown?</li>
-        <li>Can an operator detect, diagnose, recover, and safely replay work?</li>
-        <li>Are deployment, compatibility, rollback, and migration paths feasible?</li>
-        <li>Are costs, assumptions, and known unknowns visible?</li>
+        <li>Are all business goals translated into quantitative, measurable SLOs and latency budgets?</li>
+        <li>Have capacity requirements for QPS, RAM, disk storage, and network bandwidth been calculated?</li>
+        <li>Is every cross-system network interaction bounded by strict timeouts and circuit breakers?</li>
+        <li>Is data classified (Public, Internal, Confidential, Restricted/PII) with clear retention rules?</li>
+        <li>Are all trust boundaries identified with STRIDE threat mitigations documented?</li>
+        <li>Is there an explicit disaster recovery plan with documented RTO and RPO targets?</li>
+        <li>Are distributed transaction boundaries replaced with reliable transactional outboxes or sagas?</li>
+        <li>Are OpenTelemetry distributed tracing and correlation IDs propagated across every layer?</li>
+        <li>Has a canary rollout and instant rollback strategy been documented?</li>
+        <li>Can the system design survive the total loss of an entire cloud availability zone?</li>
       </ul>
-      <p>Common HLD failures include technology inventories without behavior, diagrams with unbounded arrows, no failure path, mixing current and target states, and a document that is never revised after implementation.</p>
-      <div class="exercise"><strong>Practice</strong>Produce one context diagram, one order-flow sequence, and a one-page HLD for a service that accepts orders during a payment outage. Ask a teammate to identify the source of truth and recovery process without your explanation.</div>
     </section>
+
+    <section class="lesson" id="practice">
+      <h2>10. Practical Exercises</h2>
+      <ol>
+        <li><strong>Capacity Sizing:</strong> Design a photo-sharing platform (like Instagram) with 50 million Daily Active Users (DAU). Each user views 20 photos/day and uploads 1 photo/day (average image size = 2 MB). Calculate the daily ingestion storage, total 3-year storage, write QPS, read QPS, and required CDN bandwidth.</li>
+        <li><strong>Disaster Recovery Strategy:</strong> For a critical financial trading platform, evaluate whether a Pilot Light or Active-Active Multi-Region strategy is appropriate given an RPO requirement of &lt; 100 milliseconds. Justify the infrastructure cost implications.</li>
+        <li><strong>Threat Modeling:</strong> Conduct a STRIDE threat model on a public IoT vehicle telemetry ingestion API. Identify 3 critical vulnerabilities and their architectural mitigations.</li>
+      </ol>
+    </section>
+
     <section class="lesson" id="sources">
-      <h2>Tools and further reading</h2>
+      <h2>Further reading</h2>
       <ul class="reading-list">
-        <li><a href="https://c4model.com/" target="_blank" rel="noreferrer">C4 model</a> — context, container, component, and code views.</li>
-        <li><a href="https://mermaid.js.org/" target="_blank" rel="noreferrer">Mermaid</a> — diagrams maintained as text alongside documentation.</li>
-        <li><a href="https://opentelemetry.io/docs/specs/semconv/" target="_blank" rel="noreferrer">OpenTelemetry semantic conventions</a> — consistent telemetry attributes.</li>
-        <li><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noreferrer">NIST SP 800-207</a> — zero-trust architecture principles.</li>
+        <li><a href="https://sre.google/sre-book/table-of-contents/" target="_blank" rel="noreferrer">Site Reliability Engineering (Google SRE Book)</a> — the foundational text on SLOs, SLIs, and error budgets.</li>
+        <li><a href="https://c4model.com/" target="_blank" rel="noreferrer">C4 Model for Software Architecture</a> — visual hierarchy for clear system design documentation.</li>
+        <li><a href="https://owasp.org/www-project-threat-dragon/" target="_blank" rel="noreferrer">OWASP Threat Dragon</a> — open-source tool and resources for STRIDE threat modeling.</li>
+        <li><a href="https://aws.amazon.com/architecture/well-architected/" target="_blank" rel="noreferrer">AWS Well-Architected Framework</a> — architectural pillars covering reliability, security, and cost optimization.</li>
+        <li><a href="https://github.com/donnemartin/system-design-primer" target="_blank" rel="noreferrer">The System Design Primer</a> — comprehensive reference on capacity estimation, scalability, and system architecture.</li>
       </ul>
     </section>
-    <div class="lesson-footer"><a class="lesson-link" href="architecture-04-pattern-decisions.html">← Previous: Pattern decisions</a><a class="lesson-link" href="architecture-06-low-level-design.html">Next lesson: Low-level design →</a></div>
-    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Keep the design actionable, testable, and owned.</footer>
+
+    <div class="lesson-footer">
+      <a class="lesson-link" href="architecture-04-pattern-decisions.html">← Previous: Pattern decisions</a>
+      <a class="lesson-link" href="architecture-06-low-level-design.html">Next lesson: Low-level design →</a>
+    </div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-11-21 · A great design makes tradeoffs explicit and verifiable.</footer>
   </main>
 </body>
 </html>

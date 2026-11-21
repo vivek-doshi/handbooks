@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="handbook-version" content="v2">
-  <meta name="last-updated" content="2026-10-27">
-  <meta name="description" content="Learn event-driven architecture, messaging patterns, event contracts, Kafka, Pulsar, RabbitMQ, delivery semantics, sagas, and operations.">
+  <meta name="last-updated" content="2026-11-21">
+  <meta name="description" content="A comprehensive engineering guide to event-driven architecture: Event Storming, Kafka, Pulsar, RabbitMQ, Event Sourcing, Sagas, CDC, stream processing, and observability.">
   <title>08. Event-Driven Systems | Architecture Learning Path</title>
   <link rel="stylesheet" href="learning-path.css">
 </head>
@@ -14,27 +14,55 @@
   <header class="course-header">
     <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
     <span class="path-progress">08 / 13 · Intermediate</span>
-    <nav class="course-nav" aria-label="Learning path"><a href="architecture-07-modular-monolith.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-09-grpc-protobuf.html">Next →</a></nav>
+    <nav class="course-nav" aria-label="Learning path">
+      <a href="architecture-07-modular-monolith.html">← Previous</a>
+      <a href="../index.html">All handbooks</a>
+      <a href="architecture-09-grpc-protobuf.html">Next →</a>
+    </nav>
   </header>
   <main class="course" id="main">
     <section class="hero">
       <div class="eyebrow">Step 08 · Intermediate · Asynchronous design</div>
       <h1>Event-driven architecture</h1>
-      <p class="lede">Events let producers publish facts without coordinating every consumer in real time. This enables decoupled workflows and streaming, while introducing eventual consistency, duplicate handling, contract evolution, and operational responsibility.</p>
-      <div class="hero-meta"><span class="badge">Messaging patterns</span><span class="badge">Kafka · Pulsar · RabbitMQ</span><span class="badge">Delivery and retries</span><span class="badge">Sagas and CQRS</span></div>
+      <p class="lede">Events allow producers to broadcast facts without real-time coordination with downstream consumers. This unlocks elastic scaling and temporal decoupling, while introducing eventual consistency, duplicate delivery, schema evolution, and distributed observability challenges.</p>
+      <div class="hero-meta">
+        <span class="badge">Event Storming</span>
+        <span class="badge">Kafka · Pulsar · RabbitMQ · Cloud Brokers</span>
+        <span class="badge">Transactional Outbox &amp; CDC</span>
+        <span class="badge">Sagas &amp; Event Sourcing</span>
+        <span class="badge">DLQ Runbooks &amp; Tracing</span>
+      </div>
     </section>
+
     <section class="lesson" id="concepts">
-      <h2>1. Event-driven architecture and core patterns</h2>
-      <p>An event is an immutable statement that something happened, such as <code>OrderPlaced</code>. A command requests work (<code>ReserveInventory</code>); a query requests current information. Keep these meanings distinct.</p>
+      <h2>1. Event-Driven Concepts and Event Anatomy</h2>
+      <p>A domain event is an immutable statement that an important state transition has already occurred in the past (e.g., <code>OrderPlaced</code>, <code>PaymentAuthorized</code>). It cannot be canceled; it can only be compensated by a subsequent event.</p>
       <ul>
-        <li><strong>Publish/subscribe:</strong> multiple subscribers react to an event.</li>
-        <li><strong>Queue / competing consumers:</strong> workers share a stream of tasks for load distribution.</li>
-        <li><strong>Event notification:</strong> a small fact prompts a consumer to fetch more data.</li>
-        <li><strong>Event-carried state transfer:</strong> an event contains enough data for a consumer, with stronger privacy and schema obligations.</li>
-        <li><strong>Stream processing:</strong> process ordered records with windows, joins, and state over time.</li>
+        <li><strong>Command:</strong> A directed request to a specific recipient demanding an action (e.g., <code>AuthorizePayment</code>). May be rejected.</li>
+        <li><strong>Event:</strong> A broadcast statement of completed fact. Cannot be rejected; recipients react autonomously.</li>
+        <li><strong>Query:</strong> A read-only request for current state without side effects.</li>
       </ul>
-      <h3>Event anatomy</h3>
-      <p>Include a stable event type and version, unique event ID, occurrence time, producer/source, aggregate or entity ID, correlation/trace context, and the minimal payload consumers require. Distinguish event time from processing time; avoid secrets and unnecessary personal data.</p>
+
+      <h3>Production CloudEvents JSON Envelope</h3>
+      <pre><code>{
+  "specversion": "1.0",
+  "id": "e8a93d05-4f32-4112-9c17-1048a60f948a",
+  "source": "/orders/checkout-service",
+  "type": "com.enterprise.commerce.order.placed.v1",
+  "datacontenttype": "application/json",
+  "time": "2026-11-21T14:32:00Z",
+  "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "data": {
+    "orderId": "ord_987123",
+    "customerId": "usr_4455",
+    "totalAmount": 149.99,
+    "currency": "USD",
+    "items": [
+      { "sku": "SKU-PRO-01", "quantity": 1, "price": 149.99 }
+    ]
+  }
+}</code></pre>
+
       <figure class="architecture-diagram">
         <div class="architecture-diagram-scroll">
           <svg viewBox="0 0 960 440" role="img" aria-labelledby="events-diagram-title events-diagram-description">
@@ -101,78 +129,141 @@
         <figcaption>Transactional publication and independent consumers. Assume delivery can repeat; make consumer effects idempotent and monitor retry and dead-letter paths.</figcaption>
       </figure>
     </section>
-    <section class="lesson" id="patterns">
-      <h2>2. Pub/sub, event sourcing, and CQRS</h2>
-      <p>Pub/sub distributes events; it does not require the producer's state to be event-sourced. Event sourcing uses an append-only event log as the authoritative history from which state can be rebuilt. It is useful for audit-heavy or temporal domains when replay and history justify more complex schema evolution, projections, privacy handling, and operations.</p>
-      <p>CQRS separates command handling from query models. A read projection can lag behind writes, so APIs must explain consistency and handle stale reads. Combine CQRS with event sourcing only when those independent needs are real.</p>
-      <h3>Transactional outbox</h3>
-      <p>When a database update must produce an event, save both business state and an outbox record in one local transaction. A relay publishes records and marks progress. Consumers remain idempotent because publication and delivery can repeat.</p>
+
+    <section class="lesson" id="storming">
+      <h2>2. Event Storming: Rapid Domain Discovery</h2>
+      <p>Event Storming is a collaborative workshop method that models complex business domains through the timeline of events they produce:</p>
+      <ul>
+        <li><strong>Orange Sticky Notes (Domain Events):</strong> Written strictly in past tense (<code>OrderSubmitted</code>, <code>PaymentFailed</code>, <code>InventoryAllocated</code>). Arranged left-to-right chronologically.</li>
+        <li><strong>Blue Sticky Notes (Commands):</strong> Actions triggered by users or external systems that produce an event (<code>SubmitOrder</code>).</li>
+        <li><strong>Yellow Sticky Notes (Aggregates):</strong> Domain entities and business invariant boundary enforcers (<code>Order</code>, <code>Account</code>).</li>
+        <li><strong>Pink Sticky Notes (Policies / Reactive Rules):</strong> "Whenever [Event X] happens, do [Command Y]" (e.g., <em>Whenever OrderPlaced, ReserveStock</em>).</li>
+      </ul>
     </section>
+
     <section class="lesson" id="brokers">
-      <h2>3. Choosing a broker: Kafka, Pulsar, or RabbitMQ</h2>
-      <p>Select based on workload, operational capability, ecosystem, and measured requirements—not brand popularity.</p>
+      <h2>3. Selecting a Message Broker</h2>
       <table>
-        <thead><tr><th>Technology</th><th>Common fit</th><th>Evaluate carefully</th></tr></thead>
+        <thead><tr><th>Broker Technology</th><th>Storage &amp; Delivery Model</th><th>Best Fit Workloads</th><th>Key Tradeoffs to Consider</th></tr></thead>
         <tbody>
-          <tr><td>Apache Kafka</td><td>Durable partitioned logs, replay, high-throughput streams, broad ecosystem</td><td>Partition/key design, retention, consumer lag, cluster operations</td></tr>
-          <tr><td>Apache Pulsar</td><td>Messaging and streaming with multi-tenancy and separated storage/compute options</td><td>Operational model, deployment complexity, ecosystem fit</td></tr>
-          <tr><td>RabbitMQ</td><td>Flexible routing, task queues, work distribution, conventional broker workflows</td><td>Queue topology, persistence/throughput needs, cluster and flow control</td></tr>
+          <tr>
+            <td><strong>Apache Kafka</strong></td>
+            <td>Durable, partitioned, append-only disk log. Consumers track offsets independently.</td>
+            <td>High-throughput event streaming, event sourcing, replayable audit streams, real-time analytics.</td>
+            <td>Partition rebalance pauses; partition sizing cannot be decreased; client complexity.</td>
+          </tr>
+          <tr>
+            <td><strong>Apache Pulsar</strong></td>
+            <td>Separates compute (Brokers) from storage (Apache BookKeeper). Multi-tenancy native.</td>
+            <td>Multi-tenant enterprises, millions of individual topics, geo-replication.</td>
+            <td>High operational footprint (ZooKeeper + BookKeeper + Pulsar Brokers).</td>
+          </tr>
+          <tr>
+            <td><strong>RabbitMQ</strong></td>
+            <td>Traditional smart-broker / dumb-consumer AMQP message queues with complex routing exchanges.</td>
+            <td>Task queues, complex content/topic routing, RPC-over-messaging, immediate job dispatch.</td>
+            <td>Messages deleted after ack; zero native historical replay; throughput limits under massive queues.</td>
+          </tr>
+          <tr>
+            <td><strong>AWS EventBridge / SNS+SQS</strong></td>
+            <td>Fully managed cloud serverless event routing with schema registry and SaaS integrations.</td>
+            <td>Serverless architectures, cross-AWS account event routing, low operational maintenance.</td>
+            <td>Latency spikes (50–100ms+); vendor lock-in; per-million request cost at scale.</td>
+          </tr>
+          <tr>
+            <td><strong>NATS / JetStream</strong></td>
+            <td>Ultra-lightweight, high-performance messaging with optional durable streaming.</td>
+            <td>Microservices, edge computing, IoT, Kubernetes internal service communication.</td>
+            <td>Smaller ecosystem of managed enterprise connectors compared to Kafka.</td>
+          </tr>
         </tbody>
       </table>
-      <p>Managed service availability, regional recovery, quotas, client maturity, support, and total operating cost may be more decisive than feature comparisons. Prototype the failure and replay paths before standardizing.</p>
     </section>
-    <section class="lesson" id="delivery">
-      <h2>4. Contracts, ordering, and delivery guarantees</h2>
-      <p>Schema evolution is a compatibility policy. Add optional fields carefully, preserve field meaning, and test producer/consumer combinations during rolling deployment. Use a schema registry or contract checks when multiple teams publish shared events. CloudEvents offers a common event envelope, but it does not define business semantics.</p>
+
+    <section class="lesson" id="kafka-deep-dive">
+      <h2>4. Kafka Architecture Deep Dive</h2>
       <ul>
-        <li><strong>At-most-once:</strong> no retry after uncertain processing; loss is possible.</li>
-        <li><strong>At-least-once:</strong> retry until acknowledged; duplicates are possible.</li>
-        <li><strong>Effectively-once business effect:</strong> use stable event IDs, idempotency, deduplication, and transactional boundaries.</li>
-      </ul>
-      <p>Ordering is usually scoped to a partition, key, queue, or entity—not global. Pick a key that preserves only the ordering your domain requires. Avoid describing a broker's delivery guarantee as an end-to-end business guarantee.</p>
-    </section>
-    <section class="lesson" id="reliability">
-      <h2>5. Idempotency, retries, and dead-letter handling</h2>
-      <p>Consumers should store processed IDs or use an idempotent state transition. Apply bounded retries with exponential backoff and jitter; classify transient versus permanent failures. A poison message should not block unrelated work unless strict ordering requires it.</p>
-      <p>Dead-letter queues are quarantine and investigation tools, not automatic success. Include original metadata, failure reason, attempt count, and replay process. Redact sensitive payloads, set retention, alert on growth, and make replay safe.</p>
-      <h3>Saga pattern</h3>
-      <p>A saga coordinates a long-running business workflow through local transactions and explicit compensations or forward recovery. Define timeouts, duplicate messages, compensation failure, manual intervention, and the source of workflow truth. Choose choreography for small, loosely coupled flows; an orchestrator can make complex state more visible.</p>
-    </section>
-    <section class="lesson" id="operations">
-      <h2>6. Observability and anti-patterns</h2>
-      <p>Propagate trace and correlation context. Monitor publish errors, consumer lag, processing latency, retry rate, dead-letter volume, throughput, and broker saturation. OpenTelemetry messaging conventions evolve; use the current conventions supported by your instrumentation, and avoid high-cardinality identifiers as metric labels.</p>
-      <ul>
-        <li>Do not use a generic event bus as hidden remote procedure calls.</li>
-        <li>Do not publish database rows as public contracts without ownership.</li>
-        <li>Do not promise immediate consistency to clients when projections lag.</li>
-        <li>Do not retry forever or silently discard failures.</li>
-        <li>Do not create a topic/queue per entity without lifecycle governance.</li>
+        <li><strong>Partition Strategy &amp; Ordering:</strong> Kafka provides strict ordering <em>only within a single partition</em>. If order events must be processed sequentially for a customer, set the partition key to <code>customerId</code> (or <code>orderId</code>).
+          <div class="callout">
+            <strong>Hot-Partition Warning:</strong> If a partition key is skewed (e.g., partition by <code>merchant_id</code> and Amazon is one merchant), a single broker partition will saturate while others sit idle. Add a synthetic salt (e.g., <code>merchant_id + "_" + (hash % 10)</code>) to balance high-volume keys.
+          </div>
+        </li>
+        <li><strong>Consumer Groups &amp; Rebalancing:</strong> When a consumer node joins or crashes, Kafka triggers a rebalance. Use modern Cooperative Sticky Assignors (incremental rebalancing) to prevent "stop-the-world" consumer pauses across all partitions.</li>
+        <li><strong>Exactly-Once Semantics (EOS):</strong> Kafka achieves idempotent production via producer sequence numbers and transactions across multiple topics. However, end-to-end "exactly-once" across external databases requires <strong>idempotent consumer processing</strong> at the application layer.</li>
       </ul>
     </section>
-    <section class="lesson" id="roadmap">
-      <h2>7. Migration roadmap and practice</h2>
+
+    <section class="lesson" id="outbox-cdc">
+      <h2>5. The Transactional Outbox Pattern and Change Data Capture (CDC)</h2>
+      <p>A classic distributed systems bug occurs when an application updates a database and then attempts to publish an event to Kafka. If the broker is unreachable, the event is lost; if the broker succeeds but the database commits fail, a phantom event is broadcast.</p>
+
+      <h3>The Transactional Outbox Solution</h3>
       <ol>
-        <li>Choose one integration where asynchronous behavior has clear value.</li>
-        <li>Define event ownership, schema, privacy, retention, ordering, and consumer obligations.</li>
-        <li>Implement transactional publication and an idempotent consumer.</li>
-        <li>Test duplicate, delayed, out-of-order, poison, and unavailable-broker cases.</li>
-        <li>Add tracing, lag/error metrics, alerts, DLQ review, and replay procedures.</li>
-        <li>Roll out beside the existing flow, compare outcomes, then retire the old path.</li>
+        <li>Inside a single ACID database transaction, insert the business entity into <code>orders</code> and the serialized event into an <code>outbox_events</code> table.</li>
+        <li>Commit the database transaction. State and event are guaranteed to be persisted together.</li>
+        <li>An asynchronous background relay process (e.g., Debezium CDC or polling worker) reads the outbox table and publishes events to the broker.</li>
+        <li>Once published, the relay marks the outbox record as published or removes it.</li>
       </ol>
-      <div class="exercise"><strong>Practice</strong>Model order placed → payment authorized → inventory reserved. Define event payloads, idempotency key, timeout behavior, compensation, and what the customer sees while the workflow is pending.</div>
+      <p><strong>Change Data Capture (Debezium):</strong> Rather than polling the outbox table with <code>SELECT ... FOR UPDATE</code>, Debezium directly reads the database transaction log (PostgreSQL WAL or MySQL binlog). This produces near-zero database CPU overhead and captures mutations in sub-second time.</p>
     </section>
+
+    <section class="lesson" id="event-sourcing">
+      <h2>6. Event Sourcing and Aggregate Projections</h2>
+      <p>Traditional CRUD overwrites row state. Event Sourcing stores the sequence of events as the single source of truth:</p>
+      <pre><code>ShoppingCart Aggregate Event Stream:
+  1. CartCreated(cartId: 101, userId: 44)
+  2. ItemAdded(cartId: 101, sku: "A1", qty: 2)
+  3. ItemAdded(cartId: 101, sku: "B2", qty: 1)
+  4. ItemRemoved(cartId: 101, sku: "A1", qty: 1)
+  5. CouponApplied(cartId: 101, code: "SAVE10")
+
+Rebuilding State:
+  Current Cart = Fold/Reduce(Events, InitialEmptyCart)
+  - Result: 1x "A1", 1x "B2", 10% Discount applied.</code></pre>
+
+      <p><strong>Snapshots:</strong> Replaying 10,000 events to calculate current state is slow. Periodically write a snapshot (e.g., every 100 events) and replay only subsequent events.<br>
+      <strong>Crypto-Shredding for GDPR:</strong> When a user requests deletion under GDPR, you cannot delete events from an immutable append-only ledger. Mitigate this by encrypting user PII in each event with a unique per-user encryption key; upon deletion request, destroy the user's encryption key. The event history remains intact, but the PII becomes unrecoverable cryptographically.</p>
+    </section>
+
+    <section class="lesson" id="observability-dlq">
+      <h2>7. Observability, Dead-Letter Queues, and Operational Runbooks</h2>
+      <ul>
+        <li><strong>Consumer Lag:</strong> The number of unread records between the producer's latest offset and the consumer's current committed offset. A growing lag indicates consumer failure, slow database queries, or traffic spikes.</li>
+        <li><strong>Dead-Letter Queue (DLQ) Operational Runbook:</strong>
+          <ol>
+            <li><strong>Quarantine:</strong> If a message fails after 3 exponential backoff retries (e.g., malformed JSON or poisoned schema), route it to <code>orders.dlq</code>. Never drop messages silently.</li>
+            <li><strong>Alerting:</strong> Trigger PagerDuty when DLQ depth &gt; 0.</li>
+            <li><strong>Inspection &amp; Bug Fix:</strong> Developers inspect the payload and stack trace, patch the consumer bug, and deploy the fix.</li>
+            <li><strong>Replay:</strong> Run an automated replay tool that consumes from the DLQ and re-publishes messages back into the primary processing topic.</li>
+          </ol>
+        </li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="practice">
+      <h2>8. Practical Exercises</h2>
+      <ol>
+        <li><strong>Event Storming Model:</strong> Conduct an event storming session on an automated hotel room reservation system. Model at least 6 domain events, 3 commands, 2 aggregates, and 1 compensating event.</li>
+        <li><strong>Idempotent Consumer Implementation:</strong> Write pseudocode for an event consumer that receives <code>PaymentCompleted</code> events. Use an idempotency table with unique constraints to ensure that duplicate message delivery does not credit a customer balance twice.</li>
+        <li><strong>Outbox vs. 2PC Comparison:</strong> Explain why a two-phase commit (2PC) between a PostgreSQL database and an Apache Kafka cluster is fragile in cloud deployments, and contrast it with a Transactional Outbox pattern backed by Debezium.</li>
+      </ol>
+    </section>
+
     <section class="lesson" id="sources">
       <h2>Further reading</h2>
       <ul class="reading-list">
-        <li><a href="https://cloudevents.io/" target="_blank" rel="noreferrer">CloudEvents</a> — interoperable event metadata specification.</li>
-        <li><a href="https://kafka.apache.org/documentation/" target="_blank" rel="noreferrer">Apache Kafka documentation</a> — architecture, producers, consumers, and operations.</li>
-        <li><a href="https://pulsar.apache.org/docs/" target="_blank" rel="noreferrer">Apache Pulsar documentation</a> — messaging and streaming model.</li>
-        <li><a href="https://www.rabbitmq.com/docs" target="_blank" rel="noreferrer">RabbitMQ documentation</a> — queues, routing, reliability, and operations.</li>
-        <li><a href="https://opentelemetry.io/docs/specs/semconv/messaging/" target="_blank" rel="noreferrer">OpenTelemetry messaging conventions</a> — telemetry for messaging operations.</li>
+        <li><a href="https://cloudevents.io/" target="_blank" rel="noreferrer">CloudEvents Specification</a> — CNCF standard for common event metadata attributes.</li>
+        <li><a href="https://kafka.apache.org/documentation/" target="_blank" rel="noreferrer">Apache Kafka Official Documentation</a> — partition design, consumer groups, and internals.</li>
+        <li><a href="https://debezium.io/" target="_blank" rel="noreferrer">Debezium: Change Data Capture</a> — distributed platform for CDC and transactional outbox pipelines.</li>
+        <li><a href="https://www.eventstorming.com/" target="_blank" rel="noreferrer">Event Storming (Alberto Brandolini)</a> — the definitive guide to rapid business domain modeling.</li>
       </ul>
     </section>
-    <div class="lesson-footer"><a class="lesson-link" href="architecture-07-modular-monolith.html">← Previous: Modular monolith</a><a class="lesson-link" href="architecture-09-grpc-protobuf.html">Next lesson: gRPC and Protobuf →</a></div>
-    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Design for duplicates, lag, and recovery from the beginning.</footer>
+
+    <div class="lesson-footer">
+      <a class="lesson-link" href="architecture-07-modular-monolith.html">← Previous: Modular monolith</a>
+      <a class="lesson-link" href="architecture-09-grpc-protobuf.html">Next lesson: gRPC and Protobuf →</a>
+    </div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-11-21 · Design for network latency, duplicate delivery, and failure from Day 1.</footer>
   </main>
 </body>
 </html>

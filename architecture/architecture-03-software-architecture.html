@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="handbook-version" content="v2">
-  <meta name="last-updated" content="2026-10-27">
-  <meta name="description" content="Core software architecture concepts, quality attributes, architectural styles, tradeoffs, anti-patterns, and a practical design checklist.">
+  <meta name="last-updated" content="2026-11-21">
+  <meta name="description" content="Comprehensive software architecture guide: quality attributes, architectural styles, ATAM tradeoff analysis, anti-patterns, evolutionary architecture, fitness functions, and architecture-as-code.">
   <title>03. Software Architecture Foundations | Architecture Learning Path</title>
   <link rel="stylesheet" href="learning-path.css">
 </head>
@@ -14,96 +14,280 @@
   <header class="course-header">
     <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
     <span class="path-progress">03 / 13 · Beginner</span>
-    <nav class="course-nav" aria-label="Learning path"><a href="architecture-02-enterprise-foundations.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-04-pattern-decisions.html">Next →</a></nav>
+    <nav class="course-nav" aria-label="Learning path">
+      <a href="architecture-02-enterprise-foundations.html">← Previous</a>
+      <a href="../index.html">All handbooks</a>
+      <a href="architecture-04-pattern-decisions.html">Next →</a>
+    </nav>
   </header>
   <main class="course" id="main">
     <section class="hero">
       <div class="eyebrow">Step 03 · Beginner · Core concepts</div>
       <h1>Software architecture: boundaries, qualities, and tradeoffs</h1>
-      <p class="lede">Architecture is the set of structures and decisions that shape a system's behavior and evolution. Good architecture is not a diagram or a fashionable pattern: it is a set of deliberate choices that helps teams meet user needs under real constraints.</p>
-      <div class="hero-meta"><span class="badge">Quality attributes</span><span class="badge">Architectural styles</span><span class="badge">Failure and change</span><span class="badge">Decision checklist</span></div>
+      <p class="lede">Architecture is the set of consequential decisions and structures that shape a system's behavior, evolution, and operability. Good architecture is not an abstract diagram or a trendy buzzword: it is a set of deliberate, evidence-based choices balancing competing quality attributes under real-world constraints.</p>
+      <div class="hero-meta">
+        <span class="badge">Quality Attribute Scenarios</span>
+        <span class="badge">ATAM Tradeoff Analysis</span>
+        <span class="badge">Architectural Styles</span>
+        <span class="badge">Fitness Functions</span>
+        <span class="badge">Architecture-as-Code</span>
+      </div>
     </section>
+
     <section class="lesson" id="foundations">
-      <h2>1. Start with context and quality attributes</h2>
-      <p>Before selecting a style, define system boundaries, actors, external dependencies, data ownership, and constraints. Convert vague goals into observable scenarios:</p>
-      <pre><code>When [stimulus] occurs,
-under [operating condition],
-the system should [measurable response].
-Measure: [latency, availability, correctness, cost, recovery].</code></pre>
-      <p>Examples include a p95 checkout response below a target under a specified load, a recoverable regional outage, a safe schema migration with old and new clients, or a deletion request completed across derived data. Prioritize a few critical qualities; optimizing everything often creates needless complexity.</p>
-      <h3>Architecture is consequential, not immutable</h3>
-      <p>Keep decisions that are expensive to reverse visible, but do not freeze every implementation choice. Use lightweight Architecture Decision Records, small experiments, and fitness functions (automated checks for boundaries, dependencies, performance, or compliance) to validate that the design remains true.</p>
-    </section>
-    <section class="lesson" id="styles">
-      <h2>2. The main architectural styles</h2>
+      <h2>1. Context and Measurable Quality Attributes</h2>
+      <p>Before selecting any technology, language, or pattern, architects must define the system boundary, primary personas, external dependencies, data ownership boundaries, and core constraints. Vague goals like "the system must be fast and scalable" are useless because they cannot be verified or budgeted against.</p>
+
+      <h3>The Formal Quality Attribute Scenario</h3>
+      <p>A rigorous quality attribute scenario converts subjective desires into measurable engineering specifications with 6 structural elements:</p>
+      <pre><code>Standard Quality Attribute Scenario Template:
+  1. Source of Stimulus: Who or what generates the stimulus (e.g., end user, batch client, hardware fault).
+  2. Stimulus: The condition or event arriving at the system (e.g., 50,000 concurrent checkout requests).
+  3. Environment: The operating state (e.g., normal business hours, peak Black Friday burst, during failover).
+  4. Artifact: The specific subsystem affected (e.g., payment gateway adapter, user session store).
+  5. Response: How the system behaves upon stimulus arrival (e.g., throttles excess traffic, degrades non-essential UI).
+  6. Response Measure: Quantitative metric validating success (e.g., p99 latency &lt; 250ms, zero dropped transactions).</code></pre>
+
+      <h3>Worked Quality Attribute Scenarios</h3>
       <table>
-        <thead><tr><th>Style</th><th>Good starting point when</th><th>Cost to plan for</th></tr></thead>
+        <thead><tr><th>Attribute</th><th>Stimulus &amp; Context</th><th>Expected Response &amp; Quantitative Measure</th></tr></thead>
         <tbody>
-          <tr><td>Monolith</td><td>One product/team benefits from simple local calls and transactions</td><td>Unmanaged shared code and coupled releases</td></tr>
-          <tr><td>Modular monolith</td><td>Clear domain modules can share one deployment and operational model</td><td>Boundary discipline and module-level tests</td></tr>
-          <tr><td>Microservices</td><td>Independent ownership, scaling, or release cadence is a proven need</td><td>Network failure, data ownership, observability, and platform work</td></tr>
-          <tr><td>Event-driven</td><td>Producers and consumers need temporal decoupling or stream processing</td><td>Event contracts, duplicates, ordering, and eventual consistency</td></tr>
-          <tr><td>Serverless</td><td>Managed execution and elastic or event-triggered workloads fit the platform</td><td>Limits, cold starts, provider coupling, and distributed debugging</td></tr>
-          <tr><td>Layered / hexagonal</td><td>Separation of business policy from delivery and infrastructure matters</td><td>Abstraction overhead if boundaries are speculative</td></tr>
+          <tr>
+            <td><strong>Latency / Performance</strong></td>
+            <td>5,000 product search queries/sec arrive during flash sale.</td>
+            <td>Return top-20 search results from read-replica cache; p95 latency &lt; 120 ms, p99 &lt; 250 ms.</td>
+          </tr>
+          <tr>
+            <td><strong>Availability &amp; Resilience</strong></td>
+            <td>Primary database availability zone loses power completely without warning.</td>
+            <td>Failover to synchronous secondary replica within 30 seconds; data loss (RPO) = 0, service downtime (RTO) &lt; 45s.</td>
+          </tr>
+          <tr>
+            <td><strong>Security &amp; Confidentiality</strong></td>
+            <td>Attacker injects SQL payload or manipulated JWT token via public API.</td>
+            <td>API Gateway blocks request with HTTP 403; security incident logged with trace ID; zero unauthorized data exposed.</td>
+          </tr>
+          <tr>
+            <td><strong>Maintainability &amp; Deployability</strong></td>
+            <td>Product team introduces a breaking change to the tax calculation module.</td>
+            <td>Automated contract tests flag incompatibility in CI in &lt; 5 minutes; zero customer-facing regression.</td>
+          </tr>
+          <tr>
+            <td><strong>Elastic Scalability</strong></td>
+            <td>Ingestion traffic spikes from 10,000 to 100,000 events/sec within 3 minutes.</td>
+            <td>Cluster autoscales pods via HPA; consumer queue depth stays below 250,000; zero dropped messages.</td>
+          </tr>
         </tbody>
       </table>
-      <h3>BFF, CQRS, and event sourcing</h3>
-      <p>A Backend for Frontend (BFF) tailors an API to a client experience; avoid turning it into a second business domain. CQRS separates command and query models when their needs differ materially. Event sourcing stores state changes as an event history; it adds replay, projection, privacy, and schema responsibilities. Neither CQRS nor event sourcing is a default requirement for every event-driven system.</p>
+
+      <h3>The Quality Attribute Utility Tree</h3>
+      <p>A Utility Tree organizes all architectural goals under high-level categories (Performance, Security, Modifiability, Availability), decomposing each into sub-factors and prioritizing them using a simple <code>(Importance to Business, Technical Risk/Difficulty)</code> matrix, such as <code>(High, High)</code>, <code>(High, Medium)</code>, or <code>(Low, Low)</code>.</p>
     </section>
+
+    <section class="lesson" id="styles">
+      <h2>2. Core Architectural Styles and Topologies</h2>
+      <table>
+        <thead><tr><th>Architectural Style</th><th>Primary Characteristics</th><th>Ideal Starting Context</th><th>Hidden Cost / Tradeoff</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Monolith</strong></td>
+            <td>Single deployable artifact; shared in-memory function calls and ACID transactions.</td>
+            <td>Small team, single domain, rapid product exploration, simple CI/CD.</td>
+            <td>Release coupling; accidental code entanglement; scaling requires sizing for the largest resource consumer.</td>
+          </tr>
+          <tr>
+            <td><strong>Modular Monolith</strong></td>
+            <td>Single deployable binary with compile-time or package-enforced domain boundaries.</td>
+            <td>Growing teams needing clean modularity without the operational tax of distributed systems.</td>
+            <td>Requires strict architectural test enforcement; shared database discipline needed.</td>
+          </tr>
+          <tr>
+            <td><strong>Microservices</strong></td>
+            <td>Independently deployable services communicating over network APIs with isolated databases.</td>
+            <td>Multiple autonomous teams with independent deployment cadences and distinct scaling needs.</td>
+            <td>Network latency, distributed transactions, partial failures, distributed tracing, high on-call overhead.</td>
+          </tr>
+          <tr>
+            <td><strong>Event-Driven (EDA)</strong></td>
+            <td>Asynchronous, decoupled publish-subscribe brokers distributing immutable facts.</td>
+            <td>High-throughput streaming, fan-out workflows, temporal decoupling between producers &amp; consumers.</td>
+            <td>Eventual consistency, out-of-order delivery, dead-letter monitoring, event schema evolution.</td>
+          </tr>
+          <tr>
+            <td><strong>Pipe-and-Filter</strong></td>
+            <td>Data streams processed through a sequence of modular, reusable transformation filters.</td>
+            <td>ETL pipelines, media transcoding, data analytics, compiler toolchains.</td>
+            <td>Buffering overhead; serialization between stages; complex error recovery in intermediate pipes.</td>
+          </tr>
+          <tr>
+            <td><strong>Space-Based (Tuple Space)</strong></td>
+            <td>Shared in-memory data grid distributed across virtual units; zero central database bottlenecks.</td>
+            <td>High-frequency trading, real-time betting, massive concurrent stateful multiplayer workloads.</td>
+            <td>Extreme infrastructure cost; complex memory state synchronization and split-brain resolution.</td>
+          </tr>
+          <tr>
+            <td><strong>Service-Oriented (SOA)</strong></td>
+            <td>Enterprise-wide shared services communicating through an Enterprise Service Bus (ESB).</td>
+            <td>Legacy enterprise integration across disparate enterprise COTS and mainframe applications.</td>
+            <td>ESB becomes a monolithic bottleneck; complex XML/SOAP protocol transformations.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="lesson" id="atam">
+      <h2>3. Architecture Tradeoff Analysis Method (ATAM)</h2>
+      <p>Architecture is the art of trade-offs: you cannot maximize every quality attribute simultaneously. Increasing security (e.g., deep packet inspection, token encryption) often increases latency. Increasing availability through active-active multi-region replication increases cost and complicates data consistency.</p>
+
+      <div class="callout">
+        <strong>The 2-Hour Mini-ATAM Workshop Framework</strong>
+        <p>1. <strong>Present Business Drivers (15 min):</strong> Product lead explains strategic goals, timelines, and business constraints.<br>
+        2. <strong>Present Architecture (20 min):</strong> Architect presents high-level design, major components, and key data flows.<br>
+        3. <strong>Build Utility Tree (30 min):</strong> Stakeholders brainstorm and rank Quality Attribute Scenarios by business value and risk.<br>
+        4. <strong>Analyze Architecture Approaches (40 min):</strong> Walk the top-priority scenarios through the design, cataloging:
+          <ul>
+            <li><strong>Sensitivity Points:</strong> Architectural decisions that directly impact a specific quality (e.g., cache TTL length impacts data freshness).</li>
+            <li><strong>Tradeoff Points:</strong> Decisions that affect multiple qualities oppositely (e.g., synchronous replication improves durability but degrades write latency).</li>
+            <li><strong>Risks:</strong> Unvalidated assumptions that could lead to failure under stress.</li>
+            <li><strong>Non-Risks:</strong> Decisions deemed safe and well-understood.</li>
+          </ul>
+        5. <strong>Document Findings &amp; Mitigations (15 min):</strong> Create action items and ADRs for identified risks.</p>
+      </div>
+
+      <h3>Tradeoff Matrix Example</h3>
+      <table>
+        <thead><tr><th>Architectural Choice</th><th>Positive Impact (+)</th><th>Negative Impact (-)</th><th>Decision Justification</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Read-Through Distributed Cache (Redis)</td>
+            <td>Sub-millisecond query latency; shields database from read spikes.</td>
+            <td>Eventual consistency; stale data reads; cache invalidation complexity.</td>
+            <td>Accepted for product catalog; rejected for payment processing.</td>
+          </tr>
+          <tr>
+            <td>Zero Trust Mutual TLS (mTLS) Mesh</td>
+            <td>End-to-end encryption; cryptographic workload identity verification.</td>
+            <td>CPU overhead (~5%); certificate rotation automation; debugging complexity.</td>
+            <td>Mandatory due to PCI-DSS compliance requirements.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <section class="lesson" id="anti-patterns">
-      <h2>3. Anti-patterns and the microservice complexity tax</h2>
-      <ul>
-        <li><strong>Big-ball-of-mud:</strong> no enforced ownership or stable boundaries.</li>
-        <li><strong>Distributed monolith:</strong> multiple services that must deploy together and share data tightly.</li>
-        <li><strong>Premature abstraction:</strong> framework or platform built before repeatable needs are known.</li>
-        <li><strong>Shared database by default:</strong> teams change one schema without clear ownership or compatibility.</li>
-        <li><strong>Golden hammer:</strong> apply one style to every problem.</li>
-        <li><strong>Architecture astronautics:</strong> optimize for hypothetical scale rather than measured constraints.</li>
-      </ul>
-      <p>Microservices move complexity from in-process code to the network and organization: service discovery, authentication, deployment, compatibility, partial failure, tracing, on-call, and data consistency. A service boundary is worth its operational price when it buys clear ownership or an independently valuable capability.</p>
+      <h2>4. Architectural Anti-Patterns and Remedies</h2>
+      <table>
+        <thead><tr><th>Anti-Pattern</th><th>Symptom</th><th>Root Cause</th><th>Practical Remedy</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Distributed Monolith</strong></td>
+            <td>Services must be released together in lockstep; deploying Service A breaks Service B; local dev requires 30 containers.</td>
+            <td>Microservices created along functional or technical lines without true domain independence; shared databases.</td>
+            <td>Merge tightly coupled services back into a modular monolith, or redraw boundaries around DDD Bounded Contexts with private data.</td>
+          </tr>
+          <tr>
+            <td><strong>Big Ball of Mud</strong></td>
+            <td>No clear ownership; spaghetti dependencies; modifying one feature introduces bugs in unrelated modules.</td>
+            <td>Lack of boundary enforcement; short-term expediency prioritizing features over architecture discipline.</td>
+            <td>Introduce automated architecture tests (ArchUnit); extract clear module interfaces; establish an anti-corruption layer.</td>
+          </tr>
+          <tr>
+            <td><strong>Database-as-Integration</strong></td>
+            <td>Multiple independent microservices directly query and write to the same shared database tables.</td>
+            <td>Quick shortcut to avoid building APIs or event pipelines; lack of data ownership discipline.</td>
+            <td>Assign authoritative data ownership to a single service; expose data strictly via authenticated APIs or domain events.</td>
+          </tr>
+          <tr>
+            <td><strong>Resume-Driven Design</strong></td>
+            <td>A low-traffic internal CRUD app is engineered with Kubernetes, Kafka, Cassandra, and GraphQL federation.</td>
+            <td>Engineers choosing fashionable technologies to pad resumes rather than solving actual business requirements.</td>
+            <td>Enforce Technology Radar and ADR governance; demand clear justification for operational complexity against real SLAs.</td>
+          </tr>
+          <tr>
+            <td><strong>Architecture Astronautics</strong></td>
+            <td>Endless abstractions, generic frameworks, and multi-tenant plugin engines built before shipping a working product.</td>
+            <td>Speculative over-engineering; premature anticipation of unproven future scale.</td>
+            <td>Follow the Rule of Three: build abstractions only after implementing three concrete, working examples.</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
-    <section class="lesson" id="industry">
-      <h2>4. Current practice: optimize for outcomes, not fashions</h2>
-      <p>Modern architecture practice emphasizes operability and continuous learning: product-oriented platform capabilities, secure defaults, observable systems, automated delivery, and progressive change. A platform should be treated as a product for internal users, measured by adoption and reduced friction—not by how many tools it contains.</p>
-      <p>DORA's current software-delivery model uses five measures: change lead time, deployment frequency, failed deployment recovery time, change fail rate, and deployment rework rate. Use them to guide improvement for an application or service; do not turn one metric into an individual performance target. OpenTelemetry's semantic conventions help make telemetry more consistent across services and tools.</p>
-      <p>AI-enabled components add explicit concerns: model/provider substitution, data exposure, evaluation quality, cost per task, latency, unsafe outputs, and human escalation. Treat them as system dependencies with testable service objectives and risk controls, not as magical internal libraries.</p>
-    </section>
-    <section class="lesson" id="process">
-      <h2>5. A practical architecture process</h2>
+
+    <section class="lesson" id="evolutionary">
+      <h2>5. Evolutionary Architecture and Fitness Functions</h2>
+      <p>An evolutionary architecture supports guided, incremental change across multiple dimensions. Architectural constraints cannot rely on human memory or static wiki pages; they must be codified into <strong>Automated Fitness Functions</strong> executed in CI/CD pipelines.</p>
+
+      <h3>5 Concrete Architectural Fitness Functions</h3>
       <ol>
-        <li>State users, outcomes, scope, constraints, and non-goals.</li>
-        <li>Map important use cases, data flows, external systems, and trust boundaries.</li>
-        <li>Write measurable quality scenarios and identify the highest risks.</li>
-        <li>Compare at least two viable options, including the simplest one.</li>
-        <li>Document only consequential decisions, alternatives, and consequences.</li>
-        <li>Validate with a prototype, load test, threat model, or migration rehearsal.</li>
-        <li>Instrument production, review evidence, and revise decisions when context changes.</li>
+        <li><strong>Package Dependency Boundaries:</strong> Run ArchUnit (Java) or NetArchTest (.NET) to verify that the UI layer never imports persistence entities, and Module Orders never calls Module Payments internals directly.
+          <pre><code>// Example ArchUnit test (Java)
+classes().that().resideInAPackage("..domain..")
+  .should().onlyDependOnClassesThat().resideInAnyPackage("..domain..", "java..")
+  .check(importedClasses);</code></pre>
+        </li>
+        <li><strong>Performance Budget Enforcement:</strong> Lighthouse or k6 load tests fail the CI pipeline if bundle size exceeds 250 KB or API p95 response time exceeds 200 ms under standard baseline load.</li>
+        <li><strong>Security Vulnerability Thresholds:</strong> Snyk, Trivy, or Dependabot automatically block deployment if dependencies have known Critical or High CVSS vulnerabilities.</li>
+        <li><strong>API Backward Compatibility:</strong> Buf or OpenAPI diff tools automatically reject pull requests that remove fields, rename endpoints, or alter types without a version change.</li>
+        <li><strong>Cloud Cost Budgets:</strong> Infracost checks pull requests; if proposed Terraform changes increase monthly cloud infrastructure spend by &gt; 15%, an alert is posted and approval is required.</li>
       </ol>
-      <div class="exercise"><strong>Practice</strong>For a small online bookstore, compare a single deployable application, a modular monolith, and service decomposition. Use team count, independent release needs, availability targets, data ownership, and operating maturity—not anticipated user counts alone.</div>
     </section>
-    <section class="lesson" id="checklist">
-      <h2>Architecture design checklist</h2>
+
+    <section class="lesson" id="platform-ai">
+      <h2>6. Platform Engineering and AI System Architecture</h2>
+      <h3>Platform Engineering as an Architectural Enabler</h3>
+      <p>Modern architecture shifts away from ticketing queues toward Internal Developer Platforms (IDPs). The platform team treats internal developers as customers, providing <em>Golden Paths</em>—opinionated, pre-approved templates for scaffolding services, provisioning CI/CD, configuring observability, and managing databases with built-in security defaults.</p>
+
+      <h3>Architectural Considerations for AI &amp; LLM Components</h3>
+      <p>Treat Large Language Models as non-deterministic external network dependencies with unique failure modes:</p>
       <ul>
-        <li>Are system scope, responsibilities, owners, and external dependencies clear?</li>
-        <li>Are the critical quality attributes measurable and prioritized?</li>
-        <li>Are data classification, retention, privacy, and recovery addressed?</li>
-        <li>Are failure modes, overload, retries, timeouts, and degraded behavior explicit?</li>
-        <li>Can teams deploy, observe, secure, and operate the proposed design?</li>
-        <li>Are compatibility and migration steps planned for interfaces and data?</li>
-        <li>Can the design be simplified without breaking a real requirement?</li>
+        <li><strong>Prompt Injection Defense:</strong> Never concatenate untrusted user input directly into system prompts. Use strict input validation, delimiter boundaries, and secondary guardrail classification models.</li>
+        <li><strong>Model Provider Abstraction:</strong> Decouple application code from specific proprietary APIs (OpenAI, Anthropic, Gemini) via a unified gateway facade allowing seamless fallback routing when quotas or outages hit.</li>
+        <li><strong>Evaluation as a Test Suite:</strong> Implement automated offline eval benchmarks (e.g., golden test datasets measuring factual accuracy, hallucination rates, and semantic similarity) before promoting new model versions or system prompts.</li>
+        <li><strong>Token Cost and Latency Budgeting:</strong> LLM calls can take 1–10 seconds and cost cents per request. Implement semantic caching, streaming responses, and local SLM (Small Language Model) fallbacks for routine classification.</li>
       </ul>
     </section>
+
+    <section class="lesson" id="checklist">
+      <h2>7. Comprehensive Architecture Review Checklist</h2>
+      <ul>
+        <li><strong>Scope &amp; Responsibility:</strong> Does every component have a single clear responsibility and a documented owning team?</li>
+        <li><strong>Measurable SLOs:</strong> Are availability, latency (p50/p95/p99), and throughput targets quantified for every tier?</li>
+        <li><strong>Data Governance:</strong> Is there an authoritative single source of truth for every database entity? Are retention and GDPR deletion mapped?</li>
+        <li><strong>Failure Containment:</strong> Are timeouts, circuit breakers, backoff retries with jitter, and fallbacks explicitly defined for every remote call?</li>
+        <li><strong>Security &amp; IAM:</strong> Are all APIs authenticated? Is resource-level authorization enforced at the service, not just the edge gateway?</li>
+        <li><strong>Observability:</strong> Are OpenTelemetry traces, structured JSON logs, and RED metrics (Rate, Errors, Duration) propagated across all seams?</li>
+        <li><strong>Contract Evolution:</strong> Are schemas backward-compatible? Can old mobile clients continue operating safely during a rolling deploy?</li>
+        <li><strong>Cost &amp; Sizing:</strong> What is the estimated monthly cloud spend at 10x current volume? Is it financially sustainable?</li>
+        <li><strong>Disaster Recovery:</strong> What are the validated RPO (data loss) and RTO (recovery time) goals in a regional cloud outage?</li>
+        <li><strong>Simplicity Validation:</strong> Can any component, queue, or database be removed without breaking a legitimate business requirement?</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="practice">
+      <h2>8. Practical Exercises</h2>
+      <ol>
+        <li><strong>ATAM Workshop Simulation:</strong> Choose an online healthcare booking portal. Write 3 prioritized Quality Attribute Scenarios (HIPAA security, appointment booking latency, high availability). Conduct a mini-ATAM analysis comparing a monolithic design vs. an event-driven microservices design.</li>
+        <li><strong>Automated Fitness Function Design:</strong> Write an architectural rule for your current codebase preventing presentation controllers from calling database repositories directly. Which tool would you integrate into your CI pipeline to enforce this?</li>
+        <li><strong>Failure Mode Mapping:</strong> Draw a sequence diagram of a checkout service calling an external fraud-detection service. Specify explicit timeout durations, circuit-breaker tripping thresholds, and graceful degradation responses when the fraud vendor is down.</li>
+      </ol>
+    </section>
+
     <section class="lesson" id="sources">
       <h2>Further reading</h2>
       <ul class="reading-list">
-        <li><a href="https://dora.dev/guides/dora-metrics/" target="_blank" rel="noreferrer">DORA software delivery performance metrics</a> — current five-metric model and guidance.</li>
-        <li><a href="https://opentelemetry.io/docs/specs/semconv/" target="_blank" rel="noreferrer">OpenTelemetry semantic conventions</a> — evolving conventions for interoperable telemetry.</li>
-        <li><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noreferrer">NIST SP 800-207: Zero Trust Architecture</a> — identity- and resource-centric security principles.</li>
-        <li><a href="https://tag-app-delivery.cncf.io/whitepapers/platform-eng-maturity-model/" target="_blank" rel="noreferrer">CNCF Platform Engineering Maturity Model</a> — assess platform maturity across multiple aspects.</li>
+        <li><a href="https://dora.dev/guides/dora-metrics/" target="_blank" rel="noreferrer">DORA Software Delivery Metrics</a> — Google Cloud's research-backed benchmarks for elite engineering organizations.</li>
+        <li><a href="https://evolutionaryarchitecture.com/" target="_blank" rel="noreferrer">Building Evolutionary Architectures (Ford, Parsons, Kua)</a> — fitness functions and guided incremental change.</li>
+        <li><a href="https://opentelemetry.io/docs/specs/semconv/" target="_blank" rel="noreferrer">OpenTelemetry Semantic Conventions</a> — standard vendor-neutral telemetry attributes for distributed traces and metrics.</li>
+        <li><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noreferrer">NIST SP 800-207: Zero Trust Architecture</a> — authoritative principles for identity- and resource-centric security.</li>
+        <li><a href="https://tag-app-delivery.cncf.io/whitepapers/platform-eng-maturity-model/" target="_blank" rel="noreferrer">CNCF Platform Engineering Maturity Model</a> — assessing self-service developer infrastructure.</li>
       </ul>
     </section>
-    <div class="lesson-footer"><a class="lesson-link" href="architecture-02-enterprise-foundations.html">← Previous: Enterprise foundations</a><a class="lesson-link" href="architecture-04-pattern-decisions.html">Next lesson: Pattern decisions →</a></div>
-    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Architecture is a living set of tradeoffs.</footer>
+
+    <div class="lesson-footer">
+      <a class="lesson-link" href="architecture-02-enterprise-foundations.html">← Previous: Enterprise foundations</a>
+      <a class="lesson-link" href="architecture-04-pattern-decisions.html">Next lesson: Pattern decisions →</a>
+    </div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-11-21 · Architecture is the design of deliberate tradeoffs.</footer>
   </main>
 </body>
 </html>

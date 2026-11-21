@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="handbook-version" content="v1">
-  <meta name="last-updated" content="2026-10-31">
-  <meta name="description" content="Two worked architecture case studies showing how requirements, constraints, tradeoffs, and failure modes lead to a design.">
+  <meta name="handbook-version" content="v2">
+  <meta name="last-updated" content="2026-11-21">
+  <meta name="description" content="Five comprehensive real-world architecture case studies: e-commerce checkout, live multi-tenant analytics, real-time collaboration (Google Docs), social feeds, and cloud file storage.">
   <title>13. Architecture Case Studies | Architecture Learning Path</title>
   <link rel="stylesheet" href="learning-path.css">
 </head>
@@ -14,46 +14,38 @@
   <header class="course-header">
     <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
     <span class="path-progress">13 / 13 · Advanced</span>
-    <nav class="course-nav" aria-label="Learning path"><a href="architecture-12-togaf.html">← Previous</a><a href="../index.html">All handbooks</a></nav>
+    <nav class="course-nav" aria-label="Learning path">
+      <a href="architecture-12-togaf.html">← Previous</a>
+      <a href="../index.html">All handbooks</a>
+    </nav>
   </header>
   <main class="course" id="main">
     <section class="hero">
       <div class="eyebrow">Step 13 · Advanced · From problem to architecture</div>
       <h1>Architecture case studies: from use case to design</h1>
-      <p class="lede">There is no universally "good" architecture. A good design fits the business outcome, quality requirements, constraints, and operating capability—and makes its important tradeoffs and failure behavior explicit. These two examples show how to get from a use case to a defensible design.</p>
-      <div class="hero-meta"><span class="badge">Requirements first</span><span class="badge">Two worked use cases</span><span class="badge">Flow diagrams</span><span class="badge">Tradeoffs and failure paths</span></div>
+      <p class="lede">There is no universally "correct" architecture in isolation. Good architecture balances specific business requirements, quality attribute scenarios, operational constraints, and failure modes. These 5 comprehensive case studies illustrate how to derive defensible production architectures.</p>
+      <div class="hero-meta">
+        <span class="badge">E-Commerce &amp; Sagas</span>
+        <span class="badge">Multi-Tenant Analytics</span>
+        <span class="badge">Collaborative CRDTs</span>
+        <span class="badge">Social Feeds &amp; Fan-Out</span>
+        <span class="badge">Cloud File Storage &amp; Sync</span>
+      </div>
     </section>
 
-    <section class="lesson" id="approach">
-      <h2>1. A repeatable way to reach an architecture</h2>
-      <p>Start with the decision the system must support, not a preferred technology or diagram. The solution below each case is good only under the stated assumptions; change the workload, risk, team, or business constraint and the design may change.</p>
-      <ol>
-        <li><strong>Frame the use case:</strong> name the users, trigger, desired outcome, and system boundary.</li>
-        <li><strong>Make quality needs concrete:</strong> prioritize correctness, latency, throughput, availability, recovery, privacy, and cost. Use measurable targets when stakeholders can supply them.</li>
-        <li><strong>Write invariants and constraints:</strong> identify what must never happen, data owners, compliance needs, existing systems, team skills, and delivery limits.</li>
-        <li><strong>Trace the normal and failure flows:</strong> show synchronous calls, durable state, retries, timeouts, duplicates, and recovery.</li>
-        <li><strong>Compare the simplest viable options:</strong> state why an option fits, what it costs, and what evidence would justify a different one.</li>
-        <li><strong>Validate and revisit:</strong> test risky assumptions with a prototype, load test, threat review, operational exercise, or production evidence.</li>
-      </ol>
-      <div class="callout"><strong>Useful design test</strong>Can another engineer explain who owns each piece of data, what happens when a dependency fails, how the system recovers, and which assumption would trigger a redesign?</div>
-      <p>These are architecture examples, not blueprints. Do not copy their components without checking whether the requirements that justify them exist in your own system.</p>
-    </section>
-
+    <!-- CASE 1 -->
     <section class="lesson" id="case-one">
-      <h2>2. Use case one: place an order when payment can be slow</h2>
-      <h3>Problem and design drivers</h3>
-      <p>A customer checks out with several items. The system must prevent duplicate orders when a customer retries, must never mark an order paid without provider confirmation, and should let the customer see progress if payment takes time. A payment provider can time out or be temporarily unavailable. Assume one product team, moderate initial traffic, and no requirement for every domain to deploy independently.</p>
-      <table>
-        <thead><tr><th>Concern</th><th>Requirement / invariant</th><th>Architecture consequence</th></tr></thead>
-        <tbody>
-          <tr><td>Order correctness</td><td>One logical order per checkout idempotency key</td><td>Persist the key with a uniqueness constraint and return the prior result on retry</td></tr>
-          <tr><td>Payment truth</td><td>Only confirmed provider outcomes change payment state</td><td>Model pending, authorized, failed, and unknown outcomes explicitly; reconcile uncertainty</td></tr>
-          <tr><td>Provider outage</td><td>Do not lose an accepted order or hold a request open indefinitely</td><td>Persist order intent, process payment asynchronously, and expose order status</td></tr>
-          <tr><td>Team and operations</td><td>Small team; avoid unnecessary distributed operations</td><td>Start with a modular application and a durable outbox, not a fleet of microservices</td></tr>
-        </tbody>
-      </table>
+      <h2>Case Study 1: E-Commerce Checkout When Payment Can Be Slow</h2>
+      <h3>1. Problem &amp; Design Drivers</h3>
+      <p>A customer submits an order. The payment gateway may take 10 seconds or time out completely. The system must prevent duplicate charges on retry, ensure zero lost orders, and provide real-time status updates.</p>
 
-      <h3>Chosen flow</h3>
+      <h3>2. Capacity &amp; Latency Budget</h3>
+      <ul>
+        <li><strong>Traffic:</strong> 500 orders/sec average; peak = 2,500 orders/sec.</li>
+        <li><strong>Storage:</strong> 2 KB per order record × 50M orders/year = 100 GB/year (Aurora PostgreSQL).</li>
+        <li><strong>Latency Budget:</strong> API Gateway (5ms) → Order Module &amp; DB Outbox (20ms) → Immediate 202 Accepted returned to client in <strong>&lt; 30ms</strong>. Background Outbox relay and payment processing take 1–3 seconds asynchronously.</li>
+      </ul>
+
       <figure class="architecture-diagram">
         <div class="architecture-diagram-scroll">
           <svg viewBox="0 0 1200 510" role="img" aria-labelledby="order-diagram-title order-diagram-description">
@@ -132,40 +124,25 @@
         <figcaption>Solid arrows show the durable work path; the dashed return path represents a verified provider callback or reconciliation. Customers query the order API for the latest status.</figcaption>
       </figure>
 
-      <h3>How the design follows from the requirements</h3>
-      <ol>
-        <li><strong>Begin with correctness:</strong> order state and the outbox event are committed together, so a saved order cannot silently lose its payment work. A unique idempotency key makes a repeated checkout request return the original order.</li>
-        <li><strong>Decouple the unreliable boundary:</strong> payment is asynchronous because the provider is outside the system's control. The API can acknowledge a pending order without pretending payment succeeded.</li>
-        <li><strong>Keep operations proportional:</strong> order and payment modules share one deployable and database initially. The outbox and worker add only the async mechanism required for reliable handoff.</li>
-        <li><strong>Make uncertainty visible:</strong> a timeout is not proof that a charge failed. Use provider idempotency where supported, persist attempt identifiers, process callbacks idempotently, and reconcile unknown outcomes before retrying a charge.</li>
-        <li><strong>Protect the customer experience:</strong> expose explicit states such as <code>pending_payment</code>, <code>paid</code>, <code>payment_failed</code>, and <code>review_required</code>; do not use a generic success status for unresolved payment.</li>
-      </ol>
-      <table>
-        <thead><tr><th>Alternative considered</th><th>Why not first</th><th>Revisit when</th></tr></thead>
-        <tbody>
-          <tr><td>Synchronous checkout calls the payment provider before saving the order</td><td>Provider latency/outages lengthen checkout and can leave the outcome ambiguous after a timeout</td><td>The provider has a dependable latency/availability contract and the business requires an immediate decision</td></tr>
-          <tr><td>Separate microservice for every module</td><td>Independent deployment is not a stated need; it adds network, deployment, and on-call failure modes</td><td>Teams, scale, isolation, or release requirements demonstrate real independent ownership</td></tr>
-          <tr><td>Distributed transaction across order DB, broker, and provider</td><td>These systems do not share one practical atomic transaction; model the workflow with durable state and idempotent steps instead</td><td>Not a normal revisit; reconsider the business workflow or provider contract if its invariants cannot be met</td></tr>
-        </tbody>
-      </table>
-      <p><strong>Validate before launch:</strong> test duplicate checkout, relay restarts, duplicate/out-of-order messages, provider timeouts after acceptance, invalid callbacks, and reconciliation. Alert on old pending orders and outbox/consumer lag. Define refund/compensation and manual review ownership.</p>
+      <h3>3. Tradeoffs &amp; Failure Modes</h3>
+      <ul>
+        <li><strong>Outbox Atomicity:</strong> Order creation and outbox recording share a single local PostgreSQL transaction, eliminating dual-write loss.</li>
+        <li><strong>Provider Timeout Handling:</strong> A timeout does NOT mean payment failed. The payment worker marks the attempt as <code>PENDING_RECONCILIATION</code> and executes an idempotent status poll before retrying.</li>
+      </ul>
     </section>
 
+    <!-- CASE 2 -->
     <section class="lesson" id="case-two">
-      <h2>3. Use case two: live product analytics for many tenants</h2>
-      <h3>Problem and design drivers</h3>
-      <p>Many customer applications send usage events. Product teams need near-real-time dashboards and longer-term analysis. Traffic arrives in bursts, one event may be delivered more than once, and analytics can tolerate a short delay. Assume events are append-oriented, dashboard reads are much more common than corrections, and losing a small number of events is unacceptable.</p>
-      <table>
-        <thead><tr><th>Concern</th><th>Requirement / invariant</th><th>Architecture consequence</th></tr></thead>
-        <tbody>
-          <tr><td>Ingestion bursts</td><td>Absorb spikes without making every producer wait for aggregation</td><td>Accept and durably buffer events before stream processing</td></tr>
-          <tr><td>Delivery</td><td>Duplicates are possible; accepted events must be recoverable</td><td>Stable event IDs, at-least-once delivery, idempotent aggregation, replayable retention</td></tr>
-          <tr><td>Freshness</td><td>Dashboards can lag briefly but need predictable updates</td><td>Stream aggregates with an explicit freshness/SLO target and visible lag</td></tr>
-          <tr><td>Privacy and cost</td><td>Tenant separation, bounded retention, and controlled query cost</td><td>Authenticate producers, minimize payloads, apply tenant-aware access and retention policies</td></tr>
-        </tbody>
-      </table>
+      <h2>Case Study 2: Live Multi-Tenant Product Analytics</h2>
+      <h3>1. Problem &amp; Design Drivers</h3>
+      <p>Tenants send high-volume user events. Dashboards require sub-5 second freshness with complex aggregations, tenant isolation, and strict data retention controls.</p>
 
-      <h3>Chosen flow</h3>
+      <h3>2. Capacity Estimation</h3>
+      <ul>
+        <li><strong>Volume:</strong> 10,000 events/sec average; peak = 50,000 events/sec. 10,000 × 86,400 ≈ 864 Million events/day.</li>
+        <li><strong>Storage:</strong> 500 bytes/event = 432 GB/day raw storage. Raw events archived to S3/GCS in Parquet format with Snappy compression (~80 GB/day). Aggregates stored in ClickHouse / BigQuery.</li>
+      </ul>
+
       <figure class="architecture-diagram">
         <div class="architecture-diagram-scroll">
           <svg viewBox="0 0 1100 475" role="img" aria-labelledby="analytics-diagram-title analytics-diagram-description">
@@ -245,53 +222,117 @@
         </div>
         <figcaption>Ingestion is separated from query serving. The durable log absorbs bursts and enables replay; dashboards read tenant-scoped aggregates rather than scanning the event stream.</figcaption>
       </figure>
-
-      <h3>How the design follows from the requirements</h3>
-      <ol>
-        <li><strong>Buffer bursts:</strong> the ingestion API validates identity, schema, size, and quota, then acknowledges only after the configured durable-acceptance condition is met. Stream processing can scale separately from producers.</li>
-        <li><strong>Preserve recoverability:</strong> retain an immutable event envelope with a stable event ID, event time, schema version, tenant, and trace context. Choose partition keys to balance tenant isolation, ordering needs, and hot-partition risk.</li>
-        <li><strong>Handle duplicates and poison records:</strong> assume at-least-once delivery; make aggregate updates idempotent or deduplicate by event ID. Bound retries, quarantine invalid events, alert, and provide controlled replay.</li>
-        <li><strong>Serve the actual read pattern:</strong> store raw governed events for permitted replay/analysis and materialize dashboard aggregates for fast queries. Make freshness and late-event correction behavior visible.</li>
-        <li><strong>Protect tenants and data:</strong> authenticate producers, enforce tenant scoping at ingestion and query time, minimize sensitive payloads, and define deletion, retention, encryption, and audit controls.</li>
-      </ol>
-      <table>
-        <thead><tr><th>Alternative considered</th><th>Why not first</th><th>Revisit when</th></tr></thead>
-        <tbody>
-          <tr><td>Write each event synchronously to a dashboard database</td><td>Couples ingestion availability and burst handling to query-store capacity; raw-event replay is harder</td><td>Traffic is small and stable, and the simpler design meets measured freshness and recovery needs</td></tr>
-          <tr><td>Use a globally ordered stream</td><td>Global ordering limits parallelism and usually exceeds the business requirement</td><td>A documented invariant truly requires total ordering across all tenants and events</td></tr>
-          <tr><td>Build a large streaming platform immediately</td><td>Operational cost and specialized on-call ownership may exceed current value</td><td>Measured throughput, retention, replay, or latency requirements exceed a managed/simple queue design</td></tr>
-        </tbody>
-      </table>
-      <p><strong>Validate before launch:</strong> load-test bursts and large tenants; test broker outages, lag, duplicate and late events, schema changes, replay, and dead-letter growth. Set explicit ingestion durability, dashboard freshness, retention, and recovery targets. Do not claim exactly-once business outcomes from a broker guarantee alone.</p>
     </section>
 
-    <section class="lesson" id="compare">
-      <h2>4. Compare the designs and review the decision</h2>
+    <!-- CASE 3 -->
+    <section class="lesson" id="case-three">
+      <h2>Case Study 3: Real-Time Collaborative Document Editor</h2>
+      <h3>1. Problem &amp; Key Requirements</h3>
+      <p>Build a real-time collaborative document platform (like Google Docs or Notion). Multiple users concurrently type, edit, and format documents while offline edits seamlessly merge without data loss upon reconnection.</p>
+
+      <h3>2. Conflict Resolution: OT vs. CRDT</h3>
       <table>
-        <thead><tr><th>Dimension</th><th>Order and payment</th><th>Product analytics</th></tr></thead>
+        <thead><tr><th>Dimension</th><th>Operational Transformation (OT)</th><th>Conflict-Free Replicated Data Types (CRDT)</th></tr></thead>
         <tbody>
-          <tr><td>Primary risk</td><td>Incorrect or duplicate financial/order state</td><td>Lost, late, duplicated, or cross-tenant events</td></tr>
-          <tr><td>Consistency</td><td>Strong local transaction for order + outbox; asynchronous external payment state</td><td>Eventual consistency for aggregates, with freshness monitoring</td></tr>
-          <tr><td>Core boundary</td><td>Domain modules and authoritative order/payment state</td><td>Ingestion, durable log, processors, and read projections</td></tr>
-          <tr><td>Why async?</td><td>Isolate a slow and independently failing payment provider</td><td>Absorb bursts and decouple producers from processing and queries</td></tr>
-          <tr><td>What to keep simple</td><td>One application boundary until independent deployment is justified</td><td>Managed storage/streaming choices until scale and replay needs demand more</td></tr>
+          <tr><td><strong>Architecture</strong></td><td>Server-centric; central server orders and transforms operations.</td><td>Decentralized / peer-to-peer; mathematically provable eventual convergence.</td></tr>
+          <tr><td><strong>Offline Support</strong></td><td>Complex multi-step rebasing against server history.</td><td>Native; local operations merge deterministically upon reconnection.</td></tr>
+          <tr><td><strong>Memory Overhead</strong></td><td>Low (stores operation transforms).</td><td>Moderate (metadata/tombstones tracked per character, e.g., Yjs, Automerge).</td></tr>
+          <tr><td><strong>Industry Adoption</strong></td><td>Google Docs (classic), Microsoft Office Online.</td><td>Figma, Notion, Apple Notes, Zed Editor.</td></tr>
         </tbody>
       </table>
-      <h3>Architecture review questions</h3>
+
+      <h3>3. Architectural Flow</h3>
+      <pre><code>Client A                    WebSocket Gateway               Document Worker
+   │                               │                              │
+   │── [Local Edit: Insert "X"] ──>│                              │
+   │   (Optimistic UI Render)      │── Forward Op (Doc 101) ─────>│
+   │                               │                              │ [CRDT State Merge]
+   │                               │                              │ [Persist to Redis/WAL]
+   │                               │&lt;── Broadcast Merged Delta ──│
+   │&lt;── Broadcast Delta to All ────│
+   ▼                               ▼
+Client B receives delta and renders character at exact coordinate without locking.</code></pre>
+
+      <h3>4. Storage &amp; Snapshot Strategy</h3>
+      <p>Appending millions of keystrokes produces giant document logs. Every 100 operations (or 5 minutes), the Document Worker compiles an immutable snapshot stored in S3. New clients load the latest snapshot and apply only recent delta operations.</p>
+    </section>
+
+    <!-- CASE 4 -->
+    <section class="lesson" id="case-four">
+      <h2>Case Study 4: Social Media Feed and Notification System</h2>
+      <h3>1. Problem &amp; Key Requirements</h3>
+      <p>Build a social media timeline and notification platform (like X/Twitter or Instagram) for 100 Million Daily Active Users (DAU). Users post updates and follow others; feeds must render in &lt; 150 ms.</p>
+
+      <h3>2. Fan-Out on Write vs. Fan-Out on Read (The Celebrity Problem)</h3>
+      <table>
+        <thead><tr><th>Pattern</th><th>Mechanics</th><th>Pros</th><th>Cons</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Fan-Out on Write (Push)</strong></td>
+            <td>When user posts, background workers push the post ID into every follower's Redis timeline.</td>
+            <td>Read queries are <code>O(1)</code> instant Redis reads.</td>
+            <td>Celebrity posting with 50M followers triggers 50M Redis writes (massive write amplification).</td>
+          </tr>
+          <tr>
+            <td><strong>Fan-Out on Read (Pull)</strong></td>
+            <td>Timeline generated on-the-fly when user opens app by querying followed accounts.</td>
+            <td>Zero write amplification when posting.</td>
+            <td>Read queries are extremely slow, requiring multi-table SQL joins across thousands of users.</td>
+          </tr>
+          <tr>
+            <td><strong>Hybrid Model (Production Standard)</strong></td>
+            <td>Push-on-write for standard users (&lt; 25,000 followers). Pull-on-read for high-follower celebrities.</td>
+            <td>Fast reads for 99% of posts; zero write explosions during celebrity tweets.</td>
+            <td>Timeline generation service must merge cached feeds with pulled celebrity posts at read time.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3. Capacity &amp; Storage Sizing</h3>
       <ul>
-        <li>Which requirement or invariant justifies each major component?</li>
-        <li>What is the source of truth, and who owns each state transition?</li>
-        <li>What is acknowledged to a caller, and when is work actually durable?</li>
-        <li>What happens on timeout, duplicate delivery, partial failure, and replay?</li>
-        <li>How are authentication, tenant isolation, privacy, retention, and audit enforced?</li>
-        <li>Can the team operate the system, detect degradation, and recover within its goals?</li>
-        <li>What measurable evidence would justify the next architectural step?</li>
+        <li>100M DAU × 2 posts/day = 200M posts/day (≈ 2,300 posts/sec write average).</li>
+        <li>Read traffic: 100M DAU × 10 timeline visits/day = 1 Billion views/day (≈ 12,000 reads/sec).</li>
+        <li>Timeline Cache: Keep 800 recent post IDs in a Redis Sorted Set (ZSET) per user: 100M users × 800 IDs × 8 bytes ≈ <strong>640 GB RAM</strong> (distributed across 10 Redis nodes).</li>
       </ul>
-      <div class="exercise"><strong>Practice</strong>Choose a use case from your own work. Write three quality scenarios and two invariants, draw the normal and failure flows, compare a simple design with one alternative, then ask a reviewer to challenge each component that has no stated reason to exist.</div>
     </section>
 
-    <div class="lesson-footer"><a class="lesson-link" href="architecture-12-togaf.html">← Previous: TOGAF</a></div>
-    <footer class="site-footer">Architecture learning path · Updated 2026-10-31 · A good design is justified by requirements and validated by evidence.</footer>
+    <!-- CASE 5 -->
+    <section class="lesson" id="case-five">
+      <h2>Case Study 5: Cloud File Storage and Synchronization</h2>
+      <h3>1. Problem &amp; Key Requirements</h3>
+      <p>Design a cloud file storage and synchronization engine (like Google Drive or Dropbox). Supports multi-GB file uploads, cross-device file synchronization, deduplication, and bandwidth-efficient delta syncing.</p>
+
+      <h3>2. Chunking and Content-Addressable Storage (CAS)</h3>
+      <pre><code>Client File Upload Workflow:
+  1. Client slices 1 GB file into deterministic 4 MB chunks.
+  2. Computes SHA-256 cryptographic hash per chunk.
+  3. Queries Metadata Service: "Do hashes [H1, H2, H3...] already exist in object storage?"
+  4. If H1 and H2 already exist (e.g., uploaded by another user), skip upload! (Global Deduplication).
+  5. Uploads only missing chunk H3 via pre-signed S3 multi-part upload URL.
+  6. Metadata Service saves File Manifest: [H1, H2, H3] linked to user account.</code></pre>
+
+      <h3>3. Cross-Device Sync Architecture</h3>
+      <ul>
+        <li><strong>Metadata Service:</strong> Stores file hierarchy, folder structures, permissions, and chunk manifests in PostgreSQL.</li>
+        <li><strong>Delta Sync Protocol:</strong> When a user edits 1 page in a 200-page document, only the modified 4 MB chunk is uploaded and synchronized to other connected devices via WebSocket push notifications.</li>
+      </ul>
+    </section>
+
+    <!-- RED TEAM -->
+    <section class="lesson" id="red-team">
+      <h2>6. The Red Team Architectural Challenge</h2>
+      <p>Before approving any production design, subject it to adversarial "Red Team" stress testing:</p>
+      <ul>
+        <li><strong>Dependency Latency Multiplication:</strong> What happens to the system if your third-party payment provider's latency jumps from 200 ms to 15 seconds without returning an error? (Does it exhaust API gateway thread pools?)</li>
+        <li><strong>Split-Brain Recovery:</strong> During a network partition between US-East and US-West, both regions accept writes. What is the deterministic conflict resolution rule when the network heals?</li>
+        <li><strong>Database Failover Data Loss:</strong> Under synchronous database replication, primary failover takes 30 seconds. How does the frontend handle customer requests in flight during those 30 seconds?</li>
+      </ul>
+    </section>
+
+    <div class="lesson-footer">
+      <a class="lesson-link" href="architecture-12-togaf.html">← Previous: TOGAF</a>
+    </div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-11-21 · Real-world architectures are forged through requirements, validated by data, and hardened by failure testing.</footer>
   </main>
 </body>
 </html>

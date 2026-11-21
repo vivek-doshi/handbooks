@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="handbook-version" content="v2">
-  <meta name="last-updated" content="2026-10-27">
-  <meta name="description" content="An advanced API gateway guide to routing, authentication, rate limiting, quotas, resilience, threat protection, AI gateways, and observability.">
+  <meta name="last-updated" content="2026-11-21">
+  <meta name="description" content="An advanced architectural guide to API gateways: product comparisons, rate limiting algorithms, canary traffic routing, zero trust mTLS, AI gateways, and API lifecycles.">
   <title>11. API Gateway Patterns | Architecture Learning Path</title>
   <link rel="stylesheet" href="learning-path.css">
 </head>
@@ -14,18 +14,30 @@
   <header class="course-header">
     <a class="brand" href="../index.html"><span>Architecture Path</span> / Handbooks</a>
     <span class="path-progress">11 / 13 · Advanced</span>
-    <nav class="course-nav" aria-label="Learning path"><a href="architecture-10-graphql.html">← Previous</a><a href="../index.html">All handbooks</a><a href="architecture-12-togaf.html">Next →</a></nav>
+    <nav class="course-nav" aria-label="Learning path">
+      <a href="architecture-10-graphql.html">← Previous</a>
+      <a href="../index.html">All handbooks</a>
+      <a href="architecture-12-togaf.html">Next →</a>
+    </nav>
   </header>
   <main class="course" id="main">
     <section class="hero">
       <div class="eyebrow">Step 11 · Advanced · Edge and API policy</div>
       <h1>API gateway patterns</h1>
-      <p class="lede">An API gateway is a controlled edge for routing, identity enforcement, traffic policy, and observability. Keep it focused on cross-cutting edge concerns; domain rules belong with the domain owner, and a gateway does not make an unsafe backend safe.</p>
-      <div class="hero-meta"><span class="badge">Routing and auth</span><span class="badge">Rate limits and quotas</span><span class="badge">Zero trust</span><span class="badge">AI gateways</span></div>
+      <p class="lede">An API gateway is the governed edge for routing, identity verification, traffic policy, and telemetry. It shields internal microservices from public exposure, while centralizing cross-cutting policies without violating backend domain ownership.</p>
+      <div class="hero-meta">
+        <span class="badge">Product Evaluation</span>
+        <span class="badge">Token Bucket &amp; Redis</span>
+        <span class="badge">Canary &amp; Traffic Splitting</span>
+        <span class="badge">Zero Trust &amp; mTLS</span>
+        <span class="badge">AI Gateway Architecture</span>
+      </div>
     </section>
+
     <section class="lesson" id="anatomy">
-      <h2>1. Gateway anatomy and product choices</h2>
-      <p>A gateway commonly provides TLS termination, route selection, authentication integration, request limits, protocol translation, traffic shaping, and telemetry. A reverse proxy, API management platform, service mesh ingress, and BFF overlap but solve different operational problems.</p>
+      <h2>1. Gateway Anatomy and Enterprise Product Evaluation</h2>
+      <p>An API gateway handles Layer 7 edge concerns: TLS termination, request authentication, rate limiting, request validation, traffic routing, protocol translation, and distributed telemetry propagation.</p>
+
       <figure class="architecture-diagram">
         <div class="architecture-diagram-scroll">
           <svg viewBox="0 0 960 500" role="img" aria-labelledby="gateway-diagram-title gateway-diagram-description">
@@ -91,73 +103,124 @@
         </div>
         <figcaption>Typical request path and supporting dependencies. The gateway centralizes edge policy; backend services remain responsible for authorization and domain correctness.</figcaption>
       </figure>
-      <p>Kong Gateway and Google Apigee are examples of products, not architecture patterns. Compare deployment model, control plane, policy lifecycle, plugin/extensions, latency, high availability, developer portal, analytics, data residency, and total operating cost. Keep configuration portable where practical and test the exit path.</p>
-    </section>
-    <section class="lesson" id="traffic">
-      <h2>2. Rate limiting, throttling, and quotas</h2>
-      <p>Rate limiting bounds request rate, throttling controls behavior under pressure, and quotas enforce a usage allowance over a longer period. Choose the key deliberately: identity, tenant, API key, route, or a combination. A single IP limit is often unfair behind NAT and easy to evade with distributed clients.</p>
-      <ul>
-        <li><strong>Token bucket:</strong> permits bursts within a refill budget.</li>
-        <li><strong>Leaky bucket / queue:</strong> smooths arrivals but may add latency or reject overflow.</li>
-        <li><strong>Fixed window:</strong> simple counters, with boundary burst effects.</li>
-        <li><strong>Sliding window:</strong> smoother accounting, at greater state/compute cost.</li>
-      </ul>
-      <p>Define behavior when the limiter store is unavailable, how limits synchronize across regions, what clients receive on rejection, and how paid plans are audited. Do not rely on an edge policy as the only resource-protection control.</p>
-    </section>
-    <section class="lesson" id="resilience">
-      <h2>3. Circuit breakers and failure containment</h2>
-      <p>A circuit breaker can stop repeated calls to a failing dependency, using closed/open/half-open states. Pair it with bounded timeouts, limited retries with jitter, concurrency limits, and fallbacks that preserve correctness. A breaker is not a replacement for capacity management or a service-level objective.</p>
-      <p>Avoid retries at every layer; stacked retries multiply load. Choose one retry owner, preserve an end-to-end deadline, and do not retry non-idempotent operations unless the request has an idempotency contract.</p>
-    </section>
-    <section class="lesson" id="identity">
-      <h2>4. Authentication, mTLS, and zero trust</h2>
-      <p>Use standards-based OIDC/OAuth flows appropriate to the client and current security guidance. Validate issuer, audience, expiry, signature, and scopes/claims; forward identity only through authenticated channels. Apply authorization at the service that owns the resource.</p>
-      <p>Mutual TLS can establish workload identity between services. Rotate credentials, validate identities, and authorize specific workloads and actions. Zero trust means continuously evaluating identity, device/workload, context, and resource policy—not simply putting a gateway at the network perimeter.</p>
-    </section>
-    <section class="lesson" id="threats">
-      <h2>5. Threat protection and policy as code</h2>
-      <p>Validate content type, request size, method, path normalization, schema, and known attack patterns. Protect against credential stuffing, injection, SSRF, broken object-level authorization, and resource exhaustion. Use a WAF as defense in depth, not a substitute for application fixes.</p>
-      <p>Keep gateway policies version-controlled, peer-reviewed, tested, and promoted through environments. Include policy owners, expiry for exceptions, safe rollback, and auditable changes. Test that misconfiguration fails safely and does not accidentally expose internal routes.</p>
-    </section>
-    <section class="lesson" id="ai">
-      <h2>6. AI gateway patterns and LLM-specific risks</h2>
-      <p>An AI gateway may route model-provider requests, centralize credential controls, record usage, apply budgets, select fallbacks, and standardize telemetry. It does not make model output reliable or remove the application's responsibility for safe tool execution.</p>
-      <ul>
-        <li>Protect provider keys and tenant data; isolate credentials and enforce least privilege.</li>
-        <li>Apply per-tenant, per-model, and token-aware budgets while accounting for provider-specific tokenization and billing.</li>
-        <li>Defend against prompt injection, data exfiltration, unsafe tool calls, and cross-tenant context leakage.</li>
-        <li>Do not assume prompt inspection can reliably classify intent; combine controls, constrained tools, and human review where risk warrants.</li>
-        <li>Record model/provider version, latency, token usage, outcome, and safety signals without logging sensitive prompt content by default.</li>
-        <li>Evaluate quality and safety before routing traffic to a fallback model; equivalent names do not guarantee equivalent behavior.</li>
-      </ul>
-      <p>Use risk management throughout design, evaluation, deployment, and monitoring. NIST's AI RMF 1.0 remains a voluntary framework and is being updated; check the official NIST page for revision status before referencing a version as current.</p>
-    </section>
-    <section class="lesson" id="observability">
-      <h2>7. Observability, selection, and quick reference</h2>
-      <p>Track request rate, rejection reasons, upstream latency/status, saturation, retries, breaker state, and per-tenant usage. Propagate trace context while protecting sensitive headers. Alert on SLO symptoms and policy failures, not only process health.</p>
+
+      <h3>Product Comparison Matrix</h3>
       <table>
-        <thead><tr><th>Need</th><th>Gateway responsibility</th><th>Backend responsibility</th></tr></thead>
+        <thead><tr><th>Gateway Product</th><th>Underlying Engine</th><th>Deployment Model</th><th>Best Fit For</th></tr></thead>
         <tbody>
-          <tr><td>Identity</td><td>Validate edge credentials; pass trusted identity safely</td><td>Authorize each resource/action</td></tr>
-          <tr><td>Abuse limits</td><td>Coarse route/tenant limits</td><td>Domain-specific budgets and expensive-operation limits</td></tr>
-          <tr><td>Resilience</td><td>Bound connection and request behavior</td><td>Correct idempotency, deadlines, and graceful degradation</td></tr>
-          <tr><td>AI safety</td><td>Credential, routing, and usage controls</td><td>Prompt/data policy, constrained tools, output validation, evaluation</td></tr>
+          <tr><td><strong>Kong Gateway</strong></td><td>Nginx / OpenResty</td><td>Self-hosted, Kubernetes Ingress, or Cloud Managed</td><td>High-performance plugin-driven enterprise ecosystems; Lua/Wasm plugins.</td></tr>
+          <tr><td><strong>Google Cloud Apigee</strong></td><td>Java / Distributed Engine</td><td>Enterprise SaaS / Hybrid Cloud</td><td>B2B partner API monetization, developer portals, complex enterprise governance.</td></tr>
+          <tr><td><strong>AWS API Gateway</strong></td><td>Serverless Managed</td><td>AWS Cloud-Native</td><td>Serverless Lambda backends, rapid REST/WebSocket APIs, zero infrastructure operations.</td></tr>
+          <tr><td><strong>Envoy Gateway</strong></td><td>Envoy Proxy (C++)</td><td>Kubernetes Gateway API Native</td><td>Cloud-native microservices, service mesh ingress, ultra-low latency L7 routing.</td></tr>
+          <tr><td><strong>Traefik</strong></td><td>Go Native</td><td>Container Native (Docker/K8s)</td><td>Dynamic microservice discovery, automatic Let's Encrypt TLS, developer simplicity.</td></tr>
         </tbody>
       </table>
-      <div class="exercise"><strong>Practice</strong>Design gateway policy for a public order API: authentication, per-tenant quotas, request-size limits, payment-provider timeout, audit events, and safe behavior if the limiter store is unavailable. Separate what the gateway can enforce from backend invariants.</div>
     </section>
+
+    <section class="lesson" id="rate-limiting">
+      <h2>2. Rate Limiting Algorithms and Distributed State</h2>
+      <table>
+        <thead><tr><th>Algorithm</th><th>Mechanics</th><th>Pros</th><th>Cons</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Token Bucket</strong></td>
+            <td>Tokens refill at a constant rate up to capacity \(B\). Each request consumes 1 token.</td>
+            <td>Permits temporary burst traffic up to bucket size; memory-efficient.</td>
+            <td>Requires synchronized state in distributed clusters.</td>
+          </tr>
+          <tr>
+            <td><strong>Leaky Bucket</strong></td>
+            <td>Requests enter a queue and leak out at a constant, fixed rate.</td>
+            <td>Completely smooths egress traffic; shields fragile legacy backends.</td>
+            <td>Adds latency to requests waiting in queue; drops traffic when queue is full.</td>
+          </tr>
+          <tr>
+            <td><strong>Sliding Window Counter</strong></td>
+            <td>Calculates rolling weighted average from current and previous 60-second windows.</td>
+            <td>Eliminates boundary burst attacks common to Fixed Windows.</td>
+            <td>Requires atomic multi-key read/writes in Redis.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Distributed Token Bucket: Redis Lua Script</h3>
+      <pre><code>-- Redis Lua script for atomic distributed Token Bucket
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local rate = tonumber(ARGV[2]) -- tokens added per millisecond
+local now = tonumber(ARGV[3])
+
+local data = redis.call('HMGET', key, 'tokens', 'last_updated')
+local tokens = tonumber(data[1])
+local last_updated = tonumber(data[2])
+
+if tokens == nil then
+  tokens = limit
+  last_updated = now
+else
+  local elapsed = now - last_updated
+  tokens = math.min(limit, tokens + elapsed * rate)
+  last_updated = now
+end
+
+if tokens &gt;= 1 then
+  tokens = tokens - 1
+  redis.call('HMSET', key, 'tokens', tokens, 'last_updated', last_updated)
+  redis.call('EXPIRE', key, 60)
+  return 1 -- ACCEPT REQUEST
+else
+  return 0 -- REJECT HTTP 429
+end</code></pre>
+    </section>
+
+    <section class="lesson" id="traffic">
+      <h2>3. Advanced Traffic Management: Canary and Blue-Green</h2>
+      <p>Modern gateways route traffic dynamically without redeploying backend infrastructure:</p>
+      <ul>
+        <li><strong>Canary Deployments:</strong> Route 95% of traffic to <code>v1-stable</code> and 5% to <code>v2-canary</code>. If error rates or latency on <code>v2</code> spike, the gateway automatically rolls back to 100% <code>v1</code> in seconds.</li>
+        <li><strong>Traffic Shadowing / Mirroring:</strong> Duplicate 100% of incoming live production traffic and send an asynchronous copy to a new version without awaiting its response. Tests real-world load and memory consumption with zero customer risk.</li>
+        <li><strong>Header-Based Testing:</strong> Route requests containing internal QA headers (e.g., <code>X-Beta-Tester: true</code>) to experimental staging pods.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="ai-gateway">
+      <h2>4. The Emerging AI Gateway Pattern</h2>
+      <p>As enterprises adopt Large Language Models (OpenAI, Anthropic, Gemini, local Ollama), routing raw client requests directly to AI providers causes cost explosions, credential sprawl, and security vulnerabilities. An <strong>AI Gateway</strong> sits between enterprise applications and model providers.</p>
+
+      <h3>Key AI Gateway Capabilities</h3>
+      <ul>
+        <li><strong>Credential Isolation:</strong> Developers authenticate to internal services; the AI Gateway injects provider API keys securely from Vault.</li>
+        <li><strong>Token-Aware Rate Limiting &amp; Budgets:</strong> Enforces cost quotas by tracking prompt and completion tokens per department/tenant.</li>
+        <li><strong>Multi-Model Fallback Routing:</strong> If OpenAI returns HTTP 429 (Rate Limit) or 503 (Outage), the gateway seamlessly routes the prompt to an equivalent Claude or Gemini endpoint.</li>
+        <li><strong>Semantic Caching:</strong> Uses vector similarity (Redis / pgvector) to check if an identical or semantically identical prompt was answered recently. Returns cached responses instantly in 5 ms at $0 cost!</li>
+        <li><strong>Prompt Injection &amp; PII Guardrails:</strong> Scans incoming prompts and outgoing completions for credit cards, SSNs, and prompt injection payloads before forwarding.</li>
+      </ul>
+    </section>
+
+    <section class="lesson" id="practice">
+      <h2>5. Practical Exercises</h2>
+      <ol>
+        <li><strong>Gateway Selection:</strong> Your company is migrating 40 microservices to Amazon EKS and needs gRPC routing, OAuth JWT validation, and automated canary deployments. Evaluate Envoy Gateway vs. AWS API Gateway vs. Kong. Which best fits this topology?</li>
+        <li><strong>Rate Limit Design:</strong> Formulate a 3-tier rate limiting policy for a financial market data API (Free Tier: 10 req/min; Pro Tier: 1,000 req/min; Enterprise Tier: 10,000 req/min with dedicated burst allowances). Define standard IETF <code>RateLimit-*</code> HTTP response headers.</li>
+        <li><strong>AI Gateway Routing Rule:</strong> Design a configuration rule for an AI gateway that routes code generation prompts to Claude Sonnet, falls back to GPT-4o on timeout &gt; 3s, and blocks any request containing unencrypted credit card regexes.</li>
+      </ol>
+    </section>
+
     <section class="lesson" id="sources">
       <h2>Further reading</h2>
       <ul class="reading-list">
-        <li><a href="https://www.rfc-editor.org/rfc/rfc9700" target="_blank" rel="noreferrer">RFC 9700: OAuth 2.0 Security Best Current Practice</a> — current OAuth security recommendations.</li>
-        <li><a href="https://csrc.nist.gov/pubs/sp/800/207/final" target="_blank" rel="noreferrer">NIST SP 800-207: Zero Trust Architecture</a> — identity and resource-centered policy.</li>
-        <li><a href="https://owasp.org/www-project-api-security/" target="_blank" rel="noreferrer">OWASP API Security Project</a> — common API risks.</li>
-        <li><a href="https://airc.nist.gov/AI_RMF_Knowledge_Base/" target="_blank" rel="noreferrer">NIST AI Risk Management Framework resources</a> — current framework and revision status.</li>
-        <li><a href="https://docs.konghq.com/gateway/latest/" target="_blank" rel="noreferrer">Kong Gateway documentation</a> and <a href="https://docs.apigee.com/" target="_blank" rel="noreferrer">Apigee documentation</a> — vendor-specific capabilities; verify current versions.</li>
+        <li><a href="https://gateway-api.sigs.k8s.io/" target="_blank" rel="noreferrer">Kubernetes Gateway API Specification</a> — next-generation cloud-native service networking.</li>
+        <li><a href="https://docs.konghq.com/" target="_blank" rel="noreferrer">Kong Gateway Documentation</a> — plugins, clustering, and performance tuning.</li>
+        <li><a href="https://www.envoyproxy.io/docs/envoy/latest/" target="_blank" rel="noreferrer">Envoy Proxy Architecture</a> — L7 filters, HTTP/2 multiplexing, and traffic management.</li>
+        <li><a href="https://www.ietf.org/archive/id/draft-ietf-httpapi-ratelimit-headers-07.html" target="_blank" rel="noreferrer">IETF RateLimit Header Fields for HTTP</a> — standard draft for rate limit reporting.</li>
       </ul>
     </section>
-    <div class="lesson-footer"><a class="lesson-link" href="architecture-10-graphql.html">← Previous: GraphQL</a><a class="lesson-link" href="architecture-12-togaf.html">Next lesson: TOGAF →</a></div>
-    <footer class="site-footer">Architecture learning path · Updated 2026-10-27 · Edge controls complement, but never replace, backend security.</footer>
+
+    <div class="lesson-footer">
+      <a class="lesson-link" href="architecture-10-graphql.html">← Previous: GraphQL</a>
+      <a class="lesson-link" href="architecture-12-togaf.html">Next lesson: TOGAF →</a>
+    </div>
+    <footer class="site-footer">Architecture learning path · Updated 2026-11-21 · Centralize edge policy, but keep resource authorization with domain owners.</footer>
   </main>
 </body>
 </html>
